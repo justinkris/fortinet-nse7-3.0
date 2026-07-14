@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 20 Troubleshooting — SSL Inspection</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;}
+header{padding:36px 44px;background:var(--ink-dark);}
+.eyebrow{display:inline-block;border:1px solid rgba(155,184,230,.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:.1em;margin-bottom:10px;}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+h1 em{font-style:italic;color:var(--ink-accent);}
+main{max-width:860px;margin:0 auto;padding:32px 26px 70px;}
+h2{font-family:'Playfair Display',serif;font-size:23px;color:var(--blue-deep);margin:36px 0 12px;border-bottom:2px solid var(--border);padding-bottom:6px;}
+p,li{font-size:17px;color:var(--text-soft);margin-bottom:10px;}
+ul,ol{padding-left:26px;margin-bottom:12px;}
+table{width:100%;border-collapse:collapse;font-family:'Outfit',sans-serif;font-size:13px;margin:14px 0;background:var(--surface);}
+th{background:var(--ink-dark);color:#fbf7ec;padding:9px 11px;text-align:left;}
+td{padding:8px 11px;border-bottom:1px solid #ebe1c2;vertical-align:top;}
+pre{background:var(--ink-dark);color:#cfe0f7;padding:14px 18px;border-radius:8px;font-size:12.5px;font-family:Consolas,monospace;overflow-x:auto;margin:12px 0;}
+.box{border-left:4px solid var(--blue);background:var(--blue-light);padding:12px 16px;margin:14px 0;border-radius:0 8px 8px 0;}
+.box.warn{border-color:var(--amber);background:var(--amber-light);}
+.box.win{border-color:var(--green);background:var(--green-light);}
+.box .tag{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:4px;}
+.tree{font-family:Consolas,monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;white-space:pre;overflow-x:auto;margin:14px 0;color:var(--text-soft);}
+footer{text-align:center;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);padding:24px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header><span class="eyebrow">SESSION 20 · TROUBLESHOOTING GUIDE</span><h1>Troubleshooting <em>SSL Inspection</em></h1></header>
+<main>
+
+<h2>The Senior Mindset</h2>
+<p>SSL inspection faults come in exactly three families. Before touching anything, classify which family you're in:</p>
+<ol>
+<li><strong>Trust faults</strong> — the client rejects the FortiGate's forged certificate (CA distribution problems).</li>
+<li><strong>Depth faults</strong> — a security profile is blind because the policy's inspection depth is shallower than the profile needs.</li>
+<li><strong>Mode faults</strong> — a behaviour you expect (proxying, port mapping) belongs to proxy mode and the policy is flow-based.</li>
+</ol>
+<div class="box"><span class="tag">First question, always</span>"Warnings, or silence?" Users seeing certificate <em>warnings</em> = trust fault. Security profiles <em>silently missing</em> threats over HTTPS = depth fault. Feature <em>configured but not acting</em> = mode fault.</div>
+
+<h2>Symptom 1 — Certificate warnings on EVERY site, immediately after enabling full inspection</h2>
+<p><strong>Questions to ask:</strong> All users or some? All sites or one? Did we distribute the CA, and to which platforms/browsers?</p>
+<p><strong>Likely root cause:</strong> the FortiGate's signing CA certificate is not in the clients' trusted root stores. The clients don't distrust the sites — they distrust <em>the forger</em>.</p>
+<div class="box warn"><span class="tag">Fingerprint</span>ALL sites warn → missing/untrusted CA on the client. ONE site warns → that server's real certificate is genuinely bad (expired, untrusted, name mismatch) and full inspection is faithfully passing the problem through.</div>
+<p><strong>Dead end to avoid:</strong> disabling inspection to "fix" the warnings. That restores silence, not security — you've retreated from the crusade, not won it.</p>
+
+<h2>Symptom 2 — Web filtering blocks correctly, but IPS/AV never fires on HTTPS traffic</h2>
+<p><strong>Question to ask:</strong> what inspection depth is on the policy?</p>
+<p><strong>Root cause:</strong> certificate inspection. Web filtering works from the SNI (envelope); IPS/AV need the payload (letter). The study guide's own use case: PHP code injection over HTTPS with cert inspection → forward-traffic logs show the HTTPS access, <strong>zero IPS security events</strong>. Fix: full inspection (or Protecting SSL Server for inbound).</p>
+<pre># Verify what the policy is actually applying
+show firewall policy &lt;id&gt;        # look at set ssl-ssh-profile
+show firewall ssl-ssh-profile &lt;name&gt;   # cert-inspection vs deep-inspection settings</pre>
+<div class="box"><span class="tag">Expected evidence</span>Log &amp; Report → Forward Traffic: HTTPS sessions present, normal. Log &amp; Report → Security Events → Intrusion Prevention: empty for those flows. That pairing — traffic seen, threats unseen — is the depth-fault signature.</div>
+
+<h2>Symptom 3 — Users bypass inspection via a non-standard port</h2>
+<p><strong>Scenario:</strong> SMTPS to port 10587 sails through uninspected while port 587 is controlled.</p>
+<p><strong>Root cause chain:</strong> protocol port mapping not configured — and it only functions when ALL of: full SSL inspection, proxy-based inspection mode, and the port-mapping setting configured, on an outbound multiple-clients policy. Flow-based inspection assesses all ports regardless of mapping settings.</p>
+<p><strong>Senior habit:</strong> watch logs for unexpected ports; enable mappings incrementally (each one costs resources).</p>
+
+<h2>Symptom 4 — "I enabled full inspection but nothing is being proxied"</h2>
+<p><strong>Root cause:</strong> mode fault. Full inspection in flow mode decrypts in-stream — one TCP connection, no session splitting. Complete SSL proxying (two independent TCP sessions) is proxy-mode behaviour. Decide whether you need <em>decryption</em> (either mode) or <em>proxying</em> (proxy mode).</p>
+
+<h2>Decision Tree</h2>
+<div class="tree">HTTPS-related complaint
+│
+├─ Users see certificate WARNINGS?
+│   ├─ On ALL sites → CA not trusted by clients → distribute CA, verify store
+│   └─ On ONE site  → that server's real cert is bad → validate upstream cert;
+│                     inspection is working as designed
+│
+├─ Security profile SILENT on HTTPS threats?
+│   ├─ Web filter works, AV/IPS/DLP silent → depth fault:
+│   │     policy is cert-inspection → payload profiles need FULL inspection
+│   └─ Even web filter blind → is ANY ssl-ssh-profile applied to the policy?
+│
+└─ Feature configured but INACTIVE?
+    ├─ Port mapping ignored → requires full inspection + PROXY mode + mapping set
+    └─ No session splitting → proxying is proxy-mode-only; flow decrypts in-stream</div>
+
+<h2>Common Dead Ends</h2>
+<ul>
+<li>Blaming the destination website for warnings that appear on every site (it's your CA).</li>
+<li>Adding more IPS signatures when the real issue is that IPS never sees plaintext.</li>
+<li>Switching the policy to proxy mode to "make full inspection work" — it already works in flow mode; identify the actual missing behaviour first.</li>
+<li>Confusing "we validate certificates" with "we inspect content."</li>
+</ul>
+
+<h2>Exam Traps</h2>
+<ul>
+<li>"Certificate inspection provides <strong>no</strong> protection against HTTPS attacks" → false; it's <strong>Limited</strong>.</li>
+<li>"Full inspection requires proxy-based mode" → false; both modes support it.</li>
+<li>"App control cannot function under certificate inspection" → false; it identifies apps by SNI.</li>
+<li>Scenario says "separate certificate for each domain" → the mechanism is <strong>SNI</strong>, not SAN.</li>
+<li>All-sites warnings scenario → the answer is CA distribution, not TLS versions, not SNI settings.</li>
+</ul>
+
+<div class="box win"><span class="tag">Señor's rule</span>Classify the family first — trust, depth, or mode. A fault correctly classified is half fixed; a fault misclassified generates three unnecessary changes before breakfast.</div>
+
+</main>
+<footer>LoFinance · Session 20 Troubleshooting · "Warnings, or silence?"</footer>
+</body>
+</html>

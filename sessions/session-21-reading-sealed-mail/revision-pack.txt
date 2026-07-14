@@ -1,0 +1,253 @@
+SESSION 21 REVISION PACK — "Reading Sealed Mail"
+Deploying full inspection: certificates, exemptions, TLS version control
+NSE7 EF 7.6 · Study Guide 06 pp. 167–170 (+ p.183 Protecting SSL Server)
+
+=====================================================================
+QUICK SUMMARY (one page)
+=====================================================================
+Full inspection went live before the FortiGate CA was distributed → every
+site/user/browser threw certificate warnings. BLAST RADIUS IS DIAGNOSIS:
+all-sites = client trust store; one-site = that site's cert; one device
+class = device capability; browser-OK-app-broken = pinning. Evidence =
+the presented certificate's ISSUER field.
+
+Recovery: FALL BACK (to certificate inspection — needs no client trust),
+never ROLL BACK (to nothing). Push CA via GPO/MDM, then flip forward.
+"The order of operations IS the deployment plan."
+
+EXEMPTIONS: exempt traffic gets NO inspection of any depth — FortiGate
+steps out of the TLS conversation entirely. Built-in profiles are
+read-only → clone. Fortinet pre-exempts Finance & Banking, Health &
+Wellness, Personal Privacy. Permanent for three reasons: compliance/data
+custody; refusing the capability (protects admins too); certificate
+pinning.
+
+PINNING: the pin is compiled into the APP. Browser asks "do I trust the
+signer?" (trust store); app asks "is this literally the cert/key I was
+born knowing?" Trusted ≠ pinned. No trust-store fix exists.
+
+WHOSE PRIVATE KEY? Full inspection always requires one.
+  Outbound (don't own servers): forge with re-signing CA → client pain
+    → scope: Multiple Clients Connecting to Multiple Servers.
+  Inbound (own the server): load REAL cert + private key → zero client
+    impact, pinning irrelevant → scope: Protecting SSL Server
+    (server-cert-mode replace). Without it, IPS never sees encrypted
+    attacks (Cipher's PHP injection logged nothing under cert-inspection).
+
+PROTOCOL PORT MAPPING: proxy engine dispatches sessions to protocol
+inspectors BY DESTINATION PORT, before decryption. SMTPS default = 587;
+port 10587 is never claimed even with full inspection on. Fix:
+config smtps → set ports 587 10587. THREE preconditions (multi-select):
+full inspection + Multiple-Clients-to-Multiple-Servers + PROXY mode.
+Flow-based inspects ALL ports regardless — the evasion FAILS vs flow.
+Costume room = proxy. Window = flow.
+
+TLS VERSION CONTROL: CLI-ONLY. Per-protocol (HTTPS, SMTPS, POP3S, IMAPS,
+FTPS). Blocks at the HANDSHAKE (before certs — cert fixes can't help).
+Server offering 1.1+1.2 vs min 1.2 → ALLOWED (negotiates 1.2). Legacy
+devices: never lower the global minimum; scoped exception pinned at BOTH
+ends + logged + expiry date. "An exception without an expiry is the new
+normal."
+
+=====================================================================
+CHEAT SHEET
+=====================================================================
+CLI
+---
+config firewall ssl-ssh-profile
+    edit "LoFinance-deep-inspection"          <- CLONE (built-ins read-only)
+        config ssl-exempt
+            edit 1
+                set type address
+                set address "portal.meridianbank.com"
+            next
+        end
+        config smtps
+            set ports 587 10587               <- protocol port mapping
+        end
+        config https
+            set unsupported-ssl-version block <- CLI-only
+            set min-allowed-ssl-version tls-1.2
+        end
+    next
+end
+
+Protecting SSL Server (inbound):
+    set server-cert-mode replace
+    set server-cert "LoFinance-Portal-Cert"   <- real cert + private key
+
+Verification:
+    show full-configuration firewall ssl-ssh-profile
+    Browser cert viewer -> Issuer field (diagnosis evidence)
+    Forward logs filtered by dstport (post-mapping monitoring)
+    Security Events -> IPS (inbound protection proof)
+
+GUI PATHS
+---------
+Security Profiles > SSL/SSH Inspection (clone; exemptions; scope dropdown)
+Firewall Policy > [policy] > SSL Inspection (assign profile)
+System > Certificates (import server cert+key; CA management)
+NOTE: min-allowed-ssl-version does NOT appear in the GUI.
+
+DEFAULTS & KEY FACTS
+--------------------
+- Built-in SSL/SSH profiles: read-only.
+- Default deep-inspection exempts: Finance & Banking, Health & Wellness,
+  Personal Privacy categories.
+- Default inspected ports (examples): HTTPS 443, SMTPS 587, FTPS 990.
+- Deprecated: SSL 2.0/3.0, TLS 1.0, TLS 1.1 (1.0/1.1 deprecated 2020).
+- TLS 1.2 = compatibility recommendation; TLS 1.3 = best security/speed.
+- Port mapping raises resource usage — enable selectively, watch logs.
+
+DESIGN RULES
+------------
+1. CA distributed BEFORE full inspection enabled. Always.
+2. Fall back one layer; don't roll back to zero.
+3. Exceptions: narrow (both ends pinned), visible (logged), temporary
+   (expiry date), or they become architecture.
+4. Refuse capabilities you must never be suspected of abusing.
+5. Weld labels to mechanisms: say the NAME with the reason.
+
+=====================================================================
+FLASHCARDS
+=====================================================================
+Q: After enabling full inspection, every site for every user shows cert
+   warnings. Cause?
+A: Inspection CA not in client trusted root stores.
+
+Q: The single evidence artefact that confirms it?
+A: Presented certificate's issuer field = your FortiGate CA (just issued).
+
+Q: Fall back vs roll back?
+A: Fall back = retreat to certificate inspection (still works, no client
+   trust needed). Roll back = disable everything (wrong).
+
+Q: What does exempt traffic receive?
+A: No inspection of ANY depth — FortiGate exits the conversation.
+
+Q: Three reasons banking stays exempt permanently?
+A: Compliance/data custody; refusing the capability (admin protection);
+   certificate pinning.
+
+Q: Where does a certificate pin live?
+A: Inside the client app, compiled-in. Not on the server.
+
+Q: CA pushed and OS-trusted; browser works; banking app fails. Why?
+A: Certificate pinning — app validates the exact cert/key, ignores the
+   trust store.
+
+Q: Which cert protects an inbound-facing SSL server?
+A: The server's REAL certificate + private key (Protecting SSL Server,
+   server-cert-mode replace).
+
+Q: Which profile scope for outbound full inspection?
+A: Multiple Clients Connecting to Multiple Servers.
+
+Q: Why does inbound full inspection cause zero client pain?
+A: Clients see the genuine certificate — nothing is forged; even pinned
+   clients validate successfully.
+
+Q: SMTPS on port 10587 evades a full-inspection proxy policy. Why?
+A: Proxy dispatches by destination port before decryption; 10587 isn't
+   mapped, so no inspector ever claims the session.
+
+Q: Three preconditions for protocol port mapping?
+A: Full SSL inspection + Multiple Clients Connecting to Multiple Servers
+   + proxy-based inspection mode.
+
+Q: Does the 10587 trick work against a flow-based policy?
+A: NO — flow inspects all ports regardless; mapping is irrelevant.
+
+Q: Where do you configure min-allowed-ssl-version?
+A: CLI only (config firewall ssl-ssh-profile > config https).
+
+Q: Which protocols support version control besides HTTPS?
+A: SMTPS, POP3S, IMAPS, FTPS.
+
+Q: min = TLS 1.2; server offers 1.1 and 1.2. Result?
+A: ALLOWED — session negotiates 1.2, meeting the minimum.
+
+Q: Why didn't falling back to cert-inspection fix the TLS 1.0 scanners?
+A: Version control blocks at the handshake, before any certificate is
+   exchanged.
+
+Q: Right response to TLS 1.0-only legacy devices?
+A: Keep the global minimum; scoped exception policy pinned at both ends
+   (source subnet -> single destination), logged, with an expiry/
+   replacement date.
+
+Q: SAN vs SNI, count-decoded?
+A: SAN = Single cert, All the Names (one cert, many names, wildcards OK).
+   SNI = client names the host so the server SELECTS among MANY certs.
+
+Q: HTTPS-attack protection under certificate inspection?
+A: LIMITED — blocks bad/invalid certs and known-bad SNI destinations,
+   standalone. Not "No"; not conditional on IPS.
+
+=====================================================================
+PODCAST PROMPT — "The Packet Path", Episode 21
+=====================================================================
+Generate a 12–15 minute podcast episode of "The Packet Path", an
+engaging, story-driven networking show. Warm, wry narrator; light sound-
+design cues welcome.
+
+EPISODE TITLE: "Reading Sealed Mail"
+
+STORY: At fintech company LoFinance (logo: stacks of money frozen in an
+ice cube), the team enabled TLS full inspection at 9:00 AM sharp — with
+one step skipped. The FortiGate's signing CA was never pushed to the
+client machines. By 9:04 the banking portal is red-screening, trader
+Marcus is physically running through the office with $400,000 of
+settlements clearing at 10:00, help-desk hero Riley's queue hits 51,
+security lead Cipher is telling users "this is expected behaviour"
+(true, unconsoling), and eager Junior wants to roll the whole thing
+back. Señor — the sombrero-wearing senior engineer — instead coaches the
+intermediate engineer to read the SYMPTOM: every site, every user, every
+browser = the clients don't trust the forger. The evidence is one click
+away: the certificate's issuer field says LoFinance-FGT-CA, issued four
+minutes ago.
+
+TEACH, THROUGH THE STORY:
+1. Full inspection = an authorised man-in-the-middle. It forges server
+   certificates with the FortiGate's CA — so that CA must live in every
+   client's trusted root store BEFORE go-live. "The order of operations
+   IS the deployment plan."
+2. Fall back, don't roll back: retreat to certificate inspection (reads
+   the envelope, needs no client trust) while the CA pushes out.
+3. Exemptions: banking, health, and privacy traffic stays sealed FOREVER
+   — for compliance, because admins should refuse the very capability of
+   reading it, and because of certificate pinning. Explain pinning with
+   the wax-seal analogy: a browser asks "do I trust whoever signed
+   this?"; a banking app asks "is this LITERALLY the seal I was born
+   knowing?" Junior's line: "Browser asks who signed it. App asks: is it
+   literally you."
+4. Inbound is the mirror image: LoFinance OWNS its client portal, so no
+   forgery — load the real certificate and private key ("Protecting SSL
+   Server") and suddenly Cipher's PHP injection over HTTPS, previously
+   invisible to IPS, gets caught and dropped. The unifying idea: full
+   inspection always requires a private key — the only question is WHOSE.
+5. The sneaky bit: someone in accounting tunnels email over port 10587.
+   Full inspection was ON — and it sailed through anyway, because the
+   proxy engine sorts sessions into protocol pigeonholes BY PORT before
+   opening anything. No pigeonhole labelled 10587 = never inspected.
+   Fix: protocol port mapping. Three conditions: full inspection,
+   multiple-clients-to-multiple-servers scope, and PROXY mode — because
+   flow-based inspection watches every port through the window and needs
+   no pigeonholes at all.
+6. Finally: ancient warehouse scanners speaking only TLS 1.0 break
+   against a TLS 1.2 minimum (a CLI-only setting, per protocol). The
+   senior answer: never lower the global minimum "just for" one loading
+   dock — "just for" being the two most expensive words in security.
+   Build a narrow, logged, expiring exception instead: "an exception
+   without an expiry is not an exception; it is the new normal."
+
+JUNIOR'S MISTAKE: the reflex rollback and "maybe the profile's
+corrupted" — inventing a fault instead of reading evidence; and "set the
+minimum back to 1.0, just for—".
+
+END WITH THE TEASER: next morning, CFO Penny arrives holding three
+budget line items — web filter, application control, and something
+called an Internet Service Database — demanding to know why she's
+paying for one job three times. And a ticket appears: "Facebook is
+blocked but the Facebook APP still works??" Episode 22: "Three Filters,
+One Job?"

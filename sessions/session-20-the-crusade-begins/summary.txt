@@ -1,0 +1,162 @@
+SESSION 20 SUMMARY — "The Crusade Begins"
+(SSL/SSH inspection: certificate inspection vs full inspection | Study Guide 06
+Security Profiles pp. 161–166, with student-driven extensions into SNI/SAN pp. 167–168)
+Written for Claude. Read before Session 21.
+
+NOTE ON SEQUENCE: Sessions 18 and 19 (OSPF internals II & III) were SKIPPED by the
+student's explicit instruction and remain outstanding in the master plan. The
+FortiManager IPsec templates hands-on (hard S18 commitment, twice deferred) therefore
+also remains UNDONE — Señor's whiteboard note "FMG TEMPLATES — S18. NO MORE ROOM TO
+MOVE" is still up, now with a sad cactus drawn beside it. Do not let this die; when
+S18/S19 are eventually run (or if the student never runs them), the FMG hands-on must
+be scheduled explicitly. Do not silently forget it.
+
+STORY EVENTS
+------------
+Tuesday 8:47 AM. Cipher storms in with a PRINTED report (unprecedented for her) and
+drops it on Penny's desk: "Eighty percent of our traffic is encrypted and we inspect
+none of it." Penny hangs up a call mid-sentence with "Call back" and asks "How much?"
+— meaning cost. Junior asks the "correct wrong question" ("isn't encryption good?"),
+which Señor uses as the springboard: encryption protects the envelope, not the letter.
+Señor writes CRUSADE on the whiteboard and declares a phased campaign: today choose
+the weapon (concepts), Session 21 fight the war (deployment). Penny approves the
+phased approach specifically because step one (certificate inspection) is effectively
+free. Cipher photographing the completed comparison table with her phone = her highest
+compliment. Session ends with cert-inspection enabled on HQ outbound policies; full
+inspection designed but NOT deployed; the FortiGate CA certificate exists but is NOT
+yet in any client trusted store — this is the deliberately loaded gun for S21's
+opening disaster (banking portal cert warnings, Marcus running in person, Riley's
+queue melting).
+
+CHARACTERS: Cipher (driver of the episode, war-banner energy), Penny (cost-first,
+approves phased plan on the spot), Junior (asks the naive question, is genuinely
+alarmed by the MITM mechanism — "...that IS alarming"), Señor (marker-rolling-across-
+knuckles habit introduced; "the correct wrong question" line), Marcus and Riley
+appear only in the S21 teaser.
+
+BUSINESS PROBLEM
+----------------
+~80% of LoFinance traffic is TLS-encrypted; the entire security stack (web filter,
+app control, IPS, AV, DLP) was blind to it. Resolution this session: phase 1 =
+certificate inspection (near-zero cost, restores web filtering + app identification
+immediately). Phase 2 (S21) = full inspection with certificates, exemptions, TLS
+version control.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. TLS handshake visibility WITHOUT decryption: TCP handshake → ClientHello (carries
+   SNI = client's intended hostname) → ServerHello → server Certificate (CN/SAN,
+   issuer, validity). These plaintext elements are the entire raw material of
+   certificate inspection. Student produced this sequence cold, correct order,
+   unprompted, including "TCP handshake happens first."
+2. CERTIFICATE INSPECTION vs FULL INSPECTION (the p.166 table). Student filled the
+   entire table from his own derivation: handshake inspection/SNI parsing/cert
+   validation/URL extraction/web filtering = both modes; decryption/encrypted-payload
+   inspection/SSL proxying = full only. Two refinements supplied by Señor:
+   (a) Application control = official table says YES for cert inspection (identifies
+   app by SNI); student wrote "NOT FULLY" — engineering-honest but exam answer is Yes.
+   App vs ACTION distinction taught: SNI identifies "Google Drive," only decryption
+   distinguishes viewing vs uploading. (b) Protection from HTTPS attacks under cert
+   inspection = LIMITED, not No (catches bad certs + known-bad SNI destinations;
+   blind to clean-envelope payload attacks). "Cert inspection provides NO HTTPS
+   protection" flagged as an exam distractor.
+3. WHICH SECURITY PROFILES NEED WHICH DEPTH (student's own pre-reading Q1): web
+   filtering + app control work under cert inspection (from SNI, cert-CN fallback if
+   SNI absent); AV, IPS, DLP need full inspection (payload access).
+4. INSPECTION MODE vs INSPECTION DEPTH ARE INDEPENDENT AXES (pre-reading Q2): full
+   inspection works in BOTH flow-based and proxy-based modes. Proxy-only specifics:
+   complete SSL proxying (two independent TCP sessions) and protocol port mapping
+   (e.g., SMTPS on 10587). Flow mode decrypts in-stream without splitting the
+   connection. "Full inspection = proxy mode only" = FALSE, and was Q2 of the exam.
+5. FULL INSPECTION MECHANISM (MITM): student DERIVED the whole engine himself —
+   FortiGate forges/re-signs the server's certificate on the fly, presents it to the
+   client; requires the signing CA in every client's trusted root store; FortiGate
+   must possess the CA private key. Two TLS sessions (client↔FGT, FGT↔server) with
+   plaintext in the gap. "Authorised man in the middle."
+6. SNI vs SAN (pre-reading Q3, pp. 167–168 pulled forward at student request): SNI =
+   client-side, lives in ClientHello, triggers CERTIFICATE SELECTION when a server
+   holds many certs on one IP. SAN = server-side, a list of names INSIDE one
+   certificate, one cert validating many domains. SAN supports wildcards
+   (*.domain.com); SNI does not. Student's original framing "routing vs validating"
+   corrected to "certificate selection vs multi-name validation" — nothing is routed.
+
+MENTAL MODELS / ANALOGIES (new, all landed)
+-------------------------------------------
+- THE SEALED ENVELOPE: SNI + certificate are written on the outside in plain ink;
+  cert inspection reads the envelope, full inspection opens the letter. Carried the
+  entire session; reuse in S21 ("which envelopes we must never open" = exemptions).
+- APP vs ACTION: envelope says Google Drive; only the open letter shows exfiltration.
+- AUTHORISED MAN-IN-THE-MIDDLE: forged cert + trusted CA + private key.
+- "The correct wrong question" (Junior's "isn't encryption good?").
+- "A wall with a mail slot, and we check nothing that comes through the slot."
+- Quantity words decode SNI/SAN: "separate certs, one each" = SNI; "one cert, many
+  names" = SAN.
+
+KEY CLI DISCUSSED
+-----------------
+config system global / set admin-https-ssl-versions tlsv1-2 tlsv1-3 (p.162 context,
+mentioned in passing); show full | grep -f tls. Light CLI session by design —
+concept-selection episode. S21 is where config lands (profiles, exemptions,
+ssl-ssh-profile settings, TLS version control).
+
+CONFIGURATION DECISIONS
+-----------------------
+Enable certificate-inspection profile (flow mode) on HQ outbound internet policies
+NOW; defer full inspection to S21 pending CA distribution to clients. Explicit
+deployment-order lesson: NEVER enable full inspection before the CA is in client
+trusted stores — "the order of operations IS the deployment plan."
+
+TOPOLOGY CHANGES
+----------------
+No devices/links added. HQ FortiGate outbound policies: no SSL inspection →
+certificate-inspection profile. FortiGate CA cert generated, NOT distributed.
+
+BUSINESS OUTCOME
+----------------
+Penny's "How much?" answered: phase 1 free (CPU-cheap cert inspection restores web
+filtering + app ID across the 80%); phase 2 costed to S21. Phased crusade approved.
+
+EXAM QUESTIONS: 5 asked — Q1 (cert-inspection capabilities, BD) ✓, Q2 (full
+inspection proxy-only? False) ✓, Q3 (all-sites cert warnings = CA not in trusted
+store, A) ✓, Q4 (separate cert per domain = SNI, answer B) ✗ — student answered SAN,
+an inversion of the exact distinction taught minutes earlier; diagnosed as reading-
+under-pressure slip on the quantity words, not a model gap. Q5 (season retrieval:
+Area-0 split via non-backbone path) — HALF: consequence retrieved correctly, name
+"backbone partition" NOT retrieved (second failed name-retrieval; concept owned,
+label not sticking). Score 4/5 + half.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+No misconfiguration — Junior's role was the naive question ("isn't encryption
+good?"), which framed the whole episode, and genuine alarm at the MITM mechanism,
+which prefigures the end-user/privacy resistance coming in S21. Junior-as-Everyman-
+user is the texture to carry into S21 (he will likely be the first to complain about
+the banking portal warning).
+
+CARRIED-FORWARD OBLIGATIONS
+---------------------------
+- S18/S19 (OSPF internals II & III) skipped, not cancelled — outstanding.
+- FMG IPsec templates HANDS-ON: still owed (was hard S18 commitment). Sad cactus.
+- "Backbone partition" NAME retrieval: failed again (Q5). Queue a third, spaced
+  retrieval — consider a mnemonic assist next time rather than another cold ask.
+- SNI/SAN inversion under exam pressure: one flashcard made; retest with a fresh
+  quantity-word scenario in S21 or S22 (natural fit: S21 is certificates).
+- "Check hypothesis against visible evidence" watch item (S17): NOT directly tested
+  this session (low-pressure concept session); still open.
+- Numeric-unit distractor retest (S16): still open, low urgency.
+- S21 opening is PRE-LOADED: CA not distributed → mass cert warnings on go-live.
+
+TEASER DELIVERED FOR SESSION 21 — "Reading Sealed Mail"
+-------------------------------------------------------
+Wednesday 9:15 AM, change window opened 9:00. Banking portal full-screen cert warning
+at 9:04; Marcus arrives on foot (ran) 9:06; Riley's queue past 40, headset thrown;
+Cipher saying "this is expected behaviour" to unconsoled users. Señor writes:
+CERTIFICATES. EXEMPTIONS. VERSIONS. "The users hate SSL inspection exactly as
+prophesied. Now we learn why the prophecy exists — and which envelopes we must never
+open at all." Topics: deploying full inspection — certificates, exemptions, TLS
+version control (pp. 167–170; note pp. 167–168 SNI/SAN already pre-covered this
+session at student request — S21 can treat them as retrieval material, not new
+teaching, and go deeper on exemptions/invalid-cert actions/version control).
+
+Date and Time completed: Tuesday 8:47 AM (in-story) / real session concluded
+Tuesday, 14 July 2026.

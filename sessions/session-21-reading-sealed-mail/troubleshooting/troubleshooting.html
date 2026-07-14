@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 21 Troubleshooting — Full Inspection Deployments</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--soft:#1e2f5a;--muted:#6b7794;--blue:#1e40af;--deep:#0c1f5c;--bluel:#eff4fc;--ink:#0d1a3a;--accent:#9bb8e6;--green:#1a7c4a;--greenl:#dff0e1;--amber:#b45309;--amberl:#fcf2c3;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;}
+header{background:var(--ink);padding:32px 40px;}
+header .tag{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--accent);}
+header h1{font-family:'Playfair Display',serif;font-size:30px;color:#fbf7ec;}
+main{max-width:880px;margin:0 auto;padding:28px 24px 60px;}
+h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--deep);margin:34px 0 10px;border-bottom:2px solid var(--border);padding-bottom:6px;}
+p,li,td,th{font-size:17px;color:var(--soft);}
+ul,ol{margin:6px 0 14px 22px;}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-family:'Outfit',sans-serif;font-size:14px;}
+th{background:var(--surface-2);text-align:left;padding:9px 12px;border:1px solid var(--border);}
+td{padding:9px 12px;border:1px solid var(--border-dim);background:var(--surface);}
+pre{background:var(--ink);color:#dce8fb;font-family:'Outfit',monospace;font-size:13px;padding:12px 16px;border-radius:8px;margin:10px 0;overflow-x:auto;}
+.box{border-left:4px solid var(--blue);background:var(--bluel);padding:12px 16px;margin:12px 0;border-radius:0 8px 8px 0;}
+.box.amber{border-color:var(--amber);background:var(--amberl);}
+.box.green{border-color:var(--green);background:var(--greenl);}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;font-family:'Outfit',sans-serif;font-size:15px;line-height:1.9;}
+strong{color:var(--deep);}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--muted);}
+</style>
+</head>
+<body>
+<header><div class="tag">TROUBLESHOOTING · SESSION 21</div><h1>When Full Inspection Breaks Things</h1></header>
+<main>
+
+<h2>The Master Principle: Blast Radius Is Diagnosis</h2>
+<p>Certificate and TLS symptoms carry their diagnosis in their <em>scope</em>. Before touching any config, classify the blast radius:</p>
+<table>
+<tr><th>Who is affected?</th><th>Most likely layer</th><th>First evidence to check</th></tr>
+<tr><td>Every site, every user, every browser</td><td>Client trust store (inspection CA missing)</td><td>Cert viewer: issuer field + issue time</td></tr>
+<tr><td>One website, all users</td><td>That site's certificate or its chain</td><td>Same site from outside the network</td></tr>
+<tr><td>One device class only</td><td>Device capability (TLS version, platform trust store, pinning)</td><td>Same site from a modern device</td></tr>
+<tr><td>Browser works, native app fails</td><td>Certificate pinning in the app</td><td>Confirm CA is OS-trusted; app still fails → pin</td></tr>
+<tr><td>One protocol on a weird port evades inspection</td><td>Proxy dispatch gap — no port mapping</td><td>Traffic logs by destination port</td></tr>
+</table>
+
+<h2>Questions a Senior Asks First</h2>
+<ol>
+<li>What changed, and when — does the failure timestamp match a change window?</li>
+<li>Who exactly is affected, and who is <em>not</em>? (The unaffected population defines the boundary.)</li>
+<li>What certificate is actually being presented? (Look — don't guess.)</li>
+<li>Does the failure happen <em>before</em> or <em>after</em> certificate exchange? (Handshake-level version blocks fail before certs — a cert fix cannot help.)</li>
+<li>Is the business impact time-critical enough to need a surgical bridge (exemption / fallback) before the root-cause fix?</li>
+</ol>
+
+<h2>Verification Commands &amp; Expected Outputs</h2>
+<pre># What is the client actually being shown?
+Browser padlock → certificate viewer
+  Issuer: LoFinance-FGT-CA, issued minutes ago  → forging works, trust missing
+  Issuer: real public CA                        → FortiGate not intercepting (exempt? cert-inspection?)
+
+# What does the profile actually contain? (version control is CLI-only)
+show full-configuration firewall ssl-ssh-profile
+  → check ssl-exempt entries, per-protocol "set ports", min-allowed-ssl-version
+
+# Is the evasion port even being claimed?
+Forward traffic logs filtered: dstport=10587
+  → sessions allowed with no UTM events = unclaimed by any inspector
+
+# Did the inbound protection take effect?
+Security Events → Intrusion Prevention
+  → expected: signature detected + dropped after Protecting SSL Server applied</pre>
+
+<h2>Decision Tree — Certificate Warnings After Go-Live</h2>
+<div class="tree">
+Warnings appear →<br>
+├─ <strong>All sites?</strong> → CA not in client trust stores → fall back to certificate-inspection → push CA (GPO/MDM) → flip forward.<br>
+├─ <strong>One site?</strong> → inspect that site's real cert (expired / name mismatch / bad chain) → not your inspection deployment.<br>
+├─ <strong>One device class?</strong> → check TLS version support → if legacy-only: scoped exception policy (both ends pinned + expiry), never lower the global minimum.<br>
+└─ <strong>Browser OK, app broken?</strong> → certificate pinning → permanent exemption for that destination. No trust-store fix exists.
+</div>
+
+<h2>Common Dead Ends</h2>
+<ul>
+<li><strong>Rebuilding the profile</strong> ("maybe it's corrupted") — the profile is doing exactly what it was told; the fault is order-of-operations.</li>
+<li><strong>Full rollback</strong> — throws away certificate inspection, which was never broken.</li>
+<li><strong>Pushing the CA to fix a pinned app</strong> — the app doesn't consult the trust store.</li>
+<li><strong>Pushing the CA to fix version-blocked devices</strong> — the handshake dies before certificates exist.</li>
+<li><strong>Enabling full inspection to catch traffic on non-standard ports</strong> — necessary but not sufficient in proxy mode; the dispatcher needs the port mapped.</li>
+<li><strong>Hunting the GUI for min-allowed-ssl-version</strong> — CLI-only.</li>
+</ul>
+
+<h2>Likely Root Causes, Ranked</h2>
+<ol>
+<li>CA generated but not distributed before enabling full inspection (deployment order).</li>
+<li>Pinned applications inside non-exempt categories.</li>
+<li>Version minimum blocking legacy clients at the handshake.</li>
+<li>Proxy-mode dispatch gaps on non-standard ports (deliberate evasion or misconfigured apps).</li>
+<li>Missing/wrong server certificate + key in a Protecting SSL Server profile (inbound).</li>
+</ol>
+
+<h2>Exam Traps</h2>
+<div class="box amber">
+<ul>
+<li>"Full inspection is enabled, so all ports are inspected" — false in proxy mode without port mapping; true in flow mode.</li>
+<li>Port-mapping preconditions multi-select: <strong>full + Multiple-Clients-to-Multiple-Servers + proxy</strong> — the "flow-based" option is the planted wrong answer.</li>
+<li>Version stems: server offering 1.1 <em>and</em> 1.2 against a 1.2 minimum is <strong>allowed</strong> — the exam wants you to see only the low number.</li>
+<li>Cert-inspection HTTPS protection = <strong>Limited</strong> — reject both "No protection" and "only with IPS."</li>
+<li>Read the stem's polarity twice: is it asking whether the <em>attack</em> succeeds or the <em>defence</em> succeeds?</li>
+</ul>
+</div>
+
+<div class="box green"><strong>The recovery pattern to memorise:</strong> classify blast radius → verify with the presented certificate → bridge the business (fall back + exempt) → fix root cause (CA push) → flip forward in the correct order → confirm both recovery <em>and</em> root cause.</div>
+
+</main>
+<footer>LoFinance · S21 Troubleshooting · "The symptom already told you what is wrong."</footer>
+</body>
+</html>

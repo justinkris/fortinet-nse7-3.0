@@ -1,0 +1,199 @@
+================================================================
+SESSION 20 REVISION PACK — "The Crusade Begins"
+SSL/SSH Inspection: certificate vs full inspection (SG 06, pp.161–166 + SNI/SAN)
+================================================================
+
+----------------------------------------------------------------
+QUICK SUMMARY (one page)
+----------------------------------------------------------------
+~80% of traffic is TLS-encrypted; without SSL inspection the security stack is
+blind to it. Encryption protects the ENVELOPE, not the LETTER.
+
+Two inspection depths:
+- CERTIFICATE INSPECTION: reads the plaintext handshake only — SNI (in the
+  ClientHello, the hostname the client wants) and the server certificate
+  (CN/SAN, issuer, validity). No decryption, low CPU/RAM. Enables: handshake
+  inspection, SNI parsing, cert validation, URL extraction (SNI, or cert if no
+  SNI), web filtering, app control (app IDENTIFICATION only), LIMITED HTTPS-
+  attack protection (bad certs + known-bad destinations).
+- FULL INSPECTION: FortiGate becomes an authorised man-in-the-middle. Forges/
+  re-signs the server cert on the fly; requires its signing CA in every
+  client's trusted root store; FortiGate holds the CA private key. Two TLS
+  sessions (client<->FGT, FGT<->server), plaintext in between. Enables:
+  decryption, encrypted-payload inspection (AV/IPS/DLP), SSL proxying,
+  full HTTPS-attack protection, action-level app control.
+
+MODE vs DEPTH are independent: full inspection works in BOTH flow and proxy
+modes. Proxy-only: complete SSL proxying and protocol port mapping.
+
+SNI vs SAN (one IP, many hostnames — two solutions):
+- SNI: client's field in ClientHello -> server SELECTS the right certificate
+  from many ("separate cert per domain"). No wildcards.
+- SAN: list of names INSIDE one certificate -> one cert validates many
+  domains. Supports wildcards (*.domain.com).
+
+TLS versions: SSL2/3, TLS1.0/1.1 deprecated. TLS1.2 = compatibility,
+TLS1.3 = faster + stronger (HTTP/3 default).
+
+Deployment order: CA to clients FIRST, then enable full inspection.
+All-sites cert warnings = missing CA. One-site warning = that server's cert.
+
+----------------------------------------------------------------
+CHEAT SHEET
+----------------------------------------------------------------
+CLI
+  config system global
+      set admin-https-ssl-versions tlsv1-2 tlsv1-3
+  end
+  show full | grep -f tls
+  show firewall policy <id>                (check ssl-ssh-profile applied)
+  show firewall ssl-ssh-profile <name>
+
+GUI paths
+  Security Profiles > SSL/SSH Inspection   (profiles: certificate-inspection,
+                                            deep-inspection, custom)
+  System > Certificates                    (CA cert for re-signing)
+  Log & Report > Forward Traffic           (traffic seen)
+  Log & Report > Security Events > IPS     (threats seen — empty on HTTPS
+                                            with cert-inspection = depth fault)
+
+Defaults / key behaviours
+  - Cert inspection: NO decryption ever.
+  - Full inspection: flow AND proxy modes both supported.
+  - Protocol port mapping: full inspection + PROXY mode + mapping configured,
+    outbound many-to-many policy. Flow mode assesses all ports anyway.
+  - Default inspected ports: HTTP 80, HTTPS 443, SMTPS 587, SSH 22,
+    FTPS 990, DNS 53 (non-standard ports bypass unless mapped/flow).
+  - URL extraction: from SNI; from certificate if SNI absent.
+
+Design rules
+  1. CA into client trusted stores BEFORE enabling full inspection.
+  2. Cert inspection where identification suffices; full inspection where
+     payload matters (AV/IPS/DLP, action control).
+  3. "Limited" is a real capability level — don't round it to None or Enough.
+
+----------------------------------------------------------------
+FLASHCARDS
+----------------------------------------------------------------
+Q: Which TLS handshake message carries the SNI, and who sends it?
+A: ClientHello — the client.
+
+Q: Two things a FortiGate learns from TLS with NO decryption?
+A: SNI (client's requested hostname) and the server certificate (CN/SAN,
+   issuer, validity).
+
+Q: Which security profiles work under certificate inspection?
+A: Web filtering and application control (app identification). AV, IPS, DLP
+   need full inspection.
+
+Q: App control under cert inspection — what CAN'T it see?
+A: The action. It identifies "Google Drive" from SNI but cannot distinguish
+   viewing from uploading (that needs decrypted payload).
+
+Q: HTTPS-attack protection under certificate inspection: Yes/No/Limited?
+A: LIMITED — catches invalid/untrusted certs and known-bad destinations;
+   blind to payload attacks behind clean certificates.
+
+Q: Does full SSL inspection require proxy-based inspection mode?
+A: No — both flow and proxy modes support full inspection.
+
+Q: Which SSL features ARE proxy-mode-only?
+A: Complete SSL proxying (two TCP sessions) and protocol port mapping.
+
+Q: Three requirements for full inspection to work without browser warnings?
+A: FGT forges/re-signs the server cert; the signing CA is in clients'
+   trusted root stores; FGT holds the CA private key.
+
+Q: Every HTTPS site shows a cert warning right after enabling full
+   inspection. Cause?
+A: The FortiGate's CA is not in the clients' trusted root stores.
+
+Q: Server holds a SEPARATE certificate for each hosted domain on one IP —
+   which mechanism picks the right one?
+A: SNI (client announces the hostname; server selects the certificate).
+
+Q: ONE certificate valid for twelve domains — which mechanism?
+A: SAN (the names are listed inside the certificate).
+
+Q: Which supports wildcards — SNI or SAN?
+A: SAN (*.domain.com). SNI names exactly one host per request.
+
+Q: Deprecated SSL/TLS versions?
+A: SSL 2.0, SSL 3.0, TLS 1.0, TLS 1.1. Use TLS 1.2 (compat) / 1.3 (best).
+
+Q: Web filtering with cert inspection when SNI is absent — what's used?
+A: URL/name extracted from the server certificate.
+
+Q: Retrieval — two Area-0 sites lose their only Area-0 link; the surviving
+   path is via Area 1. What happens and what's it called?
+A: Inter-site reachability fails — a non-backbone area cannot bridge two
+   Area-0 fragments. It's a BACKBONE PARTITION.
+
+----------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 20: The Crusade Begins
+----------------------------------------------------------------
+Write and narrate a 10–12 minute podcast episode of "The Packet Path" — a
+storytelling tech podcast following LoFinance, a financial company whose logo
+is stacks of money frozen in an ice cube, and its eccentric senior network
+engineer, Señor (who wears a sombrero and rolls whiteboard markers across his
+knuckles), his intermediate engineer protégé (the listener's stand-in), the
+overconfident junior engineer Junior, security analyst Cipher, operations
+chief Penny, and help-desk lead Riley.
+
+EPISODE STORY: Cipher storms into the office with a PRINTED report — for her,
+the equivalent of arriving with a war banner — and announces that eighty
+percent of LoFinance's traffic is encrypted and none of it is inspected.
+Penny hangs up a phone call mid-sentence and asks only: "How much?" Junior
+asks what Señor calls "the correct wrong question": isn't encryption GOOD?
+Señor writes one word on the whiteboard — CRUSADE — and explains: encryption
+protects the envelope, not the letter. LoFinance has built a wall with a mail
+slot and checks nothing that comes through the slot, because it is sealed.
+
+TECHNICAL CONTENT to weave into the narrative:
+1. THE SEALED ENVELOPE ANALOGY (central motif): even without decrypting
+   anything, the TLS handshake exposes two things in plain ink on the
+   envelope — the SNI in the ClientHello (the destination the client wrote)
+   and the server's certificate (the notarised seal proving identity).
+   Certificate inspection reads the envelope: cheap, fast, no decryption.
+   It powers web filtering and application identification.
+2. THE DIVIDING LINE: the envelope names the app ("Google Drive") but never
+   the action (viewing a file vs uploading the client database). Antivirus,
+   IPS, and DLP are completely blind without opening the letter. Protection
+   from HTTPS attacks under certificate inspection is LIMITED, not zero —
+   bad certificates and known-bad destinations are still caught.
+3. FULL INSPECTION = THE AUTHORISED MAN-IN-THE-MIDDLE: the FortiGate forges
+   the server's certificate on the fly, and this only works because the
+   administrators put the FortiGate's CA certificate into every client's
+   trusted root store, and the FortiGate holds the private key. Two TLS
+   sessions, one open letter in between. Junior's reaction: "...that IS
+   alarming" — and he's right, which is why deployment is next episode's war.
+4. MODE vs DEPTH: full inspection works in both flow and proxy modes —
+   only complete SSL proxying and protocol port mapping demand proxy mode.
+5. SNI vs SAN, decoded by counting: SNI = many certificates, client's
+   ClientHello tells the server which to select. SAN = one certificate
+   listing many names (wildcards allowed).
+
+THE MISTAKE MOMENT: the intermediate engineer, minutes after learning the
+distinction, inverts SNI and SAN on a quiz question phrased "a separate
+certificate for each domain" — teach the listener the decode key: separate
+certs, one each = SNI; one cert, many names = SAN. The quantity words ARE
+the answer.
+
+BUSINESS RESOLUTION: Penny approves a phased crusade because phase one —
+certificate inspection — is effectively free and immediately restores web
+filtering across the encrypted 80%. Phase two, full inspection, carries the
+real cost: certificates, exemptions, angry users.
+
+END WITH THE TEASER: next morning, 9:04 AM, the change window barely open —
+the traders' banking portal throws a full-screen certificate warning, Marcus
+from trading arrives on foot at a run, Riley's ticket queue melts, and Cipher
+tells furious users "this is expected behaviour." Señor writes three words on
+the whiteboard: CERTIFICATES. EXEMPTIONS. VERSIONS. "The users hate SSL
+inspection exactly as prophesied. Now we learn why the prophecy exists — and
+which envelopes we must never open at all." Next time on The Packet Path:
+"Reading Sealed Mail."
+
+TONE: warm, cinematic, a little wry. Señor speaks in short, quietly
+theatrical lines. Explain every concept through the story, never as a
+lecture. One narrator voice performing all characters distinctly.
+================================================================

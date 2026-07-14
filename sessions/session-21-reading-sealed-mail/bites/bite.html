@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 21 Bite — Reading Sealed Mail</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;}
+header{background:var(--ink-dark);padding:32px 40px;}
+header .tag{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--ink-accent);}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+main{max-width:800px;margin:0 auto;padding:28px 24px 60px;}
+.card{background:var(--surface);border:1px solid var(--border-dim);border-radius:10px;padding:18px 22px;margin:14px 0;}
+.card h2{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;}
+p,li{font-size:17px;color:var(--text-soft);}
+ul{margin:6px 0 0 20px;}
+pre{background:var(--ink-dark);color:#dce8fb;font-family:'Outfit',monospace;font-size:13px;padding:12px 16px;border-radius:8px;margin-top:8px;overflow-x:auto;}
+.hot{background:var(--amber-light);border-left:4px solid var(--amber);}
+strong{color:var(--blue-deep);}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<header><div class="tag">5-MINUTE BITE · SESSION 21</div><h1>Reading Sealed Mail</h1></header>
+<main>
+
+<div class="card">
+<h2>The go-live disaster fingerprint</h2>
+<p><strong>Every site + every user + every browser warns</strong> = the inspection CA is missing from client trust stores. The forging engine works; the clients don't trust the forger. Evidence: cert viewer → issuer = your FortiGate CA, issued minutes ago. <strong>Order of operations IS the deployment plan: CA first, inspection second.</strong> Recovery: <em>fall back</em> to certificate inspection (needs no client trust) — never <em>roll back</em> to nothing.</p>
+</div>
+
+<div class="card">
+<h2>Exemptions — permanent, not workarounds</h2>
+<p>Exempt traffic gets <strong>zero inspection of any depth</strong>; FortiGate steps out entirely. Built-in profiles are read-only → <strong>clone</strong>. Fortinet pre-exempts Finance, Health, Personal Privacy categories. Three permanent reasons: <strong>① compliance/data custody</strong> (can't hold plaintext credentials), <strong>② refuse the capability</strong> (admins shouldn't be able to see it), <strong>③ certificate pinning</strong>.</p>
+</div>
+
+<div class="card">
+<h2>Pinning — the wax seal</h2>
+<p>Pin lives <strong>in the app</strong>, compiled-in. Browser asks "do I trust the signer?" App asks "is this <em>literally</em> the cert/key I was born knowing?" So: CA pushed and trusted → browser fine, app still fails. <strong>Trusted ≠ pinned.</strong> Pinned apps break under full inspection no matter what's in the trust store.</p>
+</div>
+
+<div class="card">
+<h2>Whose private key? — inbound vs outbound</h2>
+<p>Full inspection always requires a private key. <strong>Outbound</strong>: can't own Google's key → forge with re-signing CA → all the client pain → scope = <strong>Multiple Clients Connecting to Multiple Servers</strong>. <strong>Inbound</strong>: you own the server → load its <strong>real cert + private key</strong> → zero client impact, pinning irrelevant → scope = <strong>Protecting SSL Server</strong> (<code>set server-cert-mode replace</code>).</p>
+</div>
+
+<div class="card hot">
+<h2>Protocol port mapping — the multi-select</h2>
+<p>Proxy engine dispatches to protocol inspectors <strong>by destination port, before decryption</strong>. SMTPS default = 587 only; port 10587 is never claimed even with full inspection on. Fix: <code>config smtps → set ports 587 10587</code>. Three preconditions, ALL required: <strong>full inspection + Multiple-Clients-to-Multiple-Servers + PROXY mode</strong>. Flow-based inspects <strong>all ports regardless</strong> — the evasion fails against flow. <em>The costume room is proxy; the window is flow.</em></p>
+</div>
+
+<div class="card">
+<h2>TLS version control</h2>
+<pre>config https
+  set unsupported-ssl-version block
+  set min-allowed-ssl-version tls-1.2</pre>
+<ul>
+<li><strong>CLI-only</strong> (exam bait). Also available for SMTPS, POP3S, IMAPS, FTPS.</li>
+<li>Blocks at the <strong>handshake</strong> — before certificates. Cert-inspection fallback won't fix it.</li>
+<li>Server offers 1.1 + 1.2, minimum 1.2 → <strong>allowed</strong> (negotiates 1.2).</li>
+<li>Legacy devices: never lower the global minimum. Scoped exception pinned at <strong>both ends</strong> + logged + expiry date. "An exception without an expiry is the new normal."</li>
+</ul>
+</div>
+
+<div class="card hot">
+<h2>Missed-question repair kit</h2>
+<p><strong>SNI/SAN (third miss):</strong> SAN = <strong>S</strong>ingle cert, <strong>A</strong>ll the <strong>N</strong>ames. Many individual certs needing <em>selection</em> = SNI. Find the count in the stem first.<br>
+<strong>Cert-inspection HTTPS protection = "Limited"</strong> — standalone. Not "No", not conditional on IPS (IPS needs payload, which cert inspection never provides).</p>
+</div>
+
+</main>
+<footer>LoFinance · S21 Bite · flip forward tomorrow, in the right order</footer>
+</body>
+</html>

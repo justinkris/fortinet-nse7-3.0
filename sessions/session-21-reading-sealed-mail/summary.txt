@@ -1,0 +1,214 @@
+SESSION 21 SUMMARY — "Reading Sealed Mail"
+(Deploying full inspection: certificates, exemptions, TLS version control |
+Study Guide 06 Security Profiles pp. 167–170, plus Protecting SSL Server use case
+p. 183 pulled in naturally via Cipher's portal incident)
+Written for Claude. Read before Session 22.
+
+NOTE ON SEQUENCE: S18/S19 (OSPF internals II & III) remain SKIPPED and outstanding.
+FMG IPsec templates hands-on remains UNDONE. The whiteboard note now has TWO sad
+cacti (one crying). Surface this debt again in-story; do not let it die silently.
+
+STORY EVENTS
+------------
+Wednesday. Change window opened 9:00 AM — Junior applied the full-inspection profile
+to HQ outbound policies. 9:04: banking portal (portal.meridianbank.com) throws
+full-screen cert warnings; Marcus RAN to the network cage ($400k of settlements
+clearing before 10:00). 9:11: Riley's queue 3→47→51, every site/every user/every
+browser broken; headset placed down with dangerous calm. Cipher told users "this is
+expected behaviour" (it was; nobody was consoled). Junior hovered over rollback and
+"maybe the profile's corrupted." Señor entered, wrote CERTIFICATES. EXEMPTIONS.
+VERSIONS. and handed the diagnosis to the student.
+
+STUDENT DIAGNOSED THE PRE-LOADED FAULT COLD: self-signed/FortiGate CA re-signing all
+certs, clients lack the CA in trusted root stores → warnings. Also gave the correct
+evidence step unprompted: replicate and inspect the presented certificate (issuer
+field showed LoFinance-FGT-CA, issued 9:04 AM). Señor named the meta-skill: BLAST
+RADIUS IS DIAGNOSIS (all sites/all users = client trust store; one site = that
+site's cert; one device class = device capability).
+
+STUDENT ALSO PRODUCED THE RECOVERY STRATEGY HIMSELF: fall back to
+certificate-inspection (not full rollback) while GPO pushes the CA (~2-3h), exempt
+the banking portal immediately for Marcus. Señor formalised: FALL BACK ≠ ROLL BACK.
+Marcus's settlement cleared 9:52. GPO completed overnight; flip-forward scheduled
+for Thursday morning in the correct order.
+
+Built-in profiles are READ-ONLY → cloned to "LoFinance-deep-inspection". Exemption
+added (ssl-exempt, type address, portal.meridianbank.com). Fortinet's DEFAULT
+category exemptions (Finance & Banking, Health & Wellness, Personal Privacy) used as
+the reveal that banking exemptions are PERMANENT, not workarounds.
+
+Cipher (NOTE: CIPHER IS MALE — student corrected this mid-session; use he/him
+permanently) ran a PHP code injection over HTTPS against LoFinance's own inbound
+client portal: IPS + certificate inspection logged nothing. Led to Protecting SSL
+Server: real portal cert + private key loaded (server-cert-mode replace), injection
+then detected and dropped. Cipher photographed the IPS log (his second-highest
+compliment; "Acceptable" later = highest verbal rating).
+
+Cipher also found SMTPS tunnelled on port 10587 from an accounting workstation
+(deliberate evasion) → protocol port mapping teaching. Junior's warehouse ticket:
+15-year-old loading-dock scanners (TLS 1.0-only, dead vendor) broken by min TLS 1.2
+— NOT fixed by the cert-inspection fallback, because the handshake dies before any
+certificate exchange. Student proposed a scoped exception policy; Señor tightened it
+(pin BOTH ends + expiry date). Penny's closing line: "one morning of panic...
+cheaper than most lessons."
+
+BUSINESS PROBLEM
+----------------
+Full-inspection go-live executed in the wrong order (CA never distributed — the gun
+loaded in S20). Secondary problems surfaced during recovery: unprotected inbound
+portal, port-based inspection evasion, legacy TLS 1.0 devices.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. CA-distribution failure fingerprint: ALL sites warning = missing CA in client
+   trust stores; forging engine itself working perfectly (issuer field = evidence).
+2. Fall back vs roll back: retreat to last known-good LAYER (certificate
+   inspection), never to zero.
+3. EXEMPTIONS: exempted traffic gets NO inspection of any depth — FortiGate steps
+   out entirely; client negotiates directly with the real server. Built-in profiles
+   read-only → clone. Fortinet ships Finance/Health/Privacy categories pre-exempt.
+   THREE reasons banking stays exempt permanently: (a) compliance/data custody
+   (plaintext financial creds must not exist mid-path — student got this),
+   (b) protecting administrators from the CAPABILITY itself ("the most senior thing
+   an engineer can do is refuse a capability" — student got the human version),
+   (c) CERTIFICATE PINNING — student produced the NAME himself ("something I've
+   heard before") but placed the pin on the server; corrected: the pin lives IN THE
+   APP, compiled-in; app asks "is this literally the cert/key I was born knowing,"
+   not "do I trust the issuer." Trusted ≠ pinned. Junior's line: "Browser asks who
+   signed it. App asks is it literally you."
+4. INBOUND vs OUTBOUND full inspection — the symmetry: full inspection always
+   requires possessing a private key; the only question is WHOSE. Outbound: can't
+   own the far end → forge with re-signing CA → all client pain. Inbound: we OWN
+   the server → load real cert + private key → zero client impact, no trust store,
+   no pinning problem (the pinned cert IS the real one). Student derived the
+   direction logic himself ("we don't control their devices... we need the keys of
+   the server"). Profile scope dropdown = this table: Multiple Clients Connecting
+   to Multiple Servers (outbound/forging) vs Protecting SSL Server (inbound/real
+   key). This answered the student's own pre-reading Q1.
+5. PROTOCOL PORT MAPPING: proxy engine dispatches sessions to protocol inspectors
+   BY DESTINATION PORT before any decryption ("pigeonholes"/"costumes"). SMTPS
+   default = 587 only; 10587 is never claimed by any inspector even with full
+   inspection enabled. Fix: config <protocol> / set ports 587 10587. THREE
+   preconditions (exam multi-select): full SSL inspection + Multiple Clients
+   Connecting to Multiple Servers + PROXY-BASED mode. Flow-based inspects ALL ports
+   regardless — port mapping is irrelevant there and the 10587 evasion FAILS
+   against flow.
+6. TLS VERSION CONTROL: config firewall ssl-ssh-profile / config https /
+   set unsupported-ssl-version block / set min-allowed-ssl-version tls-1.2.
+   CLI-ONLY (not in GUI — exam bait). Applies per-protocol: also SMTPS, POP3S,
+   IMAPS, FTPS. Blocks at HANDSHAKE (before cert exchange — why the cert-inspection
+   fallback didn't fix the scanners). Negotiation logic: server offering 1.1+1.2 →
+   ALLOWED (negotiates 1.2, meets minimum). Legacy-device judgement answer: never
+   lower the global minimum; scoped exception policy pinned at BOTH ends (source =
+   scanner subnet, dest = freight site only) + logged + expiry/replacement date.
+   "An exception without an expiry is not an exception. It is the new normal."
+
+MENTAL MODELS / ANALOGIES (new)
+-------------------------------
+- BLAST RADIUS IS DIAGNOSIS (three radii: all sites / one site / one device class).
+- FALL BACK ≠ ROLL BACK (retreat one layer, not to zero).
+- THE WAX SEAL (pinning): "some recipients check the wax seal" — app born knowing
+  the exact seal; trust store irrelevant.
+- WHOSE PRIVATE KEY? — the single question that splits outbound (forge) from
+  inbound (real key). The 2x4 ownership table (own clients? own server?).
+- PIGEONHOLES / COSTUMES: proxy must choose a protocol costume before inspecting
+  (dispatch by port); flow watches through the window, needs no costume, sees all
+  ports. "The costume room is proxy. The window is flow." — WELD LABEL TO MECHANISM.
+- "Just for" = the two most expensive words in network security (Junior).
+- Exception shaping: "shaped exactly like the hole it fills, and no bigger."
+- New SNI/SAN decode key (after Q2 miss): SAN = Single cert, All the Names ('Single'
+  hides in SAN's letters); SNI = the Name Indicates which cert → MANY certs.
+
+KEY CLI DISCUSSED
+-----------------
+config firewall ssl-ssh-profile / edit <clone> /
+  config ssl-exempt → edit N / set type address / set address <fqdn-obj>
+  set server-cert-mode replace / set server-cert <real-cert>  (Protecting SSL Server)
+  config smtps / set ports 587 10587   (protocol port mapping)
+  config https / set unsupported-ssl-version block / set min-allowed-ssl-version tls-1.2
+Cert viewer issuer field as diagnostic evidence.
+
+TROUBLESHOOTING APPROACH
+------------------------
+Symptom shape → hypothesis → VISIBLE EVIDENCE before change (cert issuer field) →
+surgical fix (fall back + exempt) → verify → root cause (deployment order). The S17
+"check hypothesis against visible evidence" watch item was TESTED AND PASSED — the
+student volunteered the evidence step unprompted under live-outage pressure.
+
+CONFIGURATION DECISIONS
+-----------------------
+- Fall back to certificate-inspection during CA GPO push; flip forward Thursday AM.
+- Cloned deep-inspection profile; banking portal exempt PERMANENTLY (+ default
+  Finance/Health/Privacy category exemptions retained).
+- Protecting SSL Server on inbound portal policy with real cert + key.
+- SMTPS port mapping 587+10587 on outbound (proxy-based) policy.
+- min TLS 1.2 network-wide; dedicated scanner→freight-site exception policy
+  allowing TLS 1.0, pinned both ends, logged, with replacement-budget expiry.
+
+TOPOLOGY CHANGES
+----------------
+No devices/links. HQ outbound: certificate-inspection (temp) → LoFinance-deep-
+inspection (full, cloned, exemptions + port mapping + version control) from
+Thursday. Inbound portal policy: + Protecting SSL Server profile. CA distributed to
+all managed clients via GPO/MDM (completed overnight). New narrow policy:
+scanner-subnet → freight-site, TLS 1.0 permitted, expiry-dated.
+
+BUSINESS OUTCOME
+----------------
+Settlements cleared 9:52 ($400k saved). Queue back to 2 by 4:30 PM. Full inspection
+deploying in correct order with compliant exemptions; inbound portal now actually
+protected (Cipher's injection blocked); 10587 evasion closed; TLS 1.0 confined to
+one expiring doorway.
+
+EXAM QUESTIONS: 5 asked — Q1 (min-TLS negotiation, server offers 1.1+1.2 → allowed,
+B) ✓. Q2 (40 customers each with OWN cert, selection → SNI, C) ✗ — answered SAN.
+THIRD SNI/SAN INVERSION (S20 teach, S20 Q4 miss, S21 Q2 miss). New cruder decode key
+issued (SAN = Single/All Names). MUST retest cold in S22; not consolidated. Q3
+(HTTPS protection under cert inspection = Limited, C) ✗ — avoided the "No" trap
+(progress) but chose D (IPS-conditional); corrected: cert inspection alone blocks
+bad certs + known-bad SNI, and IPS needs payload so D is internally broken. Q4
+(port-mapping three preconditions, ACD) ✓ — the welded assembly held under exam
+format same-day. Q5 (backbone partition WITH spine mnemonic) ✓ — name retrieved on
+third attempt; mnemonic worked; one more casual retrieval then retire. Score 3/5.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+- Reflex rollback + "maybe the profile's corrupted" → invent-a-fault-before-
+  gathering-evidence, contrast for the student's evidence-first behaviour.
+- "Set the minimum back to TLS 1.0, just for—" → the global-retreat instinct;
+  taught scoped exceptions. "Just for" = most expensive words.
+- Panic at read-only built-in profile ("It's broken too?!") → built-ins are
+  read-only BY DESIGN; clone them.
+- Good moment: "Browser asks who signed it. App asks is it literally you." Earned
+  his coffee back. Sometimes.
+
+CARRIED-FORWARD OBLIGATIONS
+---------------------------
+- SNI/SAN: THIRD miss. PRIORITY retest in S22 with count-framed stem + new decode
+  key (SAN = Single cert All Names). Do NOT mark consolidated until one cold pass.
+- "Limited" distractor: partially improved (avoided "No", fell for IPS-conditional
+  D). One more MCQ later with a conditional-style distractor.
+- Backbone partition: retrieved with mnemonic. One final casual retrieval (no
+  mnemonic) in S22/S23, then close item.
+- Flow+full validity (item 32): implicitly exercised (student stated flow can do
+  full inspection unprompted) — can mark spaced-confirmed.
+- INVERSION-UNDER-QUESTIONING pattern named to student: models correct, labels/
+  polarity flip under exam phrasing (SNI/SAN x3; "does the trick work" yes/no flip
+  this session; proxy/flow blank initially answered "Flow"). Coaching issued: read
+  the stem twice, decide what YES means before answering; say the NAME in the same
+  breath as the mechanism. Watch this pattern in S22 exam phase.
+- Numeric-unit distractor retest (S16): still open (Q1 was close but not it).
+- S18/S19 skipped + FMG IPsec templates hands-on: STILL OWED. Two sad cacti.
+
+TEASER DELIVERED FOR SESSION 22 — "Three Filters, One Job?"
+-----------------------------------------------------------
+Thursday. Penny arrives with three budget line items: web filter, application
+control, ISDB — "Why am I paying for a job three times?" Junior: "they're all the
+same thing at different prices." Señor draws three envelopes (read by address / by
+sender's handwriting / by postal-district lookup) and writes WHAT EACH ONE SEES.
+WHERE EACH ONE LIVES. Closing ticket in Riley's queue: "Facebook is blocked but the
+Facebook APP still works?? — Trading Floor." Topics: web filter vs app control vs
+ISDB — what each sees and where each lives (Study Guide 06, pp. 171+).
+
+Date and Time completed: Wednesday (in-story) / real session concluded Tuesday,
+14 July 2026.
