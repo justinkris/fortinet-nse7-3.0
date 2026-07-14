@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 07 Visual — Bridges Between Worlds</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a1330; --panel:#101d45; --panel-2:#152655;
+    --border:rgba(155,184,230,0.22);
+    --text:#fbf7ec; --text-soft:rgba(251,247,236,0.72); --text-muted:rgba(251,247,236,0.45);
+    --root-color:#f3c96a; --guest-color:#5bd0c9; --trading-color:#e0665f;
+    --blue:#5b8cf0; --ink-accent:#9bb8e6;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:36px 48px 24px;text-align:center;}
+  .header-eyebrow{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-accent);border:1px solid var(--border);padding:5px 16px;border-radius:20px;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:700;}
+  header h1 em{color:var(--blue);font-style:italic;}
+  header p{color:var(--text-muted);font-size:15px;font-style:italic;margin-top:8px;max-width:600px;margin-left:auto;margin-right:auto;}
+
+  main{max-width:1000px;margin:0 auto;padding:10px 32px 60px;}
+
+  .stage{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:30px 34px;margin-bottom:26px;}
+  .stage-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-accent);margin-bottom:16px;}
+
+  /* Chassis diagram */
+  .chassis{display:flex;gap:0;position:relative;align-items:stretch;justify-content:center;padding:20px 0 30px;flex-wrap:wrap;}
+  .vdom-box{width:210px;border-radius:16px;padding:18px 16px;text-align:center;position:relative;margin:8px 14px;transition:transform .2s;}
+  .vdom-box:hover{transform:translateY(-4px);}
+  .vdom-box.root{background:linear-gradient(160deg, rgba(243,201,106,0.16), rgba(243,201,106,0.04));border:1.5px solid var(--root-color);}
+  .vdom-box.guest{background:linear-gradient(160deg, rgba(91,208,201,0.16), rgba(91,208,201,0.04));border:1.5px solid var(--guest-color);}
+  .vdom-box.trading{background:linear-gradient(160deg, rgba(224,102,95,0.14), rgba(224,102,95,0.03));border:1.5px dashed var(--trading-color);}
+  .vdom-name{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;}
+  .vdom-box.root .vdom-name{color:var(--root-color);}
+  .vdom-box.guest .vdom-name{color:var(--guest-color);}
+  .vdom-box.trading .vdom-name{color:var(--trading-color);}
+  .vdom-detail{font-size:13.5px;color:var(--text-muted);line-height:1.5;}
+  .link-line{width:60px;align-self:center;position:relative;height:2px;background:linear-gradient(90deg, var(--root-color), var(--guest-color));margin-top:-40px;}
+  .link-line::before,.link-line::after{content:'●';position:absolute;top:-7px;font-size:12px;}
+  .link-line::before{left:-4px;color:var(--root-color);}
+  .link-line::after{right:-4px;color:var(--guest-color);}
+  .link-labels{display:flex;justify-content:center;gap:0;font-family:'SF Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:-38px;margin-bottom:30px;}
+  .no-link-gap{width:60px;align-self:center;text-align:center;font-size:10px;color:var(--text-muted);font-family:'Outfit',sans-serif;letter-spacing:0.08em;margin-top:-40px;}
+
+  .chassis-caption{text-align:center;font-size:14px;font-style:italic;color:var(--text-muted);margin-top:6px;}
+
+  /* Journey steps */
+  .journey{display:flex;flex-direction:column;gap:0;}
+  .step{display:flex;gap:18px;padding:16px 0;border-bottom:1px solid var(--border);}
+  .step:last-child{border-bottom:none;}
+  .step-num{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--blue);min-width:34px;}
+  .step-body b{color:var(--text);font-size:16px;display:block;margin-bottom:3px;}
+  .step-body p{font-size:15px;color:var(--text-soft);line-height:1.55;}
+  .step-vdom-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:2px 9px;border-radius:12px;margin-right:8px;}
+  .tag-root{background:rgba(243,201,106,0.18);color:var(--root-color);border:1px solid var(--root-color);}
+  .tag-guest{background:rgba(91,208,201,0.18);color:var(--guest-color);border:1px solid var(--guest-color);}
+
+  /* Toggle interactive */
+  .toggle-row{display:flex;gap:10px;justify-content:center;margin-bottom:22px;flex-wrap:wrap;}
+  .toggle-btn{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;background:var(--panel-2);border:1px solid var(--border);color:var(--text-soft);padding:9px 18px;border-radius:24px;cursor:pointer;transition:.15s;}
+  .toggle-btn:hover{border-color:var(--blue);color:var(--text);}
+  .toggle-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+  .scenario{display:none;}
+  .scenario.active{display:block;}
+  .result-badge{display:inline-flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;padding:10px 18px;border-radius:10px;margin-top:14px;}
+  .result-ok{background:rgba(30,180,120,0.15);color:#4ade9c;border:1px solid rgba(74,222,156,0.3);}
+  .result-fail{background:rgba(224,102,95,0.15);color:#f19891;border:1px solid rgba(241,152,145,0.3);}
+
+  .img-placeholder{border:2px dashed var(--border);border-radius:16px;background:var(--panel-2);padding:22px 24px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:14.5px;font-style:italic;color:var(--text-soft);line-height:1.6;}
+
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 48px;border-top:1px solid var(--border);text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 07</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Visual</span></div>
+  <div class="header-eyebrow">SESSION 07 · VISUAL LEARNING · PACKET JOURNEY + TOPOLOGY</div>
+  <h1>Bridges Between <em>Worlds</em></h1>
+  <p>One chassis, three VDOMs, one deliberate bridge. Trace the packet, then test what happens when a piece of the chain is missing.</p>
+</header>
+
+<main>
+
+  <!-- TOPOLOGY -->
+  <div class="stage">
+    <div class="stage-label">Enterprise Topology — One FortiGate, Three VDOMs</div>
+    <div class="chassis">
+      <div class="vdom-box root">
+        <div class="vdom-name">root</div>
+        <div class="vdom-detail">Management + WAN<br>Pre-existing default route → Internet</div>
+      </div>
+      <div class="vdom-box guest">
+        <div class="vdom-name">Guest-WiFi</div>
+        <div class="vdom-detail">Guest VLAN<br>New default route → link</div>
+      </div>
+      <div class="vdom-box trading">
+        <div class="vdom-name">Trading</div>
+        <div class="vdom-detail">No link. No route.<br>No interface pointing here.</div>
+      </div>
+    </div>
+    <div class="chassis-caption">A solid connector line = an inter-VDOM link exists. A dashed border with empty space around it = no link, no path — total isolation by absence, not by rule.</div>
+    <img src="images/session07-topology-hero.png" alt="" style="width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:14px 0 8px;" onerror="this.style.display='none'">
+    <div class="img-placeholder">
+      <div class="ip-filename">images/session07-topology-hero.png</div>
+      <div class="ip-caption">A large, striking isometric illustration of a single FortiGate firewall rendered as a glowing glass server chassis floating in dark navy space, front panel semi-transparent revealing its internals. Inside, three distinct glass compartments float side by side: one warm amber-gold compartment labeled "root" with a small glowing globe icon (internet), one cool teal compartment labeled "Guest-WiFi" with a small wifi-signal icon, and one deep red compartment labeled "Trading" with a small vault/lock icon, visually sealed and slightly separated in space from the other two with a gap of pure darkness around it. A single luminous fiber-optic-style thread bridges root and Guest-WiFi only, with two small glowing endpoint nodes labeled "VDOM_Link0" and "VDOM_Link1" in a clean monospace font. No thread touches the Trading compartment at all. Style: elegant sci-fi technical illustration, soft volumetric lighting, dark background, high production value, reminiscent of premium tech-conference keynote slides. No literal photographic firewall hardware, purely conceptual/glass architecture.</div>
+    </div>
+  </div>
+
+  <!-- PACKET JOURNEY -->
+  <div class="stage">
+    <div class="stage-label">Packet Journey — Guest Device Requesting 8.8.8.8</div>
+    <div class="journey">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body"><span class="step-vdom-tag tag-guest">Guest-WiFi</span><b>Routing table lookup</b><p>Default route (0.0.0.0/0.0.0.0) matches, egress interface chosen: <code>VDOM_Link1</code>.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><span class="step-vdom-tag tag-guest">Guest-WiFi</span><b>Policy table lookup</b><p>Policy srcintf = Guest VLAN, dstintf = VDOM_Link1 → matched, session allowed.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><b>Crosses the inter-VDOM link</b><p>Packet leaves Guest-WiFi's virtual world, arrives at root on the paired interface <code>VDOM_Link0</code>.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body"><span class="step-vdom-tag tag-root">root</span><b>Routing table lookup</b><p>Pre-existing default route matches, egress interface chosen: WAN.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body"><span class="step-vdom-tag tag-root">root</span><b>Policy table lookup</b><p>Policy srcintf = VDOM_Link0, dstintf = WAN → matched, NAT applied, session allowed.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body"><b>Out to the internet</b><p>Guest device gets its response. Trading VDOM was never in the path — physically incapable of being touched.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE FAULT INJECTOR -->
+  <div class="stage">
+    <div class="stage-label">Try It — What Breaks If...</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" onclick="showScenario(this,'good')">Everything Configured</button>
+      <button class="toggle-btn" onclick="showScenario(this,'noroute')">Missing Route (Guest-WiFi)</button>
+      <button class="toggle-btn" onclick="showScenario(this,'nopolicy')">Missing Policy (Guest-WiFi)</button>
+      <button class="toggle-btn" onclick="showScenario(this,'nolink')">No Link to Trading</button>
+    </div>
+
+    <div class="scenario active" id="sc-good">
+      <p>Route ✅ Policy ✅ on both VDOMs. Full six-step journey completes. Guest device reaches the internet.</p>
+      <div class="result-badge result-ok">✓ TRAFFIC FLOWS</div>
+    </div>
+    <div class="scenario" id="sc-noroute">
+      <p>Guest-WiFi has NO default route toward <code>VDOM_Link1</code>. Step 1 fails immediately — the routing table has nothing to match, so no egress interface is ever chosen. The packet never even reaches step 2 (policy lookup).</p>
+      <div class="result-badge result-fail">✗ DROPPED AT ROUTING — POLICY NEVER EVALUATED</div>
+    </div>
+    <div class="scenario" id="sc-nopolicy">
+      <p>Guest-WiFi's route is fine — step 1 succeeds, egress interface correctly chosen as <code>VDOM_Link1</code>. But no policy matches srcintf=Guest VLAN / dstintf=VDOM_Link1. Step 2 fails. This looks identical to "nothing happening" from the user's side, but the failure point is completely different.</p>
+      <div class="result-badge result-fail">✗ ROUTED SUCCESSFULLY, DROPPED AT POLICY</div>
+    </div>
+    <div class="scenario" id="sc-nolink">
+      <p>No inter-VDOM link, no route, no interface anywhere pointing toward Trading VDOM from root or Guest-WiFi. There is no step 1 to even attempt — no interface exists to route toward in the first place.</p>
+      <div class="result-badge result-fail">✗ NO PATH EXISTS — STRONGER THAN ANY POLICY DENY</div>
+    </div>
+  </div>
+
+</main>
+
+<footer>LoFinance · Session 07 Visual — Bridges Between Worlds</footer>
+
+<script>
+function showScenario(btn, id){
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.scenario').forEach(s=>s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sc-'+id).classList.add('active');
+}
+</script>
+
+</body>
+</html>

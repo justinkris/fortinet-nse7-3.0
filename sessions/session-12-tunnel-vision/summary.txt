@@ -1,0 +1,167 @@
+SESSION 12 SUMMARY — "Tunnel Vision"
+(Building the tunnel — phase 1 / phase 2 config, route-based IPsec | Study guide 07 IPsec pp. 207–214)
+Written for Claude. Read before Session 13.
+
+STORY EVENTS
+------------
+Wednesday, install day at Parramatta. Branch FortiGate unboxed; Junior wears the console
+cable "for luck." Señor's whiteboard: two empty columns, PHASE 1 | PHASE 2. Riley's
+pre-emptive ticket #4471 ("VPN down", filed 6:42 AM against a VPN that didn't exist) is
+the running gag AND the real troubleshooting hook. Señor blocked Junior from typing until
+the student answered the framing question. Mid-session: Señor confiscated Junior's phone
+mid-blog-reach. Build succeeded at 11:34 AM (diag vpn ike gateway list → state:
+established; Junior whooped). Then Riley called: HQ→Parra works perfectly, but
+Parramatta-INITIATED connections (Marcus → HQ trading share) spin and vanish. Root cause:
+Junior mirrored phase1/phase2/route but wrote only ONE policy on the Parramatta box
+(HQ-to-branch direction), missing internal→HQTunnel. debug flow on Parra showed "Denied
+by forward policy check (policy 0)". Fixed live; Marcus's share opened mid-sentence.
+Riley closed the ticket: "was prophecy, now comedy." Closing beat: Señor taps the dark
+ParraTunnel-ISP2 dashboard entry — "what happens when there is roadwork?" — and reveals
+Penny has been reading about FortiManager templates ("why do we configure every firewall
+by hand like artisans?" / "Nothing wrong with artisans. Until the fortieth tunnel.")
+
+BUSINESS PROBLEM & OUTCOME
+--------------------------
+Problem: build the first HQ↔Parramatta tunnel and make the branch actually usable both
+directions before go-live. Outcome: ParraTunnel-ISP1 live in production carrying the
+trading feed; two-way traffic verified; ticket #4471 closed. First working tunnel in
+LoFinance history.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. ROUTE-BASED IPSEC CORE IDEA: creating a phase1-interface makes FortiOS create a
+   VIRTUAL INTERFACE (appears in Network > Interfaces). "The tunnel is an INTERFACE."
+   No special diversion machinery — routing decides tunnel entry; policy engine treats
+   the tunnel interface like any other interface.
+2. THE FIVE-ITEM BUILD CHECKLIST (student dictated most of it himself, unprompted,
+   including the NAT-T consideration): (1) phase 1 — public IPs, NAT question;
+   (2) phase 2; (3) tunnel interface IPs; (4) route to remote subnet (static or dynamic);
+   (5) firewall policies.
+3. IKE = LOCAL-IN TRAFFIC: the handshake is traffic TO the FortiGate, so no forward
+   policy is needed for the tunnel to FORM. Policies are only for traffic INSIDE it.
+   (Señor flagged this instinct as useful later for OSPF control-plane thinking.)
+4. STATEFUL RULE REFINED: policies are written per DIRECTION OF INITIATION, not per
+   direction of travel. Replies ride sessions for free; NEW conversations pay at the
+   door — on BOTH firewalls. Working two-way site = 2 policies per firewall
+   (internal→tunnel and tunnel→internal) unless one side never initiates.
+5. PHASE 1 CONFIG (built live, HQ side), carrying S11 decisions:
+   config vpn ipsec phase1-interface / edit "ParraTunnel-ISP1" / set interface "wan1" /
+   set ike-version 2 / set peertype any / set proposal aes256-sha256 /
+   set network-overlay enable / set network-id 1 / set remote-gw 203.0.113.45 /
+   set psksecret ***. ISP2 twin identical with network-id 2 (Junior typed it).
+6. PHASE 2 CONFIG: config vpn ipsec phase2-interface / edit "ParraTunnel-ISP1" /
+   set phase1name "ParraTunnel-ISP1" / set proposal aes256-sha256 /
+   set src-subnet 10.1.0.0/24 (HQ LAN) / set dst-subnet 10.2.0.0/24 (Parra LAN).
+   Selectors NOT re-taught (student owns "trunk over a tunnel" from S10).
+7. IKEv2 PHASE 2 TIMING: first child SA piggybacks inside IKE_AUTH (the ENCRYPTED
+   second exchange) — safe because the DH secret already exists; hence no quick mode
+   and zero extra messages. (This was the S11→S12 queued link check.)
+8. STATIC ROUTE INTO TUNNEL: config router static / edit 0 / set dst 10.2.0.0/24 /
+   set device "ParraTunnel-ISP1". NO "set gateway" — tunnel interface is point-to-point,
+   interface name suffices. Flagged as exam-relevant oddity.
+9. VERIFICATION: diagnose vpn ike gateway list → version: 2, network-id: 1,
+   state: established.
+10. TROUBLESHOOTING: diagnose debug flow (filter saddr/daddr, trace start, debug enable).
+    Key output lines taught: "find a route ... via ParraTunnel-ISP1" (routing acquitted)
+    and "Denied by forward policy check (policy 0)" (implicit deny = a policy you forgot).
+    TWO-SUSPECT DISCIPLINE for one-way-silent tunnels: missing internal→tunnel at the
+    initiator's site (dies at home) vs missing tunnel→internal at the far site (dies
+    after decryption). Identical user symptom; debug flow names the guilty firewall.
+    Rule coined: "follow the packet in the order the packet travels" — debug closest
+    to source first; evidence propagates forward.
+11. FREE EVIDENCE FROM SYMPTOMS: working HQ→Parra replies PROVE the Parramatta routing
+    table already routes 10.1.0.0/24 into the tunnel — routing acquitted before any
+    command was run. Student was guided to this; see register.
+
+NOTE ON PAGE COVERAGE: pp. 207–214 also contain fragmentation/DF/PMTUD/MTU-1420/MSS and
+the FortiManager-template section opener. The MTU/fragmentation material was NOT taught
+this session (session focused on the build per the master-plan topic line). RECOMMEND
+folding MTU/MSS/PMTUD into Session 13 alongside verification (natural fit: "prove the
+tunnel is real" → ping-with-df-bit/data-size is a verification tool) or an early S13
+segment. FortiManager templates are already S13's scheduled first look. Do not assume
+the student has seen: honor-df default, IPsec interface MTU default 1420, PMTUD
+technique, tcp-mss-sender/receiver.
+
+MENTAL MODELS DEVELOPED
+-----------------------
+- "The tunnel is an INTERFACE" — route-based IPsec in four words; routing and policy
+  treat it as a citizen, no new machinery.
+- "Replies are free; new conversations pay at the door" — initiation-direction policy
+  rule. Packet A (reply) vs Packet B (new initiator) framing landed strongly; "Marcus is
+  not a reply. Marcus is an initiator — Packet B wearing a lanyard."
+- "Policy 0 is not a policy anyone wrote" — implicit deny = missing policy, not a bug.
+- "Follow the packet in the order the packet travels" — troubleshooting sequencing rule.
+- "The tunnel is the easy part" — most of the checklist is not the tunnel.
+- Riley's ticket "prophecy or comedy" — memorable frame for pre-emptive tickets.
+
+SOCRATIC PATH & STUDENT PERFORMANCE (see register for full analysis)
+--------------------------------------------------------------------
+- Opening question (first decision for Penny's packet): NAILED unaided — "whether it
+  needs to be routed out the tunnel interface" — the exact route-based-IPsec insight in
+  his own words on the first attempt.
+- Second question: OVERSHOT the question and dictated nearly the whole 5-item build
+  checklist unprompted, including NAT-T. Strongest unprompted synthesis to date at the
+  checklist level. His "policies for the tunnel to form" over-worry converted into the
+  local-in teaching point.
+- Stateful reply question: answered "it is a stateful firewall" — correct kernel,
+  minimal words; Señor made him aware the four words complete the argument. PATTERN:
+  he sometimes stops at the correct kernel without finishing the verdict (see register
+  new watch item "finish the verdict").
+- Packet B scope question: got "both firewalls need policies" but did not initially
+  specify DIRECTION on HQ; direction supplied via diagram.
+- network-id retrieval (queued S11 check): concept surfaced instantly; keyword needed
+  two hints ("tunnel id" → overlay hint → "network"). ike-version 2 recalled fine.
+  Config-syntax decay normal for once-seen commands; concept intact.
+- IKE_AUTH piggyback (queued S11→S12 link check): needed the two-exchange menu laid
+  out; first answers were "rides the Phase 1 tunnel" (right place, wrong precision)
+  then "the key" (ambiguous). Chose IKE_AUTH correctly from the menu. Log as: concept
+  solid, exchange-NAME recall still needs one retrieval rep.
+- Troubleshooting: hypothesis (missing Parra policies) + evidence command (get router
+  info routing-table all) offered TOGETHER in one answer, unprompted — evidence-before-
+  change discipline showing. Chose to debug on the SOURCE-side firewall first with
+  correct reasoning ("closer to the source").
+- Exam questions: Q1 correct (A,B) first attempt. Q2 correct (False) first attempt —
+  silent T/F observation done, but NOTE: no justification volunteered this time (see
+  register — justification streak interrupted on a terse answer). Q3 required TWO
+  follow-up nudges: first answer described reply/session behaviour (answered the wrong
+  packet), second answer narrated steps without the verdict, third answer "matches
+  implicit deny" completed it. Scored as correct-after-hints.
+
+JUNIOR'S MISTAKE & LESSON
+-------------------------
+Mirrored the tunnel config but wrote only one policy on the Parramatta side — applied
+"replies come back automatically" to initiators. Lesson: the stateful rule has a scope;
+learn the rule AND its boundary. Also: his morning "so the checkpoint is just normal
+policies?" was accidentally the session's elegance point (no new machinery).
+
+TOPOLOGY CHANGES
+----------------
+Parramatta FortiGate DEPLOYED and ONLINE. ParraTunnel-ISP1 (IKEv2, network-id 1)
+ESTABLISHED, in production, carrying trading-feed access. ParraTunnel-ISP2 (network-id 2)
+configured on both ends, awaiting Parramatta's second ISP circuit — dark/standby.
+Full policy sets both directions on both firewalls. Static route 10.2.0.0/24 →
+ParraTunnel-ISP1 at HQ; 10.1.0.0/24 → HQTunnel-ISP1 at Parramatta. HA at both sites:
+still desired, still uncommitted. Subnets canonised this session: HQ LAN 10.1.0.0/24,
+Parramatta LAN 10.2.0.0/24; HQ public 198.51.100.10 (wan1), Parra public 203.0.113.45.
+
+EXAM-RELEVANT NOTES
+-------------------
+- Route-based IPsec = virtual interface + route + policies; "tunnel up, no traffic" =
+  route or policy missing (classic NSE7 distractor set).
+- Static route to tunnel needs device only, no gateway (point-to-point).
+- IKEv2 first child SA inside IKE_AUTH (encrypted exchange) — no quick mode.
+- "Denied by forward policy check (policy 0)" in debug flow = implicit deny.
+- network-overlay enable + network-id N, IKEv2 only, must match both ends.
+- IKE is local-in traffic; tunnels form without forward policies.
+
+TEASER DELIVERED FOR SESSION 13 ("Two Roads to Parramatta")
+-----------------------------------------------------------
+Señor tapped the dark ParraTunnel-ISP2 entry: "One road to Parramatta. What happens when
+there is roadwork?" Next session: finish the redundant-tunnel design (S10's ipsec-
+aggregate intent), VERIFICATION ("a way to prove both roads are real before we bet the
+trading feed on them"), and FortiManager IPsec templates first look — motivated in-story
+by Penny reading about templates and questioning hand-configured "artisan" firewalls.
+Señor's line: "Nothing wrong with artisans. Until the fortieth tunnel." Carry into S13:
+the second ISP circuit arriving at Parramatta is the natural story trigger; also fold in
+the untaught pp. 206–211 MTU/fragmentation/MSS material (see NOTE above) — a "large
+packets vanish, pings fine" incident on the new path would teach it perfectly.

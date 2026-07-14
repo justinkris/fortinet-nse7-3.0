@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sessions — NSE7 EF 7.6</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf5e9;
+    --surface: #ffffff;
+    --surface-2: #f4ecd8;
+    --ink: #1c2432;
+    --muted: #5c6373;
+    --border: #d9cfb7;
+    --blue: #1e40af;
+    --blue-light: #dbeafe;
+    --green: #166534;
+    --green-light: #dcfce7;
+    --amber: #92400e;
+    --amber-light: #fef3c7;
+    --plum: #6b21a8;
+    --plum-light: #f3e8ff;
+    --rose: #9f1239;
+    --rose-light: #ffe4e6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 100px; }
+  .crumb {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+  .crumb a { color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; }
+  .crumb a:hover { border-bottom-color: var(--muted); }
+  header { margin-bottom: 40px; }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--blue);
+    background: var(--blue-light);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 44px;
+    line-height: 1.1;
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+  .lede {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 19px;
+    color: var(--muted);
+    font-style: italic;
+    max-width: 640px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 12px;
+  }
+
+  /* wrap reserves the base cell; the .card inside is what scales, so the
+     grid never reflows on hover */
+  .card-wrap {
+    position: relative;
+    aspect-ratio: 1 / 1;
+  }
+  .card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px 20px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    transition:
+      transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1.1),
+      box-shadow 0.28s ease,
+      border-color 0.28s ease,
+      background 0.28s ease;
+    transform-origin: center;
+    overflow: hidden;
+    z-index: 1;
+    outline: none;
+  }
+  .card:hover, .card:focus-within {
+    transform: scale(1.18);
+    z-index: 20;
+    border-color: var(--blue);
+    box-shadow: 0 18px 40px rgba(30, 64, 175, 0.18), 0 4px 12px rgba(28, 36, 50, 0.08);
+    background: var(--surface);
+  }
+  .card-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    opacity: 0.92;
+    transition: opacity 0.28s ease, transform 0.28s ease;
+  }
+  .card:hover .card-image, .card:focus-within .card-image {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  .card-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(255, 253, 246, 0.96) 0%,
+      rgba(255, 253, 246, 0.82) 38%,
+      rgba(255, 253, 246, 0.30) 70%,
+      rgba(255, 253, 246, 0.00) 100%
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+  .card-head {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+    width: 100%;
+  }
+  .card-head:hover .card-title { color: var(--blue); }
+  .card-num {
+    font-family: 'Outfit', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--blue);
+    background: var(--blue-light);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .card-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ink);
+    transition: color 0.15s ease;
+  }
+  .card-subs {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    margin-top: 4px;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.2s ease 0.05s, transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1.1) 0.05s;
+    max-height: 0;
+  }
+  .card:hover .card-subs, .card:focus-within .card-subs {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    max-height: 200px;
+  }
+  .sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 999px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .sub:hover { transform: translateY(-1px); filter: brightness(0.95); }
+  .sub-guide   { background: var(--green-light);  color: var(--green); }
+  .sub-bite    { background: var(--blue-light);   color: var(--blue); }
+  .sub-nibble  { background: var(--amber-light);  color: var(--amber); }
+  .sub-trouble { background: var(--rose-light);   color: var(--rose); }
+  .sub-visual  { background: var(--plum-light);   color: var(--plum); }
+  .sub-register{ background: #fdf6e0;             color: #a68321; }
+  .sub-empty {
+    opacity: 0.4;
+    cursor: default;
+    filter: grayscale(0.6);
+  }
+  .sub-empty:hover { transform: none; filter: grayscale(0.6); }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 34px; }
+    .card:hover, .card:focus-within { transform: scale(1.08); }
+    .grid { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><a href="../">Home</a> › Sessions</div>
+    <header>
+      <span class="eyebrow">Curriculum</span>
+      <h1>Sessions</h1>
+      <p class="lede">Hover any session to reveal its subpages. Faded chips mean that subpage hasn't been sorted yet.</p>
+    </header>
+    <div class="grid">
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-01-break-the-ice.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-01-break-the-ice/">
+            <span class="card-num">Session 01</span>
+            <span class="card-title">Break the Ice</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-01-break-the-ice/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-01-break-the-ice/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-01-break-the-ice/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-01-break-the-ice/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-01-break-the-ice/visual/visual.html">Visual</a><a class="sub sub-register" href="session-01-break-the-ice/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-02-where-the-walls-go.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-02-where-the-walls-go/">
+            <span class="card-num">Session 02</span>
+            <span class="card-title">Where the Walls Go</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-02-where-the-walls-go/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-02-where-the-walls-go/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-02-where-the-walls-go/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-02-where-the-walls-go/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-02-where-the-walls-go/visual/visual.html">Visual</a><a class="sub sub-register" href="session-02-where-the-walls-go/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-03-life-of-a-packet.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-03-life-of-a-packet/">
+            <span class="card-num">Session 03</span>
+            <span class="card-title">Life of a Packet</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-03-life-of-a-packet/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-03-life-of-a-packet/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-03-life-of-a-packet/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-03-life-of-a-packet/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-03-life-of-a-packet/visual/visual.html">Visual</a><a class="sub sub-register" href="session-03-life-of-a-packet/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-04-the-floor-wars.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-04-the-floor-wars/">
+            <span class="card-num">Session 04</span>
+            <span class="card-title">The Floor Wars</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-04-the-floor-wars/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-04-the-floor-wars/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-04-the-floor-wars/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-04-the-floor-wars/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-04-the-floor-wars/visual/visual.html">Visual</a><a class="sub sub-register" href="session-04-the-floor-wars/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-05-invisible-fences.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-05-invisible-fences/">
+            <span class="card-num">Session 05</span>
+            <span class="card-title">Invisible Fences</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-05-invisible-fences/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-05-invisible-fences/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-05-invisible-fences/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-05-invisible-fences/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-05-invisible-fences/visual/visual.html">Visual</a><a class="sub sub-register" href="session-05-invisible-fences/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-06-one-box-many-firewalls.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-06-one-box-many-firewalls/">
+            <span class="card-num">Session 06</span>
+            <span class="card-title">One Box, Many Firewalls</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-06-one-box-many-firewalls/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-06-one-box-many-firewalls/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-06-one-box-many-firewalls/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-06-one-box-many-firewalls/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-06-one-box-many-firewalls/visual/visual.html">Visual</a><a class="sub sub-register" href="session-06-one-box-many-firewalls/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-07-bridges-between-worlds.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-07-bridges-between-worlds/">
+            <span class="card-num">Session 07</span>
+            <span class="card-title">Bridges Between Worlds</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-07-bridges-between-worlds/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-07-bridges-between-worlds/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-07-bridges-between-worlds/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-07-bridges-between-worlds/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-07-bridges-between-worlds/visual/visual.html">Visual</a><a class="sub sub-register" href="session-07-bridges-between-worlds/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-08-cowboy-hat-the-quiet-tuesday.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-08-cowboy-hat-the-quiet-tuesday/">
+            <span class="card-num">Session 08</span>
+            <span class="card-title">Cowboy Hat: The Quiet Tuesday</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-08-cowboy-hat-the-quiet-tuesday/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-08-cowboy-hat-the-quiet-tuesday/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-08-cowboy-hat-the-quiet-tuesday/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-08-cowboy-hat-the-quiet-tuesday/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-08-cowboy-hat-the-quiet-tuesday/visual/visual.html">Visual</a><a class="sub sub-register" href="session-08-cowboy-hat-the-quiet-tuesday/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-09-season-finale-the-announcement.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-09-season-finale-the-announcement/">
+            <span class="card-num">Session 09</span>
+            <span class="card-title">Season Finale: The Announcement</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-09-season-finale-the-announcement/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-09-season-finale-the-announcement/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-09-season-finale-the-announcement/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-09-season-finale-the-announcement/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-09-season-finale-the-announcement/visual/visual.html">Visual</a><a class="sub sub-register" href="session-09-season-finale-the-announcement/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-10-the-parramatta-project.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-10-the-parramatta-project/">
+            <span class="card-num">Session 10</span>
+            <span class="card-title">The Parramatta Project</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-10-the-parramatta-project/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-10-the-parramatta-project/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-10-the-parramatta-project/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-10-the-parramatta-project/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-10-the-parramatta-project/visual/visual.html">Visual</a><a class="sub sub-register" href="session-10-the-parramatta-project/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-11-handshakes-modern-style.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-11-handshakes-modern-style/">
+            <span class="card-num">Session 11</span>
+            <span class="card-title">Handshakes, Modern Style</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-11-handshakes-modern-style/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-11-handshakes-modern-style/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-11-handshakes-modern-style/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-11-handshakes-modern-style/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-11-handshakes-modern-style/visual/visual.html">Visual</a><a class="sub sub-register" href="session-11-handshakes-modern-style/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-12-tunnel-vision.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-12-tunnel-vision/">
+            <span class="card-num">Session 12</span>
+            <span class="card-title">Tunnel Vision</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-12-tunnel-vision/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-12-tunnel-vision/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-12-tunnel-vision/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-12-tunnel-vision/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-12-tunnel-vision/visual/visual.html">Visual</a><a class="sub sub-register" href="session-12-tunnel-vision/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-14-routes-that-teach-themselves.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-14-routes-that-teach-themselves/">
+            <span class="card-num">Session 14</span>
+            <span class="card-title">Routes That Teach Themselves</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-14-routes-that-teach-themselves/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-14-routes-that-teach-themselves/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-14-routes-that-teach-themselves/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-14-routes-that-teach-themselves/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-14-routes-that-teach-themselves/visual/visual.html">Visual</a><a class="sub sub-register" href="session-14-routes-that-teach-themselves/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-15-speaking-ospf-on-fortigate.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-15-speaking-ospf-on-fortigate/">
+            <span class="card-num">Session 15</span>
+            <span class="card-title">Speaking OSPF on FortiGate</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-15-speaking-ospf-on-fortigate/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-15-speaking-ospf-on-fortigate/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-15-speaking-ospf-on-fortigate/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-15-speaking-ospf-on-fortigate/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-15-speaking-ospf-on-fortigate/visual/visual.html">Visual</a><a class="sub sub-register" href="session-15-speaking-ospf-on-fortigate/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-16-the-map-room.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-16-the-map-room/">
+            <span class="card-num">Session 16</span>
+            <span class="card-title">The Map Room</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-16-the-map-room/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-16-the-map-room/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-16-the-map-room/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-16-the-map-room/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-16-the-map-room/visual/visual.html">Visual</a><a class="sub sub-register" href="session-16-the-map-room/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+      <div class="card-wrap">
+        <div class="card" tabindex="0">
+          <img class="card-image" src="images/session-17-two-firewalls-no-handshake.png" alt="" aria-hidden="true" onerror="this.style.display='none';">
+          <div class="card-scrim" aria-hidden="true"></div>
+          <a class="card-head" href="session-17-two-firewalls-no-handshake/">
+            <span class="card-num">Session 17</span>
+            <span class="card-title">Two Firewalls, No Handshake</span>
+          </a>
+          <div class="card-subs"><a class="sub sub-guide" href="session-17-two-firewalls-no-handshake/guides/complete-guide.html">Complete Guide</a><a class="sub sub-bite" href="session-17-two-firewalls-no-handshake/bites/bite.html">Bite</a><a class="sub sub-nibble" href="session-17-two-firewalls-no-handshake/nibbles/nibble.html">Nibble</a><a class="sub sub-trouble" href="session-17-two-firewalls-no-handshake/troubleshooting/troubleshooting.html">Troubleshooting</a><a class="sub sub-visual" href="session-17-two-firewalls-no-handshake/visual/visual.html">Visual</a><a class="sub sub-register" href="session-17-two-firewalls-no-handshake/knowledge-register.html">Knowledge Register</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

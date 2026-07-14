@@ -1,0 +1,173 @@
+================================================================
+SESSION 11 REVISION PACK — "Handshakes, Modern Style"
+IKEv2 exchanges · IKEv1 comparison · network-id (pp. 200–206)
+================================================================
+
+QUICK SUMMARY
+-------------
+Every IKE handshake has three jobs, in a mandatory order: (1) agree
+the language (proposals), (2) grow the shared secret (Diffie-Hellman
+— the key is computed at both ends from private+public halves and
+never crosses the wire), (3) prove identity. Identity must come
+AFTER DH, because before DH everything is plaintext.
+
+IKEv1 aggressive mode is fast (3+3=6 messages) precisely because it
+sends peer IDs before DH — so the IDs cross the internet in CLEAR
+TEXT. The speed and the leak are the same design choice. Main mode
+protects IDs but costs 6+3=9 messages. IKEv2 obeys the ordering rule
+AND packs the envelopes: IKE_SA_INIT (2 msgs: proposals + DH publics,
+plaintext but nothing sensitive) then IKE_AUTH (2 msgs: encrypted
+identities + authentication + the FIRST CHILD SA piggybacked — no
+separate quick mode). Total: 4 messages, IDs encrypted. Faster than
+aggressive, safer than main. The "fast vs safe" dilemma was false.
+
+IKEv2 also brings AES-GCM, SHA-2/AES-XCBC integrity, elliptic-curve
+DH groups 19/20 (MODP strength, less CPU), EAP authentication, and
+integrated mode config.
+
+network-id: Fortinet-PROPRIETARY, IKEv2-ONLY phase 1 attribute that
+selects the correct phase 1 between peers, allowing MULTIPLE tunnels
+between the same local/remote gateway pair. Needed for LoFinance's
+dual-ISP tunnel aggregate. Values must match at both ends per tunnel.
+Nightclub with two identical doors: the ticket names the event.
+
+CHEAT SHEET
+-----------
+Message counts (memorise cold):
+  IKEv1 aggressive : phase1=3, phase2(quick)=3, total 6, IDs CLEARTEXT
+  IKEv1 main       : phase1=6, phase2(quick)=3, total 9, IDs encrypted
+  IKEv2            : IKE_SA_INIT=2, IKE_AUTH=2,  total 4, IDs encrypted
+
+IKEv2 exchange contents:
+  IKE_SA_INIT : proposal menu + DH public values + nonces (plaintext)
+  IKE_AUTH    : identities + auth + first child SA (ENCRYPTED)
+  (Later rekeys/child SAs: CREATE_CHILD_SA. Housekeeping: INFORMATIONAL.)
+
+Feature deltas (IKEv1 -> IKEv2):
+  Encryption : DES/3DES/AES-CBC        -> AES-GCM
+  DH groups  : 1/2/5                   -> 14/15/16 + ECP 19/20
+  Auth       : PSK/signatures          -> + EAP
+  Integrity  : HMAC-MD5/SHA1           -> HMAC-SHA2, AES-XCBC
+  Mode config: separate                -> integrated in exchange
+  PFS (phase 2) = run fresh DH per session for independent keys.
+
+CLI:
+  config vpn ipsec phase1-interface
+      edit "TunnelName"
+          set ike-version 2
+          set network-overlay enable      <- switch the feature ON
+          set network-id <N>              <- the tag; match both ends
+      next
+  end
+
+  Verify/observe negotiation:
+  diagnose vpn ike gateway list
+  diagnose vpn ike log-filter dst-addr4 <peer>
+  diagnose debug application ike -1 ; diagnose debug enable
+  (always: diagnose debug disable)
+
+Design rules:
+  - Identity AFTER DH. Always.
+  - Multiple tunnels, same gateway pair => IKEv2 + network-id.
+  - network-id on IKEv1 or third-party peer: NOT a thing.
+  - Judge a handshake by job list + order; message count is a
+    consequence, not the goal.
+
+FLASHCARDS
+----------
+Q: Three jobs of any IKE handshake, in order?
+A: Agree proposals -> Diffie-Hellman secret -> prove identity.
+
+Q: Why must identity be sent after DH?
+A: Before DH no shared secret exists, so all messages are plaintext;
+   after DH they can be encrypted.
+
+Q: Why is IKEv1 aggressive mode faster AND unsafe — one answer?
+A: It sends peer IDs before DH protection exists: fewer round trips,
+   IDs in clear text. Same design choice.
+
+Q: Total messages: aggressive / main / IKEv2?
+A: 6 / 9 / 4.
+
+Q: Name IKEv2's two establishment exchanges and their contents.
+A: IKE_SA_INIT (proposals + DH publics, plaintext) and IKE_AUTH
+   (encrypted identities + auth + first child SA).
+
+Q: Where is IKEv2's "phase 2"?
+A: The first child SA piggybacks inside IKE_AUTH — no quick mode.
+
+Q: What is network-id and when do you need it?
+A: Fortinet-proprietary IKEv2-only phase 1 attribute that selects the
+   correct phase 1, enabling multiple tunnels between the same
+   local/remote gateway pair.
+
+Q: The two CLI commands for network-id?
+A: set network-overlay enable  AND  set network-id <N> (matching at
+   both ends).
+
+Q: True/False — network-id can be set on IKEv1 tunnels.
+A: False. IKEv2 only.
+
+Q: DH groups 19 and 20 are what kind, and why prefer them?
+A: Elliptic curve (ECP) — MODP-equivalent security with shorter keys
+   and less CPU.
+
+Q: Debug shows SA_INIT completing but IKE_AUTH failing — suspect what?
+A: Authentication: PSK mismatch, certificate, or peer-ID problem —
+   NOT proposals/DH (those already succeeded).
+
+Q: Which IKEv1 mode protects peer identities?
+A: Main mode (6 messages, "identity protection"). IKEv2 also protects
+   them; only aggressive mode exposes them.
+
+PODCAST PROMPT — "The Packet Path", Episode 11
+----------------------------------------------
+Generate a 10–14 minute podcast episode titled "Handshakes, Modern
+Style" for the series The Packet Path — a warm, wry, story-driven
+show about an intermediate network engineer at LoFinance, a Sydney
+trading firm whose logo is stacks of money frozen in an ice cube.
+
+Cast: the Intermediate Engineer (narrator's subject, increasingly
+trusted); Señor, the eccentric senior engineer in a sombrero who
+teaches by questions; Junior, young and overconfident; Cipher, the
+security lead who almost never speaks; Riley on help desk; Penny the
+operations chief.
+
+STORY: The new branch firewall for Parramatta has arrived. Junior
+bursts in with a printout of a 2014 blog post recommending IKEv1
+aggressive mode "because it's faster — and speed is the business."
+Cipher silently sits down. Señor folds the printout into a paper
+aeroplane, bins it, and says: "Faster — and it shouts your name
+across the internet while it does it."
+
+TEACH (through the story, Socratically — Señor asks, the engineer
+derives): (1) The three jobs of a handshake: agree the language, grow
+the secret, prove identity. (2) Diffie-Hellman as "the secret is
+grown, not posted" — born simultaneously at both ends, never on the
+wire. (3) The ordering rule: "first grow the secret, then whisper
+your name inside it" — identity after DH. (4) Aggressive mode breaks
+the order: that's WHY it's fast and WHY IDs leak — one fact. Counts:
+aggressive 6, main mode 9. (5) The engineer, given only the ordering
+rule and "pack the envelopes," DERIVES IKEv2 himself: two plaintext
+messages (proposals + DH publics = IKE_SA_INIT), two encrypted ones
+(identities = IKE_AUTH), child SA piggybacked. Four messages. Señor:
+"You did not learn IKEv2. You invented it." (6) Junior redeems
+himself with a genuinely good question: two tunnels between the same
+two boxes — how does HQ tell the handshakes apart? Answer: network-id,
+Fortinet-proprietary, IKEv2-only — the nightclub with two identical
+doors where the ticket names the event. (7) The senior lesson: "fast
+or safe?" was a false dilemma — refuse the question; and date-check
+your sources.
+
+JUNIOR'S MISTAKE: trusting a decade-old blog over first principles,
+and accepting a trade-off without checking it was real.
+
+END: Cipher retrieves the paper aeroplane from the bin and feeds it
+to the shredder. Teaser: next episode, "Tunnel Vision" — the box
+comes off the shelf, the whiteboard says PHASE 1 and PHASE 2, and
+Riley has already opened a ticket for a VPN that doesn't exist yet.
+Señor: "Today we stop drawing. Today we dig."
+
+Tone: clever, warm, a little theatrical; explain every concept
+through the story's reasoning, never as a lecture dump.
+================================================================

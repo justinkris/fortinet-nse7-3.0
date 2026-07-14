@@ -1,0 +1,226 @@
+SESSION 15 REVISION PACK — "Speaking OSPF on FortiGate"
+OSPF network types · redistribution · route filtering · OSPF commands
+(Study Guide 05 Dynamic Routing Protocols, pp. 129–131)
+
+================================================================
+QUICK SUMMARY (one page)
+================================================================
+Junior configured network-type broadcast on the hub's shared dial-up To-Spokes
+interface. Broadcast mode assumes a shared medium that delivers one multicast hello
+to everyone for free (Ethernet). A dial-up hub interface has no shared wire — just
+separate encrypted tunnels — and broadcast mode never replicates per tunnel, so the
+hello dies at the interface. Result: neighbor table EMPTY (hellos never delivered),
+not flapping (delivered but disagreeing). Broadcast would also attempt a DR election
+among spokes who can't hear each other's votes.
+
+Point-to-point (the FortiGate tunnel default) assumes exactly ONE far-side neighbor —
+wrong here, three spokes. Point-to-multipoint is the fit: it treats the interface as
+a bundle of individual P2P conversations, REPLICATES AND UNICASTS hellos/updates per
+spoke, forms exactly one adjacency per spoke (with the hub), and NEVER runs a DR
+election. Spokes learn each other's networks via the hub flooding LSAs — never via
+each other's hellos.
+
+Verification: get router info ospf neighbor shows Full/ - per spoke. Full = top of
+the adjacency ladder (identical LSDBs). The dash = no election ran. DROther is a
+CAMPAIGN RESULT ("stood and lost") — it only exists on broadcast segments. The role
+column is a fingerprint of the network type.
+
+Redistribution injects non-OSPF routes (static/connected/BGP/RIP/ISIS) into OSPF; the
+router doing it becomes an ASBR. Default: DISABLED for every source — OSPF's
+automatic domain-wide trust is exactly its blast radius (Parramatta's emergency
+statics flooding fleet-wide is the nightmare scenario). redistribute static is
+all-or-nothing, so filter it: access list (simple prefix) → prefix list (adds ge/le,
+applies only to distribute-list-in) → route map (modifies attributes, can embed the
+others). Choose the LEAST powerful tool that meets the requirement — complexity is a
+tax paid at 2 AM.
+
+The hub now holds three roles at once: ABR (Areas 0+1), backbone router (interface in
+Area 0), ASBR (redistributes static). Not Internal (needs ALL interfaces in one
+area). Run all four definitions as independent true/false checks — under-selecting
+and over-selecting are the same error.
+
+================================================================
+CHEAT SHEET
+================================================================
+COMMANDS
+  get router info ospf neighbor          neighbor states + roles (DR/BDR/DROther/-)
+  get router info ospf interface         per-interface: type, adjacency count, DR/BDR IDs
+  get router info ospf status            router ID, areas attached, full-adjacency count
+  get router info ospf database brief    entire LSDB ordered by LSA type (S16 deep dive)
+  get router info ospf database router lsa   Type 1 LSA detail (S16)
+  get router info bfd neighbor           BFD status when enabled on OSPF routers
+  get router info routing-table ospf     what OSPF actually installed
+
+CONFIG
+  config router ospf
+      config ospf-interface
+          edit "Hub"
+              set interface "To-Spokes"
+              set network-type point-to-multipoint      <- dial-up hub rule
+          next
+      end
+      config redistribute static
+          set status enable                              <- default: disable
+      end
+  end
+
+  config router access-list
+      edit "MGMT-ONLY"
+          config rule
+              edit 1
+                  set prefix 10.99.50.0 255.255.255.0
+                  set exact-match enable
+              next
+          end
+      next
+  end
+
+DEFAULTS & KEY FACTS
+  Tunnel-interface network type default:   point-to-point
+  Dial-up hub (net-device disable):        point-to-multipoint REQUIRED on hub
+  Redistribution default:                  disabled (bgp/connected/isis/rip/static)
+  P2MP DR election:                        never held — role shows "-"
+  Adjacency ladder:                        Init > 2-Way > ExStart > Exchange > Loading > FULL
+  Full state:                              both routers hold identical LSDBs
+  224.0.0.5 AllSPFRouters:                 hellos; DR/BDR send updates+acks here
+  224.0.0.6 AllDRouters:                   other routers send updates+acks TO DR/BDR
+  DR election:                             highest priority, tie -> highest router ID; 0 = never DR
+  Prefix list ge/le:                       applies only to distribute-list-in
+  Route map:                               can embed access/prefix lists; modifies attributes
+
+DESIGN RULES
+  - Network type = a set of assumptions about the medium. Verify the medium can
+    honour them.
+  - Empty neighbor table = delivery failure. Flapping/stuck = parameter disagreement.
+  - Least powerful filtering tool that meets the requirement.
+  - Redistribution: fix adjacency first, advertise second, filter BEFORE opening.
+  - Role questions: four independent checks (Internal / ABR / Backbone / ASBR).
+
+================================================================
+FLASHCARDS
+================================================================
+Q: Dial-up hub, multiple spokes, net-device disabled — required OSPF network type on
+   the hub interface?
+A: Point-to-multipoint.
+
+Q: Default OSPF network type on FortiGate tunnel interfaces?
+A: Point-to-point.
+
+Q: Why does broadcast mode produce an EMPTY neighbor table on a dial-up hub?
+A: Its multicast hello relies on a shared medium for delivery; none exists, and
+   broadcast mode doesn't replicate per tunnel — hellos are never delivered.
+
+Q: How does P2MP deliver hellos and updates?
+A: Replicates and unicasts a copy down each spoke's tunnel.
+
+Q: Does P2MP elect a DR/BDR?
+A: No — never. Each spoke has one adjacency (with the hub); nothing for a DR to
+   optimise.
+
+Q: What does Full/ - in neighbor output tell you?
+A: Adjacency complete (identical LSDBs) and no election ran → network type is P2P or
+   P2MP.
+
+Q: What does DROther actually mean?
+A: The router stood in a DR election and lost — implies a broadcast segment.
+
+Q: Name the adjacency states in order.
+A: Init, 2-Way, ExStart, Exchange, Loading, Full.
+
+Q: What role does a router take on when it redistributes non-OSPF routes?
+A: ASBR.
+
+Q: Default redistribution status for static/connected/BGP/RIP/ISIS in FortiGate OSPF?
+A: Disabled for all of them.
+
+Q: Why does redistribution ship disabled?
+A: OSPF propagates injected routes automatically, trusted, domain-wide — an open
+   valve turns one careless local static into everyone's route.
+
+Q: Access list vs prefix list vs route map — one-line each.
+A: Access list = simple prefix permit/deny. Prefix list = adds ge/le mask-length
+   operators (distribute-list-in only). Route map = advanced, embeds the others,
+   can modify route attributes.
+
+Q: Requirement: permit exactly one known prefix out via redistribution. Tool?
+A: Access list (with exact-match) — least powerful tool that meets the requirement.
+
+Q: A router has interfaces in Area 0 and Area 2 and redistributes BGP. Roles?
+A: ABR + backbone router + ASBR. Not Internal (that needs all interfaces in one area).
+
+Q: 224.0.0.5 vs 224.0.0.6?
+A: .5 AllSPFRouters — hellos, and DR/BDR send updates there. .6 AllDRouters — other
+   routers send updates TO the DR/BDR there.
+
+Q: Command showing the whole LSDB ordered by LSA type?
+A: get router info ospf database brief.
+
+================================================================
+PODCAST PROMPT — "The Packet Path", Episode 15
+================================================================
+Generate a 10–14 minute podcast episode of "The Packet Path", a narrative networking
+show that teaches Fortinet NSE7 Enterprise Firewall concepts through the ongoing
+story of LoFinance, a financial company whose logo is stacks of money frozen in an
+ice cube. Recurring cast: Señor (eccentric, brilliant senior engineer in a sombrero,
+teaches by waiting), Junior (overconfident junior engineer), Riley (help desk,
+headset, dry wit), Penny (operations lead, speaks business), and the Intermediate
+Engineer (the listener's proxy, increasingly trusted).
+
+EPISODE 15: "Speaking OSPF on FortiGate."
+
+STORY BEATS TO DRAMATISE:
+1. Junior arrives at 6:30 AM to surprise everyone: he cabled the new Chatswood
+   FortiGate, brought its dial-up IPsec tunnel up to the hub's shared To-Spokes
+   interface, enabled OSPF, and — following a blog post claiming "the internet is
+   basically a big Ethernet" — set network-type broadcast. Tunnel up. Pings fine.
+   OSPF neighbor table: empty. Twenty minutes of nothing.
+2. Señor tapes a sticky note to the monitor: "EXHIBIT A. DO NOT FIX." He preserves
+   the broken config as a teaching object.
+3. The diagnosis, taught step by step: broadcast mode assumes a shared medium where
+   one multicast hello reaches everyone for free. Under To-Spokes there is no shared
+   wire — three separate encrypted tunnels. Broadcast mode doesn't replicate per
+   tunnel, so the hello dies at the interface. Empty table means hellos were never
+   DELIVERED — different evidence from a flapping table. Señor writes one word above
+   the interface on the whiteboard: "Deaf."
+4. Point-to-point is eliminated because it assumes exactly one far-side neighbor;
+   the hub has three spokes. Point-to-multipoint wins: it treats the interface as a
+   bundle of individual conversations, replicating and unicasting per spoke, one
+   adjacency per spoke, and — crucially — NO DR election, ever.
+5. The Intermediate Engineer's near-miss: proposing that P2MP would elect the hub as
+   DR. Señor turns the engineer's own earlier explanation against it: a DR exists to
+   optimise a segment where everyone hears everyone; on a star, spokes can't even
+   hear each other's votes. There is no election to win.
+6. Verification: get router info ospf neighbor shows "Full/ -". The engineer first
+   guesses the role should read DROther — and learns that DROther is a CAMPAIGN
+   RESULT, "stood in an election and lost." The dash is the only honest output. The
+   role column is a fingerprint of the network type.
+7. Second act: routes to a legacy management subnet exist only as a static on the
+   hub. Redistribution is introduced — injecting foreign routes makes the hub an
+   ASBR. It ships DISABLED for every source, and the episode should retell WHY using
+   the Parramatta precedent: emergency statics and an unencrypted default route
+   would have been flooded fleet-wide automatically. OSPF's superpower is its blast
+   radius.
+8. Filtering ladder: access lists, prefix lists (ge/le, distribute-list-in only),
+   route maps (modify attributes). Penny's one-sentence compliance requirement gets
+   a one-line access list. Teach "the least powerful tool that meets the
+   requirement" and "complexity is a tax paid at 2 AM."
+9. Closing beat: the hub now wears three hats at once — ABR, backbone router, ASBR.
+   The engineer's exam stumble (selecting all four roles including Internal) becomes
+   the lesson: run each definition as its own true/false test; never count, always
+   check.
+
+MEMORABLE PHRASES TO USE: "a network type is a set of assumptions about the medium",
+"the interface is deaf", "DROther is a campaign result, not a description", "the
+role column is a fingerprint", "complexity is a tax paid at 2 AM", "the hub wears
+three hats — count all of them."
+
+END WITH THIS TEASER: Thursday morning. Señor is waiting with a hand-drawn map of
+the entire LoFinance network — every router, every link, every cost. "Every router
+in this building carries one of these in its head. Identical copies. They rebuild it
+from gossip and mathematics, and they never disagree. Tomorrow, you prove it. We
+open the database and read the map the machines drew." Next episode: The Map Room —
+LSDB, LSAs, cost, Dijkstra, and the OSPF tree.
+
+TONE: warm, cinematic, technically precise. Explain reasoning, not just facts. Let
+Junior's mistake be sympathetic, not mocked — the blog post's logic sounded
+plausible, and that's exactly why it's dangerous.

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 03 — VLANs and VDOMs</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 03</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 03 · NSE7 EF 7.6</div>
+    <h1>Slicing the Wire, <em>Partitioning the Firewall</em></h1>
+    <p>VLANs carve one link into many broadcast domains; VDOMs carve one FortiGate into many virtual firewalls — and together they are how a single box serves many tenants.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Segmentation is a language spoken at <em>every layer of the stack</em>.</div>
+  <p class="motivation-sub">VLANs speak it at layer 2, VDOMs speak it inside FortiGate itself, and switches — hardware, software, and virtual — translate between them.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-vlan-basics">VLAN Basics</a>
+  <a class="nav-tab" href="#section-frames">Frames & VXLAN</a>
+  <a class="nav-tab" href="#section-switches">Switch Options</a>
+  <a class="nav-tab" href="#section-vdoms">VDOMs Overview</a>
+  <a class="nav-tab" href="#section-vdom-types">VDOM Types</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ═════════ SECTION 1 — VLAN Basics ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · VLAN BASICS</span>
+      </div>
+      <p class="socratic-insight">Two hosts on the same physical wire but in different VLANs cannot talk to each other without a router. Two hosts on different physical wires but the same VLAN <em>can</em>. The wire is not the boundary — the tag is.</p>
+      <ul class="socratic-questions">
+        <li>Why does FortiGate rewrite the VLAN tag when it routes a frame from VLAN 5 to VLAN 15, instead of just forwarding it?</li>
+        <li>What is a dot1q trunk, and why does it matter when a switch connects to a FortiGate?</li>
+      </ul>
+      <div class="answer-area" data-section="vlan-basics">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">VLANs are separate broadcast domains. A frame arriving at FortiGate with a VLAN 5 tag belongs to that broadcast domain; it cannot appear in VLAN 15's domain without the tag being rewritten. FortiGate, as a layer 3 device, strips the VLAN 5 tag, performs its routing decision, and adds the VLAN 15 tag on egress so the destination switch delivers the frame into the correct broadcast domain.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">A dot1q trunk is a single link carrying multiple VLANs, each frame tagged with an 802.1Q header identifying its VLAN. Trunks matter because a FortiGate typically has fewer physical ports than an enterprise has VLANs — the trunk lets one physical port terminate many VLAN sub-interfaces, one per VLAN ID.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-vlan-basics">
+      <div class="section-label">SECTION 01</div>
+      <h2>VLANs Are <em>Tagged Broadcast Domains</em></h2>
+
+      <p>A <strong>VLAN</strong> is a logical subdivision of a network that segregates devices into separate broadcast domains. Devices in the same broadcast domain can communicate directly; devices in different VLANs require inter-VLAN routing or policies to talk. When more than one VLAN shares a single interface, that link is called a <em>dot1q trunk</em>.</p>
+
+      <p>The canonical inter-VLAN flow: a host on VLAN 5 sends a frame toward a host on VLAN 15. Switch A receives the frame on its untagged VLAN 5 access port and adds the VLAN 5 tag before sending it up the trunk to FortiGate. FortiGate receives the tagged frame, routes it from VLAN 5 to VLAN 15 — <em>rewriting the VLAN ID</em> in the process — and sends it back down the trunk. Switch A receives the tagged VLAN 15 frame, removes the tag, and delivers it out the untagged VLAN 15 access port to the destination host.</p>
+
+      <p>The tag rewrite is the crucial mental model: layer 2 devices (switches) <em>add or remove</em> VLAN tags but do not modify them. Layer 3 devices (routers, FortiGate) can <em>modify</em> the tag as part of a routing decision. FortiGate itself does not add tags on ingress — that is the previous device's job — but it does add tags on egress after routing. In the FortiGate GUI, VLAN interfaces support IEEE <em>802.1Q</em> (the standard VLAN tagging protocol) or IEEE <em>802.1ad</em> (a provider-bridging variant).</p>
+
+      <div class="callout"><strong>Tip:</strong> On the FortiGate GUI, add a VLAN ID column to <em>Network &gt; Interfaces</em> to see every configured VLAN at a glance. It saves you from clicking through each sub-interface.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Switches translate tag-vs-no-tag; routers translate tag-vs-different-tag. That single line captures 80% of inter-VLAN routing questions.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-vlan-basics" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-vlan-basics','VLAN Basics')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-vlan-basics" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-vlan-basics')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ SECTION 2 — Frames & VXLAN ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · FRAMES & VXLAN</span>
+      </div>
+      <p class="socratic-insight">802.1Q gets you 4,094 VLANs. That was plenty in 1998 and nowhere near enough for a modern hyperscale data centre. The industry's answer is either to stack tags (802.1ad, QinQ) or to encapsulate the whole frame in UDP (VXLAN).</p>
+      <ul class="socratic-questions">
+        <li>Why do 802.1ad and QinQ each support 16 million VLANs when they still use 12-bit tags?</li>
+        <li>What problem does VXLAN solve that 802.1Q cannot, and why does it use UDP port 4789?</li>
+      </ul>
+      <div class="answer-area" data-section="frames">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Both stack two 12-bit VLAN tags. 802.1ad uses an outer <em>S-tag</em> (EtherType 0x88A8) for the provider VLAN and an inner <em>C-tag</em> (0x8100) for the customer VLAN — 4,094 × 4,094 combinations gives roughly 16 million. QinQ works similarly with two 0x8100 tags stacked. The scalability comes from combinations, not from wider tags.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">VXLAN scales past the 4,094-VLAN ceiling to 16 million virtual networks using a 24-bit VXLAN Network Identifier (VNI), which matters most in data centre and cloud environments where thousands of tenants need isolation. It encapsulates the original Ethernet frame inside UDP so it can tunnel over any IP network; UDP port 4789 is the IANA-assigned default for VXLAN encapsulation.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-frames">
+      <div class="section-label">SECTION 02</div>
+      <h2>Ethernet Frames, Stacked Tags, <em>and VXLAN</em></h2>
+
+      <p>The layer 2 domain has several Ethernet frame types identified by EtherType. A standard IPv4 frame uses <em>0x0800</em> and has no VLAN tag. Tagged variants add fields between the source MAC and the EtherType:</p>
+
+      <ul>
+        <li><strong>802.1Q:</strong> Single VLAN tag, EtherType <em>0x8100</em>, 4 bytes. Supports up to <strong>4,094 VLANs</strong>.</li>
+        <li><strong>802.1ad (provider bridging / double tagging):</strong> Outer S-tag <em>0x88A8</em> (provider VLAN) plus inner C-tag <em>0x8100</em> (customer VLAN). Combines 4,094 × 4,094 for roughly <strong>16 million VLANs</strong>, commonly used by service providers to segregate customer traffic.</li>
+        <li><strong>802.1Q-in-802.1Q (QinQ):</strong> Stacks two 0x8100 tags — an outer and an inner. Also yields <strong>16 million VLANs</strong>. Common in service-provider and large-enterprise networks that need extra scalability and segregation.</li>
+      </ul>
+
+      <p>For data centres and cloud environments, tag stacking is not enough. <em>VXLAN</em> (Virtual Extensible LAN) is a network virtualization protocol that encapsulates the original Ethernet frame inside a UDP packet, tunneling it over an IP network. VXLAN uses UDP port <strong>4789</strong> by default. The encapsulated frame carries outer headers (Ethernet, IP, UDP, VXLAN) plus the original inner Ethernet frame and payload — a total of about 1,550 bytes for a 1,500-byte original.</p>
+
+      <p>VXLAN's 24-bit <strong>VNI</strong> (VXLAN Network Identifier) supports up to <strong>16 million virtual networks</strong>, dwarfing 802.1Q's 4,094. It is the practical answer to multi-tenant scale in data centres and cloud environments where VLAN limits would otherwise force painful redesigns.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Standard</th><th>EtherType(s)</th><th>Max VLANs</th><th>Typical Use</th></tr></thead>
+        <tbody>
+          <tr><td>802.1Q</td><td>0x8100</td><td>4,094</td><td>Enterprise LANs</td></tr>
+          <tr><td>802.1ad</td><td>0x88A8 + 0x8100</td><td>~16M</td><td>Service provider bridging</td></tr>
+          <tr><td>QinQ</td><td>0x8100 + 0x8100</td><td>~16M</td><td>Large enterprise / SP overlay</td></tr>
+          <tr><td>VXLAN</td><td>UDP 4789 (encapsulated)</td><td>~16M (24-bit VNI)</td><td>Data centres, cloud</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Stacking (802.1ad, QinQ) multiplies VLANs; VXLAN wraps them in UDP. Both routes to 16 million networks, but only VXLAN tunnels over any IP network.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-frames" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-frames','Frames & VXLAN')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-frames" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-frames')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ SECTION 3 — Switch Options ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SWITCH OPTIONS</span>
+      </div>
+      <p class="socratic-insight">FortiGate can carry VLANs on aggregate interfaces, hardware switches, software switches, virtual VLAN switches, FortiLink to FortiSwitch, and wireless SSID interfaces. Each option is a trade-off between throughput, wireless support, STP, and CPU load.</p>
+      <ul class="socratic-questions">
+        <li>What is the essential difference between an LACP aggregate interface and a FortiLink to FortiSwitch?</li>
+        <li>When would you pick a hardware switch over a software switch, and vice versa?</li>
+      </ul>
+      <div class="answer-area" data-section="switches">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">An LACP aggregate (802.3ad) bundles multiple physical ports on FortiGate into one logical interface for bandwidth and redundancy — every member must connect to the same switch. FortiLink extends FortiGate management down to a FortiSwitch, so FortiGate becomes the switch's controller and can manage VLANs, MCLAG, and switch ports from the FortiGate GUI itself.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Pick a hardware switch when you need throughput — packets are offloaded to hardware, STP is supported, and there is no CPU cost. Pick a software switch when you need to include wireless SSID interfaces in the same broadcast domain, since only software switches support SSIDs; the cost is that the CPU handles the packets.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-switches">
+      <div class="section-label">SECTION 03</div>
+      <h2>Where VLANs Can Live <em>on FortiGate</em></h2>
+
+      <p>VLANs are not restricted to physical interfaces. FortiGate supports VLAN sub-interfaces on many interface types, and the same VLAN ID on two different interfaces yields two completely different broadcast domains (assuming the interfaces are separate physical/logical entities).</p>
+
+      <ul>
+        <li><strong>Aggregate interfaces (LACP, 802.3ad):</strong> Bundle multiple physical ports for bandwidth and redundancy. All member ports must connect to the same switch (or MCLAG pair). Use two, four, or eight members.</li>
+        <li><strong>FortiLink interfaces:</strong> A special aggregate that turns FortiGate into the controller for FortiSwitch devices, letting you manage VLANs directly from the FortiGate GUI. Best path: <em>WiFi &amp; Switch Controller &gt; FortiSwitch VLANs</em>.</li>
+        <li><strong>Hardware switches:</strong> Layer 2 switches implemented in silicon; share the same broadcast domain across multiple ports with intraswitch traffic allowed. Configured with <em>config system virtual-switch</em>. Supports STP and offloads packets to hardware, but not all models support them and they do not include wireless SSIDs.</li>
+        <li><strong>Software switches:</strong> Same broadcast domain shared across multiple interfaces plus wireless SSIDs, processed in software by the CPU. Configured with <em>config system switch-interface</em>. Intraswitch traffic can be blocked with <em>set intra-switch-policy explicit</em>. Do not support STP.</li>
+        <li><strong>Virtual VLAN switches:</strong> Similar to hardware switches but virtualized in software; useful when hardware switch support is absent.</li>
+        <li><strong>Wireless SSID interfaces:</strong> A VLAN ID can be tied to a wireless SSID so the same broadcast domain spans wired and wireless clients.</li>
+      </ul>
+
+      <p><strong>MCLAG</strong> (Multichassis Link Aggregation) further enhances redundancy: two FortiSwitch devices act as one unit, so a FortiGate aggregate can survive the loss of an entire switch. Both scenarios typically use FortiLink with 802.3ad to connect the firewall and switches, and VLANs live under the FortiLink interface once created via <em>WiFi &amp; Switch Controller &gt; FortiSwitch VLANs</em>.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI — hardware switch</div>
+        <pre><code>config system virtual-switch
+    edit "Hardware Switch"
+        set physical-switch "sw0"
+        config port
+            edit port1
+            next
+            edit port2
+            next
+            edit port3
+            next
+        end
+    next
+end
+config system interface
+    edit "Hardware Switch"
+        set vdom "root"
+        set ip 10.10.10.254 255.255.255.0
+        set allowaccess ping https
+    next
+end</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI — software switch (includes an SSID)</div>
+        <pre><code>config system switch-interface
+    edit "Software Switch"
+        set vdom "root"
+        set member "port1" "SSID" "port3"
+        set intra-switch-policy implicit
+    next
+end
+config system interface
+    edit "Software Switch"
+        set vdom "root"
+        set ip 10.10.10.254 255.255.255.0
+        set allowaccess ping https
+    next
+end</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Feature</th><th>Hardware switch</th><th>Software switch</th></tr></thead>
+        <tbody>
+          <tr><td>Intraswitch traffic</td><td>Yes</td><td>Yes (can be blocked)</td></tr>
+          <tr><td>Wireless SSIDs</td><td>No</td><td>Yes</td></tr>
+          <tr><td>STP</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Supported models</td><td>Specific models</td><td>All models</td></tr>
+          <tr><td>Processing</td><td>Offloaded to hardware</td><td>Processed in software by CPU</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>Design note:</strong> These switch options extend VLANs when adding real FortiSwitch or FortiAP hardware is not feasible. Layer 2 broadcast handling is what they are best at — they are not a substitute for proper layer 3 devices when routing is required.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Hardware for speed and STP; software for wireless SSIDs. FortiLink when the switch itself belongs to Fortinet's fabric.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-switches" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-switches','Switch Options')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-switches" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-switches')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ SECTION 4 — VDOMs Overview ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · VDOMS OVERVIEW</span>
+      </div>
+      <p class="socratic-insight">A single FortiGate can be sliced into multiple virtual firewalls called VDOMs, each with its own security configuration, its own network segmentation, its own admin scope. The pattern turns one appliance into a shared platform — carefully.</p>
+      <ul class="socratic-questions">
+        <li>Why does enabling VDOMs create <em>both</em> a Global VDOM and a root VDOM, and why can neither be deleted?</li>
+        <li>How do global resources differ from VDOM resources, and why does the Override Maximum have to be at least Current Usage?</li>
+      </ul>
+      <div class="answer-area" data-section="vdoms">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The Global VDOM holds device-wide settings — interfaces, firmware, DNS, some logging, sandboxing — that must exist regardless of which tenant is deployed. The root VDOM holds the default traffic-forwarding and management state that the FortiGate needs to remain operational and manageable. Neither can be deleted because the FortiGate would have nowhere to store its base configuration or its always-on management path.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Global resources apply to the entire FortiGate device (all VDOMs together); VDOM resources are allocated per VDOM. Setting an Override Maximum below Current Usage would immediately violate the running configuration, so FortiGate enforces Override Maximum ≥ Current Usage. Global caps are edited under <em>System &gt; Global Resources</em>; VDOM caps under <em>System &gt; VDOM &gt; Edit VDOM</em>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-vdoms">
+      <div class="section-label">SECTION 04</div>
+      <h2>VDOMs Split One FortiGate <em>into Many</em></h2>
+
+      <p>A <strong>VDOM</strong> (Virtual Domain) partitions a single FortiGate into multiple virtualized security instances, each with its own security configuration and network segmentation. Enable the feature via GUI or the CLI:</p>
+
+      <div class="code-block">
+        <div class="code-label">Enable multi-VDOM</div>
+        <pre><code>config system global
+    set vdom-mode multi-vdom
+end
+get sys status | grep "Max number of virtual domains"</code></pre>
+      </div>
+
+      <p>Enabling multi-VDOM automatically creates the <em>Global VDOM</em> and the <em>root VDOM</em>. Neither of these VDOMs can be deleted. Most FortiGate models support up to <strong>10 VDOMs</strong>; higher counts require additional licensing. Use <em>get system status</em> and look for <em>Max number of virtual domains</em> to confirm the limit on your hardware.</p>
+
+      <p>You switch between VDOMs using the icon at the top right of the GUI. Only <em>Super Admin</em> users have access to the Global VDOM. Deleting a VDOM is not a single click — you must first delete its policies, remove its firewall objects that reference its interfaces, and reassign any interfaces linked to that VDOM back to the root VDOM.</p>
+
+      <p><strong>Global VDOM</strong> settings affect the entire FortiGate: interfaces, firmware, DNS, some logging, sandboxing options. Because of its scope, only top-level administrators should modify it. Three modules are <em>unavailable</em> in the Global VDOM by design: <em>Policy &amp; Objects</em>, <em>VPN</em>, and <em>User &amp; Authentication</em> — those are inherently per-VDOM.</p>
+
+      <p>Resources come in two flavours. <strong>Global resources</strong> — such as total active sessions across the whole device — are managed at <em>VDOM Global &gt; System &gt; Global Resources</em>. <strong>VDOM resources</strong> — such as firewall policies and firewall addresses allocated to a specific VDOM — are managed at <em>VDOM Global &gt; System &gt; VDOM &gt; Edit VDOM</em>. The <em>Override Maximum</em> value must always be higher than or equal to <em>Current Usage</em>.</p>
+
+      <p><strong>Global objects</strong> (prefix <em>g-</em>) let you author UTM profiles once and apply them consistently across every VDOM: <em>g-default</em> antivirus, <em>g-default</em> web filter, <em>g-default</em> application control, and so on. Modifying a global profile updates it across every VDOM at once. The reserved <em>g-</em> prefix should not be reused for custom objects. When importing configurations from FortiGate into FortiManager, prefer FortiManager's global objects over FortiGate's for better synchronization.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Global VDOM = the landlord. Root and other VDOMs = the tenants. Global objects = the house rules that apply to every apartment.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-vdoms" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-vdoms','VDOMs Overview')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-vdoms" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-vdoms')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ SECTION 5 — VDOM Types ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · VDOM TYPES</span>
+      </div>
+      <p class="socratic-insight">Not every VDOM is meant to pass traffic. Admin VDOMs handle management only. Traffic VDOMs run in NAT or transparent mode. LAN extension VDOMs stretch a LAN via IPsec and VXLAN. Choosing the wrong type shapes the wrong architecture.</p>
+      <ul class="socratic-questions">
+        <li>What is the difference between an Admin VDOM and a Traffic VDOM in transparent mode?</li>
+        <li>Why does an inter-VDOM link need static or dynamic routing plus firewall policies to actually pass traffic?</li>
+      </ul>
+      <div class="answer-area" data-section="vdom-types">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">An Admin VDOM handles no user traffic — it exists only for FortiGate administration, dashboarding, log/report review, and downloading FortiGuard updates. It contains only the Dashboard, Network, System, Security Fabric, and Log &amp; Report modules. A Traffic VDOM in transparent mode passes user traffic invisibly at layer 2, no NAT or routing — it uses UTM profiles to inspect traffic while sharing a broadcast domain, and requires a management IP for admin access.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">An inter-VDOM link is a virtual point-to-point interface — two virtual interfaces named <em>VDOM_Link0</em> and <em>VDOM_Link1</em>, one in each VDOM. Just like any router-to-router link, packets need routes to know where to go, and firewall policies to be permitted between VDOMs. Without both, the link is present but useless.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-vdom-types">
+      <div class="section-label">SECTION 05</div>
+      <h2>Admin, Traffic (NAT/Transparent), <em>and LAN Extension</em></h2>
+
+      <p>Four VDOM types cover FortiGate's virtualization needs:</p>
+
+      <ul>
+        <li><strong>Admin VDOM:</strong> Dedicated to management of FortiGate; handles no user traffic. Contains only Dashboard, Network, System, Security Fabric, and Log &amp; Report modules. Allows FortiGate to reach the internet to download FortiGuard updates, which affect all VDOMs.</li>
+        <li><strong>Traffic VDOM (NAT mode):</strong> The most common type. Passes user traffic like a regular firewall, performs NAT, and can serve as the <em>Management VDOM</em> — the VDOM used to download FortiGuard updates and validate the firewall license. By default the root VDOM is the management VDOM; you can change it via <em>Global VDOM &gt; System &gt; VDOM &gt; Switch Management</em>.</li>
+        <li><strong>Traffic VDOM (Transparent mode):</strong> Operates invisibly at the IP layer, no interface IPs. Enables UTM profile inspection without changing layer 3 settings like gateways. All interfaces share the same broadcast domain; use the <em>forward-domain</em> command to subdivide a VDOM into multiple broadcast domains using VLAN IDs. A management IP address is mandatory — miss it and you get a <em>failed node check object for 'manageip'</em> error.</li>
+        <li><strong>LAN Extension VDOM:</strong> Extends a LAN using VPN IPsec and VXLAN, connecting a FortiGate <em>connector</em> (FortiGate or FortiExtender) to a FortiGate <em>access controller</em>. Contains only Network and VPN modules.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">VDOM types via CLI</div>
+        <pre><code>config vdom
+    edit "name of the vdom"
+    config system settings
+        set vdom-type admin           # Admin VDOM
+        # -- or --
+        set vdom-type traffic
+        set opmode nat                # Traffic NAT
+        # -- or --
+        set vdom-type traffic
+        set opmode transparent        # Traffic transparent
+        set manageip 172.16.16.1/24
+        # -- or --
+        set vdom-type lan-extension   # LAN extension
+    end</code></pre>
+      </div>
+
+      <p>When VDOMs need to talk to each other — for example, when a tenant VDOM lacks internet and needs to reach the root VDOM to get out — you use an <strong>inter-VDOM link</strong>. Create the link at <em>VDOM Global &gt; Network &gt; Interfaces &gt; Create New &gt; VDOM Link</em>. FortiGate automatically appends <em>0</em> and <em>1</em> to interface names: an inter-VDOM link named <em>VDOM_Link</em> yields <em>VDOM_Link0</em> in one VDOM and <em>VDOM_Link1</em> in the other. To make the link useful, configure static or dynamic routing plus firewall policies for both directions.</p>
+
+      <table class="data-table">
+        <thead><tr><th>VDOM Type</th><th>Traffic</th><th>Default Max</th><th>Typical Use</th></tr></thead>
+        <tbody>
+          <tr><td>Admin</td><td>No</td><td>1</td><td>Management network in ISFW, DCFW, NGFW, DEFW</td></tr>
+          <tr><td>Traffic (NAT)</td><td>Yes</td><td>10</td><td>Standard firewall — ISFW, DCFW, NGFW, DEFW</td></tr>
+          <tr><td>Traffic (transparent)</td><td>Yes</td><td>10</td><td>Anywhere in layer 2 needing UTM analysis without NAT</td></tr>
+          <tr><td>LAN Extension</td><td>Yes</td><td>10 (more via licensing)</td><td>Extending a LAN back to central FortiGate — ISFW, NGFW, DEFW</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Watch:</strong> If the management VDOM has no internet or is not tied to a FortiManager acting as an FDS (FortiGuard Distribution Server) in a closed network, the firewall and all VDOMs may experience FortiGuard database issues — potentially leading to malfunction.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Admin manages, Traffic NAT routes, Traffic Transparent inspects without touching IPs, LAN Extension stretches. Pick the type by what the VDOM is supposed to <em>do</em>, not by what it can technically hold.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-vdom-types" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-vdom-types','VDOM Types')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-vdom-types" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-vdom-types')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-02-central-management.html">
+    <span class="page-nav-label">← PREV</span>
+    <span class="page-nav-title">Chapter 02 · Central Management</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-04-high-availability.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Chapter 04 · High Availability</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Chapter 03 · VLANs and VDOMs
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-fullguide-ch03-vlans-vdoms';
+
+const SECTIONS = {
+  'section-vlan-basics': 'VLAN Basics',
+  'section-frames': 'Frames & VXLAN',
+  'section-switches': 'Switch Options',
+  'section-vdoms': 'VDOMs Overview',
+  'section-vdom-types': 'VDOM Types',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

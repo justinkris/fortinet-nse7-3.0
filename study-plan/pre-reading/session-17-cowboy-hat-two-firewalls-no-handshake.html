@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre-Read S17 — Cowboy Hat: Two Firewalls, No Handshake</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+}
+html{scroll-behavior:smooth;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{padding:44px 60px 32px;background:var(--ink-dark);}
+header.is-cowboy{background:linear-gradient(180deg,#3a1e05 0%,var(--ink-dark) 100%);}
+.breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:14px;}
+.breadcrumb a{color:#9bb8e6;text-decoration:none;}
+.breadcrumb-sep{color:rgba(155,184,230,0.4);margin:0 2px;}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+header.is-cowboy .header-eyebrow{background:rgba(243,214,138,0.12);border-color:rgba(243,214,138,0.35);color:#f3d68a;}
+header h1{font-family:'Playfair Display',serif;font-size:40px;font-weight:700;line-height:1.08;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p.tagline{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:8px;line-height:1.6;max-width:760px;}
+.session-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.session-meta .chip{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;padding:4px 12px;border-radius:14px;border:1px solid rgba(155,184,230,0.35);color:#dfe8f6;background:rgba(155,184,230,0.08);}
+.session-meta .chip-cast{border-color:rgba(243,214,138,0.4);color:#f3d68a;background:rgba(243,214,138,0.08);}
+.top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+.top-panels .qpanel{border-right:1px solid var(--border);}
+.qpanel,.notes-panel{background:var(--surface);}
+.qpanel-header,.notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+.qpanel-header:hover,.qpanel-header.open,.notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+.qpanel-title,.notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+.qpanel-count,.notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+.qpanel-hint,.notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+.qpanel-chevron,.notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+.qpanel-body,.notes-panel-body{display:none;padding:0 32px 22px;}
+.qpanel-body.open,.notes-panel-body.open{display:block;}
+.q-group{margin-bottom:16px;}
+.q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+.q-item:last-child{border-bottom:none;}
+.q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+.q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+.q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+.q-del:hover{color:var(--blue);}
+.no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+main{max-width:1080px;margin:0 auto;}
+.main-content{padding:36px 60px 40px;}
+.section-block{margin-bottom:44px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.section-block h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:14px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+.section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+.section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+.section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+.section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+.mental-note-block{border-radius:10px;padding:14px 18px;margin:14px 0 20px;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+.mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+.mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+.vocab-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
+.vocab-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+.vocab-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+.vocab-table td:first-child{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;letter-spacing:0.02em;}
+.orient-list{list-style:none;padding:0;margin:0;}
+.orient-list li{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text);padding:10px 0 10px 26px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+.orient-list li:last-child{border-bottom:none;}
+.orient-list li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:18px;top:9px;color:var(--blue);}
+.answer-area{margin-top:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:70px;outline:none;line-height:1.6;}
+.answer-textarea:focus{border-color:var(--blue);}
+.answer-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.btn-primary{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+.btn-primary:hover{opacity:0.85;}
+.lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:32px;}
+.lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:56px;outline:none;line-height:1.55;}
+.tool-textarea:focus{border-color:var(--blue);}
+.tool-row{margin-top:6px;}
+.story-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;border-left:3px solid var(--blue);margin:6px 0 12px;}
+.story-card.is-cowboy{border-left-color:var(--amber);background:linear-gradient(180deg,var(--amber-light) 0%,var(--surface) 90px);}
+.story-card .cast-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.story-card .cast-row .chip{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.06em;padding:3px 10px;border-radius:12px;border:1px solid var(--border);color:var(--text-muted);background:var(--surface-2);}
+.story-card .cast-row .chip-cast{border-color:var(--blue-border);color:var(--blue);background:var(--blue-light);}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+.callout strong{color:var(--text);font-weight:600;}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+.page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+.page-nav-btn:hover{background:var(--surface-2);}
+.page-nav-prev{border-right:1px solid var(--border);}
+.page-nav-next{text-align:right;}
+.page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+.page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+footer{padding:22px 60px;background:var(--ink-dark);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:rgba(251,247,236,0.5);text-align:center;text-transform:uppercase;}
+footer span{color:var(--ink-accent);margin:0 6px;}
+@media(max-width:720px){header{padding:28px 22px 22px;}header h1{font-size:30px;}.main-content{padding:22px 18px 32px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}.qpanel-header,.notes-panel-header{padding:13px 20px;}.qpanel-body,.notes-panel-body{padding:0 20px 22px;}}
+</style>
+</head>
+<body>
+
+<header class="is-cowboy">
+  <div class="breadcrumb"><a href="../../index.html">Home</a><span class="breadcrumb-sep">›</span><a href="../LoFinance-Master-Study-Plan.html">Master Study Plan</a><span class="breadcrumb-sep">›</span><span>Session 17 Pre-Read</span></div>
+  <div class="header-eyebrow">SEASON 2 · SESSION 17 · COWBOY HAT PRE-BRIEF</div>
+  <h1>Cowboy Hat: Two Firewalls, No Handshake <em>— pre-read</em></h1>
+  <p class="tagline">A five-minute orientation before you paste the session prompt. Read the story setup, hold the mental model, walk in with the vocabulary already in your head.</p>
+  <div class="session-meta">
+    <span class="chip">📖 07 IPsec + 05 Dynamic Routing · pp. 193–221, 125–131 (review)</span>
+    <span class="chip">Blueprint 5.1 / 4.1</span>
+    <span class="chip chip-cast">Riley</span><span class="chip chip-cast">Señor (hat on)</span><span class="chip chip-cast">You</span>
+  </div>
+</header>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<main><div class="main-content">
+
+  <div class="section-block" id="section-story">
+    <div class="section-label">SECTION 01 · STORY SETUP</div>
+    <h2>Who's in the <em>room</em></h2>
+    <p>Before you paste the prompt, know the scene. This is what's playing out at LoFinance when Session 17 opens — the business event, the characters on stage, and the tension you're about to walk into.</p>
+    <div class="story-card is-cowboy">
+      <p style="font-family:'Playfair Display',serif;font-size:18px;font-style:italic;color:var(--text);margin-bottom:4px;">The hat is on. Parramatta is unreachable, phase 1 claims it&#x27;s up, and the OSPF neighbor table is a desert.</p>
+      <div class="cast-row">
+        <span class="chip chip-cast">Riley</span><span class="chip chip-cast">Señor (hat on)</span><span class="chip chip-cast">You</span>
+      </div>
+    </div>
+    <div class='callout callout-amber'><strong>🤠 Cowboy Hat.</strong> Señor has already broken something inside the review scope. You drive the troubleshooting; Claude plays the network. Expect layered faults. Predict before you press enter.</div>
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-story" placeholder="What are you unsure about before starting?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addQuestion('section-story','Story')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-story" placeholder="Anything to remember about this scene..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addNote('section-story')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block" id="section-primer">
+    <div class="section-label">SECTION 02 · CONCEPT PRIMER</div>
+    <h2>What you should already <em>grasp</em></h2>
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">🧠</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">MENTAL MODEL — HOLD THIS BEFORE THE SESSION</div>
+        <div class="mental-note-block-text">VPN+routing troubleshooting is really &#x27;is the tunnel up + is the peer sending routes + are the routes making it into the RIB + does the return path exist&#x27;. When OSPF runs over IPsec you have to also ask whether the IPsec network type and interface IPs let adjacency form.</div>
+      </div>
+    </div>
+    <p>The session will teach these ideas from the study guide pages named above. If any of the bullets below feel foreign, expect to slow down at that point in the session — otherwise you can move at pace.</p>
+    <ul>
+        <li>VPN health: phase 1 up? phase 2 up? matching proposals (encryption, DH group, PFS, lifetime)? DPD behavior?</li>
+        <li>IPsec + OSPF gotchas: hub needs `point-to-multipoint` network type on dial-up spokes; IPsec interfaces without an IP may need one for OSPF hello source</li>
+        <li>Adjacency failures: subnet/mask mismatch, hello/dead mismatch, area mismatch, network-type mismatch, MTU mismatch, duplicate router-id</li>
+        <li>Route not showing: check redistribution enabled per protocol (default is disable), area type (stub/NSSA restrictions), route-filters (distribute-list, route-map)</li>
+        <li>Verification commands: `get vpn ipsec tunnel summary`, `diag vpn ike gateway list`, `get router info ospf neighbor`, `get router info routing-table all`, `diagnose debug flow`</li>
+    </ul>
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-primer" placeholder="A concept above you want to interrogate?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addQuestion('section-primer','Primer')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-primer" placeholder="Your own summary of the mental model..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addNote('section-primer')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block" id="section-vocab">
+    <div class="section-label">SECTION 03 · KEY VOCABULARY</div>
+    <h2>The <em>words</em> to walk in with</h2>
+    <p>The terms below will appear during the session without ceremony. Skim; you don't need to memorise the definitions, only recognise the shapes.</p>
+    <table class="vocab-table">
+      <thead><tr><th style="width:26%;">Term</th><th>One-line definition</th></tr></thead>
+      <tbody>
+        <tr><td>Phase 1/2 mismatch</td><td>Peers can&#x27;t agree on encryption/DH/lifetime — tunnel won&#x27;t come up</td></tr>
+        <tr><td>Adjacency</td><td>OSPF neighbor relationship progressed all the way to Full state</td></tr>
+        <tr><td>Hello/dead intervals</td><td>OSPF timers that must match between neighbors</td></tr>
+        <tr><td>Router ID</td><td>32-bit unique identifier per OSPF router; duplicates break adjacency</td></tr>
+        <tr><td>Recursive lookup</td><td>Route table lookup that follows the next-hop to find the actual outgoing interface</td></tr>
+      </tbody>
+    </table>
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-vocab" placeholder="A term that feels shaky?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addQuestion('section-vocab','Vocab')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-vocab" placeholder="Your own memory hook for a term..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addNote('section-vocab')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block" id="section-orient">
+    <div class="section-label">SECTION 04 · ORIENTATION QUESTIONS</div>
+    <h2>Try to <em>answer</em> before you press paste</h2>
+    <p>These aren't exam questions — they're priming prompts. If you can answer them from memory, you're ready. If you can't, that's exactly the gap the session will close.</p>
+    <ul class="orient-list">
+        <li>IPsec tunnel is up but no OSPF neighbor forms across it — three things you check first.</li>
+        <li>OSPF neighbor is Full but you don&#x27;t see the remote subnet in the routing table — where&#x27;s the issue likely?</li>
+        <li>Two branches see each other via ADVPN shortcut but the return path goes back through the hub. What&#x27;s wrong?</li>
+        <li>Phase 1 up, phase 2 down — is this more likely a proposal mismatch or a selector mismatch?</li>
+    </ul>
+    <div class="answer-area" data-section="section-orient">
+      <div class="tool-label" style="margin-bottom:6px;">Your rough answers (saved locally)</div>
+      <textarea class="answer-textarea" placeholder="Jot rough answers here — this is for your own before/after comparison." rows="4"></textarea>
+      <div class="answer-row"><button class="btn-primary" onclick="saveOrientAnswer(this)">✓ Save My Answers</button></div>
+    </div>
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-orient" placeholder="A question you couldn't answer above?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addQuestion('section-orient','Orientation')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-orient" placeholder="Your reflection before the session..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-primary" onclick="addNote('section-orient')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:32px;">
+    <strong>Ready?</strong> Head back to the <a href="../LoFinance-Master-Study-Plan.html#ep-17" style="color:var(--blue);text-decoration:none;font-weight:600;">Session 17 card on the master plan</a>, expand its prompt, and paste it into a fresh chat inside the LoFinance project.
+  </div>
+
+</div></main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="session-16-the-map-room.html">
+    <span class="page-nav-label">← PREV PRE-READ</span>
+    <span class="page-nav-title">The Map Room</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="session-18-neighbors-and-strangers.html">
+    <span class="page-nav-label">NEXT PRE-READ →</span>
+    <span class="page-nav-title">Neighbors and Strangers</span>
+  </a>
+</div>
+
+<footer>LoFinance<span>·</span>Pre-Reading<span>·</span>Session 17<span>·</span>Season 2</footer>
+
+<script>
+const PAGE_KEY = 'nse7-prereading-s17';
+const SECTIONS = {
+  'section-story': 'Story Setup',
+  'section-primer': 'Concept Primer',
+  'section-vocab': 'Key Vocabulary',
+  'section-orient': 'Orientation Questions',
+};
+function getQArr(){ return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs){ localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name){
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if(!text){ ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value=''; renderQPanel();
+  if(!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id){ saveQArr(getQArr().filter(q=>q.id!==id)); renderQPanel(); }
+function toggleQPanel(){
+  const body=document.getElementById('qpanel-body'); const header=document.getElementById('qpanel-header'); const chev=document.getElementById('qpanel-chevron');
+  if(!body) return; const open=body.classList.toggle('open');
+  header.classList.toggle('open',open); chev.textContent = open?'▴':'▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel(){
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if(count){ count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if(hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if(!body) return;
+  if(!qs.length){ body.innerHTML = '<p class="no-questions">No questions yet. Add one below any section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k=>[k,[]]));
+  qs.forEach(q=>{ if(groups[q.section]) groups[q.section].push(q); });
+  let html=''; let num=0;
+  Object.entries(groups).forEach(([key, items])=>{
+    if(!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q=>{ num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr(){ return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns){ localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key){
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if(!text){ ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value=''; renderNotesPanel();
+  if(!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id){ saveNotesArr(getNotesArr().filter(n=>n.id!==id)); renderNotesPanel(); }
+function toggleNotesPanel(){
+  const body=document.getElementById('notes-panel-body'); const header=document.getElementById('notes-panel-header'); const chev=document.getElementById('notes-panel-chevron');
+  if(!body) return; const open=body.classList.toggle('open');
+  header.classList.toggle('open',open); chev.textContent = open?'▴':'▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel(){
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if(count){ count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if(hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if(!body) return;
+  if(!ns.length){ body.innerHTML = '<p class="no-questions">No notes yet. Add one below any section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k=>[k,[]]));
+  ns.forEach(n=>{ if(groups[n.section]) groups[n.section].push(n); });
+  let html=''; let num=0;
+  Object.entries(groups).forEach(([key, items])=>{
+    if(!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n=>{ num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveOrientAnswer(btn){
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if(!ta.value.trim()){ ta.focus(); return; }
+  try{ localStorage.setItem(PAGE_KEY+'-orient-answers', ta.value); }catch(e){}
+  const orig = btn.textContent; btn.textContent = '✓ Saved'; setTimeout(()=>btn.textContent = orig, 1400);
+}
+document.addEventListener('DOMContentLoaded', function(){
+  renderQPanel(); renderNotesPanel();
+  if(localStorage.getItem(PAGE_KEY+'-qpanel-open')==='true') toggleQPanel();
+  if(localStorage.getItem(PAGE_KEY+'-notes-panel-open')==='true') toggleNotesPanel();
+  const saved = localStorage.getItem(PAGE_KEY+'-orient-answers');
+  if(saved){ const ta = document.querySelector('.answer-textarea'); if(ta) ta.value = saved; }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 9 — Troubleshooting &amp; Design-Reasoning Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-muted:#6b7794;
+--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;
+--coral:#c1502e;--coral-light:#fbe6dd;--coral-border:#e8b7a3;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;
+--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;}
+header{padding:36px 48px;background:var(--ink-dark);}
+header .kicker{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.16em;color:var(--ink-accent);text-transform:uppercase;}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;margin-top:6px;}
+main{max-width:820px;margin:0 auto;padding:36px 26px 80px;}
+h2{font-family:'Playfair Display',serif;font-size:23px;color:var(--blue);margin:36px 0 12px;border-bottom:2px solid var(--border);padding-bottom:6px;}
+p,li{font-size:16.5px;}
+ul,ol{margin:0 0 14px 26px;}
+li{margin-bottom:6px;}
+.callout{border-radius:8px;padding:16px 20px;margin:14px 0;border:1px solid var(--border);background:var(--surface);}
+.callout-amber{background:var(--amber-light);border-color:var(--amber-border);}
+.callout-green{background:var(--green-light);border-color:var(--green-border);}
+.callout-coral{background:var(--coral-light);border-color:var(--coral-border);}
+code{font-family:'Courier New',monospace;background:var(--surface-2);padding:2px 7px;border-radius:4px;color:var(--coral);font-size:15px;}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 26px;font-family:'Outfit',sans-serif;font-size:14.5px;}
+.tree .step{margin-bottom:10px;padding-left:18px;border-left:3px solid var(--blue-border);}
+.tree .step b{color:var(--blue);}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:15.5px;}
+th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;}
+th{background:var(--surface-2);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);}
+footer{padding:24px;text-align:center;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);background:var(--ink-dark);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 09</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div><div class="kicker">Session 9 · Senior-Engineer Thinking</div>
+<h1>Troubleshooting the Logic-vs-Geography Trap</h1></header>
+<main>
+
+<p>Session 9 wasn't a live fault — it was a review drill. But two of the seven questions
+(VDOM placement, VLAN-into-VDOM) were really <strong>design-review troubleshooting in
+disguise</strong>: someone proposes a plausible-sounding logical shortcut, and the job is to
+find the flaw before it gets built. This is a real, recurring class of problem — the same
+reasoning applies whenever anyone proposes reusing an existing logical construct (VDOM,
+VLAN, routing shortcut) across a physical boundary.</p>
+
+<h2>Symptoms (how this trap shows up in the wild)</h2>
+<ul>
+<li>A proposal that "saves a purchase" or "saves setup time" by reusing something that
+already exists, applied to a <em>new location</em>.</li>
+<li>The proposal sounds architecturally clean on a whiteboard — no obvious config error.</li>
+<li>Nobody has asked "where does the physical hardware in this plan actually sit?"</li>
+<li>Business pressure (cost, deadline) is pushing toward the "free" option.</li>
+</ul>
+
+<h2>Questions to Ask First</h2>
+<ol>
+<li>What physical chassis does this logical construct (VDOM, VLAN, switch object) actually
+live inside?</li>
+<li>Is the traffic that needs this construct generated <em>at that same physical location</em>,
+or somewhere else?</li>
+<li>If somewhere else — what physical/Layer-2 or routed path connects the traffic's origin
+to the chassis hosting the construct?</li>
+<li>Does that path already exist, or does the proposal silently assume one?</li>
+</ol>
+
+<h2>Verification Commands / Checks</h2>
+<table>
+<tr><th>Check</th><th>What it tells you</th></tr>
+<tr><td><code>get system interface physical</code> / rack diagram</td><td>Confirms which chassis actually hosts a given VDOM or VLAN interface</td></tr>
+<tr><td><code>diagnose netlink interface list</code></td><td><code>master=</code> field shows real interface enslavement — never assume from names alone</td></tr>
+<tr><td>WAN topology map / circuit inventory</td><td>Confirms whether a routed path even exists between two sites yet</td></tr>
+<tr><td><code>get router info routing-table static</code> (per VDOM)</td><td>Confirms whether the "missing" route in a proposal is really missing</td></tr>
+</table>
+
+<h2>Decision Tree</h2>
+<div class="tree">
+<div class="step"><b>1.</b> Restate the proposal in one sentence: what logical object, hosted where, is meant to serve traffic from where?</div>
+<div class="step"><b>2.</b> Is the hosting chassis in the SAME building/site as the traffic source? <br>→ If yes: proceed to normal VDOM/VLAN design review (resource limits, isolation, policy). <br>→ If no: continue to step 3.</div>
+<div class="step"><b>3.</b> Does a routed WAN path already exist between the two sites? <br>→ If no: the proposal is premature — a WAN/VPN design (Session 10 territory) must exist first. <br>→ If yes: continue to step 4.</div>
+<div class="step"><b>4.</b> Even with a path, will LOCAL traffic (same-site, different device) be forced to cross that path unnecessarily? <br>→ If yes: flag the throughput/latency/single-point-of-failure cost explicitly, even if the proposal is technically buildable.</div>
+<div class="step"><b>5.</b> Recommend the structurally correct fix: local firewall presence at the remote site, connected back via a proper site-to-site link — not a shared logical partition pretending to be local.</div>
+</div>
+
+<h2>Common Dead Ends</h2>
+<ul>
+<li><strong>Jumping straight to resource math</strong> (CPU/session limits) when the real
+issue is physical location — resource contention is a real VDOM concern, but it's the WRONG
+first question when a remote site is involved.</li>
+<li><strong>Assuming a WAN link automatically behaves like a local trunk</strong> — dot1q
+tags and switch-level constructs don't transparently traverse a generic WAN circuit.</li>
+<li><strong>Treating "it's all one company network" as "it's all one Layer 2 domain."</strong>
+Ownership and topology are not the same thing.</li>
+</ul>
+
+<h2>Likely Root Causes (when this trap gets built anyway)</h2>
+<ul>
+<li>Cost pressure — "reuse what we have" sounds cheaper on paper than it actually is once
+WAN throughput and latency are accounted for.</li>
+<li>Nobody explicitly asked "where does this chassis physically sit" before evaluating the
+config.</li>
+<li>Confusing "the company owns both sites" with "the sites share a Layer 2/chassis
+boundary" — they don't, unless something (a tunnel, a dedicated circuit) is deliberately
+built to bridge them.</li>
+</ul>
+
+<h2>Exam Traps</h2>
+<div class="callout callout-amber">
+NSE7 scenario questions frequently describe a "money-saving" or "simpler" proposal to reuse
+an existing VDOM, VLAN, or policy object across sites or zones. The correct answer almost
+always requires tracing the <strong>physical</strong> path the traffic would take — if the
+proposal would force traffic to cross a boundary (WAN, VDOM, chassis) it doesn't need to
+cross, that's the flaw, even if every individual config step described in the question is
+syntactically valid.
+</div>
+
+<div class="callout callout-green">
+<strong>The reusable habit:</strong> Before evaluating whether a logical shortcut will
+"work," ask where the physical hardware sits and what traffic would have to travel to reach
+it. This single question resolved both of Session 9's hardest drill questions (Q4 and Q7)
+and generalizes directly to Season 2's site design work.
+</div>
+
+</main>
+<footer>LoFinance NSE 7 EF 7.6 · Session 9 Troubleshooting Guide</footer>
+</body>
+</html>

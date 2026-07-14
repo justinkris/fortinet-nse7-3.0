@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 04 Troubleshooting — The Floor Wars</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:40px 48px;background:var(--ink-dark);}
+  .header-eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec;}
+  header h1 em{color:var(--ink-accent);font-style:italic;}
+  header p{color:rgba(251,247,236,0.6);font-style:italic;margin-top:8px;}
+  .main-content{max-width:900px;margin:0 auto;padding:32px 48px 60px;}
+  .section-block{margin-bottom:36px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:24px;padding-left:12px;border-left:3px solid var(--blue);margin-bottom:12px;}
+  .section-block h2 em{color:var(--blue);font-style:italic;}
+  .section-block p,.section-block li{font-size:17px;line-height:1.65;color:var(--text-soft);margin-bottom:8px;}
+  .section-block ul,ol{padding-left:22px;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 8px 8px 0;padding:12px 18px;margin:12px 0;font-size:16px;}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .code-block{background:var(--ink-dark);border-radius:8px;padding:14px 18px;margin:12px 0;}
+  .code-block code{font-family:'SF Mono',monospace;font-size:13px;color:#e8efff;line-height:1.6;white-space:pre;}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;}
+  .tree-step{padding:10px 0 10px 20px;border-left:2px solid var(--blue-border);margin-left:6px;}
+  .tree-q{font-weight:600;color:var(--text);}
+  .tree-a{color:var(--text-muted);font-style:italic;}
+  footer{padding:20px 48px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);background:var(--ink-dark);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 04</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div>
+  <div class="header-eyebrow">SESSION 04 · TROUBLESHOOTING · VLAN SEGMENTATION</div>
+  <h1>The Floor Wars — <em>Think Like Cipher</em></h1>
+  <p>Not a command list. A decision process for "why isn't this segmented the way I think it is?"</p>
+</header>
+<main class="main-content">
+
+  <div class="section-block">
+    <h2>Symptom <em>Patterns</em></h2>
+    <ul>
+      <li>A host on one VLAN unexpectedly appears in a capture from another VLAN.</li>
+      <li>A deny policy between two VLANs "isn't working" — traffic still gets through.</li>
+      <li>A new VLAN interface is configured but hosts on it can't reach anything, including their own gateway.</li>
+    </ul>
+    <div class="callout callout-amber"><strong>Common dead end:</strong> jumping straight to firewall policy review when the traffic never reached the firewall as a properly tagged frame at all. This wastes time debugging something that isn't broken.</div>
+  </div>
+
+  <div class="section-block">
+    <h2>Questions to Ask <em>First</em></h2>
+    <ol>
+      <li>Did this traffic actually cross a trunk link, or is it still flat Layer 2 (no VLAN at all)?</li>
+      <li>Which device was supposed to apply the VLAN tag — has the switch's access port actually been assigned to the right VLAN?</li>
+      <li>Is the VLAN interface's gateway hosted on FortiGate, or still on a switch?</li>
+      <li>Does the traffic even reach FortiGate as a session at all?</li>
+    </ol>
+  </div>
+
+  <div class="section-block">
+    <h2>Verification <em>Commands &amp; Expected Output</em></h2>
+    <div class="code-block"><code>diagnose sys session list
+session info: proto=6 ...
+  src: VLAN5-Exec  192.168.5.50
+  dst: VLAN20-Trading  192.168.20.77
+  ...
+  policy_id=3</code></div>
+    <p><strong>Session present, policy_id shown:</strong> traffic reached FortiGate and matched a policy. Now inspect policy order and srcintf/dstintf — first-match-wins, so an earlier broad allow rule can shadow your deny rule.</p>
+    <p><strong>Session absent entirely:</strong> the frame never arrived as a routable, correctly-tagged packet. Stop looking at firewall policy. Check:</p>
+    <div class="code-block"><code>get system interface | grep -A5 VLAN20-Trading
+diagnose netlink interface list VLAN20-Trading</code></div>
+    <p>Confirm the VLAN interface exists with the right <code>vlanid</code> and parent <code>interface</code>, and that the switch side has the matching access-port VLAN assignment and trunk allowed-VLAN list.</p>
+  </div>
+
+  <div class="section-block">
+    <h2>Decision <em>Tree</em></h2>
+    <div class="tree">
+      <div class="tree-step"><div class="tree-q">Is there a session in `diagnose sys session list` at all?</div>
+        <div class="tree-a">No → go to Layer 2 (tag/trunk/ARP). Yes → go to policy logic.</div></div>
+      <div class="tree-step"><div class="tree-q">(No session) Is the switch access port assigned to the correct VLAN?</div>
+        <div class="tree-a">No → fix the switch config. Yes → check the trunk carries that VLAN ID.</div></div>
+      <div class="tree-step"><div class="tree-q">(Session present) Does the policy_id match the rule you expected?</div>
+        <div class="tree-a">No → an earlier rule is matching first — check policy order. Yes → check action/logging settings on that exact rule.</div></div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <h2>Likely Root <em>Causes</em></h2>
+    <ul>
+      <li>Switch access port never reassigned to the new VLAN (still default/native VLAN).</li>
+      <li>Trunk link not carrying the new VLAN ID (allowed-VLAN list on the switch trunk).</li>
+      <li>VLAN interface gateway accidentally left on a Layer 2 switch instead of FortiGate.</li>
+      <li>Broader allow policy sitting above the intended deny rule (first-match-wins).</li>
+    </ul>
+    <div class="callout callout-green"><strong>Exam trap:</strong> "the deny policy is configured but traffic still passes" almost always means policy ORDER, not policy content, once you've confirmed the session is even reaching FortiGate.</div>
+  </div>
+
+</main>
+<footer>Vaultline Financial · NSE7 Enterprise Firewall 7.6 · Session 04 Troubleshooting Guide</footer>
+</body>
+</html>

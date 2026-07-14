@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 17 Troubleshooting — Two Firewalls, No Handshake</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--coral:#e0654a;--coral-light:#fbe6e0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:40px 56px 28px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;color:var(--ink-accent);text-transform:uppercase;margin-bottom:10px;}
+h1{font-family:'Playfair Display',serif;font-size:36px;color:#fbf7ec;font-weight:700;}
+h1 em{color:var(--ink-accent);font-style:italic;font-weight:500;}
+main{max-width:940px;margin:0 auto;padding:32px 56px 60px;}
+.section{margin-bottom:38px;}
+.section h2{font-family:'Playfair Display',serif;font-size:24px;border-left:4px solid var(--blue);padding-left:14px;margin-bottom:14px;}
+.section h2 em{color:var(--blue);font-style:italic;font-weight:500;}
+.section p,.section li{font-size:16.5px;line-height:1.7;color:var(--text-soft);margin-bottom:8px;}
+.section ul,.section ol{padding-left:22px;}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;}
+.tree .q{font-family:'Outfit',sans-serif;font-weight:600;font-size:14px;color:var(--text);margin-top:12px;}
+.tree .q:first-child{margin-top:0;}
+.tree .a{padding-left:18px;font-size:15.5px;color:var(--text-soft);}
+.tree .a::before{content:'→ ';color:var(--blue);}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+td{font-size:14.5px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+td:first-child{color:var(--text);font-weight:600;}
+.code{background:var(--ink-dark);border-radius:10px;margin:12px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-accent);padding:7px 14px;background:rgba(255,255,255,0.05);}
+.code pre{padding:12px 14px;overflow-x:auto;}
+.code code{font-family:'SF Mono',monospace;font-size:12px;line-height:1.55;color:#e8efff;}
+.deadend{border-left:3px solid var(--coral);background:var(--coral-light);border-radius:0 10px 10px 0;padding:12px 18px;margin:10px 0;font-size:15.5px;}
+.deadend b{color:var(--coral);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:3px;}
+.trap{background:var(--amber-light);border:1px dashed var(--amber-border);border-radius:10px;padding:12px 18px;margin:10px 0;font-size:15.5px;color:var(--text-soft);}
+.trap b{color:var(--amber);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:3px;}
+footer{text-align:center;padding:26px;color:var(--text-muted);font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Troubleshooting Method · Session 17</div>
+  <h1>Thinking Like the <em>Senior Engineer</em></h1>
+</header>
+<main>
+
+<div class="section">
+<h2>Symptom <em>Presentation</em></h2>
+<p>Backup tunnel's Phase 1 shows up. OSPF neighbor table on the far side is completely empty. No traffic flows. Later, after both faults appear fixed and the primary link is restored, a THIRD symptom appears with everything showing green.</p>
+<div class="trap"><b>Exam trap shape</b>The symptom description ("phase 1 up") is technically true and also nearly useless — it tells you almost nothing about where the fault actually lives. Never let a partially-healthy status stop the investigation.</div>
+</div>
+
+<div class="section">
+<h2>Questions To Ask <em>First</em></h2>
+<ul>
+<li>Is this a transport problem (packets can't cross) or a protocol problem (packets cross, protocol won't proceed)?</li>
+<li>Is the failure symmetric (both ends agree it's broken) or asymmetric (one end thinks it's fine)?</li>
+<li>Is the table <em>empty</em> or <em>stuck partway</em> through a state machine — these imply different failure classes entirely.</li>
+<li>Did anything change recently that both ends should agree on but might not (a value set independently on each side)?</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Verification <em>Commands &amp; Expected Output</em></h2>
+<table>
+<tr><th>Layer</th><th>Command</th><th>Healthy looks like</th></tr>
+<tr><td>IPsec SA state</td><td><code>diagnose vpn tunnel list name &lt;X&gt;</code></td><td><code>sa=1</code>, <code>rxp/txp</code> incrementing</td></tr>
+<tr><td>IPsec negotiation</td><td><code>diagnose debug application ike -1</code> (both ends)</td><td>matched proposal, "added IPsec SA"</td></tr>
+<tr><td>OSPF adjacency</td><td><code>get router info ospf neighbor</code></td><td><code>Full/ -</code> or <code>Full/DR</code></td></tr>
+<tr><td>OSPF interface config</td><td><code>get router info ospf interface</code></td><td>up, correct area, correct network-type, matching cost</td></tr>
+<tr><td>OSPF config intent</td><td><code>show router ospf</code></td><td>network statements agree on area, both ends</td></tr>
+<tr><td>LSDB reality</td><td><code>get router info ospf database router &lt;id&gt;</code></td><td>link listed, correct cost, correct neighbor ID</td></tr>
+<tr><td>Protocol's chosen routes</td><td><code>get router info routing-table ospf</code></td><td>expected prefix present</td></tr>
+<tr><td>Actual winning routes</td><td><code>get router info routing-table all</code></td><td>confirms which source actually won</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Decision <em>Tree</em></h2>
+<div class="tree">
+<div class="q">Tunnel shows up but no traffic?</div>
+<div class="a">Check <code>tunnel list</code>: sa=0 → Phase 2 never established → bilateral IKE debug → compare proposals.</div>
+
+<div class="q">Traffic flows but OSPF table empty?</div>
+<div class="a">Check interface state (up? correct network-type?) → check area on both ends via <code>show router ospf</code> → mismatch = silent discard, not a stuck state.</div>
+
+<div class="q">Adjacency Full, LSDB confirmed correct, but expected route missing?</div>
+<div class="a">Don't assume SPF failed. Run <code>routing-table all</code> — look for a lower-AD source (static, connected) claiming the same prefix.</div>
+
+<div class="q">Considering redistributing a static to "fix" a table?</div>
+<div class="a">Stop — ask whether redistribution deletes the source route. It never does. If a static is wrongly winning, disable/remove it directly.</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Common <em>Dead Ends</em></h2>
+<div class="deadend"><b>Dead end</b>Assuming a mismatched network-type when both ends already show matching POINTOPOINT in <code>ospf interface</code> output — re-read the evidence already on screen before reaching for a different fault category.</div>
+<div class="deadend"><b>Dead end</b>Choosing a non-backbone area for a redundant link based on blast-radius concerns alone, without walking the "what if the primary link is down" scenario first.</div>
+<div class="deadend"><b>Dead end</b>Treating "the LSDB is correct" as proof the routing table must also be correct — they are different data structures, and administrative distance sits between them.</div>
+</div>
+
+<div class="section">
+<h2>Likely Root Causes <em>(Ranked by This Session)</em></h2>
+<ol>
+<li>Hand-set crypto parameter (dhgrp) drifted between two independently-configured ends.</li>
+<li>Area assignment drifted or was chosen for the wrong design reason (blast-radius vs backbone-continuity conflict).</li>
+<li>A stale or "temporary" static route, forgotten, silently outranking a healthy dynamic route the moment topology changed.</li>
+</ol>
+</div>
+
+<div class="section">
+<h2>Exam <em>Traps To Remember</em></h2>
+<div class="trap"><b>Trap 1</b><code>NO_PROPOSAL_CHOSEN</code> can appear at Phase 1 or Phase 2 — read which exchange type produced it before diagnosing.</div>
+<div class="trap"><b>Trap 2</b>An empty OSPF neighbor table has at least two distinct causes with identical symptoms: sender-side (wrong network-type) vs receiver-side (area mismatch) hello death.</div>
+<div class="trap"><b>Trap 3</b>A "select all that apply" or scenario question showing Full adjacency + correct database is designed to make you stop checking — the fault may still be one layer further down, in the routing table itself.</div>
+</div>
+
+</main>
+<footer>Session 17 · LoFinance NSE7 Study Track · Troubleshooting Guide</footer>
+</body>
+</html>

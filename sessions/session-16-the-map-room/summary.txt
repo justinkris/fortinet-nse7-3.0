@@ -1,0 +1,217 @@
+SESSION 16 SUMMARY — "The Map Room"
+(OSPF internals I: LSDB, LSAs, cost, Dijkstra, SPF tree, areas |
+Dynamic Routing Supplement pp. 308–316)
+Written for Claude. Read before Session 17.
+
+STORY EVENTS
+------------
+Thursday 7:52 AM. Señor commandeered the rattly-aircon meeting room and taped up a
+large hand-drawn butcher's-paper map of the entire LoFinance network — every router,
+link, and red interface cost. He claims he "copied it" — from the hub's LSDB. Junior
+had complained in writing on Tuesday about the hub "wasting memory storing stuff that
+isn't even routes"; today he took notes as penance. Session ran entirely in the Map
+Room. At the end, Señor rolled up the map and had it FRAMED — it now hangs above
+Junior's desk ("it's actually better than what's in Confluence"). Proof-of-map moment:
+`get router info ospf database brief` output was held up against the paper map and
+matched line for line. Friday 5:47 PM closing scene: Señor took the COWBOY HAT down
+from the shelf — S17 boss battle teaser delivered (see below).
+
+ADMINISTRATIVE (IMPORTANT): FortiManager IPsec templates — carried since S13, deferred
+S15 and S16 — was EXPLICITLY RESCHEDULED in-session, in-story, to SESSION 17 (the
+Cowboy Hat IPsec+OSPF review is its natural home). This is now a hard commitment;
+do not defer again.
+
+Running gag status: Riley/Señor "did you promise Penny a date" thread untouched since
+S14 — still available. Penny mentioned in passing: acquisitions team "exploring
+opportunities" (seeded as the areas-scaling motivation and possible future arc).
+
+BUSINESS PROBLEM
+-----------------
+Prove the routers' internal map is real and correct (Señor's challenge), and verify
+compliance at the database layer: 10.99.50.0/24 must be the ONLY external LSA in the
+domain (Penny's S15 rule). Both proven. Secondary framing: acquisition growth means
+the flat-vs-areas design question is now a live business concern.
+
+TECHNICAL CONCEPTS COVERED
+---------------------------
+1. THE PIPELINE (session's spine): LSDB → Dijkstra → SPF tree → OSPF routes → routing
+   table. Routing table = "last exhaust of the pipe."
+2. WHY THE MAP EARNS ITS MEMORY: independence. A link-state router recomputes locally
+   the moment it learns a FACT changed; a distance-vector router waits on daisy-chained
+   RUMOUR ("routing by rumour" — student's S14 coinage, retrieved cleanly). Señor's
+   wall quote: "Rumour spreads answers. Link-state spreads facts. Every router computes
+   its own answers from facts." Tied to Parramatta outage precedent.
+3. LSAs: routers advertise their LINKS (firsthand facts: connected networks + interface
+   costs), never routes/answers. LSDB = collection of all LSAs (own + received). LSAs
+   are acknowledged. Link state update packet = OSPF header + string of LSAs, each with
+   its own header.
+4. QUIETNESS + TERMINOLOGY FILED: periodic re-advertisement every 30 MINUTES; between
+   refreshes, silence unless a topology change causes a TRIGGERED UPDATE (a.k.a.
+   triggered/incremental LSA flooding). This closed the S13/S14 naming-recall item —
+   student had the mechanism for two sessions; the label is now attached. (But see Q4
+   miss below — the 30-min number needs one more rep under exam pressure.)
+5. COST: 16-bit, 1–65,535, lowest TOTAL path cost wins; route cost = sum of EXIT
+   interface costs along the path. Worked example from study guide p.313–314 (R1–R5,
+   Net1–Net5): student computed via-R3 = 1+2 = 3 vs via-R4 = 3+1+2 = 6, correct.
+   NOTE: student asked for the topology to be re-presented TWICE (first as redrawn
+   ASCII, then as a segment-connection table) before answering — the TABLE format
+   (segment | who connects | cost each pays) unlocked it instantly. Prefer
+   connection-tables over ASCII art for this student's topology reasoning.
+6. STUDENT-DRIVEN TANGENT (high value): "what if costs differ on each end of a link?"
+   → COST IS DIRECTIONAL, paid on exit only; asymmetric costs across parallel paths
+   create ASYMMETRIC ROUTING with every routing table technically correct — which
+   breaks STATEFUL FIREWALLS (HA sessions callback: SYN out one box, SYN-ACK back via
+   another, no session state, drop). Señor margin quote: "Cost is paid on exit.
+   Symmetry is your job, not OSPF's." STUDENT EXPLICITLY REQUESTED this scenario be a
+   dedicated section in the study guide — done (see complete guide, "The Asymmetric
+   Cost Trap"). This was genuinely senior-grade curiosity.
+7. SPF TREE: Dijkstra iterates per destination, keeps cheapest, repeats until every
+   network/router has one winning branch; local router at root; destinations can be
+   networks OR routers.
+8. SAME MAP, DIFFERENT TREES (S14 knot revisited deliberately): LSDB identical per
+   area; TREES differ (each rooted at its own router); no contradictions because all
+   trees derive from the same facts — per-hop decisions dovetail. Loops in link-state
+   = symptom of UNSYNCHRONISED LSDBs. Student answered "still the same tree, but built
+   from the router as the root" — corrected: the trees genuinely DIFFER; what's
+   identical is the MAP. One-word polish, concept solid.
+9. FULL re-certified with new depth: Full = identical synchronised LSDBs between
+   neighbours = the moment routing through each other becomes a safe bet. Adjacency
+   below Full = a neighbour whose map you can't vouch for.
+10. AREAS: 32-bit ID, decimal (10) or dotted (0.0.0.10) notation — same number, exam
+    sleight-of-hand. SEPARATE LSDB per area; identical-databases premise is PER AREA.
+    Internal router = 1 LSDB; multi-area router = one FULL LSDB per connected area.
+    Benefits: smaller DBs, contained blast radius (flood + SPF recalcs stay in-area),
+    summarisation at borders. Trade-off: design planning + harder troubleshooting
+    ("a boundary you draw is a boundary you own at 2 AM"). Backbone = Area 0.0.0.0,
+    mandatory, all areas connect to it hub-and-spoke (physical or virtual link).
+11. FLAT-LSDB TWO COSTS retrieval (from S14): student retrieved (a) unbounded DB
+    size/memory/CPU including weak branch boxes — clean; needed one nudge for
+    (b) BLAST RADIUS (every flap anywhere forces SPF everywhere), then produced it
+    fully. Half-cold, half-prompted.
+12. COMPOUND ROLES — the drill finally ran as designed: student initially SKIPPED the
+    four-test walk again (gave LSDB count + partial answer). Señor refused the shortcut
+    and demanded all four definitions out loud. Student then delivered four clean
+    independent true/false verdicts (hub = backbone + ABR + ASBR, NOT internal).
+    Discipline then HELD UNDER EXAM CONDITIONS in Q5 (see below) — resisted the ASBR
+    bait. Big session for this growth item.
+13. CLI PROOF: `get router info ospf database brief` output shown and read — printed
+    PER AREA (two Router Link States sections on the ABR = two LSDBs made visible),
+    ADV Router / Age / Seq# columns explained (Age healthy < 1800s given 30-min
+    refresh; higher Seq# = newer testimony wins), AS External section showed exactly
+    one LSA (10.99.50.0/24 E2) = compliance proven. `database router lsa` = unpack a
+    row into full per-link testimony.
+14. P2MP/DR DERIVATION retrieval (queued from S15): student derived that elections
+    need candidates to hear each other; star medium can't deliver that. Sharpened:
+    votes must be MUTUALLY visible; spokes are deaf to each other; P2MP acknowledges
+    the election could never legitimately run → Full/ - (empty role column = no
+    campaign ever happened).
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "The routing table is the last exhaust of the pipe" (LSDB→Dijkstra→tree→routes→RIB).
+- "Rumour spreads answers; link-state spreads facts."
+- "The map buys independence" (recompute locally; wait only for facts).
+- "Cost is paid on exit. Symmetry is your job, not OSPF's."
+- "Same map, different starting point" (S14) — refined to: same MAP, genuinely
+  DIFFERENT trees, zero contradictions because same facts.
+- "Loops in link-state = unsynchronised databases."
+- "Full is the moment the bet becomes safe."
+- "A boundary you draw is a boundary you own at 2 AM" (areas trade-off).
+- "A campaign result requires a campaign" (Full/ - continuity from S15).
+
+KEY CLI COMMANDS DISCUSSED
+-----------------------------
+- get router info ospf database brief   (per-area sections; ADV Router/Age/Seq#;
+  AS External section; the session's proof moment)
+- get router info ospf database router lsa   (unpack one LSA's full link list)
+- Continuity references: get router info ospf neighbor (Full/ -),
+  get router info routing-table ospf
+
+TROUBLESHOOTING APPROACH
+---------------------------
+New diagnostic layer BENEATH the neighbor table: when adjacency looks healthy but
+routes are wrong/looping, open the database. Read per-area structure, check Age
+freshness (<1800s), check Seq# progression, verify externals list matches policy.
+Contradictory forwarding in link-state = suspect unsynchronised LSDBs first.
+
+CONFIGURATION DECISIONS
+--------------------------
+None — deliberately a zero-config session (internals + verification only). Existing
+design re-validated: hub ABR+ASBR+backbone, one filtered external.
+
+TOPOLOGY CHANGES
+-------------------
+No devices added. Domain verified at the database layer. Señor's hand-drawn map framed
+above Junior's desk (recurring set-dressing available for future scenes).
+
+EXAM-RELEVANT NOTES
+----------------------
+- Pipeline order (LSDB → Dijkstra → tree → routes → RIB) is directly examinable (Q1).
+- Cost: 16-bit 1–65,535, lowest total wins (Q2).
+- Areas: identical LSDB per area; ABR keeps SEPARATE full LSDBs (never merged);
+  change floods only in-area; backbone must be 0.0.0.0 (Q3).
+- 30 MINUTES periodic vs RIP's 30 SECONDS — Fortinet plants RIP numbers in OSPF
+  questions. Student FELL for this (Q4). See below.
+- Database-brief interpretation: holding external LSAs ≠ being the ASBR; check ADV
+  Router. Per-area sections in output = LSDB count = ABR evidence. (Q5, aced.)
+- Area ID dual notation (10 ≡ 0.0.0.10) — distractor material.
+
+EXAM QUESTIONS: 5 asked. Q1 (pipeline, B) ✓, Q2 (cost, C) ✓, Q3 (areas, A+D,
+correctly rejected merged-LSDB distractor) ✓, Q4 (steady-state behaviour) ✗ — chose
+"every 30 seconds" (A) over correct B; a UNIT-READING slip, not knowledge (student
+stated 30 minutes correctly in-session an hour earlier); RIP-timer distractor worked.
+Q5 (hard output-interpretation, select-all: ACDE) ✓✓ — resisted ASBR bait (B) by
+checking ADV Router; the compound-role checklist held under exam pressure for the
+first time. Score 4/5. Exam-technique lesson issued: read the UNIT of every number
+twice.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+---------------------------------------
+No config mistake this session (zero-config episode). Junior's role: the written
+complaint "the hub wastes memory storing stuff that isn't even routes" became the
+session's framing question, and his "RIP gets routes into the table too, with less
+memory" pushback forced the independence/convergence justification. Taught: a naive
+cost-benefit objection can be the best Socratic fuel; also Junior ends the session
+admitting the machine's map beats Confluence.
+
+STUDENT PERFORMANCE HIGHLIGHTS (for register cross-reference)
+-----------------------------
+- Led with mechanism unprompted on the opening question (finish-the-verdict pattern
+  continues to improve; no silent-wait invocations needed this session).
+- Asked a genuinely senior what-if (directional costs → asymmetric routing →
+  stateful-firewall breakage) — first time the student has driven the curriculum
+  forward themselves. Also self-managed the session ("note it for the guide, moving
+  on") — good ownership.
+- Needed the cost topology presented as a CONNECTION TABLE before computing; ASCII
+  diagrams twice failed to land. Format preference noted.
+- Compound-role: skipped the checklist once more when first asked, executed it
+  perfectly when held to it, then APPLIED IT UNDER EXAM CONDITIONS (Q5) — best
+  evidence yet that the drill is transferring.
+- Q4 miss = new micro-pattern candidate: numeric-unit misreads under time pressure.
+  One data point only; watch, don't drill yet.
+
+TEASER DELIVERED FOR SESSION 17
+-------------------------------------------------------------------
+Friday 5:47 PM: Señor takes the COWBOY HAT off the shelf. Monday: DR site ↔
+Parramatta direct tunnel (backup path, Penny's orders — no hairpin through HQ if HQ
+burns). Student builds it ALONE. Señor has PRE-BROKEN BOTH ENDS: "The tunnel will not
+come up, and when you fix that, the routing will lie to you." Explicit scope: Phase 1,
+Phase 2, network types, the adjacency ladder — IPsec + OSPF review, nothing labelled.
+"Two firewalls. No handshake. Bring coffee." PLUS: FortiManager IPsec templates
+formally scheduled into S17 (hard commitment, carried since S13).
+
+CARRIED-FORWARD OBLIGATIONS
+---------------------------
+- FortiManager IPsec templates → S17. RESCHEDULED EXPLICITLY. Do not defer again.
+- "Redundancy = more entries" watch item (S13): still not cleanly tested. S17's
+  backup-tunnel scenario is the PERFECT natural test — a second path SHOULD mean more
+  routing entries; watch whether the student expects that or resists it.
+- Q4-style numeric-unit slip: queue one timer-number question in S17's exam set
+  (30 min refresh / 1800s age / hello-dead timers when taught) to test the "read the
+  unit twice" technique took hold.
+- Asymmetric-cost scenario: delivered in S16 complete guide per student request;
+  consider one retrieval question on it in S17 or S18 ("two paths, costs differ by
+  direction — what breaks and why?").
+
+Date and Time completed: Thursday–Friday (in-story) / real session concluded Monday,
+13 July 2026.

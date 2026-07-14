@@ -1,0 +1,211 @@
+SESSION 14 REVISION PACK — "Routes That Teach Themselves"
+OSPF Overview: Link-State Routing, Areas, ABR/ASBR/Backbone Roles
+============================================================================
+
+QUICK SUMMARY (one page)
+============================================================================
+LoFinance hit 47 hand-typed static routes across the fleet. The real problem
+isn't typing — it's that a static route has ZERO topology awareness. It can
+be perfectly configured and still cause an outage (proven at Parramatta: a
+vanished interface-bound route fell through to the default route, nearly
+sending traffic out unencrypted).
+
+OSPF fixes this as a LINK-STATE protocol: every router builds an IDENTICAL
+copy of the raw network topology (the LSDB) and independently runs
+Dijkstra's algorithm on it. This is the opposite of DISTANCE-VECTOR routing
+("routing by rumour"), where routers trust secondhand summaries from
+neighbors and bad information can silently propagate like Chinese whispers.
+Identical LSDB + identical algorithm = every router's shortest-path tree is
+individually rooted at itself, but never contradicts another router's view
+of the network truth.
+
+A single flat LSDB doesn't scale: size grows unbounded, and ANY topology
+change anywhere forces a company-wide SPF recalculation. OSPF's fix is
+AREAS — a router only keeps full topology detail for its own area. The
+AREA BORDER ROUTER (ABR) holds a full, separate LSDB per area it connects
+to, but exports only a SUMMARY (Type 3 LSA: prefix + cost) across each
+boundary, deliberately discarding internal detail.
+
+That detail-loss is also why every area MUST connect to the BACKBONE AREA
+(0.0.0.0) and why areas can never exchange summaries directly with each
+other: without full topology detail, a router cannot independently verify
+whether a summary it's about to re-advertise is actually a loop. OSPF
+solves this structurally — by forbidding the risky topology shape — rather
+than by detecting loops after the fact.
+
+Four router roles exist: internal router, backbone router, ABR, and ASBR
+(imports non-OSPF routes via redistribution). These are COMPOUND, not
+exclusive — one physical router can hold three or four roles at once.
+
+============================================================================
+CHEAT SHEET
+============================================================================
+TIMERS
+- OSPF full LSA refresh: every 30 minutes
+- Otherwise: silent except triggered/incremental updates on real topology
+  change
+
+ALGORITHM
+- Dijkstra's algorithm — each router builds its own shortest-path tree,
+  rooted at itself, from the shared LSDB
+
+AREA RULES
+- Backbone area MUST be numbered 0.0.0.0
+- Every other area MUST connect to the backbone (directly or via virtual
+  link) — no direct area-to-area summary exchange permitted
+- Area ID format: decimal (e.g. "10") or dotted-decimal IP-style
+  (e.g. "0.0.0.10")
+
+LSA TYPES REFERENCED THIS SESSION
+- Type 1 (Router LSA): every OSPF router, describes connections within its
+  own area, NOT advertised outside that area
+- Type 3 (Summary LSA): generated ONLY by ABRs, carries prefix+cost,
+  discards internal topology detail, can summarize a whole range of
+  networks (config range on FortiOS)
+
+ROUTER ROLES (compound — check ALL, not just the first match)
+- Internal router: all interfaces in one area → 1 LSDB, 1 SPF tree
+- Backbone router: ≥1 interface in Area 0
+- ABR: interfaces in ≥2 areas → 1 full LSDB PER connected area, always
+  touches the backbone
+- ASBR: imports non-OSPF routes (static, RIP, external AS) into OSPF via
+  redistribution; can summarize externals via config summary-address
+
+DEFAULT BEHAVIOUR
+- Redistribution of other protocols into OSPF is DISABLED by default, per
+  protocol (bgp/connected/isis/rip/static all default disabled)
+- External routes are NOT load-balanced by default
+
+KEY DESIGN RULES
+- A static route can be perfectly correct and still be dangerous — it has
+  no concept of "better path," only "present" or "absent"
+- Identical LSDB across all routers in an area is what guarantees
+  consistent (never contradictory) routing decisions
+- Summary LSAs deliberately discard detail — this is BOTH the efficiency
+  win AND the reason loop detection is impossible at area boundaries
+- OSPF prevents loops structurally (mandatory hub topology), not through
+  detection
+
+============================================================================
+FLASHCARDS (Question → Answer)
+============================================================================
+Q: What does a static route fundamentally not know?
+A: The rest of the network's topology — it never asks "is there a better
+   path now?"
+
+Q: What is "routing by rumour"?
+A: Distance-vector routing — routers trust secondhand summaries from
+   neighbors; bad info can propagate undetected (Chinese whispers).
+
+Q: What does every router in a link-state protocol maintain?
+A: An identical copy of the raw network topology — the LSDB (Link-State
+   Database).
+
+Q: What algorithm does OSPF use to calculate shortest paths?
+A: Dijkstra's algorithm.
+
+Q: Why don't identical LSDBs guarantee identical SPF trees between two
+   routers?
+A: Because each tree is rooted at the calculating router itself — same
+   map, different starting point. This is expected, not disagreement.
+
+Q: How often does OSPF send full LSA refreshes?
+A: Every 30 minutes, otherwise only on real topology change (triggered
+   update).
+
+Q: What are the two costs of a single flat (non-areaed) LSDB at scale?
+A: Unbounded database size, and company-wide SPF recalculation triggered
+   by any single topology change anywhere.
+
+Q: What does an ABR maintain for each area it's connected to?
+A: A full, separate LSDB per connected area (not a shared or partial
+   view).
+
+Q: What does an ABR export across an area boundary?
+A: A summary — a Type 3 LSA containing only a prefix and a cost, with
+   internal topology detail deliberately discarded.
+
+Q: Why must every non-backbone area connect to Area 0.0.0.0?
+A: Because summaries discard topology detail, making loop DETECTION
+   impossible. OSPF instead PREVENTS the risky topology shape (direct
+   inter-area links) structurally, via the mandatory hub rule.
+
+Q: What is the backbone area's required ID?
+A: 0.0.0.0.
+
+Q: Distinguish an ABR from an ASBR.
+A: An ABR connects two areas that are BOTH already OSPF. An ASBR is the
+   doorway where something NON-OSPF (static, RIP, external AS) enters
+   OSPF via redistribution.
+
+Q: Can one router be an ABR, a backbone router, and an ASBR at the same
+   time?
+A: Yes — router roles are compound, not mutually exclusive. Check every
+   definition independently.
+
+Q: Is redistribution into OSPF enabled or disabled by default?
+A: Disabled, per protocol (bgp/connected/isis/rip/static all default
+   disabled).
+
+Q: What Type 1 LSA scope rule matters?
+A: Type 1 LSAs are advertised by every router but are NOT advertised
+   outside the area where they originate.
+
+============================================================================
+PODCAST PROMPT — "The Packet Path", Episode 14
+============================================================================
+Generate a podcast episode for "The Packet Path" titled "Routes That Teach
+Themselves." The episode should:
+
+- Open with the scene: Monday morning at LoFinance, Junior staring at a
+  printout of 47 static routes across the fleet, having gone quiet for
+  eleven minutes. Señor connects the moment to something the listener
+  (student) said himself three weeks earlier during the Parramatta outage:
+  "I wish routes could just appear and disappear correctly on their own."
+  Frame OSPF as the answer to that wish, not a cold new topic.
+- Explain, in a warm, conversational, story-driven voice, why static
+  routes fail at scale — not because typing is slow, but because a static
+  route has zero awareness of the rest of the network and can be perfectly
+  correct and still cause an outage. Reference the Parramatta incident
+  specifically (a route vanished, traffic nearly left the building
+  unencrypted toward a private IP) as the concrete proof.
+- Introduce distance-vector routing via the "routing by rumour" analogy —
+  neighbors trusting neighbors, secondhand information, a Chinese-whispers
+  risk where bad information can propagate undetected.
+- Contrast this with link-state routing (OSPF): every router keeps an
+  IDENTICAL copy of the network's raw topology (the LSDB) and independently
+  calculates shortest paths using Dijkstra's algorithm. Explain why
+  identical databases guarantee consistent — never contradictory — routing
+  decisions, even though each router's shortest-path tree is rooted at a
+  different starting point ("same map, different starting point").
+- Explain OSPF's quiet nature: full refresh every 30 minutes, otherwise
+  silent except when a real topology change triggers an update.
+- Walk through why a single flat LSDB doesn't scale as LoFinance adds
+  Chatswood, then Brisbane, then Melbourne — unbounded size, and any single
+  link flap anywhere forcing a company-wide recalculation.
+- Introduce AREAS as the fix, and the ABR's job: a full LSDB per connected
+  area, but exporting only a SUMMARY (Type 3 LSA — prefix and cost) across
+  boundaries, deliberately discarding internal detail.
+- Explain the mandatory backbone rule (Area 0.0.0.0) and WHY areas can't
+  talk directly to each other: once detail is discarded in a summary, a
+  router can't independently verify it isn't looking at a loop. OSPF
+  prevents the dangerous topology shape structurally rather than trying to
+  detect corruption after the fact.
+- Define the four router roles (internal, backbone, ABR, ASBR) and
+  emphasize that a single device can hold multiple roles simultaneously —
+  this is a real exam trap.
+- Include Junior's role this episode: not a technical mistake, but his
+  narrow framing of the problem as "too much typing" rather than "too
+  little awareness" — used by Señor as a teaching contrast against the
+  listener's own, sharper diagnosis of the real problem.
+- End with a teaser for Episode 15, "Speaking OSPF on FortiGate": real
+  configuration begins, Chatswood's unconfigured FortiGate is still sitting
+  on the staging bench, and Señor promises to dictate config while asking
+  the listener to explain WHY each line is shaped the way it is — not
+  recall it from memory. Close on Riley denying she ever promised Penny a
+  "live by month-end" date, and Señor disagreeing.
+- Tone: warm, curious, a little wry — this is a study companion, not a
+  lecture. Use the analogies exactly as named ("routing by rumour," "same
+  map, different starting point") since these are the retrieval hooks the
+  listener is expected to remember.
+- Target length: 8-12 minutes of spoken content.

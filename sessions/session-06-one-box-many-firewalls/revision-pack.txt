@@ -1,0 +1,215 @@
+LOFINANCE — SESSION 06 REVISION PACK
+"One Box, Many Firewalls" — VDOM Concepts and Types
+=====================================================
+
+QUICK SUMMARY
+-------------
+A FortiGate can be virtualized into multiple VDOMs (Virtual Domains) — up to 10 by
+default, extendable via licensing — each with its own isolated firewall policy,
+interfaces, and security config, all sharing one physical box. Enabling multi-VDOM
+creates two protected VDOMs: Global (a Super-Admin-only, device-wide admin view —
+NOT a firewall instance, and missing Policy & Objects / VPN / User & Authentication
+because those are inherently per-VDOM concepts) and root (the default management
+VDOM: FortiGuard updates, licensing, admin access). There are four VDOM types: Admin
+(zero traffic, max 1 per box), Traffic-NAT (full router/firewall — most common),
+Traffic-Transparent (invisible Layer 2 inspection, no routing/NAT, but still needs
+ONE manageip for admin access), and LAN Extension (Network + VPN modules only,
+tunnels a remote LAN to a central controller via IPsec/VXLAN). Resource limits are
+governed at Global Resources (whole-device) and per-VDOM (Override Maximum) level.
+Business lesson: a new VDOM can replace a $15k second firewall for use cases like an
+isolated guest network — but the honest recommendation always names the real
+constraint (VDOM ceiling, shared resources), not just "it's free."
+
+CHEAT SHEET
+-----------
+Enable multi-VDOM:
+  config system global
+      set vdom-mode multi-vdom
+  end
+
+Check VDOM ceiling:
+  get system status | grep "Max number of virtual domains"
+
+Create Admin VDOM:
+  config vdom
+      edit "name"
+          config system settings
+              set vdom-type admin
+          end
+  end
+
+Create Traffic VDOM (NAT):
+  config vdom
+      edit "name"
+          config system settings
+              set vdom-type traffic
+              set opmode nat
+          end
+  end
+
+Create Traffic VDOM (Transparent):
+  config vdom
+      edit "name"
+          config system settings
+              set vdom-type traffic
+              set opmode transparent
+              set manageip <ip>/<mask>
+          end
+  end
+
+Create LAN Extension VDOM:
+  config vdom
+      edit "name"
+          config system settings
+              set vdom-type lan-extension
+          end
+  end
+
+GUI paths:
+  Enable/view VDOMs .......... Global VDOM > System > VDOM
+  Switch management VDOM ..... Global VDOM > System > VDOM > Switch Management
+  Global Resources ........... Global VDOM > System > Global Resources
+  Per-VDOM resource limits ... Global VDOM > System > VDOM > Edit VDOM (Override Maximum)
+  Global security objects .... Global VDOM > Security Profiles (prefix "g-")
+
+DEFAULTS & LIMITS
+  Default max VDOMs per FortiGate ........ 10 (traffic + LAN extension types)
+  Admin VDOM max per FortiGate ........... 1
+  Extend past default ..................... additional VDOM licensing
+  Default management VDOM ................ root (changeable)
+  Global VDOM access ...................... Super Admin only
+
+KEY DESIGN RULES
+  - Global VDOM never passes traffic and never holds Policy/VPN/User&Auth.
+  - Admin VDOM never passes traffic; limited to exactly one per box.
+  - Transparent VDOM passes traffic at L2 only, but ALWAYS needs 1 manageip.
+  - LAN Extension VDOM only has Network + VPN modules — no local policy engine.
+  - Global objects (prefix "g-") sync automatically across all VDOMs for
+    consistent UTM profiles; reserved naming, don't duplicate it locally.
+  - Changing a traffic VDOM to admin type DELETES its Policy & Objects, Security
+    Profiles, VPN, User & Authentication config — confirmation required.
+
+FLASHCARDS
+----------
+Q: What does a VDOM allow a single FortiGate to do?
+A: Behave as multiple independent virtual firewalls, each with isolated policy,
+   interfaces, and security config, sharing one physical device.
+
+Q: What's the closest non-firewall analogy to a VDOM?
+A: A VRF on a router — same principle of virtualizing the control plane on shared
+   physical hardware.
+
+Q: Is the Global VDOM a firewall instance?
+A: No — it's a Super-Admin-only administrative view for device-wide settings
+   (interfaces, firmware, some logging, sandboxing). It never passes traffic.
+
+Q: Why does Global VDOM exclude Policy & Objects, VPN, and User & Authentication?
+A: Those constructs are inherently per-VDOM; they're meaningless without a VDOM
+   context to belong to.
+
+Q: What is the default management VDOM, and can it change?
+A: Root, by default. Yes, it can be changed to another VDOM via Switch Management.
+
+Q: What does the management VDOM actually do?
+A: Validates the license, downloads FortiGuard updates, and provides admin
+   access/FortiManager connectivity for the whole device.
+
+Q: How many Admin VDOMs can exist on one FortiGate?
+A: Exactly 1.
+
+Q: What's the default max number of traffic/LAN-extension VDOMs per FortiGate?
+A: 10 — extendable via additional licensing.
+
+Q: What does a Traffic VDOM in NAT mode do?
+A: Functions like a regular firewall — full routing, NAT, and policy enforcement.
+
+Q: What does a Traffic VDOM in transparent mode do, and what does it give up?
+A: Operates purely at Layer 2, invisible to the network — no routing or NAT. Gives
+   up full Layer 3 capability in exchange for zero-topology-impact inspection.
+
+Q: Does a transparent VDOM need any IP address?
+A: Yes — exactly one management IP (manageip), even though it passes no
+   routed/NAT'd traffic.
+
+Q: What happens if manageip is missing on a transparent VDOM?
+A: A failed node-check object error for 'manageip'.
+
+Q: What is a LAN Extension VDOM used for?
+A: Connecting a remote connector (FortiGate/FortiExtender) to a central FortiGate
+   access controller via IPsec VPN + VXLAN, extending a remote LAN back to the
+   controller.
+
+Q: Which two modules does a LAN Extension VDOM have access to?
+A: Network and VPN only.
+
+Q: How do you extend a FortiGate past its default VDOM ceiling?
+A: Purchase additional VDOM licensing (a second physical appliance is the
+   last-resort alternative, not the first option).
+
+Q: What are Global Resources vs per-VDOM resources?
+A: Global Resources govern limits for the whole device; per-VDOM resources are
+   allocated per individual VDOM via Override Maximum (must be ≥ current usage).
+
+PODCAST PROMPT — "The Packet Path", Episode 6: "One Box, Many Firewalls"
+--------------------------------------------------------------------------
+[Paste this directly into an AI audio generator]
+
+Write and narrate a ~10-minute two-host tech podcast episode called "The Packet
+Path," Episode 6: "One Box, Many Firewalls." Hosts: Mara (senior network engineer,
+warm but precise) and Dev (curious co-host, asks the questions the listener would
+ask). Tone: conversational, energetic, a little dry humor, but technically accurate
+— this is for FortiGate NSE7 Enterprise Firewall exam candidates.
+
+Structure:
+
+1. COLD OPEN (story): Tell the story of a fictional finance company, LoFinance,
+   where a colleague named Penny gets a $15,000 vendor quote for a dedicated guest-
+   network firewall for a trading floor. A senior engineer named Señor stops a
+   junior engineer mid-reach for a new rack unit with the line: "Why buy a box when
+   we already own ten inside this one?" Let Mara and Dev riff on how cryptic that
+   sounds before revealing what it means.
+
+2. CONCEPT EXPLANATION: Explain VDOMs (Virtual Domains) on FortiGate — one physical
+   firewall appliance virtualized into up to 10 independent firewall instances by
+   default, each with isolated policy, interfaces, and security configuration.
+   Have Mara introduce the VRF analogy explicitly: "It's the same trick as a VRF on
+   a router — carve the control plane into independent instances, share the
+   physical plane underneath." Have Dev ask clarifying questions a listener would
+   actually have.
+
+3. DEEP DIVE — GLOBAL VDOM: Explain that Global VDOM is NOT a firewall instance —
+   it's a Super-Admin-only view for device-wide settings, and it deliberately
+   excludes Policy & Objects, VPN, and User & Authentication because those concepts
+   only make sense inside a specific VDOM. Use a concrete spoken analogy: "asking
+   which VDOM's firewall policy applies at the Global level is like asking which
+   apartment's lease agreement applies to the whole building."
+
+4. DEEP DIVE — THE FOUR VDOM TYPES: Walk through Admin (management only, max 1),
+   Traffic-NAT (regular firewall behavior, most common), Traffic-Transparent
+   (invisible Layer 2 inspection — and don't forget the gotcha: it STILL needs one
+   management IP even though it passes no routed traffic), and LAN Extension
+   (Network + VPN modules only, tunnels a remote LAN to a central controller).
+   Have Dev try to guess the exam gotcha about transparent mode before Mara reveals
+   it — dramatize genuine surprise.
+
+5. JUNIOR'S MISTAKE: Reference that in this episode, Junior's instinct was to
+   immediately reach for new physical hardware rather than considering the
+   FortiGate's existing virtualization capacity — use this as a teaching moment
+   about why senior engineers check capacity and licensing before recommending a
+   purchase.
+
+6. BUSINESS OUTCOME: Wrap up with the resolution — LoFinance saves $15,000 by
+   provisioning a new NAT-mode traffic VDOM for the guest network instead of buying
+   a second box, while being upfront with the client about the real constraint (the
+   default 10-VDOM ceiling and shared hardware resources, not unlimited free
+   capacity).
+
+7. TEASER: End with a teaser for Episode 7, "Bridges Between Worlds" — the new
+   Guest-WiFi VDOM is perfectly isolated... too isolated. It has no internet access
+   at all. Señor's closing line: "You wanted separation. You didn't ask for exile."
+   Tease that next episode covers inter-VDOM links, routing between VDOMs, and
+   what per-VDOM administration and resource limits actually feel like day to day.
+
+Keep the technical explanations accurate to FortiOS 7.6 terminology (VDOM, opmode
+nat/transparent, manageip, vdom-type admin/traffic/lan-extension, Global Resources,
+Override Maximum). End the episode with a friendly sign-off from both hosts.

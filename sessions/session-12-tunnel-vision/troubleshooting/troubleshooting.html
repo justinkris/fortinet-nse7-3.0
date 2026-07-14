@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 12 Troubleshooting — The One-Way-Silent Tunnel</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-muted:#6b7794;
+--blue:#1e40af;--blue-light:#eff4fc;--ink:#0d1a3a;--accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;
+--amber:#b45309;--amber-light:#fcf2c3;--red:#b91c1c;--red-light:#fdecec;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);font-size:17.5px;line-height:1.65;}
+header{background:var(--ink);padding:34px 6%;}
+header .tag{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--accent);}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;margin-top:6px;}
+header p{font-style:italic;color:rgba(251,247,236,.55);margin-top:6px;}
+main{max-width:880px;margin:0 auto;padding:30px 20px 70px;}
+h2{font-family:'Playfair Display',serif;font-size:25px;margin:38px 0 12px;border-bottom:2px solid var(--border);padding-bottom:6px;}
+pre{background:var(--ink);color:#dbe7fb;font-family:Consolas,monospace;font-size:13px;line-height:1.6;padding:15px 18px;border-radius:9px;overflow-x:auto;margin:12px 0;}
+pre .hl{color:#ffd479;}pre .c{color:#8aa4cf;font-style:italic;}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:14px 0;}
+.box h3{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+.tree{font-family:'Outfit',sans-serif;font-size:14px;}
+.tree .node{background:var(--blue-light);border:1px solid #b8cce8;border-radius:8px;padding:10px 14px;margin:8px 0;}
+.tree .leaf-a{background:var(--red-light);border-color:#efb8b8;}
+.tree .leaf-b{background:var(--amber-light);border-color:#f3d68a;}
+.tree .leaf-ok{background:var(--green-light);border-color:#a7d8b0;}
+.tree .arrow{text-align:center;color:var(--text-muted);margin:2px 0;}
+ul{margin:8px 0 8px 24px;}li{margin:6px 0;}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-family:'Outfit',sans-serif;font-size:13.5px;}
+th{background:var(--surface-2);text-align:left;padding:9px 11px;border:1px solid var(--border);}
+td{padding:9px 11px;border:1px solid var(--border-dim);background:var(--surface);}
+.trap{background:var(--red-light);border-left:4px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 12</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div>
+<div class="tag">🔧 TROUBLESHOOTING GUIDE · SESSION 12</div>
+<h1>The One-Way-Silent Tunnel</h1>
+<p>How a senior engineer finds why traffic "flows one way and vanishes the other" — without changing a single setting first.</p>
+</header>
+<main>
+
+<h2>Symptoms</h2>
+<ul>
+<li>Tunnel shows <strong>established</strong>; one site's users work perfectly, the other site's users get spinning clients — no error messages, no timeouts with reasons, just silence.</li>
+<li>Often reported as "the VPN feels weird" or "it works from here but not from there."</li>
+</ul>
+
+<h2>Questions to ask before touching a keyboard</h2>
+<ul>
+<li><strong>Which direction of <em>initiation</em> fails?</strong> Not travel — initiation. "HQ can reach the branch" means HQ-initiated sessions work, replies included.</li>
+<li><strong>Does anything work from the failing side?</strong> If pings work but new TCP sessions don't, that's a different fault family (policy vs MTU/service) — scope it.</li>
+<li><strong>What free evidence does the working direction give you?</strong> Working HQ→branch replies <em>prove</em>: both phase 1/phase 2 SAs are healthy in both directions, selectors cover both subnets, and the <em>branch</em> routing table already routes the HQ subnet into the tunnel. Routing on the far side is acquitted before you log in.</li>
+</ul>
+
+<h2>The two suspects</h2>
+<div class="box"><h3>Same symptom, two crime scenes</h3>
+<p><strong>Suspect A</strong> — the initiator's own firewall is missing <code>internal → tunnel</code>. The packet dies at home; it never enters the tunnel at all.</p>
+<p><strong>Suspect B</strong> — the far firewall is missing <code>tunnel → internal</code>. The packet crosses, decrypts successfully… and dies on the implicit deny at the destination.</p>
+<p>The user experience is <em>identical</em>. Only evidence distinguishes them — never assume.</p></div>
+
+<h2>Verification commands &amp; expected outputs</h2>
+<table>
+<tr><th>Command</th><th>Where</th><th>What it proves</th></tr>
+<tr><td><code>diag vpn ike gateway list</code></td><td>Either end</td><td>Phase 1 state, IKE version, network-id. <code>state: established</code> = handshake healthy.</td></tr>
+<tr><td><code>get router info routing-table all</code></td><td>Initiator side</td><td>Remote subnet points at the tunnel interface (often already proven by working replies).</td></tr>
+<tr><td><code>diag debug flow</code> (filtered)</td><td><strong>Source side first</strong></td><td>The packet's actual fate: route chosen, policy matched or policy 0.</td></tr>
+</table>
+<pre>FGT # diagnose debug flow filter saddr &lt;client-ip&gt;
+FGT # diagnose debug flow filter daddr &lt;server-ip&gt;
+FGT # diagnose debug flow trace start 10
+FGT # diagnose debug enable
+<span class="c">… reproduce …</span>
+FGT # diagnose debug disable        <span class="c">← always switch it off after</span></pre>
+<p>The two lines that decide everything:</p>
+<pre>msg="find a route: gw-10.1.0.20 <span class="hl">via ParraTunnel-ISP1</span>"     <span class="c">routing did its job</span>
+msg="<span class="hl">Denied by forward policy check (policy 0)</span>"           <span class="c">implicit deny — a policy is MISSING</span></pre>
+
+<h2>Decision tree</h2>
+<div class="tree">
+<div class="node">Tunnel <code>state: established</code>? — if NO, this is a phase 1/phase 2 problem, different guide.</div>
+<div class="arrow">▼ YES — run debug flow on the <strong>initiator's</strong> firewall</div>
+<div class="node">Does the trace show a route <em>via the tunnel interface</em>? — if NO: missing/wrong route at the source. Fix routing.</div>
+<div class="arrow">▼ route OK</div>
+<div class="node leaf-a">"Denied by forward policy check (policy 0)" at the source → <strong>Suspect A convicted.</strong> Add <code>internal → tunnel</code> here.</div>
+<div class="arrow">▼ source shows "sent to &lt;tunnel&gt;" cleanly — move to the far firewall, repeat</div>
+<div class="node leaf-b">Policy 0 at the destination → <strong>Suspect B convicted.</strong> Add <code>tunnel → internal</code> there.</div>
+<div class="arrow">▼ neither?</div>
+<div class="node leaf-ok">Both firewalls forward — widen scope: server firewall/host, NAT on the policy, selectors, or (if only <em>large</em> packets vanish) MTU territory — Session 13.</div>
+</div>
+
+<h2>Common dead ends</h2>
+<ul>
+<li><strong>Rebuilding the tunnel.</strong> The tunnel was never the problem — <code>established</code> plus one working direction proves the crypto end-to-end.</li>
+<li><strong>Staring at the routing table on the failing side</strong> when working replies already acquitted it.</li>
+<li><strong>Adding a reverse policy "for replies."</strong> Replies never needed one; you'll fix nothing and clutter the ruleset. The missing policy is for <em>initiators</em>.</li>
+<li><strong>Debugging at the destination first.</strong> If the source firewall dropped it, the destination never saw it — you'll capture silence and conclude wrongly.</li>
+</ul>
+
+<h2>Likely root causes (in order)</h2>
+<ol>
+<li>Missing initiation-direction policy on one firewall (this session's fault — Suspect A).</li>
+<li>Missing/incorrect static route on the initiating side (packet leaks out the default route).</li>
+<li>Policy exists but wrong interface pair, wrong address objects, or disabled.</li>
+<li>Phase 2 selectors don't cover the failing subnet pair (traffic structurally excluded — recall S10's "declared pipe").</li>
+</ol>
+
+<h2>Exam traps</h2>
+<div class="trap"><strong>Trap 1:</strong> "The tunnel is up, therefore routing/policy must be fine." The exam loves answers like "renegotiate phase 2" for what is a missing-policy scenario. Established SAs prove nothing about forwarding.</div>
+<div class="trap"><strong>Trap 2:</strong> Questions that say a <em>new</em> connection fails from site B while site A "works" — the distractor will offer a reply-direction explanation. Initiation direction is what policies count.</div>
+<div class="trap"><strong>Trap 3:</strong> "policy 0" in debug output presented as if it were a misconfigured rule. Policy 0 is the implicit deny; the fix is always to <em>add</em> a policy, not edit one.</div>
+
+<h2>The method, distilled</h2>
+<ol>
+<li>Restate the symptom in initiation terms.</li>
+<li>Harvest free evidence from whatever <em>works</em>.</li>
+<li>Enumerate the suspects the symptom permits.</li>
+<li>Choose the one command that discriminates between them.</li>
+<li>Run it <strong>closest to the source</strong>; follow the packet in the order the packet travels.</li>
+<li>Convict, fix one thing, verify the user outcome — then confirm root cause, not just recovery.</li>
+</ol>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 03 Troubleshooting — Life of a Packet</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,500&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:36px 50px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:10px;}
+h1{font-family:'Playfair Display',serif;font-size:36px;color:#fbf7ec;}
+h1 em{color:var(--ink-accent);font-style:italic;}
+main{max-width:900px;margin:0 auto;padding:34px 40px 70px;}
+h2{font-family:'Playfair Display',serif;font-size:24px;padding-left:14px;border-left:3px solid var(--blue);margin:30px 0 12px;}
+h2 em{font-style:italic;color:var(--blue);}
+p,li{font-size:16.5px;line-height:1.7;color:var(--text-soft);margin-bottom:10px;}
+li{margin-left:22px;}
+strong{color:var(--text);}
+.symptom{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:14px 0;}
+.symptom b{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);display:block;margin-bottom:6px;}
+.code-block{background:var(--ink-dark);border-radius:10px;margin:14px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);}
+.code-block pre{padding:14px 16px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;color:#e8efff;}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin:14px 0;}
+.tree div{padding:6px 0 6px 18px;border-left:2px solid var(--blue-border);margin-left:6px;}
+.trap{border-left:3px solid var(--amber-border);background:var(--amber-light);border-radius:0 8px 8px 0;padding:12px 18px;margin:12px 0;font-size:15.5px;}
+.deadend{border-left:3px solid #d4a5a5;background:#fbeaea;border-radius:0 8px 8px 0;padding:12px 18px;margin:12px 0;font-size:15.5px;}
+footer{text-align:center;padding:26px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 03</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div>
+  <div class="eyebrow">Session 03 · Troubleshooting Guide</div>
+  <h1>Thinking Like the Box: <em>Where Did the Packet Get Stuck?</em></h1>
+</header>
+<main>
+
+  <h2>Symptom-First Reasoning</h2>
+  <p>The pipeline you learned this session isn't just theory — it's your diagnostic map. Every symptom below maps to a specific stage. The goal is to think in stages, not commands.</p>
+
+  <div class="symptom">
+    <b>Symptom: Traffic is unexpectedly blocked</b>
+    <p><strong>Ask first:</strong> is this the FIRST packet of a new session, or a session that was previously working?</p>
+    <p><strong>Likely stage:</strong> policy lookup / implicit deny. Remember — this stage is <em>never</em> a no-op, for any traffic, internal or external.</p>
+    <p><strong>Dead end to avoid:</strong> assuming "it's internal traffic, it must be a routing problem" — check policy match before anything else.</p>
+  </div>
+
+  <div class="symptom">
+    <b>Symptom: Performance degrades under high session count</b>
+    <p><strong>Ask first:</strong> is the NP hitting its session limit? NP7 supports up to 12 million sessions, limited by processor memory.</p>
+    <p><strong>Likely stage:</strong> offload/fast-path stage. Once an NP hits its session limit, overflow sessions get sent to the CPU — the slow path — which degrades performance broadly, not just for the overflow sessions.</p>
+    <p><strong>Verification:</strong></p>
+    <div class="code-block"><div class="code-label">Check hardware / ASIC in use</div><pre><code># get hardware status</code></pre></div>
+    <p><strong>Fix direction:</strong> distribute incoming sessions evenly across multiple NP processors — requires knowing which interfaces map to which NP chip.</p>
+  </div>
+
+  <div class="symptom">
+    <b>Symptom: A specific FortiGate model isn't offloading traffic the way you expect</b>
+    <p><strong>Ask first:</strong> what hardware does this box actually have — NP6, NP7, or the combined SP chip on entry/mid-range models?</p>
+    <div class="code-block"><div class="code-label">Confirm NP/CP hardware IDs directly on the PCI bus</div><pre><code># diagnose hardware lspci | grep 1a29
+Device 1a29:4e36  → NP6
+Device 1a29:4e37  → NP7</code></pre></div>
+    <p><strong>Common dead end:</strong> assuming every FortiGate model has separate NP and CP chips — entry/mid-range models combine both into one SP chip at lower throughput.</p>
+  </div>
+
+  <div class="symptom">
+    <b>Symptom: CPU usage is high despite offload being configured correctly</b>
+    <p><strong>Ask first:</strong> is this a session-churn problem — lots of sessions opening and closing rapidly? Remember: the ENTIRE TCP handshake, and ALL FIN/RST packets, always hit the CPU.</p>
+    <p><strong>Likely root cause:</strong> high session turnover (e.g. lots of short-lived connections) forces proportionally more traffic through the slow path, even with offload working correctly for long-lived sessions.</p>
+    <div class="deadend"><strong>Dead end to avoid:</strong> disabling NP acceleration to "simplify troubleshooting" — this doesn't fix a churn problem and removes your fast path entirely. Isolate whether it's churn vs. a genuine offload misconfiguration first.</div>
+  </div>
+
+  <h2>Decision Tree: <em>"Where in the pipeline is this packet stuck?"</em></h2>
+  <div class="tree">
+    <div><strong>Is the session brand new?</strong><br>→ Yes: expect CPU involvement (handshake/first packet) — this is normal, not a fault.</div>
+    <div><strong>Is the session established but still slow?</strong><br>→ Check NP session limits and interface-to-NP mapping.</div>
+    <div><strong>Is traffic being dropped outright?</strong><br>→ Check policy lookup / implicit deny — this stage runs for ALL traffic, no exceptions.</div>
+    <div><strong>Is a security profile (IPS/AV/SSL) involved?</strong><br>→ Check CP capacity/version — content inspection is CP territory, separate resource from NP.</div>
+    <div><strong>Is this virtual FortiGate?</strong><br>→ No NP/CP exist — CPU handles everything. Don't troubleshoot for offload that can't happen.</div>
+  </div>
+
+  <h2>Exam Traps in This Territory</h2>
+  <div class="trap"><strong>Trap 1:</strong> "For an established session already offloaded, which packets still hit the CPU?" — the answer is FIN/RST, NOT the handshake. The handshake happens BEFORE establishment, so it can't be something that's "still" happening on an already-established session.</div>
+  <div class="trap"><strong>Trap 2:</strong> "NP7 can't offload across two chips" — false. General offload survives across chips via the internal switch fabric (ISF). Only NP Direct Architecture requires same-chip interfaces.</div>
+  <div class="trap"><strong>Trap 3:</strong> Assuming internal/east-west traffic skips pipeline stages because it "never leaves the building." DNAT can be a no-op without a VIP — policy lookup never is.</div>
+
+</main>
+<footer>LoFinance — Session 03 — Troubleshooting Guide</footer>
+</body>
+</html>

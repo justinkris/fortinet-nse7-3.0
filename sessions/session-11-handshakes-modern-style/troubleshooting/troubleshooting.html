@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 11 Troubleshooting — IKEv2 Negotiation</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink:#0d1a3a;--accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);font-size:18px;line-height:1.6}
+header{background:var(--ink);padding:34px 7%}
+h1{font-family:'Playfair Display',serif;color:#fbf7ec;font-size:30px}
+header p{color:var(--accent);font-style:italic;font-size:15px;margin-top:6px}
+main{max-width:820px;margin:0 auto;padding:30px 20px 70px}
+h2{font-family:'Playfair Display',serif;font-size:23px;margin:34px 0 10px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin:14px 0}
+.step{border-left:4px solid var(--blue);background:var(--blue-light);border-radius:0 8px 8px 0;padding:12px 18px;margin:10px 0}
+.step b{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+.trap{background:var(--amber-light);border:1px solid var(--amber-border);border-left:4px solid var(--amber);border-radius:8px;padding:12px 16px;margin:10px 0;font-size:16px}
+pre{font-family:Menlo,Consolas,monospace;font-size:13px;background:var(--ink);color:#dbe7fb;padding:14px 18px;border-radius:8px;overflow-x:auto;margin:10px 0;line-height:1.55}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-family:'Outfit',sans-serif;font-size:14px}
+th{background:var(--ink);color:#fbf7ec;padding:9px 11px;text-align:left}
+td{border:1px solid var(--border);padding:8px 11px;background:var(--surface);vertical-align:top}
+ul{margin:6px 0 6px 24px}li{margin:5px 0}
+em.q{color:var(--green);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 11</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div><h1>🔧 Troubleshooting: When the Handshake Fails</h1><p>Session 11 · IKEv2 negotiation, version mismatches, and the two-door problem. Think first, type second.</p></header>
+<main>
+
+<h2>The Symptom Family</h2>
+<div class="card">Riley's ticket will say: <em>"VPN is down"</em> or <em>"branch can't reach the trading feed."</em> Your first job is translation: a tunnel that never negotiates is a <strong>handshake problem</strong>; a tunnel that's up but passes no traffic is a <strong>phase 2 / routing / policy problem</strong> (Session 12 territory). This guide covers the first family — the negotiation never completes, or the wrong tunnel answers.</div>
+
+<h2>Questions Before Commands</h2>
+<div class="card">
+<ul>
+<li><em class="q">Has this tunnel ever worked?</em> Never-worked = config mismatch. Worked-then-stopped = something changed (rekey, ISP, certificate, firmware).</li>
+<li><em class="q">Which side initiates?</em> The initiator's logs show what was proposed; the responder's show why it was rejected.</li>
+<li><em class="q">Same gateway pair, more than one tunnel?</em> If yes — network-id is immediately on the suspect list.</li>
+<li><em class="q">Same IKE version both ends?</em> An IKEv2 initiator and an IKEv1-only responder will never agree.</li>
+<li><em class="q">Can the peers even reach each other?</em> UDP 500 (and 4500 behind NAT) must flow before any of this matters. Don't debug crypto when the packet never arrived.</li>
+</ul>
+</div>
+
+<h2>Verification Commands</h2>
+<pre># Where did the negotiation get to?
+diagnose vpn ike gateway list
+
+# Filter the noise to one peer, then watch the exchanges live
+diagnose vpn ike log-filter dst-addr4 &lt;peer-ip&gt;
+diagnose debug application ike -1
+diagnose debug enable
+#   ...trigger the tunnel, read, then ALWAYS:
+diagnose debug disable</pre>
+<div class="card"><strong>What healthy looks like (IKEv2):</strong> you should see exactly the structure you derived on the whiteboard — an <strong>IKE_SA_INIT</strong> request/response pair (proposals + DH), then an <strong>IKE_AUTH</strong> pair, then the gateway listed as established with a child SA. Four messages. If the debug shows SA_INIT completing but AUTH failing, the language and secret were fine — the <em>introductions</em> failed (authentication/ID mismatch). If SA_INIT itself fails, suspect proposals, DH group, or version.</div>
+
+<h2>Decision Tree</h2>
+<div class="step"><b>1 · Restate</b> — "Parramatta tunnel 1 never establishes" beats "VPN broken."</div>
+<div class="step"><b>2 · Scope</b> — one tunnel or both? One = tunnel-specific config. Both = shared cause (ISP, IKE version, PSK, upstream filter).</div>
+<div class="step"><b>3 · Expected path</b> — IKE packets: branch WAN → internet → HQ WAN, UDP 500/4500. Verify reachability before crypto.</div>
+<div class="step"><b>4 · Find the failing exchange</b> — <code>ike gateway list</code> + debug: did SA_INIT complete? Did AUTH?</div>
+<div class="step"><b>5 · One hypothesis at a time</b> — match the failing exchange to a cause (table below). Change one thing. Re-test.</div>
+<div class="step"><b>6 · Verify recovery AND root cause</b> — gateway established, child SA present, and you can say <em>why</em> it failed.</div>
+
+<h2>Failing Exchange → Likely Cause</h2>
+<table>
+<tr><th>Observation</th><th>Likely root cause</th></tr>
+<tr><td>No response to SA_INIT at all</td><td>Reachability: UDP 500 blocked, wrong peer IP, ISP filtering — not a crypto problem yet</td></tr>
+<tr><td>SA_INIT rejected / no proposal chosen</td><td>Proposal mismatch (encryption/integrity/DH group) or IKE <strong>version</strong> mismatch between ends</td></tr>
+<tr><td>SA_INIT completes, IKE_AUTH fails</td><td>Authentication: PSK mismatch, wrong/failed certificate, peer-ID mismatch</td></tr>
+<tr><td>Handshake completes but the <strong>wrong tunnel</strong> comes up (two tunnels, same gateway pair)</td><td><strong>network-id mismatch or missing</strong> — responder can't select the correct phase 1; check <code>network-overlay enable</code> + matching <code>network-id</code> on BOTH ends of EACH tunnel</td></tr>
+<tr><td>Second tunnel between same peers won't establish while first is up</td><td>Same as above — without network-id, IKEv2 peers can't distinguish two phase 1s between one gateway pair</td></tr>
+</table>
+
+<h2>Common Dead Ends</h2>
+<ul>
+<li><strong>Debugging crypto before reachability.</strong> If UDP 500 never arrives, no proposal on earth will help.</li>
+<li><strong>Changing the proposal when AUTH is the failing stage.</strong> Read <em>which exchange</em> failed first — SA_INIT success means the language and secret were fine.</li>
+<li><strong>Fixing network-id on one end only.</strong> It must match per-tunnel at both ends.</li>
+<li><strong>Leaving debug running.</strong> <code>diagnose debug disable</code> — always.</li>
+<li><strong>"The blog said switch to aggressive mode."</strong> Downgrading the protocol is not a fix; it's a different, worse problem.</li>
+</ul>
+
+<h2>Exam Traps</h2>
+<div class="trap">• A scenario with "multiple IKEv2 tunnels between the same gateways failing to establish" is a <strong>network-id</strong> question wearing a costume.<br>
+• "IKEv1 tunnel configured with network-id" — invalid, IKEv2-only, Fortinet-proprietary.<br>
+• Given debug output: SA_INIT ok + AUTH fail = authentication/PSK/ID problem, <em>not</em> a DH-group problem.<br>
+• Count check: an IKEv2 debug showing quick mode = something is wrong with the <em>question</em> (or it's IKEv1).</div>
+
+</main>
+</body>
+</html>

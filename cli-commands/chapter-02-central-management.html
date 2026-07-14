@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 02 — Central Management CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Chapter 02</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 02 · CLI Reference</div>
+    <h1>Central Management, <em>By Command</em></h1>
+    <p>The FortiGate-side CLI for FortiManager registration, FGFM tunnel troubleshooting, FortiGuard/FDS behaviour, and the CLI-script contexts (device DB, policy package, remote FortiGate) that FortiManager uses to push change.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">When install fails, you'll live inside <em>diagnose fdsm</em> and <em>diagnose debug application fgfm</em>.</div>
+  <p class="motivation-sub">Registration is easy. The pain begins when the FGFM tunnel keeps flapping or a policy package refuses to install — and both are diagnosed from the FortiGate CLI, not the FortiManager GUI.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-central-mgmt">Central-Mgmt Registration</a>
+  <a class="nav-tab" href="#section-fgfm">FGFM Tunnel Diagnostics</a>
+  <a class="nav-tab" href="#section-fortiguard">FortiGuard & FDS</a>
+  <a class="nav-tab" href="#section-scripts">Script Contexts</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — CENTRAL-MGMT REGISTRATION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · CENTRAL-MGMT REGISTRATION</span>
+      </div>
+      <p class="socratic-insight">FortiManager doesn't just show up. Somewhere, either on the FortiGate or on FortiManager, the pairing was declared. On the FortiGate side it's one config block: <code>config system central-management</code>.</p>
+      <ul class="socratic-questions">
+        <li>What does <code>set type fortimanager</code> plus <code>set fmg &lt;ip&gt;</code> actually cause the FortiGate to do?</li>
+        <li>Why does FortiManager still show the device as "unauthorised" after the FortiGate config is correct?</li>
+      </ul>
+      <div class="answer-area" data-section="central-mgmt">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The FortiGate opens an outbound FGFM tunnel on TCP/541 (or TCP/443 for FMG-Access) to the specified FortiManager IP, presenting its serial number. This is what a ZTP/LTP device does the moment it boots and gets network reachability — it phones home to the pre-declared FortiManager.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because pairing is a two-sided handshake. The FortiGate is now knocking at the door, but on FortiManager the administrator still has to <em>authorise</em> the device (or the FortiGate had to be pre-registered by serial number as a model device). Until then it sits in the unauthorised queue.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-central-mgmt">
+      <div class="section-label">SECTION 01</div>
+      <h2>Central-Mgmt <em>Registration</em></h2>
+      <p>Two commands do the whole pairing: <code>config system central-management</code> to declare the FortiManager, and <code>execute central-mgmt register-device</code> to trigger the handshake explicitly.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system central-management
+    set type fortimanager
+    set fmg &lt;fortimanager-ip&gt;
+    set serial-number &lt;fmg-serial&gt;
+end</code></div>
+        <p class="cmd-desc">Declares the target FortiManager on the FortiGate side. Once committed, the FortiGate opens the FGFM tunnel outbound to the FortiManager IP.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>set type fortimanager</code> is what tells the FortiGate to speak FGFM; without it, this block does nothing. The <code>serial-number</code> field binds the tunnel to a specific FortiManager, preventing a rogue FMG from hijacking the connection. <strong>The pairing still needs the FortiManager admin to authorise the device</strong> — or the FortiGate must already exist as a model device.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute central-mgmt register-device &lt;fmg-serial&gt; &lt;registration-password&gt; &lt;fgt-user&gt; &lt;fgt-password&gt;</code></div>
+        <p class="cmd-desc">Explicitly triggers the FGFM registration handshake using a pre-shared key (the LTP flow — Low-Touch Provisioning). Alternative to serial-number-only ZTP when your process requires a shared secret.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The pre-shared key must match the one the FortiManager admin configured on the model device. Wrong key = registration fails silently; check FortiManager's <em>Device Manager</em> log or run the FGFM debug on the next card.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute central-mgmt unregister
+# execute central-mgmt update</code></div>
+        <p class="cmd-desc"><code>unregister</code> tears down the tunnel and clears the pairing. <code>update</code> forces the FortiGate to re-sync its state with the FortiManager immediately, rather than waiting for the next heartbeat.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Use <code>unregister</code> before you rebuild the pairing — leaving a half-broken FGFM state around is a common cause of "install succeeds on FMG but nothing changes on the FortiGate." <code>update</code> is the "please pick up my most recent state now" nudge.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Central-mgmt is a two-sided handshake: the FortiGate opens the FGFM tunnel (config system central-management), FortiManager authorises the serial or matches it to a model device. Neither side alone is enough.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-central-mgmt" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-central-mgmt','Central-Mgmt Registration')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-central-mgmt" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-central-mgmt')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — FGFM TUNNEL DIAGNOSTICS ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · FGFM TUNNEL DIAGNOSTICS</span>
+      </div>
+      <p class="socratic-insight">The FortiGate–FortiManager Protocol (FGFM) is the tunnel every install, every retrieve, every quick-install rides over. When it flaps, nothing FortiManager does actually reaches the FortiGate.</p>
+      <ul class="socratic-questions">
+        <li>You install a policy package on FortiManager, it says "installed successfully", but the FortiGate hasn't received the change. Where do you look first?</li>
+        <li>Why does the FGFM debug need to be filtered? What happens on a busy box if you don't?</li>
+      </ul>
+      <div class="answer-area" data-section="fgfm">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The FGFM tunnel status on the FortiGate side: <code>diagnose fdsm central-mgmt-status</code> and then the FGFM debug application to see the tunnel state. If FGFM is down, FortiManager thinks it installed but the changes are queued and never actually push.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because FGFM debug is verbose — every heartbeat, every keepalive, every state change gets printed. On a device with active traffic, unfiltered debug will scroll faster than you can read and add measurable CPU load. Always end a debug session with <code>diagnose debug disable</code> and <code>diagnose debug reset</code>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-fgfm">
+      <div class="section-label">SECTION 02</div>
+      <h2>FGFM <em>Tunnel Diagnostics</em></h2>
+      <p>When a policy package or device-settings install doesn't take effect, the FGFM tunnel is the first suspect. These commands sit on the FortiGate side.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose fdsm central-mgmt-status</code></div>
+        <p class="cmd-desc">Prints the current central-management state: the configured FortiManager IP, tunnel status (up/down), and the last-seen heartbeat time.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Tunnel <strong>up</strong> means installs will actually reach this device. Tunnel <strong>down</strong> means every install on FortiManager gets queued locally — the GUI can still say "installed successfully" while the FortiGate never sees the change. Also confirms which FortiManager IP the FortiGate is trying to reach — a common bug when the FMG IP was changed after registration.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose debug application fgfm -1
+# diagnose debug enable</code></div>
+        <p class="cmd-desc">Turns on live FGFM protocol debug output. Prints every FGFM message exchanged with FortiManager — heartbeats, install pushes, retrieve requests, auth handshakes.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <code>-1</code> is "all levels" — you can pass a smaller integer for less noise. Look for auth failures (wrong pre-shared key or serial mismatch), TLS errors (certificate expired), and install responses (success/failure with reason). Always end with <code>diagnose debug disable</code> and <code>diagnose debug reset</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose test application fgfmd 1</code></div>
+        <p class="cmd-desc">Runs the FGFM daemon's built-in self-test: prints internal state, the configured FortiManager list, and the current tunnel session ID.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Different integer arguments (1, 2, 3…) dump different internal structures — 1 gives you the state summary. When the tunnel keeps flapping, comparing the state before and after a flap here tells you which side dropped it (FortiGate NAT/firewall vs. FortiManager rejected the auth).</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute fgfm reconnect</code></div>
+        <p class="cmd-desc">Forces the FortiGate to tear down and rebuild the FGFM tunnel to FortiManager. Faster than a reboot when the tunnel is stuck.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Use this after a firewall or NAT change on the path between FortiGate and FortiManager — the existing tunnel may be holding stale state. Also useful right after you fix a config issue on FortiManager; without a reconnect, the FortiGate may wait up to a minute before the next heartbeat.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">FGFM tunnel down = FortiManager's "install successful" is a lie. Always check central-mgmt-status on the FortiGate before you trust the FMG install log.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-fgfm" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-fgfm','FGFM Tunnel Diagnostics')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-fgfm" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-fgfm')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — FORTIGUARD & FDS ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · FORTIGUARD & FDS</span>
+      </div>
+      <p class="socratic-insight">The chapter's ADOM architecture slide shows FortiGuard as the source of the global database. On the FortiGate side, a companion service handles the actual signature pulls — either from the public FortiGuard cloud or from a FortiManager acting as a local FortiGuard Distribution Server (FDS).</p>
+      <ul class="socratic-questions">
+        <li>In a closed network, FortiManager doubles as an FDS. Which FortiGate CLI setting is what actually redirects the signature pull to FortiManager instead of the internet?</li>
+        <li>Why does the FortiGate FortiGuard status show "unreachable" even when the FortiGate can ping FortiManager fine?</li>
+      </ul>
+      <div class="answer-area" data-section="fortiguard">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>config system central-management</code> → <code>set include-default-servers disable</code> → <code>config server-list</code> with the FortiManager IP and <code>set server-type update rating</code>. This tells the FortiGate to pull antivirus / IPS updates and web/DNS rating queries from FortiManager instead of the public FortiGuard servers.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">FortiGuard connectivity uses specific TCP/UDP ports (443 for updates/rating in 7.6). Ping proves L3 reachability but proves nothing about port filtering. And in multi-VDOM setups (Ch03), FortiGuard traffic sources from the <em>management VDOM</em> — if that VDOM has no internet or its default route is broken, updates fail even though other VDOMs work fine.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-fortiguard">
+      <div class="section-label">SECTION 03</div>
+      <h2>FortiGuard <em>and FDS</em></h2>
+      <p>The FortiGate pulls signatures and rating info from either public FortiGuard or a FortiManager acting as a local FDS. These commands cover both the config and the diagnostics for that pull.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system central-management
+    set include-default-servers disable
+    config server-list
+        edit 1
+            set server-type update rating
+            set server-address &lt;fmg-ip&gt;
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Redirects FortiGuard pulls to FortiManager acting as a local FDS. <code>include-default-servers disable</code> stops the FortiGate from also trying the public FortiGuard cloud as a fallback.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>set server-type update rating</code> covers both signature pulls (update) and web/DNS category queries (rating). In a fully closed network you always want <code>include-default-servers disable</code> — otherwise the FortiGate wastes cycles trying to reach FortiGuard cloud on every update and generates alarming logs.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose debug rating</code></div>
+        <p class="cmd-desc">Prints the current rating-server list and the last query results — used to confirm the FortiGate is actually reaching FortiManager (or FortiGuard) for web filter / DNS category lookups.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Each server entry shows an RTT and a "packets lost" counter. Rising loss = the FortiGate is timing out on the rating queries — check management-VDOM reachability first, then check port 443 filtering on the path.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose test application fgtserverd 3
+# diagnose test application forticldd 2</code></div>
+        <p class="cmd-desc">Internal daemon self-tests. <code>fgtserverd</code> handles the FortiGate side of FGT-to-FortiGuard communication; <code>forticldd</code> is the FortiCloud daemon. Different integer args dump different internal structures.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Arg <code>3</code> on <code>fgtserverd</code> is the "print current state" call — use it to verify what the FortiGate believes the FortiGuard update servers are right now. If that list is stale, FortiManager as an FDS won't be tried at all.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute update-av
+# execute update-ips
+# execute update-now</code></div>
+        <p class="cmd-desc">Forces an immediate signature pull for antivirus, IPS, or all FortiGuard services. Useful after you fix an FDS/FortiManager path — no need to wait for the next scheduled poll.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Watch <code>diagnose debug application update -1</code> in a second window while these run — you'll see the actual HTTPS pull, the version compare, and the "no new signatures" or "downloaded" line. That's the fastest way to prove the FDS path is working end-to-end.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">FortiGuard traffic sources from the management VDOM. In multi-VDOM, a broken management VDOM = broken updates for every VDOM. Setting FortiManager as an FDS only fixes half the problem if the management VDOM still can't reach the FMG IP.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-fortiguard" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-fortiguard','FortiGuard & FDS')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-fortiguard" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-fortiguard')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — SCRIPT CONTEXTS ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SCRIPT CONTEXTS</span>
+      </div>
+      <p class="socratic-insight">FortiManager runs FortiOS CLI scripts against three different targets — remote FortiGate directly, the FortiGate device database, or a policy package / ADOM database. Same syntax, three very different behaviours.</p>
+      <ul class="socratic-questions">
+        <li>You run a CLI script that creates a firewall address. It runs against the <em>device database</em>. What has to happen next before the address exists on the actual FortiGate?</li>
+        <li>Why does running a script directly on the remote FortiGate (via CLI) trigger an auto-retrieve, but running it against the device database doesn't?</li>
+      </ul>
+      <div class="answer-area" data-section="scripts">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">An <em>install device settings</em> (or <em>quick install</em>) is required. The device database is FortiManager's staging area — the script only marks the device as "Modified" until an install pushes the changes over FGFM to the real FortiGate.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">A direct-CLI script bypasses FortiManager's staging — the changes happen on the FortiGate first, then FortiManager auto-retrieves the new revision so its device database stays in sync. A device-database script goes the other direction: FortiManager stages, then pushes on install. The direction determines whether an auto-retrieve is needed.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-scripts">
+      <div class="section-label">SECTION 04</div>
+      <h2>Script <em>Contexts</em></h2>
+      <p>The same FortiOS CLI syntax runs in three FortiManager contexts. Understanding which context you're in is how you avoid "the script ran but nothing changed" surprises.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall address
+    edit "DMZ_Address"
+        set subnet 10.10.10.0 255.255.255.0
+    next
+end</code></div>
+        <p class="cmd-desc">A representative FortiOS CLI script — creates a firewall address. FortiManager runs this same block against one of three targets: remote FortiGate directly (via CLI), device database, or policy package / ADOM database.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The syntax doesn't change. What changes is the target selector at the top of the FortiManager script editor. <strong>Remote FortiGate directly (via CLI)</strong>: runs on the real device, then FortiManager auto-retrieves. <strong>Device Database</strong>: stages the change; requires install-device-settings or quick-install to push. <strong>Policy Package / ADOM Database</strong>: stages in the policy layer; requires install-policy-package.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system global
+    set vdom-mode multi-vdom
+end</code></div>
+        <p class="cmd-desc">A FortiManager pre-run CLI template example — a one-time bootstrap script that runs during ZTP/LTP <em>before</em> the FortiGate joins the device database. Auto-detaches after the quick install so it doesn't run again.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Pre-run templates are the ZTP/LTP mechanism for "do this exactly once at first-boot." After the FortiGate connects with <em>Automatically Link to Real Device</em> enabled, the template applies then unassigns itself. Use it for VDOM-mode changes, mgmt-interface pre-config, or admin-account bootstrap.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall address
+    edit "LAN"
+        set subnet $(CLI_LAN_Address)
+    next
+end</code></div>
+        <p class="cmd-desc">CLI template with a FortiManager metadata variable. The <code>$(...)</code> reference is resolved per-device at install time — different FortiGates get different subnets from the same template.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Metadata variables are defined under <em>Policy &amp; Objects → Advanced → Metadata Variables</em> with a default value and optional per-device overrides. When a CLI template using a variable is assigned, the FortiGate's status shows <strong>Modified</strong> with the exclamation triangle until the next install.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn certificate ca
+    edit "Custom-CA"
+        set ca "-----BEGIN CERTIFICATE-----
+        ...
+        -----END CERTIFICATE-----"
+    next
+end</code></div>
+        <p class="cmd-desc">Representative "remote FortiGate directly" script — pushes a CA certificate straight to the FortiGate via FGFM. After the push, FortiManager auto-retrieves the new revision so the device database stays synchronised.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Configuration Revision History on FortiManager should show the new revision as <strong>Retrieved</strong>, and the device's Config Status should read <strong>Synchronized</strong>. If it doesn't, the auto-retrieve failed — check FGFM tunnel status. <strong>Avoid modifying objects used in firewall policies via direct-CLI scripts</strong> — that creates conflicts between the device layer and the policy layer.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Three script contexts, three behaviours. Direct = "runs now, auto-retrieve syncs FMG." Device DB = "stages, needs install-device-settings." Policy package = "stages, needs install-policy-package." Pick the wrong context and the change either doesn't apply or applies twice.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-scripts" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-scripts','Script Contexts')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-scripts" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-scripts')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-01-introduction.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">Introduction Baseline CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-03-vlans-vdoms.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">VLANs and VDOMs CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Chapter 02 Central Management
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-ch02-fmg';
+const SECTIONS = {
+  'section-central-mgmt': 'Central-Mgmt Registration',
+  'section-fgfm': 'FGFM Tunnel Diagnostics',
+  'section-fortiguard': 'FortiGuard & FDS',
+  'section-scripts': 'Script Contexts',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

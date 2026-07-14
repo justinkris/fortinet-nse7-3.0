@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 11 Bite — Handshakes, Modern Style</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--border:#d4c89a;--text:#0a1838;--muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink:#0d1a3a;--accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber-light:#fcf2c3;--amber-border:#f3d68a;--amber:#b45309}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);font-size:18px;line-height:1.6}
+header{background:var(--ink);padding:32px 7%}
+h1{font-family:'Playfair Display',serif;color:#fbf7ec;font-size:30px}
+header p{color:var(--accent);font-style:italic;font-size:15px;margin-top:6px}
+main{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+h2{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:26px 0 8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0}
+.rule{background:var(--blue-light);border:1px solid var(--blue-border);border-left:4px solid var(--blue);border-radius:8px;padding:14px 18px;margin:12px 0;font-style:italic;font-size:19px}
+.trap{background:var(--amber-light);border:1px solid var(--amber-border);border-left:4px solid var(--amber);border-radius:8px;padding:12px 16px;margin:12px 0;font-size:16px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-family:'Outfit',sans-serif;font-size:13px}
+th{background:var(--ink);color:#fbf7ec;padding:8px 10px;text-align:left}
+td{border:1px solid var(--border);padding:7px 10px;background:var(--surface)}
+tr.hl td{background:var(--green-light);font-weight:600}
+pre{font-family:Menlo,Consolas,monospace;font-size:13px;background:var(--ink);color:#dbe7fb;padding:14px 16px;border-radius:8px;overflow-x:auto;margin:10px 0;line-height:1.5}
+ul{margin:6px 0 6px 24px}li{margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 11</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Bite</span></div><h1>⚡ Session 11 Bite — Handshakes, Modern Style</h1><p>IKEv2 exchanges · IKEv1 comparison · network-id — 5 minutes.</p></header>
+<main>
+
+<h2>The three jobs, in order</h2>
+<div class="card">① Agree the language (proposals) → ② Grow the shared secret (Diffie-Hellman — the key is <em>grown at both ends</em>, never sent) → ③ Prove identity.</div>
+<div class="rule">"First grow the secret. Then whisper your name inside it." Identity goes <strong>after</strong> DH — before DH, everything is plaintext.</div>
+
+<h2>Why aggressive mode leaks</h2>
+<div class="card">It sends peer IDs in the <strong>first messages — before DH</strong> — to save round trips. Its speed and its clear-text ID leak are the <strong>same design choice</strong>, not two facts.</div>
+
+<h2>The scoreboard</h2>
+<table>
+<tr><th></th><th>Aggressive</th><th>Main</th><th>IKEv2</th></tr>
+<tr><td>Phase 1</td><td>3</td><td>6</td><td>2 — IKE_SA_INIT</td></tr>
+<tr><td>Phase 2</td><td>3 (quick)</td><td>3 (quick)</td><td>2 — IKE_AUTH</td></tr>
+<tr class="hl"><td>Total</td><td>6</td><td>9</td><td>4</td></tr>
+<tr><td>Peer IDs</td><td>⚠️ clear text</td><td>encrypted</td><td>encrypted</td></tr>
+<tr><td>Network ID</td><td>N/A</td><td>N/A</td><td>Yes</td></tr>
+</table>
+<div class="card"><strong>IKE_SA_INIT</strong> (2 msgs): proposals + DH publics — plaintext but nothing sensitive. <strong>IKE_AUTH</strong> (2 msgs): identities + auth + <em>first child SA piggybacked</em> — encrypted. No separate quick mode. Modern kit: AES-GCM, SHA-2, ECP DH groups 19/20, EAP.</div>
+
+<h2>network-id</h2>
+<div class="card"><strong>Fortinet-proprietary · IKEv2-only.</strong> Selects the correct phase 1 so <strong>multiple tunnels can exist between the same local/remote gateway pair</strong>. Must match at both ends. Nightclub with two identical doors — the ticket names the event.</div>
+<pre>set ike-version 2
+set network-overlay enable
+set network-id 1        # tunnel 2 gets network-id 2</pre>
+
+<h2>Exam traps</h2>
+<div class="trap">• "Aggressive skips DH" — false, it reorders. • "PSK sent in clear" — false, the <em>IDs</em> are. • IKEv2 = 4 msgs, not 2, not 6. • network-id on IKEv1 = always false. • <code>network-overlay enable</code> AND <code>network-id N</code> — two commands.</div>
+
+<h2>The senior lesson</h2>
+<div class="rule">"Fast or safe?" was a false dilemma — IKEv2 beat aggressive on speed AND main mode on economy. When offered a trade-off, first check it's real. <strong>Refuse the question.</strong></div>
+
+</main>
+</body>
+</html>

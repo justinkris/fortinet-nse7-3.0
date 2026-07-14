@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 14 Visual — OSPF Areas &amp; The Backbone Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9; --border:#d4c89a;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:40px 60px 30px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:#fbf7ec;margin-bottom:8px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);}
+  main{max-width:960px;margin:0 auto;padding:36px 60px 60px;}
+  .style-note{background:var(--blue-light);border:1px solid var(--blue-border);border-radius:12px;padding:16px 20px;margin-bottom:32px;}
+  .style-note-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);text-transform:uppercase;margin-bottom:6px;}
+  .style-note p{font-size:16px;color:var(--text-soft);line-height:1.6;}
+  .visual-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0;margin-bottom:40px;overflow:hidden;}
+  .visual-card-header{padding:18px 24px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .visual-card-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);}
+  .visual-card-title em{font-style:italic;font-weight:500;color:var(--blue);}
+  .visual-card-ratio{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:12px;text-transform:uppercase;}
+  .visual-frame{border:2px dashed var(--border);border-radius:0;background:var(--surface-2);margin:20px 24px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .visual-frame-icon{font-size:32px;}
+  .visual-frame-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;}
+  .visual-body{padding:4px 24px 24px;}
+  .vb-section{margin-bottom:14px;}
+  .vb-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+  .vb-text{font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .prompt-box{background:var(--ink-dark);border-radius:10px;padding:16px 18px;margin-top:6px;}
+  .prompt-box-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--ink-accent);text-transform:uppercase;margin-bottom:8px;}
+  .prompt-box-text{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.7;color:#e8efff;white-space:pre-wrap;}
+  footer{padding:24px 60px;text-align:center;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:var(--text-muted);background:var(--ink-dark);}
+  footer span{color:rgba(251,247,236,0.4);margin:0 6px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow">SESSION 14 · VISUAL LEARNING</div>
+  <h1>Routes That <em>Teach Themselves</em></h1>
+  <p>Recommended style: Enterprise Topology Map + Process Flow hybrid — the concepts this session are structural (area boundaries) and directional (summary flow), so a labeled topology diagram with an inset flow does more for memory than an abstract metaphor.</p>
+</header>
+
+<main>
+  <div class="style-note">
+    <div class="style-note-label">Why this visual style</div>
+    <p>Session 14's core ideas — areas, ABRs, the mandatory backbone hub — are fundamentally spatial and topological, not process-sequential. An <strong>Enterprise Topology Map</strong> lets you see the hub-and-spoke shape directly (which is the entire point of the backbone rule), while a small inset <strong>Process Flow</strong> panel captures the "detail in, summary out" transformation happening at each ABR. Three image placeholders below build this in layers: the scaling problem, the area/ABR fix, and the backbone hub rule.</p>
+  </div>
+
+  <!-- VISUAL 1 -->
+  <div class="visual-card">
+    <div class="visual-card-header">
+      <div class="visual-card-title">1. The Scaling Problem — <em>One Flat Map, Company-Wide</em></div>
+      <div class="visual-card-ratio">16:9</div>
+    </div>
+    <div class="visual-frame">
+      <div class="visual-frame-icon">🗺️</div>
+      <div class="visual-frame-label">Image not yet generated — see prompt below</div>
+    </div>
+    <div class="visual-body">
+      <div class="vb-section">
+        <div class="vb-label">Purpose</div>
+        <div class="vb-text">Anchor the "why areas exist" reasoning before showing the fix — this image should make the blast-radius problem feel physically obvious.</div>
+      </div>
+      <div class="vb-section">
+        <div class="vb-label">Placement</div>
+        <div class="vb-text">Early in the page, immediately after the style note, before the ABR/area fix visual.</div>
+      </div>
+      <div class="vb-section">
+        <div class="vb-label">Accessibility description</div>
+        <div class="vb-text">A flat-style illustrated map showing four LoFinance office buildings (HQ, DR, Parramatta, Chatswood) connected by a single shared web of lines with no boundaries between them, with a small red spark icon at one connection to indicate a single link change, and faint radiating rings spreading out from that spark to touch every single building on the map — indicating one small change forces every site to recalculate.</div>
+      </div>
+      <div class="prompt-box">
+        <div class="prompt-box-label">Image Generation Prompt</div>
+        <div class="prompt-box-text">Flat, minimalistic but highly detailed vector-art illustration in a modern storybook-diagram style. Cream/warm off-white background (#faf5e9). Composition: an aerial, isometric-lite illustrated map of four small stylized office buildings labeled subtly with icons (not dense text) representing LoFinance HQ, DR site, Parramatta branch, and the new Chatswood branch, arranged in a loose square across the canvas. All four buildings are connected directly to EACH OTHER by a dense, tangled web of thin coral-colored lines (every building touches every other building directly — a flat, non-hierarchical mesh). Somewhere on one of the connecting lines, place a small stylized amber "spark" or "crack" icon indicating a single change event. From that spark, draw three or four faint, soft-edged concentric rings (like ripples in water, rendered as thin dashed sage-green circles) expanding outward until they touch and highlight ALL FOUR buildings simultaneously with a soft golden glow — visually showing that one small event affects the entire map at once. Include one small figure in the corner — a neat, competent-looking engineer character (the "Intermediate Engineer," LoFinance's protagonist) standing at a desk, looking at a tablet or printout with a slightly overwhelmed expression, one hand on their forehead, papers with small route-like squiggly lines scattered around them suggesting the 47 static routes. Style: clean bold line work, no gradients, no photorealism, no 3D rendering, muted gold highlights, sage green ripple rings, coral connection lines, soft brown outlines, generous negative space, professional but storybook-like — should function as an educational diagram, not decoration. Do NOT include dense technical labels, IP addresses, or readable text of any kind on the buildings. Do NOT include any real company logos or branding other than a small, simple frozen-ice-cube-with-cash motif on the HQ building (LoFinance's own branding). Learning purpose: this image reinforces WHY a flat, non-hierarchical network topology creates a company-wide blast radius from a single local change — the visual should make the ripple-touches-everything effect immediately intuitive without needing any technical labels.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISUAL 2 -->
+  <div class="visual-card">
+    <div class="visual-card-header">
+      <div class="visual-card-title">2. Areas &amp; the ABR — <em>Detail In, Summary Out</em></div>
+      <div class="visual-card-ratio">16:9</div>
+    </div>
+    <div class="visual-frame">
+      <div class="visual-frame-icon">🧭</div>
+      <div class="visual-frame-label">Image not yet generated — see prompt below</div>
+    </div>
+    <div class="visual-body">
+      <div class="vb-section">
+        <div class="vb-label">Purpose</div>
+        <div class="vb-text">Reinforce the ABR's exact mechanism: full detail retained locally, only a stripped summary crosses the boundary. This is the single most re-derived concept of the session and deserves a visual anchor.</div>
+      </div>
+      <div class="vb-section">
+        <div class="vb-label">Placement</div>
+        <div class="vb-text">Directly beside the "Areas — Containing the Blast Radius" section of the complete guide / immediately after Visual 1 on this page.</div>
+      </div>
+      <div class="vb-section">
+        <div class="vb-label">Accessibility description</div>
+        <div class="vb-text">A cutaway illustration of a router-shaped gatehouse standing between two clearly bounded zones, with dense colorful "detail" objects visible only on the near side and a single small labeled envelope crossing to the far side.</div>
+      </div>
+      <div class="prompt-box">
+        <div class="prompt-box-label">Image Generation Prompt</div>
+        <div class="prompt-box-text">Flat, minimalistic but highly detailed vector-art illustration, modern storybook-diagram aesthetic, cream/warm off-white background (#faf5e9), no gradients, no photorealism. Composition: a wide horizontal scene split into two clearly bounded regions by a tall, friendly-looking gatehouse/checkpoint structure in the center, styled like a small stylized network-router character-building with a simple face-like front (two round "window eyes," a small rectangular "mouth" slot) — this represents the Area Border Router (ABR). On the LEFT side of the gatehouse, densely packed, colorful, varied small icons — tiny building icons, tiny connecting line squiggles, small cloud shapes, numbered tags — all in sage green and coral, representing "Area 2" and its full rich topology detail, visually busy and information-dense. On the RIGHT side of the gatehouse, a much sparser, calmer space in muted gold and cream tones, containing only ONE small stylized envelope or note-card icon with a simple arrow and a small dollar-sign-free price/cost tag symbol on it, floating toward the right — representing the single Type 3 summary LSA (prefix + cost only) that crosses the boundary. The gatehouse figure has one hand-like extension holding back a curtain of the dense left-side detail, and the other hand-like extension gently placing the single summary envelope onto the right side — visually dramatizing "keeps the mess here, sends only the summary there." Soft brown outlines throughout, generous spacing, clean bold line work. Do NOT show readable IP addresses, subnet masks, or dense technical text — icons and shapes only. Do NOT make the gatehouse figure look like a real branded router product. Learning purpose: this image is the visual anchor for the ABR's exact function — full detail retained on the area side, only a compressed summary crossing the boundary — reinforcing the "detail in, summary out" mental model from the session.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISUAL 3 -->
+  <div class="visual-card">
+    <div class="visual-card-header">
+      <div class="visual-card-title">3. The Backbone Hub Rule — <em>No Shortcuts Allowed</em></div>
+      <div class="visual-card-ratio">3:2</div>
+    </div>
+    <div class="visual-frame">
+      <div class="visual-frame-icon">🚫</div>
+      <div class="visual-frame-label">Image not yet generated — see prompt below</div>
+    </div>
+    <div class="visual-body">
+      <div class="vb-section">
+        <div class="vb-label">Purpose</div>
+        <div class="vb-text">Cement the structural loop-prevention insight the student worked hardest for this session: forbidden direct area-to-area shortcuts vs. the mandatory hub-and-spoke shape through Area 0.</div>
+      </div>
+      <div class="vb-section">
+        <div class="vb-label">Placement</div>
+        <div class="vb-text">Alongside "The Backbone Rule" section, immediately after Visual 2.</div>
+      </div>
+      <div class="vb-section">
+        <div class="vb-label">Accessibility description</div>
+        <div class="vb-text">A hub-and-spoke wheel diagram with a central hub labeled conceptually as "0" and four numbered spoke areas around it, with a single tempting-looking but crossed-out direct shortcut line drawn between two spokes.</div>
+      </div>
+      <div class="prompt-box">
+        <div class="prompt-box-label">Image Generation Prompt</div>
+        <div class="prompt-box-text">Flat, minimalistic, highly detailed vector-art illustration, cream/warm off-white background (#faf5e9), storybook-diagram aesthetic, no gradients, no photorealism, no 3D rendering. Composition: a clean, symmetrical hub-and-spoke wheel diagram viewed from directly above (flat top-down layout). At the exact center, a single glowing golden-outlined circular hub shape, larger than the other nodes, softly radiating a warm gold light — this represents the mandatory Backbone Area. Around it, arranged evenly like spokes on a wheel, four smaller sage-green circular nodes represent the numbered areas, each connected to the central hub by a solid, confident coral-colored line. Between two of the spoke nodes (any two adjacent ones), draw a single dashed, faded-out line attempting to connect them DIRECTLY to each other, bypassing the hub — and overlay a simple, bold, universally recognizable "forbidden" red circle-with-diagonal-slash icon directly on top of that dashed shortcut line, clearly marking it as not allowed. Include small simple iconography inside each spoke node hinting at LoFinance sites (a tiny building silhouette) without any readable text or labels. Soft brown outlines, generous negative space, clean bold line work, gentle visual hierarchy drawing the eye first to the glowing central hub, then to the forbidden shortcut. Do NOT include any technical text, IP addressing, or area numbers as literal readable digits — use simple shape-based visual hierarchy instead (larger/glowing = hub, smaller = spokes). Do NOT depict any real branded network hardware. Learning purpose: this image is the visual anchor for the mandatory hub-and-spoke OSPF area topology — every area must connect through the backbone, and direct area-to-area shortcuts are structurally forbidden, not just discouraged.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+<footer>LoFinance<span>.</span> NSE7 EF 7.6<span>.</span> Session 14 Visual Learning Page</footer>
+</body>
+</html>

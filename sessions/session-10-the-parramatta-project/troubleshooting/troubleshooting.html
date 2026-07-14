@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 10 Troubleshooting — Topology-Level Faults</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital@0;1&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;}
+header{padding:36px 44px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--ink-accent);margin-bottom:8px;}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+header p{font-style:italic;color:rgba(251,247,236,.55);margin-top:8px;}
+main{max-width:820px;margin:0 auto;padding:30px 24px 70px;}
+h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--blue-deep);margin:34px 0 10px;}
+h3{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin:20px 0 6px;}
+p,li{font-size:17px;color:var(--text-soft);}
+ul,ol{margin:0 0 12px 22px;}
+li{margin-bottom:5px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:12px 0;}
+.card.sym{border-left:4px solid var(--amber);}
+.card.root{border-left:4px solid var(--green);background:var(--green-light);}
+pre{font-family:'Outfit',monospace;font-size:13px;background:var(--ink-dark);color:#dfe8fa;padding:12px 16px;border-radius:8px;overflow-x:auto;margin:10px 0;line-height:1.6;}
+.tree{font-family:'Outfit',sans-serif;font-size:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:14px 0;}
+.tree div{padding:3px 0;}
+.trap{border-left:4px solid var(--amber);background:var(--amber-light);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:16px;}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.1em;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 10</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div>
+<div class="eyebrow">TROUBLESHOOTING GUIDE · SESSION 10 · IPSEC TOPOLOGY-LEVEL FAULTS</div>
+<h1>When the Design Is the Fault</h1>
+<p>Tunnel config comes later. This guide is about faults whose root cause is the <em>topology decision itself</em> — the kind you diagnose with a map before you diagnose with a CLI.</p>
+</header>
+<main>
+
+<h2>The mindset</h2>
+<p>Session 10's core habit: <b>ask where the traffic goes before you evaluate the device.</b> A perfectly configured firewall in the wrong topology still produces slow, glitchy, or fragile networks. These faults show up as performance complaints, not error messages — which is exactly why juniors miss them.</p>
+
+<h2>Scenario 1 — "Branch-to-branch is slow, but branch-to-HQ is fine"</h2>
+<div class="card sym"><b>Symptom:</b> Users at Spoke A report large transfers to Spoke B crawling; both sites reach HQ at full speed. All tunnels show up.</div>
+<h3>Questions to ask first</h3>
+<ul>
+<li>What topology is this? (If hub-and-spoke — the path is A→hub→B. Is that path <em>expected</em>?)</li>
+<li>Was spoke-to-spoke traffic part of the original design assumptions, or has the business changed?</li>
+<li>What is the hub's CPU doing during the transfer?</li>
+</ul>
+<h3>Verification</h3>
+<pre># On the hub — is it sweating crypto?
+get system performance status        &lt;- CPU, especially during transfers
+diagnose vpn tunnel list             &lt;- SAs up on BOTH spoke tunnels?
+# Trace the actual path from Spoke A:
+execute traceroute &lt;spoke-B-host&gt;    &lt;- expect the hub as an intermediate hop</pre>
+<div class="card root"><b>Likely root cause:</b> nothing is broken. The topology imposes double WAN traversal plus decrypt/re-encrypt at the hub for every spoke-to-spoke packet. If the business now has real spoke-to-spoke traffic, the <em>design</em> needs revisiting (this is the exact problem ADVPN exists to solve — later in the course), not the config.</div>
+<div class="trap"><b>Dead end to avoid:</b> tuning phase 2 proposals or MTU on the spoke tunnels. The tunnels are fine — the path is the cost.</div>
+
+<h2>Scenario 2 — "Real-time feed glitches, but both tunnels are up"</h2>
+<div class="card sym"><b>Symptom:</b> Trading feed to Parramatta stutters/drops ticks. Both aggregate member tunnels are up. Bandwidth graphs look healthy.</div>
+<h3>Questions to ask first</h3>
+<ul>
+<li>What is the aggregate's load-balancing algorithm?</li>
+<li>Do the two member tunnels ride different ISPs with different latencies?</li>
+<li>Is the complaint about <em>loss</em> or about <em>ordering/jitter</em>? (Glitches with zero loss points at reordering.)</li>
+</ul>
+<h3>Verification</h3>
+<pre>show system ipsec-aggregate          &lt;- check "set algorithm"
+diagnose vpn tunnel list             &lt;- both members up, traffic counters on BOTH?
+execute ping &lt;peer-underlay-A&gt;       &lt;- latency per ISP path
+execute ping &lt;peer-underlay-B&gt;       &lt;- compare: unequal? there's your skew</pre>
+<div class="card root"><b>Likely root cause:</b> <code>algorithm round-robin</code> (per-packet) across unequal-latency links → out-of-order delivery → jitter. Fix: <code>redundant</code> if one link has headroom, or <code>L3</code>/<code>L4</code> so each flow pins to one tunnel.</div>
+<div class="trap"><b>Exam trap shape:</b> the distractors will blame phase 2 selectors, IKE version, or DPD. If both tunnels are up, counters increment on both, and the traffic is latency-sensitive — think ordering before you think negotiation.</div>
+
+<h2>Scenario 3 — "Some Parramatta machines can't reach an HQ subnet at all"</h2>
+<div class="card sym"><b>Symptom:</b> Trading workstations reach VLAN 20 perfectly; office PCs can't reach it at all — not slow, <em>nothing</em>. Tunnel is up.</div>
+<h3>Questions to ask first</h3>
+<ul>
+<li>Which src↔dst subnet pairs are declared as phase 2 selectors?</li>
+<li>Is the failing traffic's pair on that list — or was it never declared?</li>
+<li>Is this a fault… or the design working exactly as intended?</li>
+</ul>
+<h3>Verification</h3>
+<pre>diagnose vpn tunnel list             &lt;- inspect selectors (src/dst proxy IDs) per phase 2
+# Does the failing src/dst pair match ANY listed selector?</pre>
+<div class="card root"><b>Likely root cause:</b> the pair matches no selector, so the traffic never enters the tunnel — dropped pre-encryption. If the office PCs <em>shouldn't</em> reach VLAN 20: this is segmentation succeeding, close the ticket with a smile. If they legitimately need a new destination: add a phase 2 selector (and matching policy) — a design change, made deliberately.</div>
+<div class="trap"><b>Dead end to avoid:</b> hunting for a deny policy or a routing fault. Selector-excluded traffic fails <em>before</em> both — the tunnel simply never accepts it.</div>
+
+<h2>Decision tree</h2>
+<div class="tree">
+<div><b>Site-to-site complaint arrives</b></div>
+<div>├─ Traffic works but is SLOW between two <i>spokes</i> → suspect topology path (Scenario 1) — trace the path, check hub CPU</div>
+<div>├─ Traffic works but GLITCHES / jitters on real-time flows → suspect aggregation algorithm (Scenario 2) — check algorithm + per-ISP latency</div>
+<div>├─ Specific src↔dst pair fails COMPLETELY, others fine, tunnel up → suspect selectors (Scenario 3) — read the phase 2 proxy IDs</div>
+<div>└─ Tunnel itself won't come up → negotiation problem → Sessions 11–12 territory (IKE) — don't guess yet</div>
+</div>
+
+<h2>Senior habits reinforced</h2>
+<ul>
+<li>Restate the business symptom, then draw the <b>expected packet path</b> before touching anything.</li>
+<li>"Both tunnels up" is not "everything healthy" — up-ness says nothing about path choice, ordering, or selectors.</li>
+<li>Distinguish <i>slow</i> (path/ordering) from <i>dead</i> (selectors/policy/routing) — they have different first questions.</li>
+<li>Sometimes the correct fix is a design conversation, not a config change.</li>
+</ul>
+
+</main>
+<footer>LOFINANCE · SESSION 10 TROUBLESHOOTING GUIDE</footer>
+</body>
+</html>

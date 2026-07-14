@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>End of Season 1 — Engineering Retrospective</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS (project standard) ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --gold:#a68321;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:rgba(251,247,236,0.6);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;text-transform:uppercase;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--text);margin:22px 0 8px;}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* STORY SCENE */
+  .story-scene{background:var(--ink-dark);border-radius:14px;padding:30px 38px;margin:16px 0 24px;}
+  .story-scene p{font-family:'Cormorant Garamond',serif;font-size:17.5px;font-style:italic;line-height:1.8;color:#d9d2bd;margin-bottom:12px;}
+  .story-scene p:last-child{margin-bottom:0;}
+  .story-scene strong{color:#fbf7ec;font-style:normal;font-weight:600;}
+  .scene-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-accent);margin-bottom:14px;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .stars{color:var(--gold);letter-spacing:2px;font-size:14px;white-space:nowrap;}
+
+  /* STAT DASHBOARD */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 16px;text-align:center;}
+  .stat-num{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--blue);line-height:1;}
+  .stat-lbl{font-family:'Outfit',sans-serif;font-size:9.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:8px;line-height:1.4;}
+  .stat-card.hero{background:var(--ink-dark);border-color:var(--ink-dark);}
+  .stat-card.hero .stat-num{color:var(--ink-accent);}
+  .stat-card.hero .stat-lbl{color:rgba(251,247,236,0.55);}
+
+  /* PRIORITY BOX */
+  .priority-box{background:var(--surface);border:1px solid var(--amber-border);border-top:4px solid var(--amber);border-radius:12px;padding:24px 28px;margin:18px 0;}
+  .priority-box .priority-eyebrow{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+  .priority-box h3{margin-top:0;}
+
+  /* AWARD */
+  .award-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  .award-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;border-top:3px solid var(--gold);}
+  .award-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px;}
+  .award-session{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+  .award-card p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.65;color:var(--text-soft);margin:0;}
+
+  /* LETTER */
+  .letter-block{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--blue);border-radius:0 14px 14px 0;padding:30px 38px;margin:16px 0;}
+  .letter-block p{font-family:'Cormorant Garamond',serif;font-size:19px;font-style:italic;line-height:1.9;color:var(--text-soft);margin-bottom:14px;}
+  .letter-sign{font-family:'Playfair Display',serif;font-style:italic;text-align:right;color:var(--text-muted);font-size:17px;margin-top:16px;}
+
+  /* IMAGE PLACEHOLDER (project convention) */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;line-height:1.6;}
+  .ip-meta{font-family:'Outfit',sans-serif;font-size:10.5px;color:var(--text-muted);margin-bottom:12px;}
+  .ip-meta span{display:inline-block;margin-right:18px;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:12px;padding:14px 16px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;color:var(--text-soft);line-height:1.7;text-align:left;white-space:pre-wrap;}
+  .prompt-content[hidden]{display:none;}
+  .ip-access{font-family:'Cormorant Garamond',serif;font-size:13.5px;font-style:italic;color:var(--text-muted);margin-top:10px;line-height:1.5;}
+
+  /* VERDICT PILL */
+  .verdict{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:6px 16px;border-radius:20px;background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+
+  /* INLINE CODE (match chapter pages) */
+  .section-block code,.callout code,.data-table code,.award-card code,.priority-box code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+
+  /* PAGE NAV (Prev / Next at the bottom, matching chapter pages) */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-btn.page-nav-disabled{opacity:0.5;cursor:default;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  .page-nav-btn.page-nav-disabled .page-nav-title{color:var(--text-muted);}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  @media(max-width:720px){
+    header{padding:28px 24px 24px;}header h1{font-size:34px;}
+    .motivation-banner{padding:16px 24px;}
+    .main-content{padding:24px 24px 40px;}
+    .section-nav{padding:0 16px;}
+    .award-grid{grid-template-columns:1fr;}
+    footer{padding:16px 24px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">End of Season</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Season 1 Review</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> SEASON 1 RETROSPECTIVE · NSE7 EF 7.6</div>
+    <h1>Nine Sessions, <em>One Engineer Emerging</em></h1>
+    <p>Season 1 engineering retrospective — evidence-based, honest, and pointed squarely at what Season 2 needs to build.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">You started the season looking for the firewall. You ended it looking for <em>the path the packet expected to take</em> — and the building the box was actually sitting in.</div>
+  <p class="motivation-sub">This review is written the way Penny would want the board report written: accurately, not flatteringly. Read the priority section twice.</p>
+</div>
+
+<nav class="section-nav">
+  <a class="nav-tab" href="#recap">Recap</a>
+  <a class="nav-tab" href="#stats">Stats</a>
+  <a class="nav-tab" href="#well">What Went Well</a>
+  <a class="nav-tab" href="#improve">Improve</a>
+  <a class="nav-tab" href="#biggest">Biggest Win</a>
+  <a class="nav-tab" href="#priority">Priority</a>
+  <a class="nav-tab" href="#method">Method</a>
+  <a class="nav-tab" href="#review">Perf Review</a>
+  <a class="nav-tab" href="#knowledge">Knowledge</a>
+  <a class="nav-tab" href="#exam">Exam</a>
+  <a class="nav-tab" href="#plan">Plan</a>
+  <a class="nav-tab" href="#awards">Awards</a>
+  <a class="nav-tab" href="#letter">Letter</a>
+  <a class="nav-tab" href="#trailer">Trailer</a>
+</nav>
+
+<main><div class="main-content">
+
+<!-- ══════════ COLD OPEN ══════════ -->
+<div class="section-block">
+  <div class="section-label">Cold Open</div>
+  <h2>The Ops Room, <em>After Hours</em></h2>
+  <div class="story-scene">
+    <div class="scene-label">LoFinance · Tuesday Evening · Season 1, Closed</div>
+    <p>The floor's mostly empty. Riley's still at his desk, half-heartedly closing tickets. Junior is carefully re-coiling a cable he never ended up needing. Penny leans against the doorway with a coffee she's forgotten to drink.</p>
+    <p>"So," she says. "Nine weeks. One engineer who didn't know where the firewall belonged, and now Cipher's standing up in meetings for him." A pause. "That's not nothing."</p>
+    <p>Señor doesn't look up from whatever he's doing to a config file. "He's not finished."</p>
+    <p>"I didn't say finished," Penny says. "I said not nothing."</p>
+    <p>Cipher, three desks away, doesn't say anything at all — but for once, that reads as agreement rather than absence.</p>
+    <p><strong>This document is the part that doesn't happen in the story.</strong> The honest version — what actually went well, what didn't, and what Season 2 needs to fix.</p>
+  </div>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/season-1-poster.png" alt="Season 1 Poster — the completed Sydney HQ topology, the cast, and the engineer at the centre of it. Premium TV-season-poster energy blended with enterprise-networking illustration." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/season-1-poster.png</div>
+    <div class="ip-caption">Season 1 Poster — the completed Sydney HQ topology, the cast, and the engineer at the centre of it. Premium TV-season-poster energy blended with enterprise-networking illustration.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 16:9</span><span><strong>Placement:</strong> top of page, below the cold open</span><span><strong>Purpose:</strong> anchor the whole season as one memorable, positive image</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art illustration in a premium television-season-poster style, blended with enterprise-networking iconography. Cream/off-white background (#faf5e9), coral (#c1502e), muted gold, and sage green accent palette, soft brown outlines, clean bold line work, no gradients, no photorealism, no glossy 3D rendering.
+
+Composition: centred, a stylised office building cutaway showing Sydney HQ's key zones — a trading floor (small desk icons in a cluster), an exec floor (a few larger desk icons), a server room (a single friendly FortiGate icon with a small shield), and a guest-WiFi lounge area — all connected by clean coral lines converging on the central FortiGate icon, subtly suggesting the segmented, protected topology built across the season.
+
+Foreground, slightly left of centre: a simple, warm illustrated figure representing the Intermediate Engineer (the protagonist), standing confidently with one hand resting near the central FortiGate icon, positioned as the clear problem-solver of the scene.
+
+To the right, a smaller figure wearing a sombrero (Señor) sits on a folding chair, calm, observing. Do not include a sandwich in his hands (in-story he was notably sandwich-less this finale).
+
+Small, subtle LoFinance branding element: a stack of banknotes frozen inside a simple ice-cube icon, placed unobtrusively in a corner (e.g. as a small sign or logo on the building).
+
+Faint, small visual references (not dense labels) to VLAN segmentation (a few thin coral divider lines between zones) and VDOM partitioning (a dashed-line box inside the server room icon) — atmospheric, not technical-diagram detail.
+
+No dense technical labels anywhere. No spoilers for Season 2 (no second building, no tunnel, no Parramatta reference). Mood: confident, warm, "season finale" energy — accomplishment and readiness.
+
+Learning purpose: anchor the whole of Season 1 (segmented, protected Sydney HQ) as one memorable, positive visual before Season 2 begins.</div>
+    <div class="ip-access">Accessibility: An illustrated poster of Sydney HQ's building showing trading, exec, server-room, and guest-WiFi zones connected to a central firewall icon, with the protagonist standing confidently beside it and a sombrero-wearing mentor observing calmly nearby.</div>
+  </div>
+</div>
+
+<!-- ══════════ 1. RECAP ══════════ -->
+<div class="section-block" id="recap">
+  <div class="section-label">Section 1</div>
+  <h2>Season <em>Recap</em></h2>
+  <p>Season 1 covered Chapters 01 and 03 of the study guide: network security architecture (evolution of enterprise threats, NGFW/UTM concepts, the NGFW/ISFW/DCFW/DEFW role model, life of a packet) and VLANs &amp; VDOMs in full (tagging and trunking, hardware vs software switches, VDOM types, Global Resources, inter-VDOM links, VDOM isolation).</p>
+  <p>The story moved from a first-day office tour through escalating business events — a board-approved growth plan, a doubling trading floor, a client's guest-network request, a $15k hardware quote correctly redirected into a VDOM — through a full boss-battle troubleshooting session (Session 8, "Cowboy Hat: The Quiet Tuesday"), and closed with Penny's Parramatta announcement and <strong>Cipher's first on-screen appearance of the entire course</strong>, used as a readiness gate before the student was handed design ownership of the new branch.</p>
+  <p><strong>Engineering responsibility carried:</strong> genuine, not simulated. Sessions 5 and 8 were student-driven troubleshooting against layered faults with minimal hinting; Session 6's recommendation saved LoFinance a real $15k purchase; Session 8's fixes involved live security remediation (an active unauthorised RDP session) and resource-governance judgment, not just config repair.</p>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/topology-evolution.png" alt="Topology Evolution — the flat, unsegmented Session 1 network beside the fully zoned, VDOM-isolated Session 9 network. One glance, one season of structural progress." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/topology-evolution.png</div>
+    <div class="ip-caption">Topology Evolution — the flat, unsegmented Session 1 network beside the fully zoned, VDOM-isolated Session 9 network. One glance, one season of structural progress.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 16:9</span><span><strong>Placement:</strong> Season Recap</span><span><strong>Purpose:</strong> make each session's work visibly cumulative</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art before-and-after topology comparison, left-to-right evolution layout, cream background (#faf5e9), coral/gold/sage palette, soft brown outlines, clean bold line work, no gradients, no photorealism.
+
+Left panel, labelled "SESSION 1" in small clean sans-serif type: a single flat, undivided rectangle representing the office network, mixed unsorted desk icons scattered inside with no dividing lines at all — visually chaotic, muted grey-brown tones suggesting "unsegmented, higher risk."
+
+Right panel, labelled "SESSION 9": the same rectangle, now clearly divided by thin coral lines into distinct labelled zones (Trading, Exec, Finance, Support), each zone in a soft sage-green wash, all connected to a single central FortiGate icon with a small shield. Inside the FortiGate icon, a dashed-line sub-box shows two VDOM partitions (Trading VDOM, Guest-WiFi VDOM) linked by a small bridge icon.
+
+A bold coral arrow sweeps left to right between the panels, with a small callout label along the arrow: "segmentation + VDOM isolation added."
+
+Mood: clear, confident, growth-made-visible — the left panel neutral/muted rather than alarmist, contrasting with the organised right panel.
+
+No dense technical labels beyond zone names. No IP addresses. No characters.
+
+Learning purpose: make the season's structural progress (flat network → fully segmented, VDOM-isolated network) visible in a single glance.</div>
+    <div class="ip-access">Accessibility: Side-by-side comparison of an unsegmented chaotic office network labelled Session 1 evolving into a clearly zoned network with VLANs and VDOMs connected to a central firewall, labelled Session 9.</div>
+  </div>
+</div>
+
+<!-- ══════════ 2. STATS ══════════ -->
+<div class="section-block" id="stats">
+  <div class="section-label">Section 2</div>
+  <h2>Season <em>Statistics</em></h2>
+  <p><em>Figures derived directly from the nine session summaries and the knowledge register. Where a precise count could not be cleanly derived, a qualitative rating is used and marked as such.</em></p>
+  <div class="stat-grid">
+    <div class="stat-card hero"><div class="stat-num">9</div><div class="stat-lbl">Sessions completed</div></div>
+    <div class="stat-card"><div class="stat-num">29</div><div class="stat-lbl">Formal exam questions</div></div>
+    <div class="stat-card"><div class="stat-num">25</div><div class="stat-lbl">Correct first attempt</div></div>
+    <div class="stat-card"><div class="stat-num">4</div><div class="stat-lbl">Correct after hint / self-correction</div></div>
+    <div class="stat-card"><div class="stat-num">3</div><div class="stat-lbl">Troubleshooting tickets resolved</div></div>
+    <div class="stat-card"><div class="stat-num">1/1</div><div class="stat-lbl">Cowboy Hat sessions solved</div></div>
+    <div class="stat-card"><div class="stat-num">5</div><div class="stat-lbl">Live config / topology changes</div></div>
+    <div class="stat-card"><div class="stat-num">20+</div><div class="stat-lbl">CLI commands interpreted (est.)</div></div>
+  </div>
+  <table class="data-table">
+    <tr><th>Metric</th><th>Result</th><th>Note</th></tr>
+    <tr><td>Blueprint coverage</td><td>1.4 · 1.5 (partial)</td><td>"Implement enterprise networks using VLANs and VDOMs" + architecture use-case context</td></tr>
+    <tr><td>Strongest topic</td><td>VLAN mechanics &amp; 802.1Q</td><td>Zero errors across every session it appeared in (S4, S5, S9)</td></tr>
+    <tr><td>Most assistance required</td><td>Inter-VDOM link detail · retrieval under pressure</td><td>Tracked pattern across S4, S7, S8, S9 — see Section 7</td></tr>
+    <tr><td>Cowboy Hat performance</td><td>Both tickets, student-driven</td><td>Command selection, hypotheses, fixes, and verification all self-directed</td></tr>
+  </table>
+</div>
+
+<!-- ══════════ 3. WHAT WENT WELL ══════════ -->
+<div class="section-block" id="well">
+  <div class="section-label">Section 3</div>
+  <h2>What Went <em>Well</em></h2>
+
+  <h3>Attacker-first, systems-level reasoning</h3>
+  <p>From Session 1 onward you reasoned from an attacker's or a system's perspective unprompted — producing "lateral movement," "blast radius," and "implicit trust" before being taught the terms. In real enterprise work this is the difference between configuring a firewall correctly and understanding <em>why</em> the configuration is secure; on the exam it powers the scenario questions that test understanding rather than syntax.</p>
+
+  <h3>Genuine transfer, not memorisation</h3>
+  <p>Session 9 Q1 is the cleanest proof: the "role = position, not hardware" model taught in Session 2 was applied to a completely new scenario (Parramatta) seven sessions later, without re-explanation. Session 4's gateway mechanism and Session 7's per-VDOM routing model transferred the same way. Scenario application over flashcard recall is exactly what the NSE7 exam is built to test.</p>
+
+  <h3>Independent synthesis under guidance</h3>
+  <p>Twice in the finale alone — the WAN round-trip consequence chain (Q4) and the VLAN+VDOM chassis-boundary connection (Q7) — you built genuinely new conclusions from first principles once anchored, rather than recalling prior answers. That's a higher-order skill than retention, and it appeared this early in the course for a reason worth respecting: real engineering intuition is forming.</p>
+
+  <h3>Senior-engineer instincts beyond correctness</h3>
+  <p>Session 8: "baseline first, cap after," and treating a stale unauthorised session as active exposure rather than housekeeping — both unprompted. Session 9: the operational cost of flat networks (broadcast noise) volunteered alongside the security argument. This judgment is exactly why Penny handed you Parramatta.</p>
+
+  <h3>Clean recovery under correction</h3>
+  <p>Across all nine sessions there is <strong>no recorded instance of doubling down</strong> after redirection. Every correction — Session 6's transparent-VDOM manageip miss, Session 8's Q2 stumble, Session 9's Q4/Q6/Q7 redirects — was absorbed and built upon immediately. On the exam this converts to catching a wrong first read before it becomes a submitted answer.</p>
+</div>
+
+<!-- ══════════ 4. IMPROVE ══════════ -->
+<div class="section-block" id="improve">
+  <div class="section-label">Section 4</div>
+  <h2>What Could Be <em>Improved</em></h2>
+
+  <h3>First-answer topic-proximity bias</h3>
+  <p>When a new scenario superficially resembles a recently-taught topic, the first instinct sometimes answers the <em>familiar</em> topic instead of the one actually asked. Session 9 Q4 is the clearest case: asked about physical VDOM placement, the first answer discussed resource contention — fresh from Session 8, factually correct, and not what was asked. <strong>The risk:</strong> exam distractors are engineered to be true-but-not-responsive. <strong>What a senior engineer does differently:</strong> restates the question's actual ask in one sentence before answering. <strong>Habit to practise:</strong> "What is this question asking — versus what does it remind me of?"</p>
+
+  <h3>Justification precision after a correct verdict</h3>
+  <p>The season's most carefully tracked pattern (full history in Section 7). The verdict layer is now reliable — but once a correct verdict is reached, the supporting mechanism can still be a plausible guess rather than the proven one (Session 9 Q6: "matching IP addressing" instead of "a route"). <strong>The risk:</strong> multi-part and select-the-mechanism questions punish an imprecise justification even when the headline answer is right — and this mistake <em>feels</em> correct while being incomplete, making it harder to self-catch.</p>
+
+  <h3>CLI syntax recall lags conceptual understanding</h3>
+  <p>Sessions 4–8 consistently showed the right <em>tool selection</em> instinct with guessed <em>syntax</em>: <code>unset member "X" "Y"</code>, <code>diagnose sys reset</code>, <code>diagnose sys session count</code> were all invented forms, corrected in-session. Expected — production keyboard time is the real gap — but genuine risk on any question requiring exact syntax from memory rather than output interpretation.</p>
+</div>
+
+<!-- ══════════ 5. BIGGEST IMPROVEMENT ══════════ -->
+<div class="section-block" id="biggest">
+  <div class="section-label">Section 5</div>
+  <h2>The Single Biggest <em>Improvement</em></h2>
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">📈</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Season 1's clearest measurable change</div>
+      <div class="mental-note-block-text">Retrieval reliability under pressure — from "correct idea, unreliable first answer" to "correct idea, correct first answer" on verdict-style questions.</div>
+    </div>
+  </div>
+  <p>Trace the evidence across the season. Session 4/5: dstintf reasoning needed prompting. Session 7 Q2: the symptom was right, the exact failure stage needed a nudge. Session 8 Q2: an outright wrong first guess ("False"), contradicting evidence you had personally gathered thirty minutes earlier — self-corrected fast, but wrong on the first pass. <strong>Session 9 Q6 — the same T/F shape, deliberately re-tested — produced an instant, correct verdict. First clean pass in four attempts across five sessions.</strong></p>
+  <p>The knowledge didn't change — the VDOM/VLAN material was solid by Session 4. What changed is the reliability of <em>retrieving</em> it under the exact pressure format the exam uses: fast, standalone, no time to derive from scratch. That is precisely the skill the NSE7 tests, and it is precisely what improved most.</p>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/engineering-growth-flashlight.png" alt="The Widening Flashlight — narrow single-device focus becoming full-system, path-aware sight. The season's growth as one felt image." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/engineering-growth-flashlight.png</div>
+    <div class="ip-caption">The Widening Flashlight — narrow single-device focus becoming full-system, path-aware sight. The season's growth as one felt image.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 4:3</span><span><strong>Placement:</strong> beside this section</span><span><strong>Purpose:</strong> memory-anchor the biggest improvement as an image, not a claim</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art metaphor illustration, cream background (#faf5e9), coral/gold/sage palette, soft brown outlines, clean line work, no gradients, no photorealism.
+
+Composition: split into two vignettes within one frame, divided by a hard vertical line (no gradient wash).
+
+Left vignette, subtly muted/desaturated: a simple illustrated figure holding a narrow single-beam flashlight, its thin cone of light illuminating only one small server-rack icon in an otherwise dim room — everything else in soft grey-brown shadow.
+
+Right vignette, in full warm colour: the same figure, flashlight held confidently at chest height, its beam widened into a broad cone illuminating an entire small network map — server rack, several connected zone icons, and a faint dotted line suggesting an inter-VDOM link — all visible and legible at once.
+
+Small motion-line detail on the widening beam at the centre divider, marking the moment of change.
+
+Mood: quiet, confident transformation — not triumphant, simply "more is visible now."
+
+No text labels beyond what is described. Simple silhouette figure, no facial detail required.
+
+Learning purpose: visualise the season's single biggest improvement — moving from narrow single-point focus to full-system, path-aware reasoning.</div>
+    <div class="ip-access">Accessibility: Split illustration — on the left a figure whose narrow flashlight beam lights only one server rack in a dim room; on the right the same figure whose wide beam illuminates an entire connected network map.</div>
+  </div>
+</div>
+
+<!-- ══════════ 6. PRIORITY ══════════ -->
+<div class="section-block" id="priority">
+  <div class="section-label">Section 6</div>
+  <h2>The Single Most Important <em>Growth Area</em></h2>
+  <div class="priority-box">
+    <div class="priority-eyebrow">Season 2 Priority — if only one thing improves, it's this</div>
+    <h3>Justification precision under the "verdict, then explain" format</h3>
+    <p>Not because it's the biggest gap — the topic-proximity bias is arguably as common — but because it's the most exam-consequential and builds directly on momentum already proven this season.</p>
+    <p><strong>Where it appeared:</strong> Session 9 Q6 is the cleanest example — correct verdict (False), imprecise first justification (interface addressing instead of routing).</p>
+    <p><strong>Why it matters most:</strong> Many NSE7 questions don't stop at true/false — they require selecting or constructing the correct <em>mechanism</em>. A confidently-stated but imprecise justification costs marks even when the verdict is right, and it's harder to catch than an outright wrong answer because it feels correct.</p>
+    <p><strong>Success by end of Season 2:</strong> your first-pass justification names the specific mechanism — the exact table, field, or config object — without a second redirect, matching the reliability now proven at the verdict layer.</p>
+    <p><strong>Practise immediately:</strong> after any correct verdict, ask one extra question before speaking — <em>"what is the ONE specific thing (a table, a field, an output value) that PROVES this, not just supports it?"</em> The same discipline that closed the verdict-layer gap, applied one layer deeper.</p>
+  </div>
+  <div class="callout callout-amber"><strong>Secondary area (light attention only):</strong> first-answer topic-proximity bias, Section 4. The technique that already works — pausing on "what is actually being asked" — should simply keep being applied, not escalated into a dedicated focus.</div>
+</div>
+
+<!-- ══════════ 7. METHOD ══════════ -->
+<div class="section-block" id="method">
+  <div class="section-label">Section 7</div>
+  <h2>Troubleshooting <em>Method Review</em></h2>
+  <p>Evaluated primarily from Sessions 5 and 8 (the genuine hands-on troubleshooting), with Session 9's design-review questions treated as the related "pre-build" skill: finding the flaw in a proposal before it's built.</p>
+
+  <h3>Strong troubleshooting behaviours</h3>
+  <ul>
+    <li><strong>Separated compound faults</strong> — Session 5's "two questions wearing one ticket," resisting the urge to find one cause explaining everything.</li>
+    <li><strong>Right tool, every time</strong> — session-list-first, policy_id interpretation, reused unprompted across S4/5/8 even when exact syntax was shaky.</li>
+    <li><strong>Tested assumptions instead of padding defensively</strong> — Session 8's direct-delete of OpsBridge, verifying FortiOS's actual behaviour rather than assuming a cautious two-step ritual.</li>
+    <li><strong>Correct security posture, not just correct config</strong> — treating a stale unauthorised session as active exposure requiring remediation.</li>
+    <li><strong>Layer-pivot discipline</strong> — when every config-layer check came back clean, moved to resource/state diagnostics rather than re-checking the same layer harder.</li>
+  </ul>
+
+  <h3>Habits to improve</h3>
+  <ul>
+    <li>An active session filter left over from Ticket 1 silently narrowed Ticket 2's results with no error raised (Session 8) — a state-hygiene discipline gap, not a knowledge gap.</li>
+    <li>CLI syntax guesses occasionally slowed pace, though never derailed the diagnosis itself.</li>
+  </ul>
+
+  <h3>Senior engineer comparison</h3>
+  <p><strong>Keep:</strong> compound-ticket separation, assumption-testing, resource-governance judgment. <strong>Add:</strong> a standing habit of clearing/confirming diagnostic state at the start of each new thread, and a deliberate "what specifically proves this" step before finalising root cause — the Section 6 priority, applied to troubleshooting.</p>
+
+  <h3>Your framework for Season 2</h3>
+  <ol>
+    <li>Restate the business symptom in one sentence.</li>
+    <li>Define the scope — and explicitly check whether it's <em>one</em> fault or more than one wearing the same ticket.</li>
+    <li>Build the expected packet/config path before touching anything.</li>
+    <li>Clear/confirm diagnostic state (filters, prior context) before gathering fresh evidence.</li>
+    <li>Gather evidence layer by layer; when a whole layer comes back clean, pivot layers rather than re-checking harder.</li>
+    <li><strong>Before stating root cause, name the ONE field / table / output value that proves it — not just supports it.</strong></li>
+    <li>Fix, then verify both service recovery <em>and</em> root cause.</li>
+  </ol>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/troubleshooting-investigation-wall.png" alt="The Investigation Wall — your personalised seven-step framework as a detective board, with step six (&quot;Prove the Mechanism&quot;) highlighted as this season's refinement." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/troubleshooting-investigation-wall.png</div>
+    <div class="ip-caption">The Investigation Wall — your personalised seven-step framework as a detective board, with step six ("Prove the Mechanism") highlighted as this season's refinement.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 16:9</span><span><strong>Placement:</strong> Troubleshooting Method Review</span><span><strong>Purpose:</strong> single visual anchor for the framework, recallable mid-exam</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art illustration of a detective-style investigation wall, cream background (#faf5e9), coral/gold/sage palette, soft brown outlines, clean bold line work, no gradients, no photorealism.
+
+Composition: a horizontal sequence of seven simple labelled cards pinned to a flat-illustrated cork-board wall, connected left to right by a single confident coral string/line, each card carrying a short label and a small matching icon:
+1. "BUSINESS SYMPTOM" — speech-bubble icon
+2. "SCOPE" — magnifying-glass icon
+3. "EXPECTED PATH" — dotted-arrow icon
+4. "CLEAR STATE" — filter/funnel being wiped clean
+5. "GATHER EVIDENCE" — clipboard-checkmark icon
+6. "PROVE THE MECHANISM" — a single highlighted puzzle piece
+7. "VERIFY BOTH" — two checkmarks side by side
+
+Each card in a soft warm surface tone (#fffdf5) with a thin coral border; card six ("PROVE THE MECHANISM") given a subtle muted-gold glow highlight to mark it as this season's specific point of emphasis.
+
+Mood: organised, methodical, confidence-inspiring — a repeatable, learnable process, not chaos.
+
+No dense CLI text on the cards — labels stay short and conceptual as specified.
+
+Learning purpose: anchor the personalised seven-step troubleshooting framework visually, with the newly-added "prove the mechanism" step emphasised.</div>
+    <div class="ip-access">Accessibility: An investigation wall of seven connected cards representing troubleshooting steps — business symptom, scope, expected path, clear state, gather evidence, prove the mechanism (highlighted), verify both.</div>
+  </div>
+</div>
+
+<!-- ══════════ 8. PERFORMANCE REVIEW ══════════ -->
+<div class="section-block" id="review">
+  <div class="section-label">Section 8</div>
+  <h2>Senior Engineer <em>Performance Review</em></h2>
+  <div class="callout"><em>Penny: "How's the intermediate engineer progressing?"</em></div>
+  <p><strong>Señor's assessment.</strong> Technically, ahead of where I'd expect after nine sessions — the architectural reasoning is genuinely solid, and more importantly it <em>transfers</em> to new situations instead of repeating what he was told. Troubleshooting discipline under pressure (Session 8) was clean: two tickets end-to-end with minimal hand-holding, testing his own assumptions instead of over-engineering caution, and treating an active security exposure correctly rather than as routine cleanup.</p>
+  <p><strong>Where I'd still want a second set of eyes:</strong> exact CLI syntax under exam-style time pressure, and — this is the real one — making sure his <em>first</em> answer to a "prove it" question names the actual mechanism, not just a plausible-sounding one. Not a knowledge gap; a precision-under-pressure gap. Closing, but not closed.</p>
+  <table class="data-table">
+    <tr><th>Dimension</th><th>Verdict</th></tr>
+    <tr><td>Trusted with now</td><td>Independent design ownership of a bounded, well-scoped project — which is exactly what Parramatta is. Live troubleshooting with minimal supervision, per the Session 8 record.</td></tr>
+    <tr><td>Still needs review</td><td>Deliverables requiring precise written justification (design docs, postmortems) until the precision pattern fully resolves; any exact-syntax-from-memory component.</td></tr>
+    <tr><td>Path to senior</td><td>A full season of design-and-defend work. Parramatta is the right next test — it will repeatedly force "prove it, specifically" in a real business context.</td></tr>
+  </table>
+</div>
+
+<!-- ══════════ 9. KNOWLEDGE ══════════ -->
+<div class="section-block" id="knowledge">
+  <div class="section-label">Section 9</div>
+  <h2>Technical Knowledge <em>Review</em></h2>
+
+  <h3>Strong</h3>
+  <table class="data-table">
+    <tr><th>Concept</th><th>Confidence</th><th>Evidence</th></tr>
+    <tr><td>Segmentation as forced inspection</td><td class="stars">★★★★★</td><td>S1, extended S9 with unprompted operational-cost synthesis</td></tr>
+    <tr><td>Firewall roles = position, not hardware</td><td class="stars">★★★★★</td><td>S2, transferred cleanly to a new scenario in S9</td></tr>
+    <tr><td>VLAN tagging &amp; trunking mechanics</td><td class="stars">★★★★★</td><td>S4 → S9, zero errors, five sessions apart</td></tr>
+    <tr><td>VDOM type selection (NAT vs Transparent)</td><td class="stars">★★★★☆</td><td>S6, S9 — clean recall both times</td></tr>
+  </table>
+
+  <h3>Developing</h3>
+  <table class="data-table">
+    <tr><th>Concept</th><th>Confidence</th><th>What remains uncertain</th></tr>
+    <tr><td>Inter-VDOM link full requirements</td><td class="stars">★★★★☆</td><td>Verdict reliable; justification detail (route vs addressing) still needed one nudge</td></tr>
+    <tr><td>VDOM chassis-binding reasoning</td><td class="stars">★★★★☆</td><td>Excellent once anchored (S9); first instinct still drifts to adjacent topics — Parramatta build should cement it</td></tr>
+    <tr><td>Resource governance (Override Maximum)</td><td class="stars">★★★☆☆</td><td>Strong reactively (S8 diagnosis); untested proactively in a design context</td></tr>
+  </table>
+
+  <h3>Needs reinforcement</h3>
+  <table class="data-table">
+    <tr><th>Concept</th><th>Confidence</th><th>Recommended review type</th></tr>
+    <tr><td>UTM engines / SSL inspection hands-on</td><td class="stars">★★★☆☆</td><td>Untouched since S1's conceptual pass; full re-activation due when Cipher's SSL arc begins</td></tr>
+    <tr><td>FortiGuard "config ≠ protection" mechanism</td><td class="stars">★★★☆☆</td><td>Named correctly, never explained in depth; force a retrieval check early Season 2</td></tr>
+    <tr><td>Exact CLI syntax recall</td><td class="stars">★★☆☆☆</td><td>One dedicated low-stakes syntax drill, separate from concept teaching</td></tr>
+  </table>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/knowledge-iceberg.png" alt="The Knowledge Iceberg — strengths above the waterline, developing skills just beneath, reinforcement targets in the depths, and one coral flag marking the Season 2 priority." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/knowledge-iceberg.png</div>
+    <div class="ip-caption">The Knowledge Iceberg — strengths above the waterline, developing skills just beneath, reinforcement targets in the depths, and one coral flag marking the Season 2 priority.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 3:2</span><span><strong>Placement:</strong> Technical Knowledge Review</span><span><strong>Purpose:</strong> the three tables above as one coherent, honest metaphor</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art illustration of an iceberg cross-section, cream background above the waterline, soft sage-blue wash below, coral/gold accents, soft brown outlines, clean bold line work, no gradients, no photorealism.
+
+Composition: a simple iceberg shape, waterline drawn as a clean horizontal coral dashed line roughly one-third down from the top.
+
+ABOVE the waterline (visible strengths, labelled in small clean type directly on the ice, each with a small gold star icon): "Segmentation reasoning" · "VLAN / 802.1Q mechanics" · "Firewall role identification".
+
+JUST BELOW the waterline (developing, partially visible, slightly softer tone, partially obscured by thin flat wave-line overlays): "Inter-VDOM link requirements" · "VDOM chassis-binding reasoning".
+
+DEEPER below (needs reinforcement, smallest and most obscured, deeper sage-blue near the base): "SSL inspection / UTM hands-on" · "Exact CLI syntax recall".
+
+A single small coral flag planted at the mid-depth zone, labelled "PRIORITY", marking the justification-precision focus area — a marker, not a paragraph.
+
+Mood: calm, honest, non-judgmental — an iceberg is a natural, expected shape; most of any skill sits below the surface.
+
+No dense paragraph text. No characters.
+
+Learning purpose: unify the strong / developing / needs-reinforcement knowledge review into one coherent metaphor with a clear visual anchor for the Season 2 priority.</div>
+    <div class="ip-access">Accessibility: An iceberg diagram — strong skills above the waterline, developing skills just below, reinforcement targets deepest, with a coral priority flag at mid-depth.</div>
+  </div>
+</div>
+
+<!-- ══════════ 10-11 combined design/comms ══════════ -->
+<div class="section-block">
+  <div class="section-label">Sections 10 – 11</div>
+  <h2>Design, Business &amp; <em>Communication Review</em></h2>
+
+  <h3>Design and business reasoning — a genuine strength</h3>
+  <p>Session 6 is the flagship example: the correct VDOM-over-hardware recommendation <em>with the honest caveat flagged</em> (10-VDOM ceiling, shared resources) instead of overselling "free." Session 8 added "baseline first, cap after." Session 9 extended it further — identifying that a "free" VDOM reuse plan for Parramatta would actually cost real WAN throughput and add a single point of failure: a cost invisible on the whiteboard, very real in production.</p>
+  <div class="callout callout-amber"><strong>One recommendation:</strong> every Season 1 business ask had a technically clean resolution — the reasoning hasn't yet been tested where the correct engineering answer and the business preference genuinely conflict. Parramatta's tunnel-topology trade-offs are the right place to coach communicating a genuine trade-off, not just a clean win, to a non-technical stakeholder.</div>
+
+  <h3>Communication</h3>
+  <p>Concise and accurate, occasionally under-elaborated when confident — a tendency visible since Session 1's terse "FortiGuard" answer, improved but still present under Session 9's fast pacing. Facts vs assumptions handled well: Session 8's fix was flagged as needing a monitoring follow-up rather than presented as complete, and in Session 9 you correctly self-identified tunnels as "Session 10's territory" rather than bluffing past the edge of current knowledge.</p>
+  <h3>One real example, made more senior-shaped</h3>
+  <div class="callout"><strong>As given (S9 Q6):</strong> "You need IP addresses in the same subnet on the VDOM link interfaces."<br><br><strong>Senior-shaped, same intent:</strong> "The link interfaces are addressed automatically at creation, so that's not the missing piece — each VDOM keeps its own independent routing table, and neither side has a route pointing traffic toward the link yet." The instinct (something beyond the policy is missing) was right; the fix is naming the <em>specific</em> missing mechanism rather than the first plausible one.</div>
+</div>
+
+<!-- ══════════ 12. EXAM ══════════ -->
+<div class="section-block" id="exam">
+  <div class="section-label">Section 12</div>
+  <h2>Exam Readiness <em>Assessment</em></h2>
+  <p style="margin-bottom:10px;"><span class="verdict">Likely Pass — for topics covered so far</span></p>
+  <p><em>An informed estimate, not a guaranteed result — and it applies only to the blueprint areas taught this season (1.4/1.5: architecture, VLANs, VDOMs). Central Management, Security Profiles, Routing, and VPN — the bulk of the blueprint — are not yet covered and not assessed here.</em></p>
+  <table class="data-table">
+    <tr><th>Likely strengths</th><th>Likely risks</th></tr>
+    <tr>
+      <td>Scenario-application questions ("given this network, what's needed") — the season's core demonstrated skill</td>
+      <td>"Select the correct mechanism" / multi-part justification questions, where imprecision costs marks despite a correct verdict</td>
+    </tr>
+    <tr>
+      <td>Output interpretation — reading given CLI results and diagnosing the cause (consistently strong, S4–S8)</td>
+      <td>Supplying exact CLI syntax from memory (vs interpreting given output)</td>
+    </tr>
+    <tr>
+      <td>Straight T/F verdicts on drilled material — reliable as of Session 9</td>
+      <td>Distractors engineered to be true-but-not-responsive (the topic-proximity bias)</td>
+    </tr>
+  </table>
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🎯</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Exam technique for you specifically</div>
+      <div class="mental-note-block-text">Before answering any scenario question, restate what is being asked in one sentence. It counters both the topic-proximity bias and the justification-precision gap, and costs a few seconds per question.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 13. PLAN ══════════ -->
+<div class="section-block" id="plan">
+  <div class="section-label">Section 13</div>
+  <h2>Personalised <em>Preparation Plan</em></h2>
+  <table class="data-table">
+    <tr><th>Step</th><th>Do this</th></tr>
+    <tr><td>Priority review</td><td>Revisit <strong>session-09-complete-guide.html</strong>, specifically the Q4 / Q6 / Q7 sections — the freshest, highest-value material; reinforce it while it's warm.</td></tr>
+    <tr><td>Targeted practice</td><td>Pick any three T/F questions from Sessions 7–9. For each, write the one specific field/table/output that <em>proves</em> the verdict — without looking it up first.</td></tr>
+    <tr><td>Retrieval practice</td><td>Without notes, explain aloud: (1) why role labels aren't hardware · (2) why a VDOM doesn't relocate a chassis · (3) the two independent inter-VDOM link requirements.</td></tr>
+    <tr><td>Troubleshooting practice</td><td>Re-tell Session 8's Ticket 2 (Guest-WiFi outage) from memory, then check it against <strong>session-09-troubleshooting.html</strong>'s decision tree — did "check geography/state before re-checking config" apply there too?</td></tr>
+    <tr><td>Ready for Season 2 when…</td><td>You can explain, unprompted and in one breath, why Parramatta needs its own local firewall presence rather than an HQ-hosted VDOM — <em>mechanism included</em>, not just conclusion.</td></tr>
+  </table>
+</div>
+
+<!-- ══════════ 14. AWARDS ══════════ -->
+<div class="section-block" id="awards">
+  <div class="section-label">Section 14</div>
+  <h2>Meaningful <em>Awards</em></h2>
+  <div class="award-grid">
+    <div class="award-card">
+      <div class="award-name">🏆 Evidence Before Assumption</div>
+      <div class="award-session">Session 8 · The Quiet Tuesday</div>
+      <p>Tested whether <code>delete</code> required member detachment first instead of assuming a defensive two-step ritual — and treated a stale session as active exposure only after reasoning it through, not by reflex caution. The behaviour: verify actual system behaviour before padding your process.</p>
+    </div>
+    <div class="award-card">
+      <div class="award-name">🏆 Business Translator</div>
+      <div class="award-session">Session 6 · One Box, Many Firewalls</div>
+      <p>Recommended the VDOM path over a $15k purchase and explicitly flagged the honest caveat instead of overselling the win to Penny. The behaviour: trade-off-aware advice a stakeholder can actually trust.</p>
+    </div>
+    <div class="award-card">
+      <div class="award-name">🏆 Cleanest Troubleshooting Path</div>
+      <div class="award-session">Session 5 · Invisible Fences</div>
+      <p>Separated two independently-caused faults presented as one confusing ticket, instead of hunting for a single root cause that explained everything. The behaviour: scope before hypothesis.</p>
+    </div>
+    <div class="award-card">
+      <div class="award-name">🏆 Strongest Mental Model, Season 1</div>
+      <div class="award-session">Session 9 · The Announcement</div>
+      <p>Self-generated "a VDOM doesn't move a building" from first principles once anchored — then independently extended it to VLAN reach in the same session. The best piece of independent synthesis all season.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 15. PROFILE ══════════ -->
+<div class="section-block">
+  <div class="section-label">Section 15</div>
+  <h2>Student Profile <em>Update</em></h2>
+  <p>The knowledge register (<code>knowledge-register.txt</code>) has been fully updated alongside this retrospective: revised per-technology confidence ratings; the newly isolated two-part retrieval pattern (verdict-layer <strong>resolved</strong> / justification-layer <strong>developing</strong>); new strength categories ("independent synthesis" and "systems/operational judgment"); the first-answer topic-proximity growth area; and Season 2 teaching adjustments — shorter guided sequences, more scenario-synthesis questions, and one dedicated CLI-syntax drill. <strong>Season 2 must read that file in full before Session 10.</strong></p>
+</div>
+
+<!-- ══════════ 16. LETTER ══════════ -->
+<div class="section-block" id="letter">
+  <div class="section-label">Section 16</div>
+  <h2>A Letter <em>From Señor</em></h2>
+  <div class="letter-block">
+    <p>When you started, you looked for the firewall.</p>
+    <p>By the end of the season, you were looking for the path the packet expected to take — and then, this week, for the building the box was actually sitting in. That's a bigger jump than it sounds like.</p>
+    <p>You still reach for the nearest familiar idea before the right one, sometimes. You still say "true" before you've said exactly why. Small things. I'm naming them because they're still there, not because they're new.</p>
+    <p>Cipher doesn't stand up for just anyone. Remember that, the next time you think nobody's watching the work.</p>
+    <p>Parramatta is yours. I will answer fewer questions this season, not more.</p>
+    <p>This is not punishment.</p>
+    <p>It is evidence.</p>
+    <div class="letter-sign">— Señor</div>
+  </div>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/letter-from-senor.png" alt="Señor in the server room — chaotic desk, immaculate diagrams, restrained pride. The letter, mid-write." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/letter-from-senor.png</div>
+    <div class="ip-caption">Señor in the server room — chaotic desk, immaculate diagrams, restrained pride. The letter, mid-write.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 4:3</span><span><strong>Placement:</strong> beside the letter</span><span><strong>Purpose:</strong> quiet character anchor at the season's emotional close</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art character illustration, quiet and reflective mood, cream background (#faf5e9), coral/gold/sage palette, soft brown outlines, clean bold line work, no gradients, no photorealism.
+
+Composition: a warm, dimly-lit LoFinance server room interior, softly lit by a single overhead light. Centre-left, Señor sits at a cluttered desk — folding chair, loose cables, a coffee mug, small stray papers — while directly behind him hangs a strikingly clean, precise, hand-drawn-style network diagram, in sharp visual contrast to the messy desk.
+
+Señor wears his sombrero, seated, writing on a small notepad with a simple pen icon, expression calm and unreadable — restrained, not exaggerated.
+
+In the soft background, slightly de-emphasised via lighter line weight and lower colour saturation (not blur), a small silhouette of the Intermediate Engineer stands near the central FortiGate rack, clearly in a position of active responsibility — checking the equipment, not idle.
+
+Mood: warm, eccentric, quietly proud — the contrast between the chaotic desk and the immaculate diagram should read as "brilliant, unconcerned with appearances."
+
+No exaggerated facial expressions. No readable text on the notepad.
+
+Learning purpose: give the Letter From Señor a quiet, character-driven visual anchor reinforcing his established personality at the season's close.</div>
+    <div class="ip-access">Accessibility: Señor sits at a cluttered desk in the server room wearing his sombrero, writing a note, an immaculate network diagram behind him, the engineer working at the firewall rack in the background.</div>
+  </div>
+</div>
+
+<!-- ══════════ 17. TRAILER ══════════ -->
+<div class="section-block" id="trailer">
+  <div class="section-label">Section 17</div>
+  <h2>Next Season: <em>The Parramatta Project</em></h2>
+  <div class="story-scene">
+    <div class="scene-label">Season 2 · Trailer</div>
+    <p>Monday morning. A laptop sits alone on the desk, screen dark, a sticky note stuck to the lid in handwriting you've come to recognise: <strong>"Two sites. One network. Draw it before you cable it."</strong></p>
+    <p>Across the floor, Junior has three napkins taped to his monitor, each showing a different — and mutually contradictory — way to connect Parramatta to HQ. He hasn't noticed they disagree with each other yet.</p>
+    <p>In the corner office, a document sits open on Cipher's screen, title visible, contents hidden: <strong>SSL Inspection — Phase 1.</strong> Nobody else has seen it. He hasn't mentioned it since the finale.</p>
+    <p>Penny walks past, coffee finally full. "Two sites now," she says, not quite a question. "Try not to make that four cables and a prayer."</p>
+    <p>Señor, from somewhere you can't quite see: <strong>"Draw the map first. The cable's the easy part."</strong></p>
+  </div>
+
+  <div class="image-placeholder" style="border:none;background:transparent;padding:0;margin:24px 0;">
+    <img src="images/season-2-teaser.png" alt="Season 2 Teaser — two buildings, an unfinished dotted line between them, and an engineer looking at the gap. No answers. Not yet." style="width:100%;max-width:920px;border-radius:14px;border:1px solid var(--border);display:block;margin:0 auto 14px;">
+    <div class="ip-filename">images/season-2-teaser.png</div>
+    <div class="ip-caption">Season 2 Teaser — two buildings, an unfinished dotted line between them, and an engineer looking at the gap. No answers. Not yet.</div>
+    <div class="ip-meta"><span><strong>Aspect ratio:</strong> 16:9</span><span><strong>Placement:</strong> end of page</span><span><strong>Purpose:</strong> close on curiosity without teaching Season 2's content</span></div>
+    <button class="prompt-toggle" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">Show image generation prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector-art cinematic teaser illustration, cream background (#faf5e9), coral/gold/sage palette, soft brown outlines, clean bold line work, no gradients, no photorealism, visual tension without revealing any solution.
+
+Composition: two simple building silhouettes on a stylised map background — "SYDNEY HQ" (left, larger, familiar from earlier illustrations) and a NEW, smaller, unlabeled second building outline on the right (Parramatta, deliberately generic — no signage, no interior) — separated by a wide gap of empty cream space representing unconnected distance.
+
+Between them, a single faint, incomplete dotted line begins from HQ's edge and trails off into the gap, stopping well short of the second building — clearly unfinished, a visual question rather than an answer.
+
+Foreground, small and slightly turned away from the viewer: a silhouette of the Intermediate Engineer looking out toward the gap, posture attentive and curious rather than worried.
+
+Subtle detail: a faint sticky-note icon near the engineer's silhouette, too small to read, hinting at "two sites, one network" without spelling it out. In a far corner, a tiny closed, unlabeled document icon near where Cipher's desk would be — a clue, not a reveal.
+
+Mood: quiet anticipation — a larger challenge beginning; curiosity, not alarm.
+
+No tunnel, no VPN iconography, no hub-and-spoke shapes — nothing that reveals Session 10's content. No dense labels.
+
+Learning purpose: create genuine curiosity about Season 2 (connecting two sites) without previewing its technical material, ending the retrospective on a forward-looking, open note.</div>
+    <div class="ip-access">Accessibility: Two building silhouettes — Sydney HQ and an unlabeled second building — separated by empty space with an incomplete dotted line trailing between them, and a small figure looking toward the gap.</div>
+  </div>
+</div>
+
+</div></main>
+
+<nav class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="index.html">
+    <span class="page-nav-label">← Back to</span>
+    <span class="page-nav-title">End of Season Index</span>
+  </a>
+  <a class="page-nav-btn page-nav-next page-nav-disabled" href="#" onclick="return false;">
+    <span class="page-nav-label">Next Season →</span>
+    <span class="page-nav-title">Season 2 · Coming Soon</span>
+  </a>
+</nav>
+
+<footer>LoFinance · NSE7 EF 7.6 · <span>End of Season 1 Retrospective</span> · Generated after Session 9 · Sources: session summaries 01–09 + knowledge register</footer>
+
+<script>
+// Page-transition cleanup (paired with the pt-init preloader in <head>)
+document.documentElement.classList.remove('pt-init');
+sessionStorage.removeItem('pt');
+
+// Arm the fade-out for outgoing links so the next page loads with body hidden
+document.querySelectorAll('a[href]').forEach(function(a){
+  var href = a.getAttribute('href');
+  if(!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('javascript:')) return;
+  a.addEventListener('click',function(){ sessionStorage.setItem('pt','1'); });
+});
+
+// Section-nav: click sets active, scroll-spy keeps it in sync
+var navTabs = document.querySelectorAll('.nav-tab');
+navTabs.forEach(function(tab){
+  tab.addEventListener('click',function(){
+    navTabs.forEach(function(t){t.classList.remove('active')});
+    tab.classList.add('active');
+  });
+});
+
+var sectionIds = Array.from(navTabs).map(function(t){return t.getAttribute('href').slice(1);}).filter(Boolean);
+var sections = sectionIds.map(function(id){return document.getElementById(id);}).filter(Boolean);
+function updateActiveTab(){
+  var y = window.scrollY + 120;
+  var current = null;
+  for(var i=0;i<sections.length;i++){
+    if(sections[i].offsetTop <= y) current = sections[i].id;
+  }
+  if(!current) return;
+  navTabs.forEach(function(t){
+    t.classList.toggle('active', t.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', updateActiveTab, {passive:true});
+updateActiveTab();
+</script>
+</body>
+</html>

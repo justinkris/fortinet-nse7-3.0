@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 15 Troubleshooting — OSPF Won't Form on a Dial-Up Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;--red:#a02020;--red-light:#fbe4e4;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.62;font-size:17px}
+header{padding:40px 48px;background:var(--ink-dark)}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.12em}
+header h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec;margin-top:8px}
+header p{font-style:italic;color:rgba(251,247,236,.55);margin-top:8px}
+main{max-width:880px;margin:0 auto;padding:32px 28px 70px}
+h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--blue-deep);margin:38px 0 12px;border-bottom:2px solid var(--border);padding-bottom:6px}
+p{margin-bottom:12px}
+pre{background:var(--ink-dark);color:#dbe7fb;font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:14px 18px;border-radius:8px;overflow-x:auto;margin:12px 0;line-height:1.55}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.87em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:15px;margin:14px 0;background:var(--surface)}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:8px 12px;border:1px solid var(--border)}
+td{padding:8px 12px;border:1px solid var(--border-dim);vertical-align:top}
+.step{background:var(--surface);border:1px solid var(--border-dim);border-left:5px solid var(--blue);border-radius:0 8px 8px 0;padding:14px 18px;margin:12px 0}
+.step b.n{font-family:'Outfit',sans-serif;font-size:12px;letter-spacing:.06em;color:var(--blue);text-transform:uppercase;display:block;margin-bottom:4px}
+.dead{border-left-color:var(--red);background:var(--red-light)}
+.dead b.n{color:var(--red)}
+.trap{background:var(--amber-light);border-left:4px solid var(--amber);padding:10px 14px;border-radius:0 6px 6px 0;margin:10px 0;font-size:15.5px}
+ul{margin-left:22px}
+li{margin-bottom:5px}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 15 · TROUBLESHOOTING GUIDE</div>
+  <h1>OSPF Won't Form on a Dial-Up Hub</h1>
+  <p>How a senior engineer thinks through silent adjacencies — the thinking, not just the commands.</p>
+</header>
+<main>
+
+<h2>Symptoms</h2>
+<ul>
+<li>IPsec tunnel is UP; pings between hub and spoke succeed.</li>
+<li>OSPF neighbor table on the hub is <b>completely empty</b> — not stuck, not flapping, empty.</li>
+<li>No routes learned in either direction; static reachability still works.</li>
+<li>Variant symptom set (later stage): adjacencies at Full, but a specific subnet known only via static route on the hub never appears on spokes.</li>
+</ul>
+
+<h2>Questions to Ask Before Touching Anything</h2>
+<ul>
+<li>Is the transport healthy? (Tunnel state, ping.) If yes, stop suspecting the tunnel — suspect the protocol's assumptions.</li>
+<li>Is the table <b>empty</b> or <b>broken</b>? Empty means hellos were never <em>delivered</em>. Flapping/Init/ExStart means they arrived but the conversation failed. These have different suspect lists.</li>
+<li>What network type is configured on each end — and can the medium underneath honour that type's assumptions?</li>
+<li>Is this a dial-up VPN? Is <code>net-device</code> disabled (one shared interface for all spokes)?</li>
+<li>For missing routes: was the route ever <em>born inside</em> OSPF, or is it foreign (static/BGP/connected) and awaiting redistribution?</li>
+</ul>
+
+<h2>Verification Commands &amp; Expected Outputs</h2>
+<table>
+<tr><th>Command</th><th>What you're checking</th><th>Healthy P2MP hub</th></tr>
+<tr><td><code>get router info ospf neighbor</code></td><td>Adjacency existence, state, role</td><td>One line per spoke, <code>Full/ -</code></td></tr>
+<tr><td><code>get router info ospf interface</code></td><td>Interface network type, adjacency count, DR/BDR IDs</td><td>Type point-to-multipoint, no DR/BDR listed</td></tr>
+<tr><td><code>get router info ospf status</code></td><td>Router ID, attached areas, count of fully adjacent neighbors</td><td>Full-adjacency count = spoke count</td></tr>
+<tr><td><code>get router info routing-table ospf</code></td><td>What OSPF actually installed</td><td>All advertised prefixes present; redistributed prefixes tagged external</td></tr>
+</table>
+
+<h2>Decision Tree</h2>
+<div class="step"><b class="n">1 · Separate transport from protocol</b>Tunnel down or pings failing → this is an IPsec problem, not OSPF. Stop here and fix transport first. Tunnel up + pings OK → proceed; the protocol's assumptions are the suspect.</div>
+<div class="step"><b class="n">2 · Classify the neighbor table</b>Empty → hellos never delivered → go to step 3 (delivery/network-type path). Neighbors stuck below Full or flapping → hellos delivered but parameters disagree (area ID, timers, subnet, MTU, authentication) → different investigation.</div>
+<div class="step"><b class="n">3 · Check the network type against the medium</b><code>get router info ospf interface</code>. Broadcast on a tunnel/dial-up interface = configured assumption ("shared medium delivers my multicast") that reality can't honour. The multicast hello dies at the interface — this alone explains total silence.</div>
+<div class="step"><b class="n">4 · Match the topology to the correct type</b>Dedicated tunnel, exactly one far-side neighbor → point-to-point (the default). One shared interface, many dial-up spokes (<code>net-device disable</code>) → point-to-multipoint. Fix on the hub, confirm hello intervals pass.</div>
+<div class="step"><b class="n">5 · Verify with the fingerprint</b><code>Full/ -</code> per spoke. Full = identical LSDBs. Dash = no election ran — exactly what P2MP should produce. Seeing DR/BDR/DROther here means something is still configured broadcast.</div>
+<div class="step"><b class="n">6 · Missing foreign routes → redistribution path</b>Route exists on the hub as a static but never reaches spokes: OSPF only advertises what it was told about. Check <code>config redistribute static</code> (default disabled). Enabling it makes the box an ASBR — and it's all-or-nothing, so apply a filter (access list for one known prefix) before opening the valve.</div>
+<div class="step"><b class="n">7 · Verify recovery AND root cause</b>Routes present on spokes, nothing extra leaked past the filter, and you can state <em>why</em> the original config failed — not just that changing it helped.</div>
+
+<h2>Common Dead Ends</h2>
+<div class="step dead"><b class="n">Dead end · Rebuilding the tunnel</b>The tunnel was never broken — pings proved it. Restarting IPsec burns time and adds change-noise while the neighbor table stays empty for the same reason.</div>
+<div class="step dead"><b class="n">Dead end · Hunting for a firewall policy blocking OSPF</b>Plausible-sounding, but a policy drop wouldn't be the first hypothesis when the sending side never successfully emits deliverable hellos. Check what the hub is <em>trying to send</em> before hunting for who's blocking it.</div>
+<div class="step dead"><b class="n">Dead end · "The DR election must be broken — let's tune priorities"</b>On a hub-and-spoke, there is no election to fix. Tuning <code>priority</code> on a star treats a symptom of the wrong network type as a tunable.</div>
+<div class="step dead"><b class="n">Dead end · Enabling redistribution to "make routes appear"</b>If adjacencies aren't at Full yet, redistribution changes nothing — and opening it unfiltered plants a future incident. Fix adjacency first, then advertise, then filter.</div>
+
+<h2>Likely Root Causes (ranked)</h2>
+<ol>
+<li>Network type <code>broadcast</code> configured on a dial-up hub tunnel interface (no shared medium to deliver multicast hellos).</li>
+<li>Network type mismatch between hub (P2MP) and spoke expectations after a partial fix.</li>
+<li>Foreign route never redistributed (default disabled) — routes "missing" that OSPF was never told about.</li>
+<li>Redistribution enabled but the filter denies the intended prefix (or <code>exact-match</code> excludes a subnet variant).</li>
+</ol>
+
+<h2>Exam Traps</h2>
+<div class="trap"><b>Trap 1:</b> Output shows <code>Full/DROther</code> — the question asks the network type. DROther = an election ran = <b>broadcast</b>. <code>Full/ -</code> = P2P or P2MP.</div>
+<div class="trap"><b>Trap 2:</b> "Dial-up spokes, net-device disabled, adjacencies won't form" — the answer is the hub's network type, not IPsec settings, not policies.</div>
+<div class="trap"><b>Trap 3:</b> "Why doesn't R2 advertise its connected network Net 1 into OSPF?" — redistribution is <b>disabled by default</b> for every source, including connected.</div>
+<div class="trap"><b>Trap 4:</b> Filtering question mentioning <code>ge</code>/<code>le</code> → prefix list (and it applies only to <code>distribute-list-in</code>). Mentioning attribute modification → route map.</div>
+
+<h2>The Thinking, Distilled</h2>
+<p>Every step above is one move: <b>state the assumption, then test whether reality honours it.</b> Broadcast assumes a shared medium — test: is there one? P2P assumes one neighbor — test: how many spokes? Redistribution assumes you told OSPF about the route — test: did you? Engineers who memorise commands find the fault eventually; engineers who interrogate assumptions find it first.</p>
+
+</main>
+<footer>LoFinance · Session 15 Troubleshooting Guide · NSE7 EF 7.6</footer>
+</body>
+</html>

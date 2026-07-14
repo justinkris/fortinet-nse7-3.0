@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supplement — Use Case CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Use Case CLI</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Supplement · CLI Reference</div>
+    <h1>Use Cases, <em>By Command</em></h1>
+    <p>Every CLI knob from the three lab exercises — VDOM-link segmentation with OSPF, ADVPN hub-and-spoke with IBGP, and the Security Fabric automation stitch that quietly backs up your config.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Three exercises, one lesson — <em>defaults</em> decide most of the outcome.</div>
+  <p class="motivation-sub">Every stanza on this page has a default you need to know: OSPF area type, ADVPN discovery direction, BGP next-hop-self on the hub, and the automation trigger that fires the backup.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-segmentation">Segmentation & OSPF</a>
+  <a class="nav-tab" href="#section-advpn">ADVPN Hub &amp; Spoke</a>
+  <a class="nav-tab" href="#section-ibgp">IBGP with Route Reflector</a>
+  <a class="nav-tab" href="#section-fabric">Security Fabric &amp; Automation</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — SEGMENTATION & OSPF ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SEGMENTATION & OSPF</span>
+      </div>
+      <p class="socratic-insight">Exercise 1 puts an HR VLAN in a separate VDOM (Zone2), then bridges Zone2 back to root over an inter-VDOM link, then puts OSPF area <code>0.0.0.1</code> across that link. Everything rides on the VDOM link being the only path between the two OSPF speakers.</p>
+      <ul class="socratic-questions">
+        <li>Why is area <code>0.0.0.1</code> configured as a stub in this exercise, and what does that mean for the LSAs Zone2 receives?</li>
+        <li>Once the OSPF link is up, which single command on HQ-DCFW proves the <code>10.0.3.0/24</code> HR subnet actually arrived?</li>
+      </ul>
+      <div class="answer-area" data-section="segmentation">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because Zone2 only needs a summary view of the world, not every external prefix. Stub areas don't receive Type 5 (external) LSAs — the ABR replaces them with a default route. That keeps Zone2's LSDB small and means changes outside area 1 don't cause SPF churn inside HR.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>get router info routing-table all</code> on HQ-DCFW. Look for the line starting with <code>O IA 10.0.3.0/24</code> — the <code>IA</code> code means it came via inter-area (from area 0.0.0.1 via the ABR into area 0). If the code is missing, either the adjacency didn't reach Full or the ABR isn't leaking a summary Type 3.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-segmentation">
+      <div class="section-label">SECTION 01</div>
+      <h2>Segmentation <em>with VDOM Links + OSPF</em></h2>
+      <p>Two-VDOM design: <strong>root</strong> holds the fabric-facing interfaces, <strong>Zone2</strong> holds the HR VLAN. A VDOM link joins them. OSPF area <code>0.0.0.1</code> runs across the link.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system interface
+    edit "VLAN102"
+        set vdom "Zone2"
+        set vlanid 102
+        set interface "port5"
+        set ip 10.0.3.254 255.255.255.0
+        set allowaccess ping https
+    next
+end</code></div>
+        <p class="cmd-desc">Creates the HR VLAN (VLAN 102) on port5 inside the <strong>Zone2</strong> VDOM with the gateway address <code>10.0.3.254/24</code>. <code>PING</code> and <code>HTTPS</code> allowaccess so HR endpoints can reach the FortiGate for policy hits and management if needed.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>set vdom "Zone2"</code> — the VLAN interface itself has to live in the target VDOM, not root. VLAN ID must be unique per physical parent. Change <code>allowaccess</code> to a stricter list if HR shouldn't manage the box.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config global
+    config system vdom-link
+        edit "C"
+        next
+    end
+end
+
+config system interface
+    edit "C0"
+        set vdom "root"
+        set ip 172.16.1.249 255.255.255.252
+        set allowaccess ping
+        set type vdom-link
+    next
+    edit "C1"
+        set vdom "Zone2"
+        set ip 172.16.1.250 255.255.255.252
+        set allowaccess ping
+        set type vdom-link
+    next
+end</code></div>
+        <p class="cmd-desc">Creates VDOM link <code>C</code> with two ends — <code>C0</code> in root, <code>C1</code> in Zone2 — on a shared <code>/30</code>. This is the L3 pipe OSPF will neighbour across.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Vdom-link is not offloaded (that's <code>npu_vlink</code> — see the Hardware Acceleration page). This is a plain kernel-forwarded link, fine for routing-protocol traffic. Each end lives in a different VDOM; the <code>/30</code> is only used inside the FortiGate. <code>allowaccess ping</code> lets you troubleshoot with <code>execute ping</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># in Zone2:
+config router ospf
+    set router-id 0.0.0.4
+    config area
+        edit 0.0.0.1
+            set type stub
+        next
+    end
+    config network
+        edit 1
+            set prefix 172.16.1.248 255.255.255.252
+            set area 0.0.0.1
+        next
+        edit 2
+            set prefix 10.0.3.0 255.255.255.0
+            set area 0.0.0.1
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Enables OSPF on Zone2 with router ID <code>0.0.0.4</code>, defines area <code>0.0.0.1</code> as <strong>stub</strong>, and advertises the vdom-link transit subnet plus the HR subnet into that area. The root VDOM does the mirror config with router ID <code>0.0.0.3</code> and the transit prefix in area <code>0.0.0.1</code> (the root VDOM is the ABR into area 0).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><strong>Stub area</strong> means no Type 5 (external) LSAs enter — the ABR generates a default route into the stub instead. Both sides must agree the area is stub or the adjacency won't reach Full. Router IDs must be unique across the whole OSPF domain, not just per VDOM.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info ospf status
+# get router info routing-table all</code></div>
+        <p class="cmd-desc">Verifies the adjacency (ospf status) and confirms Zone2's HR subnet made it into HQ-DCFW's RIB via inter-area routing.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>In <code>get router info ospf status</code>: <em>"Number of fully adjacent neighbors in this area is 1"</em>. In the routing table: <code>O IA 10.0.3.0/24 [110/2] via …</code> — the <code>IA</code> code confirms it's an inter-area Type 3 summary; the <code>110</code> is OSPF's default administrative distance.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute ping 10.0.3.254
+# execute ping 10.0.5.11</code></div>
+        <p class="cmd-desc">Data-plane sanity: HR PC pings its VLAN gateway (<code>10.0.3.254</code>) and the internal web server (<code>10.0.5.11</code>). If ping to the gateway works but ping across to HQ-Web-1 doesn't, routing or policy is the issue.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Gateway-only success → firewall policy is dropping the transit. Full success → OSPF injected the route and policy accepts the flow. Failing gateway ping from HR → VLAN ID mismatch or wrong VDOM binding on VLAN102.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Segmentation = new VDOM + vdom-link + OSPF area. The vdom-link carries the routing protocol. The stub area declaration must match on both ends. The ABR (root VDOM) is what makes area 1's subnets visible to area 0.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-segmentation" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-segmentation','Segmentation & OSPF')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-segmentation" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-segmentation')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — ADVPN HUB & SPOKE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · ADVPN HUB & SPOKE</span>
+      </div>
+      <p class="socratic-insight">Classic hub-and-spoke means spoke-to-spoke traffic tromboned through the hub. ADVPN fixes that: the hub advertises shortcut information so spokes can build on-demand direct tunnels to each other. Two flags — <code>auto-discovery-sender</code> on the hub, <code>auto-discovery-receiver</code> on the spokes — control the whole thing.</p>
+      <ul class="socratic-questions">
+        <li>Why does the hub set <code>auto-discovery-sender enable</code> but the spokes set <code>auto-discovery-receiver enable</code>? What happens if you swap them?</li>
+        <li>Why is Mode Config disabled on both sides of the overlay, and why does the exercise use static overlay IPs (<code>172.16.1.1/32</code> hub, <code>172.16.1.2/32</code> spoke) instead?</li>
+      </ul>
+      <div class="answer-area" data-section="advpn">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The hub is the one that <em>knows</em> both spokes and can tell one about the other, so it's the sender. Each spoke needs to <em>receive</em> that shortcut info to know it should build a direct tunnel to a peer instead of routing through the hub. Swap them and no shortcut information flows — you're stuck with normal hub-and-spoke.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Mode Config is for dial-up VPN where the hub hands out addresses to unknown spokes. ADVPN with BGP over the overlay wants deterministic tunnel-interface IPs so BGP can peer stably — hence static <code>/32</code>s. Metadata variables (<code>$(Tunnel_IP)</code>, <code>$(Router_ID)</code>) let one FortiManager template render per-device values without repeating the config.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-advpn">
+      <div class="section-label">SECTION 02</div>
+      <h2>ADVPN <em>Hub &amp; Spoke Overlay</em></h2>
+      <p>Same IPsec phase1-interface CLI as any hub-and-spoke, plus two auto-discovery knobs and a couple of transport tweaks to keep the shortcut plumbing happy.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># on the hub (HQ-NGFW / Core1 VDOM):
+config vpn ipsec phase1-interface
+    edit "HUB1-VPN1"
+        set interface "port2"
+        set mode-cfg disable
+        set transport udp
+        set auto-discovery-sender enable
+        set localid "fortinet"
+        set psksecret 123456789
+    next
+end
+
+config system interface
+    edit "HUB1-VPN1"
+        set ip 172.16.1.1 255.255.255.255
+        set remote-ip 172.16.1.254 255.255.255.0
+    next
+end</code></div>
+        <p class="cmd-desc">Hub-side phase1 with ADVPN sender enabled. <code>mode-cfg disable</code> because we're using static overlay IPs. <code>transport udp</code> is the default; explicit here so troubleshooting is unambiguous. Tunnel interface <code>HUB1-VPN1</code> gets the overlay IP <code>172.16.1.1/32</code> and treats the <code>172.16.1.254/24</code> as its remote-side.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>auto-discovery-sender enable</code> is the ADVPN switch on the hub — without it, the hub is just a regular hub-and-spoke concentrator. Local ID <code>fortinet</code> must match the <code>set peer-id fortinet</code> or equivalent identifier the spokes use to authenticate.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># on each spoke (BR2-FGT-1, BR3-FGT-1):
+config vpn ipsec phase1-interface
+    edit "HUB1-VPN1"
+        set interface "port2"
+        set mode-cfg disable
+        set transport udp
+        set auto-discovery-receiver enable
+        set remote-gw 100.65.0.101
+        set localid "fortinet"
+        set psksecret 123456789
+    next
+end
+
+config system interface
+    edit "HUB1-VPN1"
+        set ip $(Tunnel_IP)              # e.g. 172.16.1.2/32
+        set remote-ip 172.16.1.1 255.255.255.0
+    next
+end</code></div>
+        <p class="cmd-desc">Spoke-side phase1 with ADVPN receiver enabled and the hub's public IP as <code>remote-gw</code>. The tunnel-interface IP comes from a FortiManager metadata variable so BR2 gets <code>172.16.1.2/32</code>, BR3 gets <code>172.16.1.3/32</code> — from the same template.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>auto-discovery-receiver enable</code> is what lets the spoke listen for shortcut messages from the hub and build direct tunnels on demand. If a spoke never gets a shortcut, it keeps sending spoke-to-spoke traffic through the hub — check that <code>auto-discovery-sender</code> is on at the hub end.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># on BR2-FGT-1:
+# execute ping-options source 172.20.2.254
+# execute ping 172.20.3.254</code></div>
+        <p class="cmd-desc">Data-plane test that spoke-to-spoke works. Sourced from BR2's LAN interface so the ping actually rides the overlay (not the WAN). Target is BR3's LAN gateway.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>First few packets may show latency ≈ hub path RTT (traffic tromboning through the hub). Once ADVPN kicks in, latency should drop — you're on a direct BR2↔BR3 tunnel. Look for a new tunnel appearing in <code>diagnose vpn tunnel list</code> on the spoke after the first ping.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose vpn tunnel list
+# (or on Core1: diagnose vpn tunnel list in vd 2)</code></div>
+        <p class="cmd-desc">Shows every phase1 and its child phase2 SAs, including nexthop, encryption/decryption counters, and the <code>npu_flag</code> offload state (see the Hardware Acceleration reference).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Two tunnels expected on each spoke after a successful ADVPN shortcut: the always-on tunnel to the hub, and a dynamically-created tunnel to the other spoke. <code>npu_flag=03</code> on both = fully hardware-accelerated crypto. <code>bytes/pkts</code> counters growing on the shortcut tunnel = ADVPN is actually being used.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">ADVPN = sender on the hub, receiver on the spokes, static overlay IPs so BGP has stable next-hops. First inter-spoke packet still goes via the hub; then a shortcut tunnel is built and subsequent packets go direct.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-advpn" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-advpn','ADVPN Hub & Spoke')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-advpn" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-advpn')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — IBGP WITH ROUTE REFLECTOR ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · IBGP WITH ROUTE REFLECTOR</span>
+      </div>
+      <p class="socratic-insight">IBGP has a "don't propagate what you learned from an IBGP peer" split-horizon rule. The classic workaround is full mesh — but that's N² and doesn't scale. Route reflectors punch a hole in the rule: the RR (the hub) is allowed to re-advertise IBGP prefixes to its clients (the spokes).</p>
+      <ul class="socratic-questions">
+        <li>Why does the hub set both <code>route-reflector-client enable</code> AND <code>next-hop-self enable</code> on the neighbor group?</li>
+        <li>What does <code>neighbor-range</code> with <code>max-neighbor-num 2</code> get you that a plain <code>neighbor</code> stanza doesn't?</li>
+      </ul>
+      <div class="answer-area" data-section="ibgp">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Route-reflector-client turns split horizon off <em>for that peer</em>, so the hub will re-advertise prefixes it learned from spoke A to spoke B. Next-hop-self rewrites the BGP next-hop to be the hub's own overlay IP, so spoke B's IGP/tunnel-routing can actually reach the next-hop. Without next-hop-self, spoke B would see a next-hop pointing to spoke A's overlay IP, which it might not have a route to yet (before ADVPN kicks in).</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Dynamic acceptance: any spoke whose overlay IP falls inside the range <code>172.16.1.0/24</code> can peer without a per-neighbour stanza on the hub. That's how you onboard spokes at scale — provision the spoke, it dials in, the hub accepts. <code>max-neighbor-num 2</code> caps the acceptance at two peers (matching the two branch offices in this exercise).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ibgp">
+      <div class="section-label">SECTION 03</div>
+      <h2>IBGP <em>with Route Reflector</em></h2>
+      <p>Same AS number (<code>65100</code>) everywhere — that's IBGP. Hub is the route reflector; spokes are the clients. Neighbor groups + neighbor ranges keep the hub config short.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># on the hub (HQ-NGFW / Core1 VDOM):
+config router bgp
+    set as 65100
+    set router-id 172.16.1.1
+
+    config neighbor-group
+        edit "advpn"
+            set remote-as 65100
+            set route-reflector-client enable
+            set next-hop-self enable
+        next
+    end
+
+    config neighbor-range
+        edit 1
+            set prefix 172.16.1.0 255.255.255.0
+            set neighbor-group "advpn"
+            set max-neighbor-num 2
+        next
+    end
+
+    config network
+        edit 1
+            set prefix 10.0.12.0 255.255.255.0
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Hub BGP: AS 65100, router-id <code>172.16.1.1</code> (the overlay IP), a neighbor-group <code>advpn</code> where every member is treated as an RR client with next-hop-self, and a dynamic neighbor-range that auto-accepts up to 2 peers from the overlay <code>/24</code>. The hub also originates its LAN subnet.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Same-AS on both sides = IBGP (split horizon in effect). <code>route-reflector-client enable</code> lifts split horizon for those peers. <code>next-hop-self enable</code> is essential when the RR's clients don't share L3 reachability to each other's overlay IPs — which is exactly the pre-ADVPN state.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># on each spoke (BR2-FGT-1, BR3-FGT-1):
+config router bgp
+    set as 65100
+    set router-id $(Router_ID)
+
+    config neighbor
+        edit "172.16.1.1"
+            set remote-as 65100
+            set connect-timer 120
+        next
+    end
+
+    config network
+        edit 1
+            set prefix $(LAN_BR)
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Spoke BGP: same AS, router-id from a metadata variable (per-device), one static neighbor pointing at the hub's overlay IP, and one <code>network</code> stanza with the local LAN subnet (also per-device). No route-reflector-client on the spoke — that's a hub-side concept.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>connect-timer 120</code> speeds up initial peering (default is 120s already — explicit here for consistency). Because the spoke doesn't know the other spoke's overlay IP directly, it relies on the hub's RR + next-hop-self to learn other LAN prefixes. Once BGP converges, the FIB has the other spoke's LAN reachable through the hub; ADVPN then rebuilds the data path direct.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info bgp summary
+# get router info routing-table all</code></div>
+        <p class="cmd-desc">Verifies BGP peer state and BGP-learned routes. On BR3, look for BR2's LAN prefix marked with a <code>B</code> code.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+
+S*    0.0.0.0/0 [10/0] via 100.65.5.35d, port2
+C     172.16.1.1/32 is directly connected, HUB1-VPN1
+C     172.16.1.3/32 is directly connected, HUB1-VPN1
+B     172.20.2.0/24 [200/0] via 172.16.1.2 (recursive is directly connected, HUB1-VPN1_0), 00:02:56, [1/0]
+C     172.20.3.0/24 is directly connected, port4
+C     192.168.0.0/16 is directly connected, port1</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>B  172.20.2.0/24 [200/0] via 172.16.1.2</code> — the <code>B</code> code proves BGP delivered BR2's LAN to BR3. <code>[200/0]</code> is IBGP admin distance <code>200</code>. <code>recursive</code> means the next-hop <code>172.16.1.2</code> resolved through the overlay tunnel to the spoke — which after the first packet becomes a direct ADVPN shortcut.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">IBGP split horizon = don't re-advertise learned IBGP prefixes. RR = allowed to. Combine RR + next-hop-self so the client can actually reach the advertised prefix. Neighbor-range = dynamic peer acceptance without per-spoke config.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ibgp" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ibgp','IBGP with Route Reflector')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ibgp" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ibgp')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — SECURITY FABRIC + AUTOMATION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SECURITY FABRIC + AUTOMATION</span>
+      </div>
+      <p class="socratic-insight">Fabric root + fabric members lets one FortiGate speak for the group. On top of that, an automation stitch (trigger → action) can do things like back up the config every time it changes — without any external scheduler.</p>
+      <ul class="socratic-questions">
+        <li>Why must the root FortiGate authorise each fabric member in <code>System &gt; Firmware &amp; Registration</code> before the topology view shows them?</li>
+        <li>The stitch has trigger <code>Configuration Change</code> and action <code>Backup Config Disk</code>. Where does the backup file end up, and what log confirms it fired?</li>
+      </ul>
+      <div class="answer-area" data-section="fabric">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The fabric root has to explicitly trust every member — otherwise anyone with the fabric name and a reachable network could join and pull telemetry / config. The member sends a registration request; the root sees it as "pending" until an admin approves. Only after authorisation does the member show up in the topology and start reporting fabric telemetry.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">On the FortiGate's own disk (that's what <code>Backup Config Disk</code> means — <em>local</em> disk, not FortiManager, not FTP). You can retrieve it from <em>System &gt; Configuration &gt; Revisions</em>. The confirming log is a <code>System Events</code> entry with message <code>stitch:Config_Change is triggered</code>. Any admin-generated CLI or GUI change fires it.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-fabric">
+      <div class="section-label">SECTION 04</div>
+      <h2>Security Fabric <em>and Automation Stitch</em></h2>
+      <p>Root elects the fabric name and interface. Members join it. An automation stitch marries a trigger to an action so config-changes automatically produce a local backup.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># on the root (HQ-NGFW-1 global):
+config system csf
+    set status enable
+    set group-name "fortinet"
+    set upstream-ip 0.0.0.0
+    set configuration-sync default
+    set fabric-object-unification default
+    config trusted-list
+        edit "1"
+            set authorization-type serial
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Enables Security Fabric with fabric name <code>fortinet</code>. <code>upstream-ip 0.0.0.0</code> means "no upstream" — this box is the root. Trusted-list is where the root records which downstreams are authorised to join.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>status enable</code> plus a fabric name is the minimum. The GUI wraps this in <em>Serve as Fabric Root</em>. Downstream members set <code>upstream-ip</code> to this root's IP instead. Both ends must reach each other on TCP 8013 for fabric telemetry.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># on each fabric member (HQ-ISFW, HQ-DCFW):
+config system csf
+    set status enable
+    set group-name "fortinet"
+    set upstream-ip 10.0.12.254
+end</code></div>
+        <p class="cmd-desc">Member config: same group name, points upstream at the root's IP (<code>10.0.12.254</code> in this exercise). Once this is committed, the member appears as <em>pending</em> on the root and stays that way until the root admin authorises it.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Group name typo = silent fail (the member never registers). <code>upstream-ip</code> must be reachable and speaking fabric on TCP 8013. Under-provisioned allowaccess on the root's port5 (the fabric-facing port) will also block registration — check <code>allowaccess fabric</code> or equivalent.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system automation-trigger
+    edit "Config_Change_trigger"
+        set trigger-type event-based
+        set event-type config-change
+    next
+end
+
+config system automation-action
+    edit "Backup_Config_Disk"
+        set action-type cli-script     # or backup-config-disk in the GUI mapping
+    next
+end
+
+config system automation-stitch
+    edit "Config_Change"
+        set trigger "Config_Change_trigger"
+        set action "Backup_Config_Disk"
+    next
+end</code></div>
+        <p class="cmd-desc">Three-step stitch. Trigger fires on any configuration change. Action performs the disk backup. Stitch binds them into a runnable pipeline. The GUI shortcut is <em>HQ-NGFW &gt; Security Fabric &gt; Automation Stitch &gt; Create New</em> with trigger <code>Configuration Change</code> and action <code>Backup Config Disk</code>.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Trigger + action together = a stitch. A stitch is what actually runs. Multiple actions can be chained under one stitch (e.g. backup + email notification). Stitches live at the fabric-root level and can target any authorised member.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># on a member (HQ-DCFW), touch the config:
+config system interface
+    edit port2
+        set description modification
+    next
+end</code></div>
+        <p class="cmd-desc">Any admin change fires the <code>Configuration Change</code> trigger. Setting a harmless description is the standard smoke test.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Then check <em>System &gt; Configuration &gt; Revisions</em> for a new entry with comment <code>Autod backup config by stitch: Config_Change</code>, and <em>Log &amp; Report &gt; System Events &gt; Logs</em> for a Notice-level entry <code>stitch:Config_Change is triggered</code>. Both together = the automation ran end-to-end.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Fabric = one root + authorised members over TCP 8013. Automation = trigger (event-based or scheduled) + action (backup, script, email, webhook) + stitch (the binding that runs). Configuration Change trigger + Backup Config Disk action = free, automatic, per-change local backups.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-fabric" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-fabric','Security Fabric & Automation')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-fabric" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-fabric')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="supplement-dynamic-routing.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">Dynamic Routing Supplement CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="index.html">
+    <span class="page-nav-label">BACK TO INDEX →</span>
+    <span class="page-nav-title">CLI Commands Index</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Use Case Supplement
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-supp-usecases';
+const SECTIONS = {
+  'section-segmentation': 'Segmentation & OSPF',
+  'section-advpn': 'ADVPN Hub & Spoke',
+  'section-ibgp': 'IBGP with Route Reflector',
+  'section-fabric': 'Security Fabric & Automation',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

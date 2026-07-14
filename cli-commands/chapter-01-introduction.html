@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 01 — Introduction Baseline CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Chapter 01</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 01 · CLI Reference</div>
+    <h1>Introduction, <em>Baseline CLI</em></h1>
+    <p>Chapter 1 is mostly architecture, not command syntax — but the handful of commands you meet here (status, packet flow, sniffer, backup) are the ones you'll type before every deeper troubleshoot.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Every deeper chapter starts with <em>get system status</em> and a sniffer.</div>
+  <p class="motivation-sub">The commands below are the baseline "what am I looking at?" toolkit — used constantly before FGCP, VLAN, or VDOM troubleshooting even begins.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-status">System Status</a>
+  <a class="nav-tab" href="#section-packet-flow">Packet Flow & Offload</a>
+  <a class="nav-tab" href="#section-sniffer">Sniffer & Debug</a>
+  <a class="nav-tab" href="#section-backup">Backup & Restore</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — SYSTEM STATUS ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SYSTEM STATUS</span>
+      </div>
+      <p class="socratic-insight">Before you touch anything on a strange FortiGate, you want two answers: what model / version am I on, and which VDOM mode am I in. Both come from one command.</p>
+      <ul class="socratic-questions">
+        <li>Which single command tells you the firmware version, model, licence, and whether multi-VDOM is enabled?</li>
+        <li>Why does knowing the FortiGate model matter before you plan HW SSL inspection, hyperscale, or NP offload?</li>
+      </ul>
+      <div class="answer-area" data-section="status">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>get system status</code>. It prints version, build, serial number, model, licence, and — importantly for Ch03 — the <em>Virtual domain configuration</em> line (standalone / multi-vdom / split-task).</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">The model decides everything downstream. VMs handle every packet in CPU. Physical models have NP7 for network offload and CP for content-processor offload. Hyperscale, HW SSL inspection, and low-latency features exist only on specific hardware families (1000–7000 series for DCFW; 100–900 for ISFW/campus).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-status">
+      <div class="section-label">SECTION 01</div>
+      <h2>System <em>Status</em></h2>
+      <p>The first commands you type on any FortiGate. They tell you the model, the firmware, and the VDOM mode — the three things every later troubleshooting step assumes you know.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get system status</code></div>
+        <p class="cmd-desc">The canonical "where am I" command. Prints version, build, serial, model, licence status, current time, and — critically — the <strong>Virtual domain configuration</strong> line (standalone, multi-vdom, or split-task).</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output (fields you care about)</div>
+          <pre><code>Version: FortiGate-VM64 v7.6.x,build...
+Serial-Number: FGVMxxxxxxxxxxxx
+Virtual domain configuration: multiple
+Max number of virtual domains: 10
+Current HA mode: standalone
+System time: ...</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <code>Virtual domain configuration</code> field tells you whether you're in multi-VDOM mode. The <code>Max number of virtual domains</code> line answers "how many VDOMs does this box support?" (Ch03 uses both.) Also check version — a 7.4 policy package won't install cleanly onto a 7.2 ADOM (Ch02).</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get sys status | grep "Max number of virtual domains"</code></div>
+        <p class="cmd-desc">Filtered version of the above — pulls just the maximum VDOM count line. Useful when you're on a session-restricted terminal and don't want the full status dump.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Most models support up to 10 VDOMs by default. Need more? You buy a VDOM licence. This line is what tells you whether you've already hit the limit.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get system performance status</code></div>
+        <p class="cmd-desc">Snapshot of CPU load (per-core and total), memory usage, session counts, and uptime — the "is this box actually busy?" view.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>High CPU with low session count → likely UTM/proxy inspection saturating cores. High CPU with high session count → the box is close to its throughput ceiling; check the model's rated throughput against the DCFW/ISFW/NGFW/DEFW table before blaming the config.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">On any unfamiliar FortiGate, always run <code>get system status</code> first. Version + model + VDOM mode are the three assumptions every later command implicitly makes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-status" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-status','System Status')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-status" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-status')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — PACKET FLOW & OFFLOAD ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · PACKET FLOW & OFFLOAD</span>
+      </div>
+      <p class="socratic-insight">The chapter's "Life of a Packet" slide has one big lesson: the first packet takes the long path (CPU), and every subsequent packet in that session may ride the NP7 fast path. If offload isn't happening, throughput collapses — and one diagnose command tells you why.</p>
+      <ul class="socratic-questions">
+        <li>A session shows high CPU and low pps. Which command shows whether NP offload is actually engaging?</li>
+        <li>Why does the same firewall config give very different throughput on a physical FortiGate vs. a FortiGate-VM?</li>
+      </ul>
+      <div class="answer-area" data-section="packet-flow">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose sys session list</code> and look at the <code>npu_state</code> / <code>offload</code> flags on the session. If offload is disabled you'll see a reason (asymmetric routing, flow inspection features enabled per policy, or the traffic type isn't NP-eligible).</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Physical models offload to NP7 (network) and CP (content) processors — flow-based IPS pattern matching, IPsec crypto, SSL decrypt. FortiGate-VM has no NP/CP: every packet is handled by CPU, so throughput is bounded by vCPU count and hypervisor overhead.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-packet-flow">
+      <div class="section-label">SECTION 02</div>
+      <h2>Packet Flow <em>and Offload</em></h2>
+      <p>Two commands cover the "why is this packet doing what it's doing?" question — a session list to see the flow, and the debug flow when the session list isn't enough.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose sys session list</code></div>
+        <p class="cmd-desc">Prints every active session in the session table with source/destination IPs, ports, policy ID, protocol, and offload state. This is the most-used session diagnostic on FortiGate.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <code>npu_state</code> (or <code>state</code>) line tells you whether the session is offloaded to NP. The <code>policy_id</code> confirms which firewall policy matched. On busy boxes narrow the output first with <code>diagnose sys session filter</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose sys session filter src &lt;ip&gt;
+# diagnose sys session filter dst &lt;ip&gt;
+# diagnose sys session filter dport &lt;port&gt;
+# diagnose sys session list</code></div>
+        <p class="cmd-desc">Applies a filter to the session table before listing. Essential on a production box where <code>list</code> alone would print thousands of sessions.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Filters are AND-combined. Clear them with <code>diagnose sys session filter clear</code> before running your next unrelated query — old filters silently stay in place and hide sessions you thought should be there.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose debug flow filter addr &lt;ip&gt;
+# diagnose debug flow show function-name enable
+# diagnose debug flow trace start 100
+# diagnose debug enable</code></div>
+        <p class="cmd-desc">Turns on the packet-flow debugger — the tool for "the session isn't being created, why?" It prints, for each packet, every stage of the Life-of-a-Packet flow: ACL, HPE, IP integrity, IPsec decrypt, routing/policy lookup, UTM inspection, forwarding.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Match the flow output against the "Life of a Packet" slide: the packet should traverse ACL → HPE → IP integrity → routing → session/policy lookup → UTM → forwarding. Wherever it stops printing, that's where the packet was dropped. Always follow with <code>diagnose debug disable</code> when you're done — flow debug is heavy on CPU.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Session list = "what's happening?" Debug flow = "why isn't anything happening?" Physical box offloads to NP/CP; a VM does everything in CPU.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-packet-flow" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-packet-flow','Packet Flow & Offload')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-packet-flow" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-packet-flow')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — SNIFFER & DEBUG ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SNIFFER & DEBUG</span>
+      </div>
+      <p class="socratic-insight">When the flow debugger and session list both come up empty, you drop to the wire. The FortiGate sniffer isn't tcpdump — but the filter syntax is deliberately similar, and the verbosity number changes what you see.</p>
+      <ul class="socratic-questions">
+        <li>What does the verbosity level (1, 2, 3, 4, 5, 6) actually control in <code>diagnose sniffer packet</code>?</li>
+        <li>Why is <code>any</code> as the interface both the most useful and the most dangerous option?</li>
+      </ul>
+      <div class="answer-area" data-section="sniffer">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">1 = header only, 2 = header + IP data, 3 = header + Ethernet data, 4 = header + interface name (this is the one you want most days — it tells you which port the packet arrived on), 5 = header + IP data + interface, 6 = header + Ethernet data + interface. Verbosity 4 or 6 is what the HA chapter uses to prove which port heartbeat is arriving on.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>any</code> tells the sniffer to listen on every interface — perfect when you don't know which port the traffic is on. Dangerous because on a busy production box you'll swamp the console. Always combine <code>any</code> with a tight BPF-style filter (host/port/proto) and a packet count.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-sniffer">
+      <div class="section-label">SECTION 03</div>
+      <h2>Sniffer <em>and Debug</em></h2>
+      <p>When flow debug can't explain it, sniff the wire. The FortiGate sniffer uses tcpdump-style BPF filters and takes a verbosity number that controls how much of the frame it prints.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose sniffer packet &lt;interface&gt; '&lt;filter&gt;' &lt;verbosity&gt; &lt;count&gt;</code></div>
+        <p class="cmd-desc">The canonical shape. Interface = a port name or <code>any</code>. Filter = tcpdump-style BPF. Verbosity = 1–6 (see the socratic answer above). Count = how many packets to capture before stopping — always set it so you don't flood the console.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Verbosity <strong>4</strong> is the sweet spot for most troubleshooting — you get the packet header plus the interface name, so on <code>any</code> you can see which port the packet came in on. Verbosity <strong>6</strong> when you actually need the payload bytes.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose sniffer packet any 'host 10.0.0.5 and port 443' 4 20</code></div>
+        <p class="cmd-desc">A working example: sniff any interface, only TCP/443 to/from 10.0.0.5, verbosity 4 (with interface name), stop after 20 packets.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output shape</div>
+          <pre><code>interfaces=[any]
+filters=[host 10.0.0.5 and port 443]
+1.234567 port1 in 10.0.0.5.51234 -&gt; 1.1.1.1.443: syn ...
+1.234789 port2 out 10.0.0.5.51234 -&gt; 1.1.1.1.443: syn ...</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <code>in</code>/<code>out</code> marker plus the interface name tell you the packet's path across the FortiGate. If you see <code>port1 in</code> but no <code>port2 out</code>, the packet was dropped inside the FortiGate — go back to flow debug.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose debug reset
+# diagnose debug disable</code></div>
+        <p class="cmd-desc">The "please stop everything" pair. <code>reset</code> clears every debug filter you may have accidentally left on; <code>disable</code> turns off the debug output stream.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Always run both when you leave a troubleshooting session. Leftover debug filters + enabled output is a common way to make an idle FortiGate look like it has a CPU problem.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Sniffer verbosity: 4 for "which port?", 6 for "what payload?" Always end with <code>diagnose debug reset</code> + <code>diagnose debug disable</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-sniffer" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-sniffer','Sniffer & Debug')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-sniffer" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-sniffer')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — BACKUP & RESTORE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BACKUP & RESTORE</span>
+      </div>
+      <p class="socratic-insight">The <code>execute</code> family covers commands that <em>do</em> something (as opposed to configuring or showing). Backup and restore live here — plus reboot, factoryreset, and the update pulls.</p>
+      <ul class="socratic-questions">
+        <li>What's the difference between the config backup <code>full-config</code> takes and one from a specific VDOM (Ch03)?</li>
+        <li>Why is <code>execute factoryreset</code> the one command you almost never want to run without console access?</li>
+      </ul>
+      <div class="answer-area" data-section="backup">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">A global (super-admin) backup with <code>full-config</code> captures both <code>config global</code> and every VDOM. A VDOM-scoped backup only contains that VDOM's config — useful when you're delegating a VDOM to another team and don't want to hand over the whole box's config.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because it wipes the config to defaults, including the management interface's IP. If you ran it over SSH, you're now locked out and the box comes back on <code>192.168.1.99/24</code> reachable only from a direct-connected laptop. Console cable required.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-backup">
+      <div class="section-label">SECTION 04</div>
+      <h2>Backup <em>and Restore</em></h2>
+      <p>The <code>execute</code> family — commands that perform an action rather than configure or query. These are the ones you type at the end of a maintenance window.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute backup config &lt;destination&gt; &lt;filename&gt; [&lt;server&gt;] [&lt;user&gt;] [&lt;password&gt;]</code></div>
+        <p class="cmd-desc">Backs up the FortiGate configuration. Destination is one of <code>tftp</code>, <code>ftp</code>, <code>usb</code>, <code>sftp</code>, or <code>scp</code>. When run from global (super-admin), captures the entire config; when run inside a VDOM, captures only that VDOM.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>To back up <em>everything</em> on a multi-VDOM box, run this from <code>config global</code> as a super-admin — otherwise you get a per-VDOM slice. Add <code>full-config</code> before the destination if you want the full config including defaults (much larger file, but reproducible).</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute restore config &lt;source&gt; &lt;filename&gt; &lt;server&gt; [&lt;user&gt;] [&lt;password&gt;]</code></div>
+        <p class="cmd-desc">Restores a previously backed-up config file. The FortiGate reboots after the restore completes.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The restore will fail if the source config was taken from a different model or major version. It <em>will</em> work across minor versions of the same model. Always test restores on a lab box before you promise a customer you can recover their prod device from a backup.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute reboot
+# execute shutdown</code></div>
+        <p class="cmd-desc">Reboots or gracefully shuts the FortiGate down. Both prompt for confirmation before executing.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Both commands halt traffic. In an HA cluster (Ch04), <code>reboot</code> on the current primary triggers a failover — plan for the brief service blip. <code>shutdown</code> is the graceful equivalent when you're physically pulling the box.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute update-now</code></div>
+        <p class="cmd-desc">Forces an immediate FortiGuard update pull — antivirus signatures, IPS signatures, application-control database, web-filter categories. Useful when a new IPS signature was just published and you don't want to wait for the scheduled poll.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Requires FortiGuard reachability — the management VDOM (Ch03) must have internet access, or a FortiManager acting as a local FDS must be reachable. If you're in a closed network and neither is true, this command will fail silently and every VDOM inherits stale signatures.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute factoryreset</code></div>
+        <p class="cmd-desc">Wipes the config back to factory defaults. The FortiGate reboots to a bare state with the default management IP.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Only run this when you have <strong>console access</strong>. The default management IP is <code>192.168.1.99/24</code> — reachable only if you're on that subnet or physically wired to the mgmt port. Running this over SSH is a guaranteed lockout.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The <code>execute</code> family is the "do it now" family — backup, reboot, update, factoryreset. Anything destructive needs console access before you type it.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-backup" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-backup','Backup & Restore')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-backup" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-backup')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="index.html">
+    <span class="page-nav-label">← BACK TO INDEX</span>
+    <span class="page-nav-title">CLI Commands Hub</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-02-central-management.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Central Management CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Chapter 01 Introduction Baseline
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-ch01-intro';
+const SECTIONS = {
+  'section-status': 'System Status',
+  'section-packet-flow': 'Packet Flow & Offload',
+  'section-sniffer': 'Sniffer & Debug',
+  'section-backup': 'Backup & Restore',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+LOFINANCE — SESSION 04 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "The Floor Wars"
+Study guide coverage: 03 VLANs and VDOMs, pp. 55-61 (VLAN overview; 802.1Q/802.1ad/QinQ
+tagging structure; egress addition / ingress removal by FortiGate; VLANs on diverse
+FortiGate interface types — aggregate/LACP, FortiLink, hardware switch, software switch,
+SSID; dot1q trunk concept). VDOM content (pp. 62+) was NOT covered — deliberately held
+for Session 6 ("One Box, Many Firewalls") per the master plan.
+Status: COMPLETE. Student scored 4/4 on exam questions, including one stretch question.
+
+STORY EVENTS
+------------
+Thursday, 9:12 AM. Opened directly on the Session 3 teaser (no scene-setting detour):
+Riley forwards an overnight packet capture from the trading floor ahead of the 200->400
+desk build-out, and an exec-floor source IP is sitting in it, chatting normally. Junior
+shrugs it off ("probably fine, same switch stack"). Cipher, three desks away, says one
+word without looking up: "Segment." Penny overhears, stops mid-walk, demands a fix
+before Monday AND a plain-English explanation of "segment" fit for the board. Cipher
+remains a name-only presence again this session (voice, no scene) — his on-screen debut
+is still being deliberately held for a future dramatic moment. No magpie, no sandwich
+gag this session (both correctly retired per Session 3's note). Session closes with the
+board-ready line the student built for Penny: "Every floor gets its own locked room; the
+firewall is the only door between them."
+
+CHARACTERS INVOLVED
+-------------------
+Student (protagonist), Junior (wrong instinct: "same switch stack, probably fine" —
+became the seed of the Layer 2 discussion), Cipher (one word only, "Segment" — voice
+only, still no on-screen scene), Penny (business framing, deadline, closing approval).
+Señor, Riley (mentioned only, forwarded the capture off-screen), TAC not on-screen.
+
+BUSINESS PROBLEM
+-----------------
+Exec floor and trading floor traffic are mixing in one broadcast domain (no VLANs, flat
+L2). This is both a security problem (no inspection boundary between two sensitivity
+zones) and about to get worse: trading floor is doubling from 200 to 400 desks per the
+growth plan, all landing on the same segment unless fixed before Monday. Resolved:
+design decision reached (not yet executed as a live change) — separate VLANs (VLAN 5
+exec / VLAN 20 trading) on a dot1q trunk into the edge FortiGate, gateways hosted on
+FortiGate (not a switch), deny-by-default policy between them, verified via diagnose
+sys session list. Open thread: this is a DESIGN session, not an implementation night —
+Session 5 opens on Monday, the VLANs now live and desks moved.
+
+TECHNICAL CONCEPTS COVERED
+---------------------------
+1. Flat L2 domain risk: any device can reach any other with no inspection point;
+   larger domains also mean more broadcast noise (ARP/DHCP flooding) — the student
+   named this cost unprompted before being asked.
+2. VLAN tag (802.1Q, EtherType 0x8100) as the mechanism that partitions one physical
+   medium into separate broadcast domains, forcing inter-VLAN traffic through Layer 3.
+3. FortiGate NEVER adds a VLAN tag on ingress — tagging on ingress is always the
+   responsibility of the preceding device (switch access port assigning untagged
+   traffic to a VLAN before it reaches the trunk). Student reasoned this from first
+   principles ("something needs to already be tagging before it reaches the firewall").
+4. VLAN tag is a property of the LINK/WIRE being crossed, not a permanent property of
+   the packet — FortiGate strips the ingress tag conceptually, routes at L3, and
+   re-tags on egress to match the destination VLAN interface. Student derived this
+   directly ("needs to add another tag assigned to the interface").
+5. Layer 2 devices (switches) can only add/remove tags unchanged; Layer 3 devices
+   (FortiGate) can actually CHANGE the tag as part of a routing decision — a classic
+   exam trap when reversed.
+6. dot1q trunk: single physical link multiplexing multiple VLANs by tag; required
+   whenever two VLANs must share one physical connection back to FortiGate.
+7. VLAN interface object in FortiOS = logical sub-interface referencing BOTH a
+   physical/aggregate interface (which wire) AND a vlanid (which tag on that wire) —
+   student correctly explained why both fields are structurally necessary.
+8. VLANs are not limited to physical ports — can be configured on aggregate/LACP,
+   FortiLink, hardware switch, software switch, and wireless SSID interfaces.
+9. Segmentation is only REAL (in Cipher's sense) when the VLAN gateway sits on
+   FortiGate, not on a switch — otherwise inter-VLAN traffic never crosses a policy
+   decision point at all. Direct callback to Session 1's "filing cabinet with
+   labelled but unlocked drawers" analogy, correctly retrieved and reapplied by the
+   student without prompting.
+10. Troubleshooting split for "policy seems to not be working": `diagnose sys session
+    list` first — if the session never appears at all, the fault is BELOW the firewall
+    (VLAN tagging/trunk/ARP, Layer 2), not the policy; if it appears with a policy_id,
+    the fault is in policy logic/order. Student correctly reasoned this split before
+    being told, including naming ARP table inspection as the first Layer 2 check.
+
+MENTAL MODELS DEVELOPED
+-----------------------
+- "VLAN tag is a property of the wire being crossed, not the packet's permanent
+  identity" — new this session, landed cleanly, should be reinforced later when
+  teaching VXLAN/overlay concepts.
+- Reused and correctly reapplied: "filing cabinet with labelled but unlocked drawers"
+  (VLAN without gateway on firewall = fake segmentation).
+- Reused: "path problem masquerading as a feature problem" (Session 1) — applied here
+  one layer down, at VLAN/Layer 2 granularity rather than architecture granularity.
+
+KEY CLI COMMANDS DISCUSSED
+---------------------------
+config system interface / edit "VLAN20-Trading" / set vdom "root" / set interface
+"internal1" / set vlanid 20 / set ip 192.168.20.1 255.255.255.0 / set allowaccess
+ping https — first VLAN interface creation the student has seen.
+config firewall policy — deny-by-default policy between VLAN5-Exec and
+VLAN20-Trading, set logtraffic all.
+diagnose sys session list — reused from Session 3, now applied to a VLAN/L2
+troubleshooting context (checking for src/dst VLAN interface names and policy_id).
+
+TROUBLESHOOTING APPROACH TAUGHT
+--------------------------------
+Given "policy seems inactive," check whether the session shows up in
+`diagnose sys session list` at all BEFORE questioning the policy itself. No session
+present -> Layer 2 issue (VLAN tag/trunk/ARP). Session present with a policy_id ->
+policy logic issue (rule order, wrong srcintf/dstintf, first-match-wins semantics).
+
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+--------------------------------------------
+DESIGNED (not yet live in-story — goes live over the Session 4->5 timeskip): VLAN 5
+(exec floor) and VLAN 20 (trading floor, expanded to 400 desks) on a dot1q trunk via
+physical interface "internal1" into the edge FortiGate; gateways for both VLANs
+hosted on FortiGate; deny-by-default firewall policy between VLAN5-Exec and
+VLAN20-Trading with full logging.
+TOPOLOGY UPDATE: ADDED — VLAN 5 (exec) and VLAN 20 (trading, 400 desks) on trunk
+internal1, FortiGate-hosted gateways, deny policy between them.
+
+EXAM-RELEVANT NOTES
+---------------------
+Q1 (who tags on ingress): correct — access-mode switch port, never FortiGate.
+Q2 (tag behavior across FortiGate routing): correct — stripped on ingress, new tag
+added on egress matching destination VLAN interface. Flag as a recurring trap: many
+candidates assume tags are packet-permanent.
+Q3 (no session in diagnose sys session list): correct — points to Layer 2, not policy.
+Q4 stretch (true/false — gateway on a switch still counts as segmentation because ARP
+doesn't cross VLANs): correctly answered False, with full reasoning (no L3 crossing
+means no policy enforcement point regardless of ARP boundary) — this is exactly the
+"sounds true but is irrelevant" trap pattern; student saw through it unprompted.
+
+STUDENT LEARNING OBSERVATIONS (feed the knowledge register)
+--------------------------------------------------------------
+Zero redirects needed on any core concept this session — every major idea (tag
+mechanism, ingress rule, tag-as-wire-property, trunk requirement, VLAN interface
+structure, gateway placement, L2-vs-policy troubleshooting split) was reasoned to
+independently, several before being asked directly. Only one moment of genuine
+uncertainty: the two-part verification question (which command, and what the two
+possible outcomes mean) — student got the command right instantly via retrieval from
+Session 3, but needed the question split in half to reason through the two branches.
+This suggests the growth area is not concept understanding but confidence attacking
+compound/multi-part questions in one pass — worth structuring future compound
+questions as an explicit two-parter rather than expecting one long answer. Retrieval
+practice worked well: student correctly recalled and correctly reapplied the
+"filing cabinet" analogy from Session 1 without it being named for him, and the
+Session 1 "path problem masquerading as feature problem" pattern, both spontaneously.
+No stalls, no wrong turns. Consider raising difficulty further in Session 5 (inter-
+VLAN routing, VLAN edge cases) — this student is ready for more compound/multi-layer
+questions asked as clean two-part or three-part sequences rather than avoided.
+
+TEASER DELIVERED FOR SESSION 5 ("Invisible Fences")
+----------------------------------------------------
+Delivered in-story as the closing scene: Monday, the 400 desks go live; Cipher watches
+the dashboard in silence ("somehow worse" than his usual "no," per Junior). Tuesday,
+Riley's ticket: "The printers on the new VLAN have become sentient. Nobody can reach
+them from anywhere — and yet they keep printing." Session 5 = inter-VLAN routing, VLAN
+edge cases and verification — the natural opening move is to treat this literally as a
+boss-battle-flavoured cold open (real symptom, minimal hand-holding) even though the
+master plan's actual boss battle is scheduled for Session 8; keep Session 5 Socratic-first
+per formula, just let the printer mystery be the hook.

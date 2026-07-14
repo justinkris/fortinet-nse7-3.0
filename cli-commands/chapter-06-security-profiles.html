@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 06 — Security Profiles CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Chapter 06</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 06 · CLI Reference</div>
+    <h1>Security Profiles, <em>By Command</em></h1>
+    <p>Every SSL/SSH, web-filter, application-control, ISDB, and IPS command from Chapter 6 — the config knobs, the diagnose views, and the field to actually look at.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">When traffic slips through inspection, you'll live inside <em>diagnose autoupdate versions</em> and the SSL/SSH profile.</div>
+  <p class="motivation-sub">Config commands install profiles; diagnose commands tell you whether FortiGuard signatures are current and which inspection mode the flow actually hit.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-ssl-ssh">SSL/SSH Inspection</a>
+  <a class="nav-tab" href="#section-webfilter-ac">Web Filter · AC · ISDB</a>
+  <a class="nav-tab" href="#section-ips-config">IPS Config</a>
+  <a class="nav-tab" href="#section-ips-diagnose">IPS Diagnose</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — SSL/SSH INSPECTION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SSL/SSH INSPECTION</span>
+      </div>
+      <p class="socratic-insight">Before deciding "certificate inspection or full inspection," ask what you actually need to see. Cert inspection reads the SNI and server cert; full inspection MITMs the session and reads the payload. Full inspection costs CPU and RAM but is the only mode that catches an attack hidden inside HTTPS.</p>
+      <ul class="socratic-questions">
+        <li>Which two CLI settings on an <code>ssl-ssh-profile</code> control the minimum accepted TLS version and what happens to deprecated versions?</li>
+        <li>Why does protocol port mapping (e.g. SMTPS on 10587 instead of 587) matter, and where is it configured?</li>
+      </ul>
+      <div class="answer-area" data-section="ssl-ssh">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>set min-allowed-ssl-version tls-1.2</code> sets the floor (nothing older than TLS 1.2 is accepted). <code>set unsupported-ssl-version block</code> tells the profile to drop any session using a version below the floor. Together they block TLS 1.0 / 1.1 outright while letting 1.2 and 1.3 through. Applies per-protocol under the <code>https</code>, <code>smtps</code>, <code>pop3s</code>, <code>imaps</code>, <code>ftps</code> sub-blocks.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because attackers use non-standard ports to bypass inspection — running SMTPS on 10587 rather than 587 means the firewall would only recognise 587 as SMTPS traffic and miss the 10587 flow. Under the SSL/SSH profile you can enable protocol port mapping and set each protocol's port list (HTTPS 8443, SMTPS 10587, etc.) so the firewall knows to inspect those alternate ports. Only works in <em>proxy-based</em> inspection with full SSL and multi-client-to-multi-server mode.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ssl-ssh">
+      <div class="section-label">SECTION 01</div>
+      <h2>SSL/SSH <em>Inspection Profiles</em></h2>
+      <p>The <code>ssl-ssh-profile</code> is where you decide whether the firewall is a spectator (cert inspection) or a MITM (full inspection). Every knob below lives inside <code>config firewall ssl-ssh-profile</code>.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall ssl-ssh-profile
+    edit "ssl_ssh_profile"
+        config https
+            set unsupported-ssl-version block
+            set min-allowed-ssl-version tls-1.2
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Enforces a TLS floor of 1.2 on HTTPS traffic and drops sessions that fall below it. The two knobs work together: <code>min-allowed-ssl-version</code> declares the floor; <code>unsupported-ssl-version block</code> is what makes the firewall enforce it rather than log-and-allow.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>This is CLI-only — no GUI equivalent. Apply the same pattern under <code>smtps</code>, <code>pop3s</code>, <code>imaps</code>, and <code>ftps</code> sub-blocks for the other TLS-wrapped protocols. TLS 1.0 and 1.1 are deprecated; 1.2 is the minimum broadly compatible; 1.3 is the current default for HTTP/3.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system global
+    set admin-https-ssl-versions tlsv1-2 tlsv1-3
+end</code></div>
+        <p class="cmd-desc">Controls which TLS versions the FortiGate's own management interface (admin HTTPS) accepts. Different setting from the SSL/SSH profile — this protects the management plane, not the transit traffic.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Confirm both the FortiGate and the admin's browser support the versions you list. Older browsers stuck on TLS 1.0/1.1 will lose GUI access if you tighten this without checking. Verify with <code>show full | grep -f tls</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># show full | grep -f tls</code></div>
+        <p class="cmd-desc">Filters the running config for every TLS-related line — useful for auditing which protocols are on which floor across an SSL/SSH profile.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Make sure both endpoints negotiating a session support the same versions — asymmetric floors cause silent handshake failures. If the admin says "the website works from my laptop but not through the firewall," this is the first grep to run.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall ssl-ssh-profile
+    edit "protect_ssl_server"
+        set server-cert-mode re-sign
+        config https
+            set ports 443
+            set status deep-inspection
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Full SSL inspection profile in "Protecting SSL Server" mode. FortiGate presents its own certificate (self-signed or CA-signed) to the client and decrypts the flow to the server. Used when the FortiGate sits <em>in front of</em> your web server and needs to inspect inbound HTTPS.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Three certificate options: (1) certificate signed by an internal CA — lab use; (2) FortiGate self-signed — lab use; (3) certificate from a global CA — recommended for production. Certificate inspection alone will let HTTPS attacks through untouched, hence full inspection for this scenario.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Certificate inspection = read SNI/cert only, cheap, misses payload-level attacks. Full inspection = MITM, sees payload, catches injections, costs CPU and RAM. Pick the lightest mode that catches the threat you actually care about.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ssl-ssh" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ssl-ssh','SSL/SSH Inspection')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ssl-ssh" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ssl-ssh')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — WEBFILTER / AC / ISDB ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · WEB FILTER · APP CONTROL · ISDB</span>
+      </div>
+      <p class="socratic-insight">Three overlapping tools, three different layers. Web filter is layer-7 URL/domain filtering. Application control is layer-7 pattern-matching for apps regardless of URL. ISDB is a layer-3/4 IP/port database — no inspection, just address groups you use in a policy.</p>
+      <ul class="socratic-questions">
+        <li>Which of these three features doesn't inspect traffic at all, and where is it used in a policy?</li>
+        <li>How do you check whether the AC signature and ISDB databases on this FortiGate are current, and where does the web-filter database actually live?</li>
+      </ul>
+      <div class="answer-area" data-section="webfilter-ac">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">ISDB (Internet Service Database). It's a policy/object — a curated database of IP addresses and TCP/UDP ports for well-known services (Office 365, AWS, etc.) — used as a source or destination object in a firewall policy, an SD-WAN rule, or an internet policy. No inspection is performed; it's an address group with a friendly name.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose autoupdate versions</code> — look under the <em>Application Definitions</em> section for AC signature version and expiry; look under <em>Internet-service Full Database</em> for ISDB. Web-filter database is <strong>not</strong> hosted on the firewall — FortiGate queries the FortiGuard Distribution Center (or a local FortiManager) for URL rating lookups on demand, then caches the result.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-webfilter-ac">
+      <div class="section-label">SECTION 02</div>
+      <h2>Web Filter <em>·</em> Application Control <em>·</em> ISDB</h2>
+      <p>The three UTM staples for content policy. Different config trees, different behaviors — mixing them up is the fastest way to build a policy that "looks right" but doesn't actually block what you think.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config webfilter profile
+    edit "profile"
+        config web
+            set urlfilter-table 1
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Skeleton of a web-filter profile. Inspects URLs, domains, SNI/SAN in flow or proxy mode. The <code>urlfilter-table</code> reference is how you attach a specific list of URL rules to this profile.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Web filter can run in either flow-based or proxy-based inspection. Flow mode is faster; proxy mode gives more visibility (headers, cookies, safe-search) but adds latency. URL types supported: Simple, Wildcard, Regex.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config application list
+    edit "profile"
+    next
+end</code></div>
+        <p class="cmd-desc">Skeleton of an application-control profile. Operates only in flow-based inspection. Identifies apps by transmission patterns using application signatures, protocol decoders, and rate-based IPS signatures — regardless of the URL or port.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Because AC uses signatures shipped by FortiGuard, keep the AC database current — see <code>diagnose autoupdate versions</code> below. Enable "Application Detection-Based SD-WAN" under <em>System &gt; Feature Visibility</em> if you want to use AC inside SD-WAN rules.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall internet-service-name
+    edit "service"
+    next
+end</code></div>
+        <p class="cmd-desc">ISDB (Internet Service Database) entry — a named group of IPs + TCP/UDP ports for a specific internet service. Used as a policy object (source or destination) in firewall policies, internet policies, and SD-WAN rules. No traffic inspection is performed.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>ISDB entries are shipped by FortiGuard — the FortiGate doesn't build the database itself. Reference an entry as <code>internet-service-name</code> in a firewall policy destination, or as <code>internet-service-src-name</code> for source-based matching.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose autoupdate versions</code></div>
+        <p class="cmd-desc">Dumps the version, expiry date, last update attempt, and last result for every FortiGuard-updated database on the FortiGate — AC signatures, ISDB, IPS, AV, and more.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>Application Definitions
+---------
+Version:
+Contract Expiry Date:
+Last Update Attempt:
+Result:
+
+Internet-service Full Database
+---------
+Version:
+Contract Expiry Date:
+Last Update Attempt:
+Result:</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><em>Application Definitions</em> = AC signatures. <em>Internet-service Full Database</em> = ISDB. Confirm the <code>Contract Expiry Date</code> is in the future, the <code>Version</code> is recent, and <code>Result</code> was successful. Web-filter data isn't hosted here — it's queried on-demand from FortiGuard/FortiManager and cached locally.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Web filter = URL/domain inspection (flow or proxy). App control = flow-only pattern matching by signature. ISDB = policy object, no inspection. Web-filter DB lives on FortiGuard; AC and ISDB live on the FortiGate and need FortiGuard updates.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-webfilter-ac" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-webfilter-ac','Web Filter · AC · ISDB')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-webfilter-ac" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-webfilter-ac')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — IPS CONFIG ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · IPS CONFIG</span>
+      </div>
+      <p class="socratic-insight">An IPS profile is a list of rules ordered top-down. Each rule has a <strong>Type</strong> (Filter or Signature), an <strong>Action</strong> (Block, Monitor, Default, Reset), and a target scope (Client, Server, both). Filters match by category and severity; Signatures match by name.</p>
+      <ul class="socratic-questions">
+        <li>What's the practical difference between a <strong>Filter</strong> rule and a <strong>Signature</strong> rule, and why must a Signature-based exception be placed <em>above</em> a broad Filter?</li>
+        <li>Why is <code>Action: Monitor</code> the right choice when you're not sure whether a rule will cause false positives?</li>
+      </ul>
+      <div class="answer-area" data-section="ips-config">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">A <strong>Filter</strong> matches many signatures by category, severity, OS, protocol, and target — good for broad "block everything critical on client and server" coverage. A <strong>Signature</strong> matches exactly one named signature — good for exceptions. Rules are evaluated top-to-bottom, so a Signature-based exception (e.g. Monitor a specific ICMP.Oversized.Packet) must sit <em>above</em> the broad Filter (Block Critical, Client+Server) or the Filter fires first and the exception never runs.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>Monitor</code> lets the traffic through but writes an IPS log entry — so you get to observe what would have been blocked without actually blocking legitimate work. Pair with <code>Packet logging enable</code> during triage to capture the actual packet for tuning. Once you've confirmed nothing legitimate is being flagged, flip to <code>Block</code> and disable packet logging (it's expensive over time).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ips-config">
+      <div class="section-label">SECTION 03</div>
+      <h2>IPS <em>Profile Config</em></h2>
+      <p>Every IPS command lives inside <code>config ips sensor</code>, then <code>config entries</code>. Rules inside a sensor are evaluated top-to-bottom — the first matching rule wins.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config ips sensor
+    edit "IPS test"
+        config entries
+            edit 1
+                set severity critical high medium low info
+                set protocol all
+                set os all
+                set application all
+                set location client server
+                set action block
+                set log-packet enable
+                set status enable
+            next
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Filter-type entry that maximally covers threats. Every severity, every protocol, every OS, both client and server as targets — around 10,320 signatures activated by this one rule. Action is Block; packet logging is on for triage.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Broad filters catch a lot but risk false positives — an app using unusual packet sizes might get flagged. Use <code>Monitor</code> first, watch the logs, tune, then move to <code>Block</code>. Rule ordering matters: a broad Block Filter will fire before a Monitor Signature exception if the exception is below it.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config ips sensor
+    edit "IPS test"
+        config entries
+            edit 2
+                set rule 12345
+                set action monitor
+                set log-packet enable
+                set status enable
+            next
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Signature-type entry — exactly one named signature (identified by rule ID). Sits <em>above</em> a broad Filter to carve out an exception: allow this specific signature to trigger only Monitor even though the Filter below would block it.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Rule IDs come from the FortiGuard IPS encyclopedia — look up the signature by name (e.g. <code>ICMP.Oversized.Packet</code>) to find the ID. Signature exceptions must be higher priority than the Filter that would otherwise block the traffic.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall policy
+    edit &lt;id&gt;
+        set utm-status enable
+        set ips-sensor "IPS test"
+        set ssl-ssh-profile "certificate-inspection"
+    next
+end</code></div>
+        <p class="cmd-desc">Attaches the IPS sensor and an SSL/SSH profile to a firewall policy. The SSL/SSH profile mode dictates what IPS can see — cert inspection = HTTP payload but no HTTPS payload; full inspection = both.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>For a scenario detecting a PHP code injection in HTTP, certificate inspection is enough. For the same attack in HTTPS, you need a full-inspection profile (<code>ssl-ssh-profile "protect_ssl_server"</code>) — otherwise IPS just sees an encrypted blob.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config ips sensor
+    edit "IPS test"
+        config entries
+            edit 3
+                set rule &lt;DNSExfiltrator.Data.Exfiltration id&gt;
+                set action block
+                set status enable
+            next
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Named FortiGuard signature <code>DNSExfiltrator.Data.Exfiltration</code> — used to detect and block DNS exfiltration (where an infected client encodes stolen data into DNS queries and an attacker-controlled name server decodes them).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>DNS exfiltration signature triggers require the traffic to actually be inspected — for DNS-over-TLS (DoT) or DNS-over-HTTPS (DoH) you need SSL/SSH inspection enabled in full mode ("Multiple Clients Connecting to Multiple Servers"). Otherwise the DNS payload is opaque and the signature never fires.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Rule order = policy: Signature exceptions above, broad Filters below. Action: Monitor first, Block second. Packet logging on during triage, off in production. For HTTPS attacks, IPS is only as good as the SSL/SSH profile in the policy.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ips-config" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ips-config','IPS Config')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ips-config" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ips-config')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — IPS DIAGNOSE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · IPS DIAGNOSE</span>
+      </div>
+      <p class="socratic-insight">When the IPS log doesn't match your expectation — a rule you thought would fire didn't, or one you didn't expect did — the answer is almost always in three places: the signature version, the rule ordering, and what the SSL/SSH profile actually inspected.</p>
+      <ul class="socratic-questions">
+        <li>Which single diagnose command tells you the current IPS engine version and signature database version on this FortiGate?</li>
+        <li>An attacker uses hping3 to simulate an attack. What does each of these do: <code>hping3 -S -p 80 -c 5 &lt;target&gt;</code>, <code>hping3 --traceroute -V -1 -p 33434 &lt;target&gt;</code>, <code>hping3 -1 -d 654001 -c 8 &lt;target&gt;</code>?</li>
+      </ul>
+      <div class="answer-area" data-section="ips-diagnose">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose autoupdate versions</code> — same command as for AC and ISDB. Look for the IPS Definitions and IPS Attack Engine sections. Confirm contract expiry, version, and last update result. An old signature database is why the "brand-new CVE" isn't being caught.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">(1) <code>-S -p 80 -c 5</code> = 5 TCP SYN packets to port 80 (a TCP ping); (2) <code>--traceroute -V -1 -p 33434</code> = traceroute using ICMP (<code>-1</code>) with verbose mode to dest port 33434; (3) <code>-1 -d 654001 -c 8</code> = 8 ICMP packets each 654001 bytes (way above MTU, forces fragmentation) — the classic "oversized ICMP" test that fires the <code>ICMP.Oversized.Packet</code> signature.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ips-diagnose">
+      <div class="section-label">SECTION 04</div>
+      <h2>IPS <em>Diagnose and Attack Simulation</em></h2>
+      <p>The commands that tell you whether the IPS engine is current and whether a rule actually fired. Plus the hping3 recipes used in the study guide to reproduce attacks safely in a lab.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose autoupdate versions</code></div>
+        <p class="cmd-desc">Same command from Section 2 — but for the IPS use case, look at the IPS Attack Engine and IPS Definitions blocks in the output. Version and contract expiry are the two you check first when a signature isn't firing.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>If the IPS engine or definitions are more than a few weeks old, or contract expiry is past, FortiGuard updates are broken — check WAN reachability, DNS, and licence status before you spend time tuning rules.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code>host $ hping3 -S -p 80 -c 5 www.example.com</code></div>
+        <p class="cmd-desc">TCP-SYN ping. Sends 5 (<code>-c 5</code>) TCP SYN packets (<code>-S</code>) to port 80 (<code>-p 80</code>) of the target. Like ICMP ping but proves TCP reachability instead of ICMP reachability.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Useful when ICMP is blocked but you want to prove TCP hits. If the port is open you get <code>SYN/ACK</code>; closed = <code>RST</code>; filtered = no reply. Runs from an external test host, not the FortiGate CLI.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code>host $ hping3 --traceroute -V -1 -p 33434 www.example.com</code></div>
+        <p class="cmd-desc">Traceroute using ICMP (<code>-1</code>), verbose output (<code>-V</code>), destination port 33434 (<code>-p 33434</code>). Same idea as classic traceroute but crafted with hping3 to control every field.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Use when standard traceroute is filtered but you want to see which hop drops the packet. Port 33434 is the historical default for UDP-based traceroute; the ICMP variant just borrows the port number.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code>host $ hping3 -S -p 22 -c 1 www.example.com</code></div>
+        <p class="cmd-desc">Single TCP SYN to port 22 — a one-shot port-check. If open you get <code>SYN/ACK</code>, closed = <code>RST</code>, filtered = silence. Cleaner than nmap for a specific port verification.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Read the reply flag — <code>SA</code> = open, <code>RA</code> = closed. Use for firewall testing where you want to verify one specific port behaves as configured. This is one of the three canonical hping3 uses in the study guide.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code>host $ hping3 -1 -d 654001 -c 8 10.0.3.55</code></div>
+        <p class="cmd-desc">Sends 8 ICMP packets (<code>-1</code>) each 654001 bytes (<code>-d 654001</code>) — way above the MTU, forcing fragmentation. This is the study guide's canonical trigger for the <code>ICMP.Oversized.Packet</code> IPS signature.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>On the FortiGate, check <em>Log &amp; Report &gt; Security Events &gt; Intrusion Prevention</em> — you should see an <code>ICMP.Oversized.Packet</code> event with action <code>dropped</code> if the IPS Filter is set to Block, or <code>detected</code> if you carved out a Signature exception with action <code>Monitor</code>. This is the exact command that demonstrates a false-positive scenario in Use Case 1.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Signature not firing? Check three things: is the database current (<code>diagnose autoupdate versions</code>), is the rule ordering correct (Signature exceptions above broad Filters), and is the SSL/SSH profile letting IPS see the payload. hping3 is the safe way to prove any of these in a lab.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ips-diagnose" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ips-diagnose','IPS Diagnose')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ips-diagnose" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ips-diagnose')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-05-dynamic-routing.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">Dynamic Routing CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-07-ipsec.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">IPsec CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Chapter 06 Security Profiles
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-ch06-secprof';
+const SECTIONS = {
+  'section-ssl-ssh': 'SSL/SSH Inspection',
+  'section-webfilter-ac': 'Web Filter · AC · ISDB',
+  'section-ips-config': 'IPS Config',
+  'section-ips-diagnose': 'IPS Diagnose',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+LOFINANCE — SESSION 08 REVISION PACK
+"Cowboy Hat: The Quiet Tuesday"
+=========================================================================
+
+=========================================================================
+QUICK SUMMARY (one page)
+=========================================================================
+Boss battle, two simultaneous tickets, both layered.
+
+TICKET 1: VLAN 30 (Support) could reach VLAN 10 (Finance) via RDP despite a
+correct, existing deny policy. Cause: a software switch object ("OpsBridge")
+had both VLAN interfaces as members with intra-switch-policy implicit —
+this bridged the two VLANs into one Layer 2 broadcast domain, so traffic
+between them never reached FortiGate's routing/policy engine at all. The
+deny policy was never wrong; it was never consulted. Diagnosed via
+`diagnose sys session list` showing identical dev index in/out and
+policy_id=0 alongside real traffic counters. Fixed by deleting the
+OpsBridge switch-interface object, clearing the stale live session, and
+verifying via the traffic log (execute log filter/display) that a retest
+now shows a real policyid, action=deny, and two distinct interfaces.
+
+TICKET 2: Guest-WiFi VDOM went completely dark — zero reachability, not
+partial. Every config-layer check (interface status, static route, firewall
+policy on both root and Guest-WiFi sides) came back clean. Root cause:
+Guest-WiFi's `config system vdom-property` session override was 50 —
+identical to root's own override, because Guest-WiFi's config was cloned
+from root's when it was originally built, and the low session ceiling came
+along for the ride (this was the exact thing Señor's Session 7 forward-hook
+line — "don't let it inherit whatever root's ceiling was" — was warning
+about). Confirmed via `diagnose sys session stat`: session_count=50,
+session_limit=50, clash=182. Fixed immediately by setting the override to 0
+(no override, shared global pool), with an explicit ticket follow-up to
+baseline real usage before setting a deliberate permanent number.
+
+Core lesson tying both together: VDOM isolation and segmentation are not
+just about interfaces, routes, and policies existing correctly — they also
+depend on config-object namespaces staying separate (switch-interface
+bridges) and resource ceilings being deliberately set rather than
+accidentally inherited. Both faults were invisible to a surface-level
+config read; both required pushing one layer deeper.
+
+=========================================================================
+CHEAT SHEET
+=========================================================================
+COMMANDS
+  diagnose sys session filter src <subnet> <mask>
+  diagnose sys session filter dst <subnet> <mask>
+  diagnose sys session filter clear                — clears an active filter
+  diagnose sys session list                         — shows policy_id, dev in/out
+  diagnose sys session clear                        — clears sessions matching filter
+  diagnose sys session stat                         — per-VDOM session_count/limit/clash
+  diagnose netlink interface list                   — maps index → name, shows master=<idx>
+  show system switch-interface                      — software switch config + members
+  show system virtual-switch                        — hardware switch config
+  execute log filter category traffic
+  execute log filter field srcip <ip> / dstip <ip>
+  execute log display                                — CLI traffic log equivalent of GUI
+  config global
+    config system vdom-property                      — per-VDOM resource overrides
+      edit "<vdom>"
+        set session <n>                               — 0 = no override (shared pool)
+        set policy <n>
+      next
+    end
+
+GUI PATHS (equivalent views)
+  Network > Interfaces                              — interface status, VDOM assignment
+  Policy & Objects > Firewall Policy                — policy table, per VDOM
+  Log & Report > Forward Traffic                    — GUI traffic log
+  System > VDOM (Global VDOM context)                — VDOM resource overrides
+
+DEFAULTS / BEHAVIOURS
+  intra-switch-policy implicit  — members bridged, no policy evaluation between them
+  intra-switch-policy explicit  — members still require an explicit policy
+  vdom-property value of 0      — NO override; draws from shared global resource pool
+  vdom-property value of N (>0) — hard cap of N for that resource in that VDOM
+  switch-interface object delete — works directly, no need to unset members first
+  session clear                 — required after a fix; stale sessions are NOT
+                                   automatically re-evaluated against new config
+
+DESIGN RULES
+  - A switch-interface/virtual-switch object can only reference interfaces
+    that exist within the SAME VDOM's config tree — never cross-VDOM.
+  - policy_id=0 is ambiguous alone: pair with "does a persistent, traffic-
+    bearing session exist?" to tell "correctly denied" from "bypassed."
+  - Identical ingress/egress interface index = Layer 2 switched, not routed.
+  - Fix resource ceilings in two steps: unblock now (remove/raise the cap),
+    baseline real usage, THEN set a deliberate permanent value.
+
+=========================================================================
+FLASHCARDS
+=========================================================================
+Q: A session shows dev=13->13 both directions and policy_id=0, with real
+   byte/packet counters. What does this indicate?
+A: The traffic is being switched at Layer 2 (bridged), not routed — it
+   never reached FortiGate's policy engine.
+
+Q: What command maps a raw interface index number back to its name and
+   reveals bridge membership?
+A: diagnose netlink interface list — look for master=<index>.
+
+Q: What does master=13 on an interface mean in that output?
+A: The interface has been enslaved as a member of the bridge/switch
+   construct at interface index 13.
+
+Q: Can config system switch-interface bundle two already-tagged VLAN
+   interfaces, and what happens if it does?
+A: Yes — this merges them into one Layer 2 broadcast domain, defeating
+   the VLAN segmentation between them even though the tags are still valid.
+
+Q: True/False — a genuine implicit deny always produces a session entry in
+   diagnose sys session list.
+A: False, typically — a fully denied packet is usually dropped before a
+   session object is built; check the traffic log (execute log display)
+   instead to confirm a real deny decision.
+
+Q: Where does config system vdom-property live — inside a specific VDOM's
+   context, or somewhere else?
+A: Global context only (config global), not inside any individual VDOM.
+
+Q: What does set session 0 mean in vdom-property?
+A: No override set — that VDOM draws from the shared global resource pool.
+   It does NOT mean zero sessions allowed.
+
+Q: diagnose sys session stat shows session_count=50, session_limit=50,
+   clash=182. What does clash represent?
+A: The count of connection attempts that were rejected because the
+   session table was already full.
+
+Q: Why did Guest-WiFi inherit root's session limit of 50?
+A: Its config was cloned from root's when it was originally built, and
+   root's explicit session override came along with the clone.
+
+Q: What is the correct two-step remediation philosophy for a resource
+   ceiling problem, per this session?
+A: Baseline first, cap after — restore service immediately (e.g. remove
+   the artificial cap), then measure real usage before setting a
+   deliberate, evidence-based permanent limit.
+
+Q: Does deleting a config system switch-interface object require
+   detaching its members first?
+A: No — the object can be deleted directly.
+
+Q: Why is a stale session left in the table after a config fix a real
+   problem, not just clutter?
+A: It represents live, unauthorized, ongoing state established under the
+   old (broken) config — it must be cleared to force re-evaluation and to
+   actually close the exposure.
+
+Q: Could a switch-interface object built inside root VDOM ever bridge an
+   interface belonging to the isolated Trading VDOM?
+A: No — each VDOM is a completely separate config tree; an object in one
+   VDOM's config cannot reference an interface name that exists only in
+   another VDOM's namespace.
+
+=========================================================================
+PODCAST PROMPT — "The Packet Path," Episode 8: "The Quiet Tuesday"
+=========================================================================
+Generate a podcast episode using the prompt below, ready to paste into an
+AI audio generator.
+
+---
+You are the host of "The Packet Path," a calm, curious, slightly wry
+technical podcast about enterprise networking told through the lens of a
+fictional trading firm called LoFinance. Narrate today's episode as a
+single host speaking directly to the listener, roughly 8-10 minutes when
+read aloud. Use a warm, conversational, unhurried tone — like a senior
+engineer telling a war story over coffee, not a lecture.
+
+STRUCTURE:
+
+1. COLD OPEN (30-45 seconds): Set the scene. Señor's cowboy hat is on the
+   rack again — nobody saw him touch a config, nobody ever does. Two
+   tickets land at once: VLAN 30 can suddenly see Finance, and Guest-WiFi
+   has gone completely, totally silent. Tease that neither fault is where
+   anyone would think to look first.
+
+2. TICKET ONE — THE HIDDEN DOOR (3 minutes): Walk through the discovery
+   that a support tech's RDP session reached a Finance workstation despite
+   a correct deny policy. Build the tension around the diagnostic moment:
+   a session existed, was actively passing real traffic, but had
+   policy_id=0 — meaning it was never evaluated at all. Explain, in plain
+   spoken language (no dense jargon strings), the idea of a software
+   switch quietly bridging two VLAN interfaces together, merging two rooms
+   that were supposed to have a locked door between them into one open
+   space. Use the analogy of a guarded front door with a secret basement
+   corridor nobody remembered was there. Describe finding "OpsBridge" and
+   the moment of realizing the fix wasn't to change the policy — the
+   policy was never broken — it was to remove the bridge itself.
+
+3. TICKET TWO — THE INHERITED CEILING (3 minutes): Shift tone slightly —
+   this one is quieter, more of a slow-burn mystery than a "gotcha."
+   Everything checked out: the link was up, the routes were right, the
+   policies were right. And yet, nothing moved. Build toward the discovery
+   of the session limit — a number, 50, that had been silently copied from
+   root's own configuration months earlier when Guest-WiFi was first built,
+   like an old habit nobody noticed they still had. Describe the moment of
+   confirmation: exactly 50 sessions, exactly 50 allowed, and a growing
+   pile of rejected connection attempts stacking up at the door. Land on
+   the lesson explicitly: fix it now, but don't guess at a permanent number
+   — measure first.
+
+4. JUNIOR'S MISTAKE (30-45 seconds): Note, gently and without malice, that
+   this whole second mystery traces back to an old habit — cloning a
+   VDOM's configuration as a shortcut instead of building it clean — and
+   that the mistake wasn't dramatic, it was just invisible until enough
+   time and enough guest devices had passed through to finally hit the
+   wall. Frame this as a universal engineering lesson: the boring shortcuts
+   are often the ones that come back the slowest, and the quietest.
+
+5. WRAP-UP / KEY TAKEAWAYS (1 minute): Summarize, spoken naturally, the
+   two mental models from today: (1) a policy_id of zero doesn't always
+   mean "denied" — sometimes it means "never asked at all," and the way to
+   tell the difference is whether real traffic was actually flowing; (2)
+   when every piece of configuration you know how to check comes back
+   clean, that's not a dead end — that's a sign the problem has moved
+   somewhere else entirely, usually into resources or state rather than
+   config.
+
+6. TEASER (20-30 seconds): End on an intriguing, slightly ominous note.
+   Señor tells Penny something the listener doesn't fully hear — "season's
+   done, tell the board Monday" — and Riley's reaction makes it clear this
+   wasn't expected. Don't explain what it means. Just let it hang there,
+   and sign off in the show's usual style, inviting the listener back for
+   the next episode.
+
+Keep all technical explanations spoken-word natural — no bullet points, no
+command syntax read aloud verbatim in full (paraphrase the idea of a
+command rather than dictating exact CLI text), and maintain narrative
+momentum throughout. This is a story with a technical spine, not a
+technical document with a story wrapped around it.
+---

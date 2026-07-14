@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 07 — IPsec CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Chapter 07</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 07 · CLI Reference</div>
+    <h1>IPsec, <em>By Command</em></h1>
+    <p>Every phase 1, phase 2, aggregate, MTU, and diagnose command from Chapter 7 — the knobs that build the tunnel and the tools that tell you why it flapped.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">When the tunnel is up but nothing passes, live inside <em>diagnose vpn ike</em> and <em>diagnose vpn tunnel</em>.</div>
+  <p class="motivation-sub">Config commands build phase 1 and phase 2; diagnose commands tell you which proposal mismatched, which selector didn't line up, or which MTU is fragmenting the ESP.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-phase1">Phase 1 Interface</a>
+  <a class="nav-tab" href="#section-phase2">Phase 2 Interface</a>
+  <a class="nav-tab" href="#section-aggregate">Tunnel Aggregate</a>
+  <a class="nav-tab" href="#section-mtu">MTU & Fragmentation</a>
+  <a class="nav-tab" href="#section-diagnose">Diagnose & Verify</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — PHASE 1 INTERFACE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · PHASE 1 INTERFACE</span>
+      </div>
+      <p class="socratic-insight">Phase 1 (IKE) is where the two peers agree on identity and set up the authenticated channel that phase 2 will ride on. Almost every IPsec failure resolves back to a phase-1 proposal or authentication mismatch.</p>
+      <ul class="socratic-questions">
+        <li>Why does the lesson recommend IKEv2 over IKEv1 for every new IPsec deployment?</li>
+        <li>Under <code>config vpn ipsec phase1-interface</code>, which single setting controls whether the peer's identity travels in the clear or encrypted?</li>
+      </ul>
+      <div class="answer-area" data-section="phase1">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">IKEv2 negotiates in four messages instead of six or nine, supports modern ciphers (AES-GCM, ChaCha20P), stronger DH groups (14–20, ECP), EAP authentication, and integrated Mode Config. Its identities are always encrypted and it's more efficient under packet loss, making it the recommended choice unless a peer literally can't speak v2.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>set ike-version</code>. IKEv1 aggressive mode sends peer IDs in cleartext; IKEv1 main mode and IKEv2 both encrypt them. That single decision — <code>set ike-version 2</code> — buys you identity protection and better ciphers in one line.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-phase1">
+      <div class="section-label">SECTION 01</div>
+      <h2>Phase 1 <em>Interface</em></h2>
+      <p>Phase 1 establishes the authenticated IKE channel between two peers. All the knobs that decide <strong>how</strong> they authenticate and <strong>which crypto</strong> they'll agree on live here.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase1-interface
+    edit "VPN1"
+        set type dynamic
+        set interface "port1"
+        set ike-version 2
+        set proposal aes256-sha256
+        set psksecret &lt;shared-secret&gt;
+    next
+end</code></div>
+        <p class="cmd-desc">Minimal dial-up (dynamic) phase 1 on a hub. <code>type dynamic</code> accepts inbound connections from any spoke, <code>ike-version 2</code> switches to IKEv2, and <code>proposal</code> pins the crypto suite both sides must agree on.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <code>proposal</code> string must overlap with what the peer offers — mismatch here shows up in <code>diagnose vpn ike log-filter</code> as <em>no proposal chosen</em>. On IKEv1 pick between <code>aggressive</code> and <code>main</code> mode; on IKEv2 there's only one negotiation flow so the choice is gone.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase1-interface
+    edit "VPN1"
+        set authmethod signature
+        set certificate "MyCert"
+        set peer-id-type peer
+        set peer "PeerCA"
+    next
+end</code></div>
+        <p class="cmd-desc">Switches phase 1 from pre-shared key to <strong>digital signature</strong> authentication. Loads a local certificate and pins the accepted peer certificate / CA, giving you stronger identity than a shared password.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Use a valid CA — self-signed is fine only if both sides trust the same root. Combined with <code>ike-version 2</code>, digital signatures make phase 1 both encrypted and cryptographically identity-checked. This is the recommended posture for permanent site-to-site tunnels.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase1-interface
+    edit "VPN1"
+        set dpd on-demand
+        set dpd-retrycount 3
+        set dpd-retryinterval 20
+    next
+end</code></div>
+        <p class="cmd-desc">Configures Dead Peer Detection. <code>on-demand</code> only probes when there's outbound traffic and no reply, <code>on-idle</code> probes on a regular cadence, <code>disable</code> turns DPD off entirely.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Pick <strong>on-demand</strong> for unpredictable / full-mesh traffic — no overhead until you actually need to know. Pick <strong>on-idle</strong> when you have regular traffic and want fast detection. <strong>Disable</strong> is only safe on very stable point-to-point links; in a full mesh it will hide dead peers.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase1-interface
+    edit "VPN1"
+        set fec-egress enable
+        set fec-ingress enable
+    next
+end</code></div>
+        <p class="cmd-desc">Enables Forward Error Correction on the tunnel. FortiGate adds redundant packets so the receiver can reconstruct lost or errored packets without a retransmit — costs bandwidth, buys reliability.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Turn this on only when the underlay is lossy (bad WAN, satellite) and the traffic is loss-sensitive (voice, video). It burns extra bytes even on a clean link, so it's not a default-on setting.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">IKEv2 + AES-GCM + DH group 14+ + digital signatures is the modern default. Everything else is a compatibility compromise.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-phase1" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-phase1','Phase 1 Interface')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-phase1" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-phase1')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — PHASE 2 INTERFACE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · PHASE 2 INTERFACE</span>
+      </div>
+      <p class="socratic-insight">Phase 2 (IPsec SA) negotiates the encryption for actual user traffic and defines <em>which</em> subnets are allowed through the tunnel. One phase 1 can carry many phase 2 selectors — each selector = one protected network pair.</p>
+      <ul class="socratic-questions">
+        <li>What are the three values <code>set route-overlap</code> can take, and which one is the default?</li>
+        <li>When would you enable Perfect Forward Secrecy on phase 2, and what's the cost?</li>
+      </ul>
+      <div class="answer-area" data-section="phase2">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>use-new</code> (default) drops the existing dialup VPN and accepts the new one. <code>use-old</code> keeps the existing and rejects the new. <code>allow</code> keeps both active and load-balances traffic via ECMP. In SD-WAN hubs with multiple egress interfaces you often want <code>allow</code> — otherwise interfaces will flap between active and dead as competing routes fight.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Enable PFS when you need each phase 2 rekey to derive independent keys via a fresh DH exchange — so compromising one session key doesn't unlock past or future sessions. The cost is CPU: every rekey triggers a new DH computation. Disabling PFS lets rekeys reuse a simpler derivation, saving cycles but weakening the security posture.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-phase2">
+      <div class="section-label">SECTION 02</div>
+      <h2>Phase 2 <em>Interface</em></h2>
+      <p>Phase 2 rides inside the authenticated phase 1 channel. Each phase 2 entry defines a <strong>selector pair</strong> — the local and remote subnets allowed through — plus its own crypto proposal.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase2-interface
+    edit "Phase2"
+        set phase1name "Phase1"
+        set proposal aes256-sha256
+        set src-subnet 172.16.16.0 255.255.255.0
+        set dst-subnet 192.168.1.0 255.255.255.0
+    next
+end</code></div>
+        <p class="cmd-desc">A single phase 2 selector bound to <code>Phase1</code>. The <code>src-subnet</code> / <code>dst-subnet</code> pair is what the two peers exchange as their quick-mode selectors and what determines which traffic gets encrypted.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The two sides must have <strong>mirror</strong> selectors — your source is their destination and vice-versa. Selectors are matched on packet ingress; if the packet doesn't fit a selector, it doesn't get encrypted (or the tunnel refuses to establish). Multiple selectors under the same phase 1 is normal — that's how you segment traffic per subnet.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase2-interface
+    edit "Phase2"
+        set phase1name "Phase1"
+        set route-overlap &lt;use-new | use-old | allow&gt;
+    next
+end</code></div>
+        <p class="cmd-desc">Controls what happens when a new dialup peer arrives advertising a subnet that overlaps an existing tunnel's subnet. Determines which route wins in the central FortiGate's routing table.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Default is <code>use-new</code>. Switch to <code>allow</code> in SD-WAN hubs so both routes can coexist via ECMP — without it, interfaces can falsely toggle between active and dead when two spokes overlap. NAT is the cleaner long-term fix for genuinely overlapping remote subnets.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase2-interface
+    edit "Phase2"
+        set phase1name "Phase1"
+        set pfs enable
+        set dhgrp 14
+    next
+end</code></div>
+        <p class="cmd-desc">Enables Perfect Forward Secrecy on phase 2 and pins the Diffie-Hellman group. Group 14 (MODP 2048-bit) is the modern minimum; 19/20 are elliptic-curve alternatives with shorter keys and less CPU.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>PFS forces a new DH exchange at every phase 2 rekey — expensive on CPU, but every rekey gets an independent key. Groups 1/2/5 are legacy and considered weak; groups 14/15/16 are MODP strong; groups 19/20 are ECP with equivalent strength at a lower cost.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Phase 1 = who you are. Phase 2 = what you carry. Multiple phase 2 selectors ride one phase 1 — that's how you segment tunnel traffic per subnet.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-phase2" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-phase2','Phase 2 Interface')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-phase2" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-phase2')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — TUNNEL AGGREGATE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · TUNNEL AGGREGATE</span>
+      </div>
+      <p class="socratic-insight">IPsec aggregate interfaces are the tunnel-layer equivalent of LACP — you take two or more phase 1 tunnels and bind them into one virtual pipe with a selectable load-balancing algorithm.</p>
+      <ul class="socratic-questions">
+        <li>Which of the five aggregate algorithms guarantees stickiness for the same 5-tuple flow?</li>
+        <li>Why can't you form an aggregate from a single tunnel?</li>
+      </ul>
+      <div class="answer-area" data-section="aggregate">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>L4</code> — it hashes on Layer 4 header info (source/dest port plus IP), which yields the same tunnel choice for every packet in a given flow. <code>round-robin</code> and <code>weighted-round-robin</code> spread packets across all tunnels regardless of flow; <code>L3</code> is coarser than L4; <code>redundant</code> only ever uses the primary until it fails.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">An aggregate needs at least two tunnels to serve its purpose: redundancy needs a backup member, and load balancing needs somewhere to spread packets. A single-tunnel aggregate is just a plain tunnel with extra config overhead — FortiOS requires two or more members.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-aggregate">
+      <div class="section-label">SECTION 03</div>
+      <h2>IPsec Tunnel <em>Aggregate</em></h2>
+      <p>Aggregate interfaces bind multiple phase 1 tunnels into one virtual pipe for redundancy or load-spreading. Think LACP, but for IPsec.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system ipsec-aggregate
+    edit "IPSEC_AGG"
+        set member "Tunnel1" "Tunnel2"
+        set algorithm weighted-round-robin
+    next
+end</code></div>
+        <p class="cmd-desc">Creates an IPsec aggregate <code>IPSEC_AGG</code> spanning <code>Tunnel1</code> and <code>Tunnel2</code>, spreading traffic in weighted round-robin (each tunnel carries a share proportional to its configured weight).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Members must be phase 1 tunnels flagged as <em>aggregate member</em> in their own config. Algorithm choices: <code>round-robin</code> (per-packet), <code>L3</code> (Layer-3 hash), <code>L4</code> (Layer-4 hash — flow-sticky), <code>redundant</code> (primary/backup), <code>weighted-round-robin</code> (per-tunnel weight). Pick <code>L4</code> when apps hate reordering, <code>redundant</code> when you want strict active/standby.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config vpn ipsec phase1-interface
+    edit "Tunnel1"
+        set aggregate-member enable
+        set aggregate-weight 1
+    next
+end</code></div>
+        <p class="cmd-desc">Flags a phase 1 tunnel as an <strong>aggregate member</strong> and sets its weight (only meaningful when the aggregate uses <code>weighted-round-robin</code>). Higher weight = larger share of traffic.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>A tunnel that's an aggregate member no longer carries its own selectors — routing and policy point at the aggregate interface, not the individual member. Weights are relative — <code>3</code> and <code>1</code> mean the first member carries 3× the traffic of the second, not any absolute rate.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">L4 = flow-sticky, round-robin = per-packet, redundant = active/standby, weighted = tune the share. Pick the algorithm for the traffic, not the topology.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-aggregate" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-aggregate','Tunnel Aggregate')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-aggregate" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-aggregate')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — MTU & FRAGMENTATION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · MTU & FRAGMENTATION</span>
+      </div>
+      <p class="socratic-insight">IPsec wraps every packet in extra headers. Whenever the encapsulated packet exceeds the underlay MTU, something has to give — you either fragment (which every intermediate device might handle differently) or you preempt the fragmentation with a smaller MSS.</p>
+      <ul class="socratic-questions">
+        <li>Between <code>set mtu</code> and <code>set tcp-mss-sender / tcp-mss-receiver</code>, which one preempts the problem before packets are ever built, and where does that command live?</li>
+        <li>Why does <code>set honor-df enable</code> mean a 1600-byte packet gets dropped on a 1500-byte interface instead of fragmented?</li>
+      </ul>
+      <div class="answer-area" data-section="mtu">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>set tcp-mss-sender</code> and <code>tcp-mss-receiver</code> live inside <code>config firewall policy</code> — they rewrite the MSS in the TCP handshake so both endpoints agree to build smaller segments up front. That prevents fragmentation from ever happening. <code>set mtu</code> under <code>config system interface</code> only tells FortiGate what it can transmit locally.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">With <code>honor-df enable</code>, FortiOS respects the sender's DF (Don't Fragment) bit. If the packet has DF set and doesn't fit the outgoing MTU, FortiGate is <em>not allowed</em> to fragment it, so the only legitimate action is to drop it and send back an ICMP "fragmentation needed" message. This is what PMTUD relies on.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-mtu">
+      <div class="section-label">SECTION 04</div>
+      <h2>MTU <em>and Fragmentation</em></h2>
+      <p>IPsec ESP + IP + optional NAT-T all add bytes on top of the payload. When the sum exceeds the underlay MTU you either fragment, drop, or preempt with a smaller MSS. These are the commands that decide.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system interface
+    edit "wan2"
+        set vdom "root"
+        set mtu-override enable
+        set mtu 1700
+    next
+end</code></div>
+        <p class="cmd-desc">Overrides the default MTU on an interface. Physical interfaces default to 1500, IPsec VPN interfaces default to 1420. Range is 68–65535 for physical and 68–1700 for IPsec.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Only useful on internal / data-center networks where you actually control every hop and can guarantee jumbo frames. On the internet you can't push MTU higher than what the ISPs allow, so this is a data-center trick, not an internet trick. Confirm with <code>diagnose hardware deviceinfo nic &lt;interface&gt;</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config firewall policy
+    edit &lt;policy id&gt;
+        set tcp-mss-sender &lt;mss value&gt;
+        set tcp-mss-receiver &lt;mss value&gt;
+    next
+end</code></div>
+        <p class="cmd-desc">Clamps the TCP maximum segment size on a firewall policy. FortiGate rewrites the MSS option in the TCP SYN so both endpoints agree to a smaller segment before the tunnel encapsulation is added.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>MSS is <strong>payload only</strong> — it excludes TCP and IP headers. A safe rule of thumb over IPsec is <code>interface MTU − 40 (IP+TCP) − ESP overhead</code>. Lowering MSS too far raises packet count and header overhead; setting it too high triggers fragmentation you were trying to avoid.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system global
+    set honor-df enable
+end</code></div>
+        <p class="cmd-desc">Tells FortiOS to respect the Don't Fragment bit in the outer IP header. When enabled (default), packets larger than the outgoing interface MTU that have DF set are dropped, not fragmented.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Leave it on for correct PMTUD behaviour — hosts learn the real path MTU from the ICMP unreachables FortiGate sends back. Turning it off makes FortiGate fragment anyway, which "works" but hides the real MTU problem and can double the packet count downstream.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute ping-options df-bit yes
+# execute ping-options data-size 1472
+# execute ping google.com</code></div>
+        <p class="cmd-desc">FortiOS Path MTU Discovery. Sets the DF bit so intermediate routers can't fragment, then specifies a payload size. If the ping succeeds the path can carry that size; if it fails with <em>sendmsg failed: Message too long</em> the packet exceeded some link's MTU.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>PING google.com (142.251.33.78): 1472 data bytes
+76 bytes from 142.251.33.78: icmp_seq=0 ttl=114 time=4.7 ms
+...
+PING google.com (142.251.33.78): 1500 data bytes
+sendmsg failed: 90(Message too long)</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Data-size 1472 + 28 bytes IP/ICMP header = 1500 bytes = standard MTU. Data-size 1500 fails because the total 1528 exceeds MTU with DF set. Walk the size down until the ping succeeds — that's your effective path MTU. Then set MSS to <code>PMTU − 40</code> in policy.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose hardware deviceinfo nic &lt;interface&gt;</code></div>
+        <p class="cmd-desc">Prints the driver-level info for a NIC, including the currently applied MTU. Use it to confirm your <code>set mtu</code> actually took effect and matches what the interface is transmitting.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Look for the <code>Current_HWaddr</code> and MTU lines. If the MTU shown doesn't match what you set, an ADOM override or config-sync from a manager may have re-applied a default; check where the config actually lives.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Interface MTU = what you can transmit locally. Firewall-policy MSS = what the two TCP endpoints agree to build. IPsec adds bytes — clamp MSS on the policy that rides the tunnel, not on the internal LAN policy.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-mtu" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-mtu','MTU & Fragmentation')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-mtu" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-mtu')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 5 — DIAGNOSE & VERIFY ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · DIAGNOSE & VERIFY</span>
+      </div>
+      <p class="socratic-insight">When a tunnel misbehaves, don't guess. There are three views to reach for: the IKE log (for phase 1/2 negotiation issues), the tunnel list (for the runtime SA), and the config list (for what was actually loaded from the phase 2 selectors).</p>
+      <ul class="socratic-questions">
+        <li>Which diagnose command scopes the IKE log to a single peer so you're not drowning in noise?</li>
+        <li>Where would you go to see the negotiated phase 2 selectors in memory — not what's in the config, but what the tunnel actually agreed on?</li>
+      </ul>
+      <div class="answer-area" data-section="diagnose">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose vpn ike log-filter dst-addr4 &lt;peer-ip&gt;</code> then enable <code>diagnose debug application ike -1</code> and <code>diagnose debug enable</code>. Now the IKE debug is scoped to messages to/from that peer only — critical when a busy hub has hundreds of tunnels.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose vpn ike config list</code> — it shows the phase 2 selectors currently loaded in the IKE process, including the selector name, proto, src/dst subnets, DH group, and any <code>add-route</code> flags. That's the source of truth for what got installed, versus what you typed in the config.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-diagnose">
+      <div class="section-label">SECTION 05</div>
+      <h2>Diagnose <em>and Verify</em></h2>
+      <p>Four commands cover almost every IPsec triage: <code>diagnose vpn ike log-filter</code> to scope, <code>diagnose vpn tunnel list</code> for the runtime SA, <code>get vpn ipsec tunnel summary</code> for the fleet view, and <code>diagnose vpn ike config list</code> for the loaded selectors.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose vpn ike log-filter dst-addr4 &lt;peer-ip&gt;
+# diagnose debug application ike -1
+# diagnose debug enable</code></div>
+        <p class="cmd-desc">Scopes the IKE debug log to a single peer and enables full-verbosity IKE debugging. Without the filter you'll see every tunnel negotiate — on a hub with hundreds of spokes that's unreadable.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Filter options include <code>dst-addr4</code>, <code>src-addr4</code>, <code>name</code> (phase 1 name), and <code>clear</code> to reset the filter. Always <code>diagnose debug disable</code> and <code>diagnose vpn ike log-filter clear</code> when done — leaving debugs on floods the console log.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose vpn tunnel list
+# diagnose vpn tunnel list name &lt;tunnel-name&gt;</code></div>
+        <p class="cmd-desc">Prints every active IPsec SA — phase 1 identity, phase 2 selectors, current SPIs, packet counters, and last error. Adding <code>name</code> narrows it to one tunnel.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>name=VPN1 ver=2 serial=3 100.65.0.101:0->100.65.2.112:0 dst_mtu=1500
+bound_if=3 lgwy=static tun=intf mode=auto/1 encap=none/8888
+proxyid_num=1 child_num=0 refcnt=13 ilast=2 olast=2 ad=/0
+stat: rxp=48 txp=48 rxb=6720 txb=6720
+dpd: mode=on-demand on=1 idle=20000ms retry=3 count=0 seqno=0</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>rxp/txp</code> counters incrementing = traffic is actually passing. <code>ilast/olast</code> = seconds since last inbound/outbound packet — big values mean idle. <code>dpd count</code> rising = the peer's not answering DPDs. If <code>proxyid_num=0</code>, phase 1 came up but phase 2 never did.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get vpn ipsec tunnel summary</code></div>
+        <p class="cmd-desc">Fleet-view summary of every IPsec tunnel — one line per tunnel with name, remote gateway, uptime, and status. Use it as the first check before drilling into <code>diagnose vpn tunnel list</code>.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Tunnels in <em>up</em> state should have non-zero traffic counters. Any tunnel repeatedly cycling between <em>up</em> and <em>down</em> is a rekey or DPD problem — jump to <code>diagnose vpn ike log-filter</code> on that specific peer.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose vpn ike config list</code></div>
+        <p class="cmd-desc">Prints the phase 2 selector definitions currently loaded in the IKE process — the <em>runtime</em> view of what got installed, not the config file view. Critical for debugging quick-mode selector mismatches.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>Hub # diag vpn ike config list
+...
+phase2s:
+  Overlay_advertisement proto 0 src 0.0.0.0/0.0.0.0:0 dst 172.16.1.0 255.255.255.0:0 dhgrp 14 5 add-route
+  Spoke proto 0 src 0.0.0.0/0.0.0.0:0 dst 0.0.0.0/0.0.0.0:0  dhgrp 14 5</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Phase 2 lookup is <strong>alphabetical</strong>. If you have two selectors and the more specific one must match first, name it earlier in the alphabet — that's why the study guide names it <code>Overlay_advertisement</code> so it precedes <code>Spoke</code>. If a selector isn't listed here, the config wasn't successfully loaded.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Filter first, then debug. Every IKE debug session should start with <code>log-filter dst-addr4</code> — otherwise you're reading noise from every tunnel on the box.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-diagnose" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-diagnose','Diagnose & Verify')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-diagnose" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-diagnose')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-06-security-profiles.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">Security Profiles CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-08-advpn.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">ADVPN CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Chapter 07 IPsec
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-ch07-ipsec';
+const SECTIONS = {
+  'section-phase1': 'Phase 1 Interface',
+  'section-phase2': 'Phase 2 Interface',
+  'section-aggregate': 'Tunnel Aggregate',
+  'section-mtu': 'MTU & Fragmentation',
+  'section-diagnose': 'Diagnose & Verify',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

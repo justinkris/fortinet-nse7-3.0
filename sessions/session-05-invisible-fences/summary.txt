@@ -1,0 +1,202 @@
+LOFINANCE — SESSION 05 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "Invisible Fences"
+Study guide coverage: 03 VLANs and VDOMs, pp. 62-67 (hardware switch: config system
+virtual-switch, ASIC-offloaded, STP support, no SSID support, model-limited; software
+switch: config system switch-interface, CPU-processed, SSID support, no STP support,
+all models; intra-switch-policy implicit vs explicit; hardware vs software switch
+comparison table). VDOM content (pp. 68+) was glimpsed only incidentally during search
+and NOT taught this session — correctly held for Session 6 ("One Box, Many Firewalls")
+per the master plan.
+Status: COMPLETE. Student scored 3/3 on exam questions.
+
+STORY EVENTS
+------------
+Tuesday, 9:03 AM. Opened directly on the Session 4 teaser: Riley's ticket, "printers
+achieved sentience" — floor-3 trading printers unreachable from anywhere outside the
+floor, yet actively printing trade confirmations. Junior baffled, treats it as one
+contradictory mystery. Señor, in passing, drops the single most important line of the
+session without elaborating: "Sounds like two different questions wearing one ticket."
+Then vanishes. Cipher does NOT appear on-screen again this session, but sends his
+first-ever approving message via Slack at the close: "Two bugs. One ticket. You
+separated them. Good." (First positive word from Cipher in the whole course — his
+on-screen debut remains deliberately held for a future dramatic moment.) Penny appears
+only briefly at the end, pivoting to a NEW business thread: a client wants a dedicated
+guest-network firewall, quoted at $15k, and wants to know if it's "real money" or
+redundant spend. Señor's closing line, unexplained, sets up Session 6: "Why buy a box
+when we already own ten inside this one?"
+
+CHARACTERS INVOLVED
+--------------------
+Student (protagonist), Junior (conflated two independent bugs into one mystery; also
+the one who originally set the wrong dstintf on the policy), Señor (single deflecting
+line at the open — "two questions wearing one ticket" — then absent until a closing
+one-liner), Riley (ticket author, off-screen), Cipher (Slack message only, still no
+on-screen scene — first approving word of the course), Penny (brief appearance,
+introduces the Session 6 business hook).
+
+BUSINESS PROBLEM
+-----------------
+Floor-3 trading printers, added during the Session 4 VLAN rollout, are unreachable
+from the print server / rest of the network, yet print successfully for traders on
+the same floor. Resolved: this was TWO independent, unrelated issues that happened to
+land in the same ticket:
+  1. Junior's firewall policy had dstintf set to the physical trunk ("internal1")
+     instead of the correct VLAN sub-interface ("VLAN20-Trading") — so it never
+     matched after FortiGate's routing lookup resolved the real egress interface,
+     and print-server-to-printer traffic fell through to implicit deny.
+  2. The three physical print stations were bundled years ago into a FortiGate
+     software switch ("PrintGroup", config system switch-interface, member port5/
+     port6/port7, intra-switch-policy implicit) — meaning traffic between the
+     printers themselves (or any device on that bundle) never traverses FortiGate
+     at all, explaining why local printing "worked" the whole time. This was NOT a
+     bug — implicit intra-switch-policy is working as designed.
+Fixed: policy dstintf corrected to VLAN20-Trading. Software switch bundle left
+unchanged (it was never broken). Open thread: Penny's guest-firewall pricing question,
+which Session 6 will resolve via VDOMs.
+
+TECHNICAL CONCEPTS COVERED
+----------------------------
+1. Policy `dstintf` matching happens AFTER FortiGate's routing lookup resolves the
+   real logical egress interface — not the physical wire. A policy pointing at the
+   physical trunk (internal1) will never match traffic actually egressing via a
+   VLAN sub-interface (VLAN20-Trading), because FortiOS treats these as entirely
+   separate interface objects for policy purposes, even though they're the same
+   copper. Student derived the full mechanism unprompted, connecting last session's
+   VLAN-interface-object concept directly to policy matching for the first time.
+2. WHY VLAN sub-interfaces must be separate objects at all: without separate
+   objects, a policy on the shared physical trunk couldn't distinguish "traffic to
+   VLAN 5" from "traffic to VLAN 20" — segmentation requires separate policy
+   surfaces, not just separate tags on the wire. Direct retrieval + extension of
+   Session 4 material.
+3. Hardware switch (`config system virtual-switch`): ASIC/hardware-offloaded
+   packet processing, supports STP, does NOT support wireless SSID members, only
+   available on specific FortiGate models.
+4. Software switch (`config system switch-interface`): CPU-processed, does NOT
+   support STP, DOES support wireless SSID members, available on every model.
+   Student initially reversed this pairing (guessed hardware=SSID-capable,
+   software=STP-capable) — corrected via reasoning about where each function
+   traditionally lives (STP in switch silicon; SSID as a FortiGate software
+   construct), then applied it correctly and unprompted on the final exam question.
+5. `intra-switch-policy implicit` vs `explicit`: implicit permits traffic between
+   members of the same switch bundle without ever routing it through the firewall
+   policy engine (same logic as same-VLAN traffic never touching FortiGate at all —
+   student correctly reapplied this pattern from earlier in the session). Explicit
+   forces same-bundle, same-broadcast-domain traffic through an actual firewall
+   policy anyway — FortiGate manufacturing a policy checkpoint inside what would
+   otherwise be trusted-by-default Layer 2 space. Student initially conflated this
+   with inter-VLAN segmentation (assumed "different Layer 2 domain" was involved)
+   before correctly landing on the true use case: segmenting devices that share the
+   SAME broadcast domain (e.g. guest laptop vs finance servers on one bundle).
+6. Diagnostic split reinforced from Session 4: `diagnose sys session list` absence
+   of ANY session for a given traffic flow means the traffic never reached FortiGate
+   at all (Layer 2 / same-broadcast-domain / never-crossed-a-router problem) — not a
+   policy logic problem. Student correctly reasoned through this for BOTH bugs in
+   this ticket independently before being told.
+7. `show system switch-interface` / `show system virtual-switch` as the direct way
+   to confirm which switch construct is actually configured, rather than guessing
+   from context — command names themselves disambiguate hardware vs software.
+8. The core meta-lesson of the session: a symptom that sounds contradictory
+   ("nobody can reach them, yet they keep printing") is often TWO independent,
+   unrelated mechanisms explaining two different halves of one ticket — not one
+   confusing bug. Señor's "two questions wearing one ticket" line names this
+   directly; student solved both halves separately without being told they were
+   separate until after the fact.
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "Policy dstintf matches what routing resolves, not what's physically wired" — new
+  this session; extends Session 4's "tag is a property of the wire" model one layer
+  further into policy matching itself.
+- "One ticket, two independent problems" — Señor's framing; a general troubleshooting
+  posture, not FortiGate-specific, worth reinforcing whenever future tickets present
+  two symptoms that seem to contradict each other.
+- Reused and correctly reapplied from earlier in THIS session: implicit intra-switch
+  traffic never touching FortiGate = same underlying pattern as untagged same-VLAN
+  traffic never touching FortiGate (both are "no Layer 3 crossing, no policy check").
+
+KEY CLI COMMANDS DISCUSSED
+----------------------------
+config firewall policy — correcting dstintf from "internal1" to "VLAN20-Trading".
+show system switch-interface / show system virtual-switch — direct config inspection
+to confirm hardware vs software switch type (introduced this session as the correct
+alternative to a `get` status command, which the student first reached for).
+config system switch-interface / edit "PrintGroup" / set member "port5" "port6"
+"port7" / set intra-switch-policy implicit — read from Riley's ticket, not written
+fresh; first time the student has seen a software switch config on-screen.
+diagnose sys session list — reused again, now applied twice in one session to two
+independent traffic flows.
+
+TROUBLESHOOTING APPROACH TAUGHT
+----------------------------------
+When a ticket presents what looks like one contradictory symptom (works AND doesn't
+work simultaneously), consider whether it's actually describing two separate traffic
+paths with two separate root causes before trying to reconcile them into one
+explanation. For each path independently: check `diagnose sys session list` first —
+absence means Layer 2 / no-router-crossing, not policy; presence with a policy ID
+means check policy logic (dstintf/srcintf resolved AFTER routing, not before).
+
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+---------------------------------------------
+FIXED: firewall policy dstintf corrected from "internal1" (physical trunk) to
+"VLAN20-Trading" (correct VLAN sub-interface) — restores print-server-to-printer
+reachability across the VLAN boundary.
+UNCHANGED (confirmed correct, not a bug): floor-3 "PrintGroup" software switch
+bundle (ports 5-7, intra-switch-policy implicit) — left exactly as configured.
+TOPOLOGY UPDATE: No new segments added. Existing VLAN 20 policy corrected in place;
+PrintGroup software switch bundle noted on the topology as an existing, intentional
+Layer 2 construct sitting inside VLAN 20.
+
+EXAM-RELEVANT NOTES
+----------------------
+Q1 (software switch, intra-switch-policy explicit, no policy created — what happens
+to inter-member traffic): correct — dropped, implicit deny, same as any other
+policy-gated traffic with no matching rule. Student correctly ruled out any other
+implicit-permit fallback.
+Q2 (true/false — absent session in diagnose sys session list usually means
+misconfigured policy): correct — False, with the right reasoning (a matched policy,
+right or wrong, would still generate a session with a policy_id; true absence points
+below the policy layer entirely).
+Q3 (which switch type supports SSID members, hardware or software, and why): correct
+— software switch, correctly reasoned via the CPU-vs-ASIC / software-construct
+distinction after the earlier correction had been internalized.
+
+STUDENT LEARNING OBSERVATIONS (feed the knowledge register)
+----------------------------------------------------------------
+This was the first session requiring genuine mid-session correction rather than pure
+unprompted derivation — a good, expected variance after Session 4's flawless run.
+Three specific stumbles, all recovered cleanly and all recovered WITHOUT the
+concept needing to be re-taught from scratch:
+  (a) Reached for "same VLAN" as the mechanism for the print-station bundle before
+      recognizing it wasn't a tagged trunk situation at all — corrected once
+      reminded these were plain untagged ports, not VLAN members.
+  (b) Reversed the hardware/software switch STP-vs-SSID pairing on first guess —
+      corrected via first-principles reasoning about where each function
+      traditionally lives, then applied the corrected pairing accurately and
+      unprompted on the final exam question, suggesting the correction stuck.
+  (c) On `intra-switch-policy explicit`, defaulted to the inter-VLAN segmentation
+      mental model (assumed it required crossing "different Layer 2 domains")
+      before landing on the actual use case: segmenting devices WITHIN the same
+      broadcast domain. This is a meaningfully different and slightly more advanced
+      idea than anything taught in Session 4, so the stumble is reasonable and not
+      a regression.
+Also worth noting: reached for `get system status` before `show system
+switch-interface` when asked how to directly confirm a switch type — a minor gap
+(knows `diagnose`-style verification well, hasn't yet built strong instincts for
+`show`-based config inspection specifically). Worth a light retrieval check in a
+future session.
+No stalls on the CORE troubleshooting split (diagnose sys session list logic) —
+that concept, taught in Session 4, was reapplied flawlessly twice in this session
+with zero redirects, confirming it's fully internalized.
+Recommend: Session 6 can introduce VDOM concepts at full pace; no need to slow down.
+Consider one early retrieval question on UTM/FortiGuard (Session 1 material, still
+overdue per the knowledge register) to prevent that thread from going stale.
+
+TEASER DELIVERED FOR SESSION 6 ("One Box, Many Firewalls")
+--------------------------------------------------------------
+Delivered in-story as the closing scene: Penny asks whether a client's request for a
+dedicated $15k guest-network firewall is "real money" or something LoFinance already
+owns the capability for. Señor, without explanation: "Why buy a box when we already
+own ten inside this one?" Natural opening move: treat this literally as the cold
+open — the pricing/procurement question is the hook, and the actual technical
+answer (VDOMs) should be discovered Socratically rather than stated up front.

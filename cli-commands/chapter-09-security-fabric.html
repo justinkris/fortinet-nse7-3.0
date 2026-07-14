@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 09 — Security Fabric CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Chapter 09</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 09 · CLI Reference</div>
+    <h1>Security Fabric, <em>By Command</em></h1>
+    <p>Every CSF, external-connector, automation-stitch, and quarantine command from Chapter 9 — the CLI behind the Security Fabric that the GUI hides.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Almost everything the Fabric GUI clicks is really a <em>config system csf</em> or <em>config system automation-*</em> change.</div>
+  <p class="motivation-sub">Learn the CLI shapes and you can debug fabric issues even when the GUI reports "synchronised" but the leaves don't agree.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-csf">CSF Fabric</a>
+  <a class="nav-tab" href="#section-connectors">External Connectors</a>
+  <a class="nav-tab" href="#section-automation">Automation Stitches</a>
+  <a class="nav-tab" href="#section-quarantine">Quarantine & Diagnose</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — CSF FABRIC ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · CSF FABRIC</span>
+      </div>
+      <p class="socratic-insight">The Security Fabric is really a tree: one root FortiGate, downstream leaves that authorise upward, and a small ring of Fortinet appliances (FortiAnalyzer, FortiNDR, FortiNAC) that plug in as fabric members. All of the wiring lives under <code>config system csf</code>.</p>
+      <ul class="socratic-questions">
+        <li>Which single <code>set status enable</code> or <code>set status disable</code> flag decides whether a FortiGate is participating in the Fabric at all?</li>
+        <li>On a leaf FortiGate, what tells FortiOS where to find the upstream root — and why does that not go on the root itself?</li>
+      </ul>
+      <div class="answer-area" data-section="csf">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>set status enable</code> inside <code>config system csf</code>. That single flag switches CSF on. Without it, the Fabric menus in the GUI still render, but the FortiGate won't advertise itself upstream or accept downstream joins.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>set upstream</code> (the root's IP address). The root has no upstream — it's the top of the tree — so it doesn't need the setting. Leaves point at the root's fabric-facing IP, submit a join request, and wait for the root's admin to accept.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-csf">
+      <div class="section-label">SECTION 01</div>
+      <h2>CSF <em>Fabric</em></h2>
+      <p>The Security Fabric configuration lives in one command tree: <code>config system csf</code>. Root and leaf devices share the same command block — a couple of settings differ.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>Root # config system csf
+    set status enable
+    set group-name "Acme_Corp_SF"
+    set group-password &lt;shared-secret&gt;
+    set configuration-sync default
+    set fabric-object-unification default
+end</code></div>
+        <p class="cmd-desc">Minimum root FortiGate setup. <code>status enable</code> turns CSF on; <code>group-name</code> + <code>group-password</code> identify this Fabric so leaves know which root they're joining. The <code>configuration-sync</code> and <code>fabric-object-unification</code> defaults let downstream FortiGates share objects with the root.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Group name and password must match on every member — leaves that get either wrong will silently fail authorisation. The root does <strong>not</strong> set <code>upstream</code>; only leaves do.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>Leaf # config system csf
+    set status enable
+    set upstream 10.0.12.253
+    set group-name "Acme_Corp_SF"
+    set group-password &lt;shared-secret&gt;
+end</code></div>
+        <p class="cmd-desc">Leaf FortiGate joining the Fabric. <code>upstream</code> is the root's fabric-facing IP; the group name and password have to match the root exactly. After this, the leaf's join request shows up in the root's top-bar alarm badge waiting for authorisation.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The join is <strong>not automatic</strong> — the root admin has to accept it. Until they do, the leaf shows as pending and doesn't yet appear in the Logical or Physical Topology views. Wrong <code>group-password</code> = silent reject.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>Root # config system csf
+    config trusted-list
+        edit "downstream-1"
+            set serial "FGVM01T*"
+            set action accept
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Pre-authorises downstream FortiGates by serial number (or wildcard prefix). If the joining leaf matches a trusted-list entry with <code>action accept</code>, it's admitted automatically instead of waiting for manual approval.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Serial wildcards (<code>FGVM01T*</code>) are handy for large fleets, but they're also blast-radius — any device whose serial matches gets in. Prefer exact serials in production. <code>action deny</code> lets you explicitly block a serial that would otherwise be admitted.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose sys csf global
+# diagnose sys csf downstream
+# diagnose sys csf upstream</code></div>
+        <p class="cmd-desc">Runtime view of the Fabric from this FortiGate's perspective. <code>global</code> shows the local CSF status; <code>downstream</code> lists every leaf that has joined this device; <code>upstream</code> shows the root that this leaf is connected to.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>If <code>diagnose sys csf downstream</code> is empty but the GUI says a leaf joined, that leaf never actually completed the authorisation — the top-bar badge is still waiting on a click. If <code>upstream</code> reports a disconnected state, check the leaf's <code>upstream</code> IP is reachable and the group-password matches.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Root sets <code>status</code> + <code>group-name/password</code>. Leaf sets those <strong>plus</strong> <code>upstream</code>. Join isn't automatic unless you populate <code>trusted-list</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-csf" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-csf','CSF Fabric')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-csf" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-csf')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — EXTERNAL CONNECTORS ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · EXTERNAL CONNECTORS</span>
+      </div>
+      <p class="socratic-insight">Fabric connectors are for Fortinet gear (FortiAnalyzer, FortiClient EMS, FortiNDR, FortiNAC). External connectors are for the rest of the world — public/private SDN, threat feeds, SSO. Both create <em>dynamic</em> objects that policies can reference.</p>
+      <ul class="socratic-questions">
+        <li>Which command family creates an external threat feed of malicious MAC addresses that can then be used as a source in a firewall policy?</li>
+        <li>Why is the FortiAnalyzer connector considered a <em>fabric</em> connector and not an <em>external</em> connector?</li>
+      </ul>
+      <div class="answer-area" data-section="connectors">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>config system external-resource</code> with <code>set type mac-address</code>, a URL pointing at the plain-text feed, and an update interval. Once it's active, a resource object with the same name shows up under Policy &amp; Objects — you can drop it into a firewall policy as the source.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because it's Fortinet-native and part of the tightly-coupled Fabric integration — logs from every FortiGate in the Fabric consolidate at that one FortiAnalyzer, and the connector is what enables UTM and traffic log correlation across the whole Fabric. External connectors are for third-party feeds or multivendor cloud environments.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-connectors">
+      <div class="section-label">SECTION 02</div>
+      <h2>External <em>Connectors</em></h2>
+      <p>Fabric connectors integrate Fortinet appliances. External connectors bring in third-party context — SDN, SSO, threat feeds — as dynamic objects usable in policy.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config log fortianalyzer setting
+    set status enable
+    set server 10.0.12.100
+    set upload-option realtime
+    set reliable enable
+end</code></div>
+        <p class="cmd-desc">Configures the FortiAnalyzer fabric connector — the log consolidator for the whole Security Fabric. <code>upload-option realtime</code> streams logs immediately; <code>reliable enable</code> uses TCP/OFTPS for guaranteed delivery.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Only the <strong>first</strong> FortiGate to handle a session logs it; upstream Fabric members skip the duplicate. FortiAnalyzer then correlates UTM events with the original traffic log automatically. If an upstream FortiGate performs NAT, it logs its own translated version — that's expected.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system external-resource
+    edit "blocked_MACs"
+        set type mac-address
+        set resource "https://example.com/badmacs.txt"
+        set refresh-rate 5
+        set username "fortinet"
+        set password &lt;api-token&gt;
+    next
+end</code></div>
+        <p class="cmd-desc">Defines an external threat feed of malicious MAC addresses. FortiOS re-fetches from the URL on the <code>refresh-rate</code> interval (in minutes) and creates a matching resource object under Policy &amp; Objects &gt; Addresses that policies can reference.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Feed types include <code>ip</code>, <code>domain</code>, <code>mac-address</code>, <code>malware-hash</code>, and <code>category</code>. Alternate delivery: switch to Push API (FortiGate REST) where a webhook updates entries in real time instead of polling a URL. Verify with <code>diagnose test application external-resource</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config user fortinac
+    edit "NAC1"
+        set server 10.0.12.90
+        set password &lt;shared-secret&gt;
+    next
+end</code></div>
+        <p class="cmd-desc">Adds a FortiNAC fabric connector so FortiGate can consume the dynamic firewall addresses FortiNAC creates when users log in — the device IP plus FortiNAC group names and firewall tags become a live source/destination object in policy.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Requires <strong>two</strong> user login events on FortiNAC before the dynamic address is trusted. Verify the object landed with the <em>FortiNAC Tag (IP Address)</em> section under Policy &amp; Objects &gt; Addresses. Missing or empty = FortiNAC never sent a REST-API update — check the connector token.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config user saml
+    edit "SF_SSO"
+        set entity-id "https://root-fgt/saml"
+        set single-sign-on-url "https://root-fgt/saml/login"
+        set idp-cert "root-cert"
+    next
+end</code></div>
+        <p class="cmd-desc">Wires Security Fabric SAML SSO. In a Fabric, the root FortiGate is the identity provider (IdP); downstream FortiGates, FortiAnalyzer, and FortiManager register as service providers so an admin can move between devices without re-logging in.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Only the root can be IdP. Once SP registration is accepted, the top-bar Security Fabric dropdown lets you click through to any registered device — same browser session, no second login. Session ends when the browser session ends.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Fabric connector = Fortinet gear. External connector = the rest (SDN, feeds, SSO providers). Both create dynamic objects — the value is being able to reference them in normal firewall policy.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-connectors" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-connectors','External Connectors')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-connectors" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-connectors')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — AUTOMATION STITCHES ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · AUTOMATION STITCHES</span>
+      </div>
+      <p class="socratic-insight">Every stitch is three things: a <strong>trigger</strong> (the event), one or more <strong>actions</strong> (the response), and the <strong>stitch</strong> that binds them and decides sequential vs parallel. All three live under <code>config system automation-*</code>.</p>
+      <ul class="socratic-questions">
+        <li>Between the High CPU trigger and the "collect diagnostics + email" actions, why does the stitch use sequential execution with a 30-second delay?</li>
+        <li>Where do you set the CPU threshold that <em>defines</em> "high CPU" — the trigger, or somewhere else?</li>
+      </ul>
+      <div class="answer-area" data-section="automation">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The email action needs to reference <code>%%results%%</code> from the CLI-script action's output. In parallel mode both actions launch at once, so the email would go out before the diagnostics ran. Sequential + a 30-second gap gives the CLI commands time to finish before the email is composed and sent.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Elsewhere — <code>config system global; set cpu-use-threshold &lt;n&gt;; end</code>. The trigger is preconfigured (<code>High CPU</code>) and just watches for the global threshold to be crossed. Default is 90%.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-automation">
+      <div class="section-label">SECTION 03</div>
+      <h2>Automation <em>Stitches</em></h2>
+      <p>Automation stitches are administrator-defined if/then workflows. Configure them on the root FortiGate and they get pushed to leaves; the root doesn't need to be up for previously-configured stitches to keep firing.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system global
+    set cpu-use-threshold 90
+end</code></div>
+        <p class="cmd-desc">Sets the global CPU threshold that the preconfigured <code>High CPU</code> automation trigger watches. Any process exceeding this percentage causes FortiOS to fire the trigger.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Default is <code>90</code>. Set it lower (e.g. 75) if you want early warning during peak, higher if a well-tuned box is legitimately busy. This is the <em>only</em> place the threshold lives — it isn't configurable inside the trigger itself.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system automation-trigger
+    edit "High_CPU"
+        set trigger-type event-based
+        set event-type high-cpu
+    next
+end</code></div>
+        <p class="cmd-desc">Defines the event-based trigger for high CPU. Other trigger types include <code>scheduled</code> (cron-like), <code>fabric-connector-event</code> (e.g. compromised host, HA failover), and <code>incoming-webhook</code> (external system posts JSON to FortiOS).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Event types are preconfigured — you pick from the list, you don't invent new ones. The trigger fires as soon as the underlying condition is true. Multiple stitches can share one trigger.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system automation-action
+    edit "Collect_Diagnostics_Action"
+        set action-type cli-script
+        set script "get system status
+get system performance status
+diagnose sys top 5 20 2"
+        set minimum-interval 0
+    next
+    edit "Email_Diagnostics_Action"
+        set action-type email
+        set email-to "fgt-admins@acme.com"
+        set email-from "fgt@acme.com"
+        set email-subject "FGT High CPU – Diagnostics Attached"
+        set message "%%results%%"
+    next
+end</code></div>
+        <p class="cmd-desc">Two actions: a CLI script that gathers diagnostic output, and an email that sends the results. The <code>%%results%%</code> variable in the email body inherits the previous action's output when the stitch is sequential.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>%%results%%</code> only works in sequential stitches — in parallel mode the email runs at the same time as the CLI script, and <code>%%results%%</code> is empty. <code>minimum-interval</code> lets you rate-limit — set it to 300 seconds if you don't want the trigger firing every minute during a genuine sustained-high event.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system automation-stitch
+    edit "CPU_Monitor_Stitch"
+        set status enable
+        set trigger "High_CPU"
+        set action "Collect_Diagnostics_Action" "Email_Diagnostics_Action"
+        set action-execution sequential
+        config actions
+            edit 1
+                set action "Collect_Diagnostics_Action"
+                set delay 0
+            next
+            edit 2
+                set action "Email_Diagnostics_Action"
+                set delay 30
+            next
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Binds the trigger to both actions in sequence, with a 30-second delay before the email so the CLI-script output has time to complete. <code>action-execution parallel</code> would fire both simultaneously — useful when actions don't depend on each other.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Delay unit is seconds. Sequential + delay is the pattern any time an action consumes the previous action's <code>%%results%%</code>. Parallel is cheaper but breaks that data-flow. You can also scope the stitch to <em>a subset</em> of FortiGates in the Fabric via <code>set fortigates</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system automation-trigger
+    edit "Frequency"
+        set trigger-type scheduled
+        set trigger-frequency once
+        set trigger-datetime 2025/03/08 09:26:10
+    next
+end
+config system automation-action
+    edit "Automatic_Backup"
+        set action-type auto-config-backup
+    next
+end</code></div>
+        <p class="cmd-desc">Scheduled backup pattern. Frequencies: <code>once</code>, <code>hourly</code>, <code>daily</code>, <code>weekly</code>, <code>monthly</code>. The preconfigured <code>auto-config-backup</code> action writes to the <em>Configuration &gt; Revisions</em> table so you can roll back to any snapshot.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Look for a <em>Autod backup config by stitch: &lt;stitch-name&gt;</em> entry in the Revisions list — that proves the stitch ran. Time zone is the root FortiGate's local timezone. To back up the whole Fabric, target all FortiGates in the stitch scope.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config system automation-stitch
+    edit "Compromised_Host_Quarantine"
+        set trigger "Compromised_Host"
+        set action "FortiClient_Quarantine"
+    next
+end</code></div>
+        <p class="cmd-desc">IoC-detection-to-quarantine stitch. The preconfigured <code>Compromised Host</code> trigger fires when FortiAnalyzer reports an IoC; <code>FortiClient Quarantine</code> tells FortiClient EMS (via the fabric connector) to isolate the endpoint.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Requires the full loop: FortiGate + FortiAnalyzer + FortiClient EMS + FortiClient on the endpoint. FortiClient sends logs to FortiAnalyzer, FortiAnalyzer flags the IoC, FortiGate tells EMS to quarantine, FortiClient enforces. Not supported on FortiClient (Linux).</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Trigger + action + stitch. Sequential when actions share data via <code>%%results%%</code>; parallel when they're independent. Configure once on the root; the leaves inherit.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-automation" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-automation','Automation Stitches')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-automation" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-automation')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — QUARANTINE & DIAGNOSE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · QUARANTINE & DIAGNOSE</span>
+      </div>
+      <p class="socratic-insight">The endpoint quarantine flow is a chain of REST calls between FortiGate, FortiClient EMS, and the endpoint agent. When it doesn't work, you need to know which link in the chain to poke.</p>
+      <ul class="socratic-questions">
+        <li>Which diagnose command manually triggers a quarantine on a specific endpoint IP, useful for testing when the automation stitch isn't firing?</li>
+        <li>What's the FortiOS command that shows all detected IoCs and the endpoints they came from, before you write a stitch to auto-respond?</li>
+      </ul>
+      <div class="answer-area" data-section="quarantine">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose endpoint fctems queue-complete-calls Q-&lt;endpoint_ip_address&gt;</code>. This queues a quarantine request to FortiClient EMS for that IP as if the automation stitch had fired — perfect for testing the FortiGate → EMS → endpoint chain end-to-end without waiting for a real IoC.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>diagnose user-device-store list</code> plus <code>diagnose endpoint fctems list</code>. Together they show what FortiOS knows about the endpoints (from FortiClient telemetry) and what EMS is reporting back — cross-check against FortiAnalyzer's IoC list before automating.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-quarantine">
+      <div class="section-label">SECTION 04</div>
+      <h2>Quarantine <em>and Diagnose</em></h2>
+      <p>The IoC-and-quarantine path spans four devices. These commands are how you test each hop.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose endpoint fctems queue-complete-calls Q-&lt;endpoint_ip_address&gt;</code></div>
+        <p class="cmd-desc">Manually enqueues a quarantine action against a specific endpoint IP through the FortiClient EMS connector. The endpoint's FortiClient then blocks all its network traffic and notifies FortiGate + EMS of the status change.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Use this when the automation stitch's quarantine action doesn't seem to reach the endpoint — running it manually isolates the failure to either "FortiGate can't reach EMS" (fabric connector) or "EMS can reach the endpoint but FortiClient isn't enforcing" (agent). Not supported on FortiClient (Linux).</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose endpoint fctems list
+# diagnose endpoint fctems test-connectivity</code></div>
+        <p class="cmd-desc">Lists the FortiClient EMS servers this FortiGate is registered with and tests the connector. Use before enabling any quarantine stitch — if this fails, the stitch will silently do nothing.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>A healthy connector shows the EMS FQDN/IP, the token as authenticated, and a recent last-poll timestamp. <code>test-connectivity</code> failures usually mean the EMS IP config on FortiGate is wrong, the admin token expired, or a firewall between FortiGate and EMS is blocking HTTPS.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose sys csf downstream
+# diagnose sys csf authorization pending-list</code></div>
+        <p class="cmd-desc">On the root FortiGate, lists downstream FortiGates that have completed authorisation plus the ones still waiting for approval. Use this whenever the Physical/Logical Topology view shows a device missing.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><code>pending-list</code> non-empty = someone is waiting to be authorised (accept them in the GUI top-bar or via CLI). <code>downstream</code> empty with no pending entries = the leaf never even reached out — check group-name/password and the leaf's <code>upstream</code> IP for reachability.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-diagnose">DIAGNOSE</div>
+        <div class="cmd-syntax"><code># diagnose test application external-resource 2 &lt;feed-name&gt;</code></div>
+        <p class="cmd-desc">Forces an immediate refresh of an external resource feed. Useful for validating that the feed URL, credentials, and parser are all working without waiting for the next scheduled interval.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>A successful fetch reports the entry count; a bad URL or auth failure prints an HTTP error code. If the count is zero, the feed file exists but no entries parsed — usually a format mismatch (line-terminated plain text is required).</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">When an automation stitch "doesn't work", isolate the chain: connector alive? (<code>test-connectivity</code>) → downstream present? (<code>csf downstream</code>) → feed populated? (<code>test application external-resource</code>) → endpoint reachable? (<code>queue-complete-calls</code>).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-quarantine" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-quarantine','Quarantine & Diagnose')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-quarantine" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-quarantine')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-08-advpn.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">ADVPN CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-10-hardware-acceleration.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Hardware Acceleration CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Chapter 09 Security Fabric
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-ch09-fabric';
+const SECTIONS = {
+  'section-csf': 'CSF Fabric',
+  'section-connectors': 'External Connectors',
+  'section-automation': 'Automation Stitches',
+  'section-quarantine': 'Quarantine & Diagnose',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

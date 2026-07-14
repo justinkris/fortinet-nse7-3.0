@@ -1,0 +1,225 @@
+=======================================================================
+SESSION 16 REVISION PACK — "The Map Room"
+OSPF internals I: LSDB, LSAs, cost, Dijkstra, SPF tree, areas
+NSE7 EF 7.6 · Dynamic Routing Supplement pp. 308–316
+=======================================================================
+
+-----------------------------------------------------------------------
+QUICK SUMMARY (one page)
+-----------------------------------------------------------------------
+OSPF is a link-state protocol: every router in an area holds an
+IDENTICAL map (the LSDB) and computes its own routes from it. The
+pipeline: LSDB -> Dijkstra -> SPF tree -> OSPF routes -> routing table.
+The routing table is only the pipe's last exhaust.
+
+The map is built from LSAs. Each router's only firsthand knowledge is
+its own connected networks and interface costs; it advertises those
+FACTS (links, never routes) in LSAs, which are flooded and acknowledged.
+LSDB = the collection of all LSAs. The payoff is INDEPENDENCE: on a
+topology change, a router only needs to hear the fact, then recomputes
+locally — no waiting on daisy-chained rumour (distance-vector's flaw).
+
+Quietness: full re-advertisement every 30 MINUTES; otherwise silence
+unless a topology change fires a TRIGGERED UPDATE.
+
+Cost: 16-bit, 1–65,535, lowest TOTAL path cost wins; total = sum of
+EXIT interface costs along the path. Cost is DIRECTIONAL (each side
+pays its own exit price): asymmetric costs on parallel paths split
+forward/return traffic and break stateful firewalls, with every
+routing table technically correct. Symmetry is your job, not OSPF's.
+
+Identical LSDBs -> DIFFERENT trees (each rooted at its own router) ->
+zero contradictions, because every tree derives from the same facts.
+Loops in link-state = unsynchronised databases. Full = two neighbours'
+LSDBs are identical and synchronised = routing through each other is
+now a safe bet.
+
+Areas fix the flat-LSDB's two costs: unbounded size AND blast radius
+(one flap anywhere = SPF everywhere). Each area has its own SEPARATE
+LSDB; a multi-area router keeps one full LSDB per area (never merged).
+Benefits: smaller DBs, contained blast radius, summarisation at
+borders. Cost: design + troubleshooting complexity. Backbone = Area
+0.0.0.0, mandatory; all areas connect to it.
+
+`get router info ospf database brief` prints the database PER AREA
+(section count = LSDB count = ABR evidence), with ADV Router / Age
+(healthy < 1800s) / Seq# (newer wins), plus the AS External section —
+where compliance is proven (ADV Router identifies the ASBR).
+
+-----------------------------------------------------------------------
+CHEAT SHEET
+-----------------------------------------------------------------------
+COMMANDS
+  get router info ospf database brief        # per-area LSDB summary + externals
+  get router info ospf database router lsa   # unpack one LSA: links + costs
+  get router info ospf neighbor              # state + role fingerprint
+  get router info routing-table ospf         # pipeline's final output
+
+GUI: Network > OSPF (areas, interfaces); Dashboard > Network > Routing
+     for table view. (Database inspection is CLI territory.)
+
+DEFAULTS / NUMBERS / TIMERS
+  Periodic LSA refresh ............ every 30 MINUTES (RIP = 30 seconds!)
+  Healthy LSA Age ................. < 1800 seconds
+  Cost range ...................... 16-bit, 1–65,535, lowest total wins
+  Backbone area ................... 0.0.0.0, mandatory, hub for all areas
+  Area ID notation ................ decimal 10 == dotted 0.0.0.10
+  LSDBs on a router ............... one FULL LSDB per connected area
+
+KEY BEHAVIOURS
+  LSA advertises LINKS (facts), never routes (answers)
+  Route cost = sum of EXIT interface costs
+  Cost is directional; symmetry is the engineer's job
+  Change floods + SPF recalc contained WITHIN the area
+  Full = identical synchronised LSDBs between neighbours
+  Loops (link-state) = unsynchronised LSDBs
+  External LSA: ADV Router = the ASBR; holding != advertising
+
+DESIGN RULES
+  Areas: pay design/troubleshooting complexity to buy contained blast
+  radius — "a boundary you draw is a boundary you own at 2 AM."
+  Cost changes near parallel paths/firewalls: change in matched pairs,
+  verify traceroute in BOTH directions.
+
+ROLE CHECKLIST (run ALL FOUR, every time)
+  Internal : ALL interfaces in one area?
+  Backbone : >=1 interface in Area 0?
+  ABR      : interfaces in multiple areas?
+  ASBR     : redistributes non-OSPF routes?
+
+-----------------------------------------------------------------------
+FLASHCARDS
+-----------------------------------------------------------------------
+Q: OSPF pipeline, in order?
+A: LSDB -> Dijkstra -> SPF tree -> OSPF routes -> routing table.
+
+Q: What does an LSA advertise?
+A: The router's own links: connected networks + interface costs.
+   Facts, never routes.
+
+Q: What is the LSDB?
+A: The collection of all LSAs (own + received) — the shared map.
+   Identical on every router in the same area.
+
+Q: OSPF steady-state update behaviour?
+A: Periodic re-advertisement every 30 minutes; otherwise silent unless
+   a topology change fires a triggered update.
+
+Q: What number does RIP plant in OSPF exam questions?
+A: 30 SECONDS. OSPF's periodic refresh is 30 MINUTES. Read units twice.
+
+Q: OSPF cost — range and rule?
+A: 16-bit, 1 to 65,535; lowest TOTAL path cost wins.
+
+Q: How is a path's total cost computed?
+A: Sum of EXIT interface costs along the path.
+
+Q: Two ends of a link have costs 1 and 2 — what does each direction pay?
+A: Its own exit cost: 1 one way, 2 the other. Cost is directional.
+
+Q: What can asymmetric OSPF costs break, and how?
+A: Stateful firewalls: SYN goes out one path, SYN-ACK returns via
+   another box with no session state -> reply dropped. All routing
+   tables technically correct.
+
+Q: Identical LSDBs — identical trees?
+A: No. Identical MAPS; different trees (each rooted at its own router);
+   never contradictory because same facts.
+
+Q: A routing loop in a link-state network usually means?
+A: Unsynchronised LSDBs — different maps, not a broken algorithm.
+
+Q: What does the Full adjacency state certify?
+A: The two neighbours' LSDBs are identical and synchronised — routing
+   through each other is now safe.
+
+Q: Two costs of one flat LSDB?
+A: (1) Unbounded database size/CPU on every router; (2) blast radius —
+   any flap anywhere forces SPF recalculation everywhere.
+
+Q: How many LSDBs does an ABR keep?
+A: One separate FULL LSDB per connected area. Never merged.
+
+Q: Backbone area rules?
+A: Must be Area 0.0.0.0; all other areas must connect to it
+   (physically or via virtual link); it distributes inter-area info.
+
+Q: Area ID 10 vs 0.0.0.10?
+A: The same 32-bit number in two notations.
+
+Q: In `database brief`, how do you spot an ABR?
+A: Multiple "Router Link States (Area x)" sections — one per LSDB.
+
+Q: External LSAs appear in a router's database — is it the ASBR?
+A: Only if the ADV Router is its own ID. Holding != advertising.
+
+Q: Healthy LSA Age?
+A: Under 1800 seconds (refreshed every 30 minutes).
+
+Q: The four router-role tests?
+A: Internal (ALL interfaces one area) / Backbone (>=1 in Area 0) /
+   ABR (multiple areas) / ASBR (redistributes). Run all four, always.
+
+-----------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 16: The Map Room
+-----------------------------------------------------------------------
+Generate a 10–14 minute episode of the tech-story podcast "The Packet
+Path". Warm, wry narrator. Two voices where useful (Señor: dry, odd,
+quietly demanding; Junior: eager, overconfident). Structure:
+
+COLD OPEN: A meeting room with the aircon switched off. Butcher's paper
+on the wall: a hand-drawn map of the entire LoFinance network — every
+router, every link, small red numbers on each line. Señor claims he
+didn't draw it from memory. He COPIED it. From inside a firewall.
+
+ACT 1 — THE COMPLAINT: Junior complained in writing that the hub
+"wastes memory storing stuff that isn't even routes." Explain the
+pipeline: LSDB -> Dijkstra -> SPF tree -> routes -> routing table; the
+routing table is just the last exhaust of the pipe. Then answer
+Junior's "RIP fills the table too, with less memory": the map buys
+INDEPENDENCE. Use the analogy: distance-vector is routing by rumour —
+waiting on a daisy chain of retellings; link-state routers wait only
+for FACTS, then compute their own answers locally. Callback: this is
+what would have saved the Parramatta outage. Wall quote: "Rumour
+spreads answers. Link-state spreads facts."
+
+ACT 2 — HOW FOUR BOXES DRAW ONE MAP: A router's only firsthand truth is
+its own links and costs; it testifies via LSAs (facts, never answers);
+the LSDB is the collection of everyone's testimony; acknowledgements
+mean nothing gets lost in the post. 30-minute periodic refresh,
+triggered updates in between — and warn listeners about the exam trap:
+"30 seconds" is RIP's number wearing OSPF's clothes.
+
+ACT 3 — THE MATHS AND THE TRAP: Walk the five-router example quickly:
+R2 to Net 5, via R3 = 1+2 = 3, via R4 = 3+1+2 = 6, cheapest wins, the
+tree is born. Then the student's own question steals the show: what if
+the two ends of a link have DIFFERENT costs? Cost is paid on exit —
+directional — and across parallel paths that creates asymmetric
+routing that silently murders stateful firewalls: SYN north, SYN-ACK
+south, no session state, drop. Every routing table technically
+correct. "Cost is paid on exit. Symmetry is your job, not OSPF's."
+
+ACT 4 — AREAS AND THE PROOF: Same map, DIFFERENT trees, zero
+contradictions; loops mean unsynchronised databases; Full is the
+moment the bet becomes safe. Flat LSDB's two costs (size + blast
+radius) and areas as the fix: separate LSDB per area, backbone 0.0.0.0
+mandatory, "a boundary you draw is a boundary you own at 2 AM." Climax:
+`get router info ospf database brief` on the hub — printed per area,
+two sections because two LSDBs, one lonely external LSA (the compliance
+subnet, exactly as Penny demanded) — held up against the paper map.
+Line for line. Match. The map gets FRAMED above Junior's desk. Junior,
+grudgingly: "It's actually better than what's in Confluence."
+
+JUNIOR'S LESSON: His memory complaint was a good question wearing a bad
+attitude — and the answer (independence) is the whole reason link-state
+exists.
+
+OUTRO / TEASER: Friday, 5:47 PM. Señor takes the COWBOY HAT off the
+shelf. Monday: a direct backup tunnel, DR site to Parramatta, built
+ALONE — and Señor has already broken both ends. "The tunnel will not
+come up, and when you fix that, the routing will lie to you. Two
+firewalls. No handshake. Bring coffee."
+
+-----------------------------------------------------------------------
+END OF PACK
+-----------------------------------------------------------------------

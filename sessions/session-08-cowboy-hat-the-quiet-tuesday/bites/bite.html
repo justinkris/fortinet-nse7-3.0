@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 8 Bite — Cowboy Hat: The Quiet Tuesday</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:32px 40px 24px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px;}
+header h1{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:#fbf7ec;}
+header h1 em{color:var(--ink-accent);font-style:italic;font-weight:500;}
+main{max-width:760px;margin:0 auto;padding:28px 40px 50px;}
+.sec{margin-bottom:28px;}
+.sec h2{font-family:'Playfair Display',serif;font-size:21px;padding-left:12px;border-left:3px solid var(--blue);margin-bottom:10px;}
+.sec p, .sec li{font-size:16px;line-height:1.65;color:var(--text-soft);}
+.sec ul{padding-left:20px;margin-bottom:6px;}
+.sec li{margin-bottom:4px;}
+.sec strong{color:var(--text);font-weight:600;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 8px 8px 0;padding:10px 16px;margin:10px 0;font-size:15px;color:var(--text-soft);}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.code{background:var(--ink-dark);border-radius:8px;padding:12px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:#e8efff;line-height:1.6;white-space:pre-wrap;overflow-x:auto;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.card h3{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+.card p{font-size:14.5px;}
+footer{padding:20px 40px;text-align:center;font-family:'Outfit',sans-serif;font-size:10px;color:var(--text-muted);letter-spacing:0.06em;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 08</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Bite</span></div>
+  <div class="eyebrow">SESSION 8 · BITE · 5-MINUTE REVISION</div>
+  <h1>Cowboy Hat: <em>The Quiet Tuesday</em></h1>
+</header>
+<main>
+
+<div class="sec">
+  <h2>The Two Faults</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Ticket 1</h3>
+      <p>VLAN 30 ↔ Finance leak. A software switch (<code>OpsBridge</code>) had both VLAN interfaces as members — bridged them at L2, so the correct deny policy never got evaluated at all.</p>
+    </div>
+    <div class="card">
+      <h3>Ticket 2</h3>
+      <p>Guest-WiFi total outage. Session override cloned from root (<code>session 50</code>) — table filled up under real load, every new session rejected.</p>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>The Signature to Recognize</h2>
+  <p><strong>Same dev index in/out + policy_id=0 + real traffic</strong> = bridged/switched, never reached policy. Different from a genuine deny, which usually leaves no session at all — check the traffic log for that.</p>
+  <div class="code">diagnose sys session filter src/dst → session list
+diagnose netlink interface list   → find master=&lt;idx&gt;
+show system switch-interface      → confirm the bridge</div>
+</div>
+
+<div class="sec">
+  <h2>The Fix (Ticket 1)</h2>
+  <div class="code">config system switch-interface
+    delete "OpsBridge"
+end
+diagnose sys session clear   (against the active filter — clears the stale, live leak)</div>
+</div>
+
+<div class="sec">
+  <h2>Resource Ceilings (Ticket 2)</h2>
+  <div class="callout callout-amber"><strong>0 = no override</strong>, draws from shared global pool. NOT "zero allowed." A real number (like Guest-WiFi's 50) is a hard cap.</div>
+  <div class="code">config global
+config system vdom-property
+edit "Guest-WiFi"
+    set session 0
+next
+end
+diagnose sys session stat   → session_count vs session_limit, watch "clash"</div>
+  <div class="callout callout-green"><strong>Baseline first, cap after.</strong> Unblock now with 0, monitor real usage, set a deliberate number later — never a permanent guess.</div>
+</div>
+
+<div class="sec">
+  <h2>One Rule Worth Memorizing</h2>
+  <p>VDOM isolation isn't just interfaces/routes/policies — it's config-object namespaces too. A <code>switch-interface</code> object built in one VDOM literally cannot see or reference an interface in a different VDOM. No link, no route, no shared object = no path, period.</p>
+</div>
+
+</main>
+<footer>LoFinance NSE7 EF 7.6 · Session 8 Bite</footer>
+</body>
+</html>

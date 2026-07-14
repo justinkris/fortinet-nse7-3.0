@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 03 Complete — Life of a Packet</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:48px 60px 36px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;color:#fbf7ec;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-size:16px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:10px;line-height:1.6;max-width:760px;}
+.motivation-banner{padding:20px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+.motivation-text{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;}
+.motivation-text em{font-style:italic;color:var(--blue);}
+main{max-width:980px;margin:0 auto;padding:36px 40px 70px;}
+.section-block{margin-bottom:44px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+h2{font-family:'Playfair Display',serif;font-size:27px;font-weight:700;padding-left:14px;border-left:3px solid var(--blue);margin-bottom:14px;}
+h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+h3{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;margin:18px 0 8px;color:var(--text);}
+p{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+p strong{color:var(--text);font-weight:600;}
+p em{color:var(--blue);font-style:italic;}
+ul,ol{padding-left:22px;margin-bottom:14px;}
+li{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+li strong{color:var(--text);font-weight:600;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-size:16px;line-height:1.65;}
+.callout strong{color:var(--text);font-weight:600;}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+.data-table td{font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+.data-table td:first-child{color:var(--text);font-weight:600;}
+.code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+.code-block pre{padding:16px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;line-height:1.65;color:#e8efff;}
+.pipeline{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0;align-items:center;}
+.pipe-step{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--text);}
+.pipe-step.cpu{border-color:var(--amber-border);background:var(--amber-light);color:var(--amber);}
+.pipe-step.np{border-color:var(--blue-border);background:var(--blue-light);color:var(--blue);}
+.pipe-step.cp{border-color:var(--green-border);background:var(--green-light);color:var(--green);}
+.pipe-arrow{color:var(--text-muted);font-size:16px;}
+.analogy-box{background:var(--surface-2);border:1px dashed var(--border);border-radius:12px;padding:16px 20px;margin:16px 0;}
+.analogy-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+footer{text-align:center;padding:30px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 03</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Complete Guide</span></div>
+  <div class="header-eyebrow">● Study Guide · NSE7 EF 7.6 · Session 03</div>
+  <h1>Life of a <em>Packet</em></h1>
+  <p>Marcus's order enters through an interface and leaves through another. Between those two points is the entire architecture of FortiOS — and by the end of this guide, you can trace every stage of that journey by name.</p>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">The pipeline is <em>identical everywhere</em> — placement only changes which policies and profiles apply to it.</div>
+</div>
+
+<main>
+
+  <div class="section-block">
+    <div class="section-label">Section 1</div>
+    <h2>Why Cheap Checks Come <em>First</em></h2>
+    <p>Before any routing decision, before NAT, before deep content inspection — FortiGate runs a small set of mandatory checks right at the network interface: <strong>Access Control List (ACL)</strong>, <strong>Host Protection Engine (HPE)</strong>, and <strong>IP integrity header checking</strong>.</p>
+    <p>The engineering logic is <strong>triage before you invest</strong>: these checks are cheap — a few cycles of "is this header well-formed, is this traffic allowed on this interface at all." Running malformed or clearly-illegitimate traffic through an expensive engine like IPS or antivirus first would waste the FortiGate's most valuable resource (CPU/CP cycles) on traffic that never deserved the scrutiny.</p>
+    <div class="callout"><strong>Senior insight:</strong> good security architecture spends expensive resources last, on traffic that has already earned the right to be examined closely.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 2</div>
+    <h2>Two Specialists: <em>NP</em> and <em>CP</em></h2>
+    <p>FortiGate hardware acceleration splits into two purpose-built processor families, both called an SPU (security processing unit):</p>
+    <table class="data-table">
+      <tr><th>Processor</th><th>Job</th><th>Handles</th><th>Latest model</th></tr>
+      <tr><td>NP (Network Processor)</td><td>Network-level — works at the interface</td><td>Forwarding/offload, IP integrity checks, IPsec encrypt/decrypt</td><td>NP7 (up to 12M sessions)</td></tr>
+      <tr><td>CP (Content Processor)</td><td>Content-level — works on payload/application data</td><td>IPS pattern matching, SSL/TLS decrypt for deep inspection, AV signature work</td><td>CP10</td></tr>
+    </table>
+    <p>Entry-level and mid-range FortiGates combine both onto a single chip called an <strong>SP</strong> (e.g. SP5) — a lighter-weight version of both NP and CP on one die, at lower throughput.</p>
+    <div class="analogy-box">
+      <div class="analogy-label">Mental model</div>
+      <p style="margin-bottom:0;">NP is the specialist who only moves things — fast, wire-speed, no judgment calls. CP is the specialist who reads what's inside — slower, but the one you trust to actually inspect content. Same principle as ISFW-vs-DCFW role specialization from Session 2, just at the chip level instead of the box level.</p>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 3</div>
+    <h2>Session Establishment: What Stays on the <em>CPU</em></h2>
+    <p>The very first packets of any session must pass through the CPU, because there is no session yet for the NP to recognize:</p>
+    <ul>
+      <li><strong>TCP:</strong> the entire three-way handshake (SYN, SYN/ACK, ACK)</li>
+      <li><strong>UDP:</strong> just the first packet</li>
+    </ul>
+    <p>Once the CPU establishes the session and installs a <strong>session key</strong> into the NP, all subsequent packets for that session take the <em>fast path</em> — routed directly by the NP, bypassing the CPU's routing and kernel processing entirely.</p>
+    <div class="callout callout-amber"><strong>Exception that matters:</strong> FIN and RST packets — which tear a session down — always go back through the CPU, no matter how long that session had been fast-pathing through the NP. Session <em>state changes</em> (both setup and teardown) are CPU-owned; the NP only forwards for sessions whose state it already knows.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 4</div>
+    <h2>The Kernel Pipeline, in <em>Order</em></h2>
+    <p>For the first packets of a new session, FortiOS runs through a fixed sequence. Here is the order, with the reasoning for why it can't be any other way:</p>
+    <div class="pipeline">
+      <div class="pipe-step cpu">Interface In</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step np">NP: ACL / HPE / Header Check</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step cpu">Destination NAT</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step cpu">Routing / RPF / SD-WAN</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step cpu">Policy Lookup / Stateful Inspection</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step cp">CP: UTM/NGFW Content Inspection</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step cpu">Source NAT</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step np">NP: Egress Fast Path</div><span class="pipe-arrow">→</span>
+      <div class="pipe-step cpu">Interface Out</div>
+    </div>
+    <ol>
+      <li><strong>Destination NAT</strong> — if the packet's addressed to a virtual IP, FortiGate must resolve the real destination before anything downstream can act on it.</li>
+      <li><strong>Routing decision</strong> (+ RPF check + SD-WAN path selection) — needs the real destination resolved first, to pick the correct egress interface.</li>
+      <li><strong>Policy lookup / stateful inspection</strong> — needs the resolved destination interface to match a policy; can't evaluate "is this session allowed" against a raw, unrouted packet.</li>
+      <li><strong>Source NAT</strong> — happens last, on egress, after policy has already made its decision, so hiding the real source address can't interfere with anything upstream.</li>
+    </ol>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 5</div>
+    <h2>Is Segmentation <em>Real</em>? The Pipeline Says Yes</h2>
+    <p>Does an order that never leaves the building (floor-to-floor, east-west) skip any pipeline stages that an order headed to an exchange (north-south) would go through?</p>
+    <p><strong>Destination NAT can be a no-op</strong> if there's no virtual IP configured for internal traffic — the stage still runs, it just has nothing to translate.</p>
+    <p><strong>Policy lookup is never a no-op.</strong> Every packet — internal or external — is evaluated against policy, or it dies at the <strong>implicit deny</strong> rule at the end of the policy list. There is no "internal traffic, skip the check" shortcut anywhere in FortiOS.</p>
+    <div class="callout callout-green"><strong>Why this matters:</strong> this is exactly what makes segmentation <em>real</em> instead of decorative (callback to Session 2's "VLAN with gateway on a switch isn't segmentation"). The pipeline is the mechanism that forces inspection, regardless of where traffic originates.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 6</div>
+    <h2>NP Direct Architecture <em>(Stretch)</em></h2>
+    <p>General NP offload can still succeed even when ingress and egress interfaces sit on <em>different</em> NP chips — the chips communicate over the internal switch fabric (ISF).</p>
+    <p><strong>NP Direct Architecture</strong> is a specific, more aggressive feature: on FortiGates with two or more NP6 processors, or NP7 devices with ultralow-latency interfaces, the network processor is wired directly to the interfaces, eliminating the ISF hop entirely. This requires all traffic to pass through the offloaded interfaces of <strong>one</strong> NP chip — cross-chip traffic loses the direct-path benefit and falls back to ISF-mediated (still offloaded, just not lowest-latency).</p>
+    <div class="callout"><strong>Why LoFinance cares:</strong> on a trading floor, the difference between an ISF hop and a direct NP path is measured in microseconds — and microseconds are money.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 7</div>
+    <h2>Verification Commands</h2>
+    <div class="code-block">
+      <div class="code-label">Identify the ASIC / model on the box</div>
+      <pre><code># get hardware status
+Model name: FortiGate-900G
+ASIC version: CP9</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">Identify NP/CP hardware IDs on the PCI bus</div>
+      <pre><code># diagnose hardware lspci | grep 1a29
+9b:00.0 Class 1000: Device 1a29:4e37   ← NPID 4e37 = NP7 (4e36 = NP6)</code></pre>
+    </div>
+    <p><strong>Why the second command matters:</strong> <code>get hardware status</code> gives you one ASIC-version summary line for the whole box. On a FortiGate with two or more NP chips, that single line doesn't tell you <em>which physical interfaces map to which specific chip</em> — information you need to plan NP Direct topology correctly and to distribute sessions evenly across NP processors.</p>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Section 8</div>
+    <h2>Exam Tips</h2>
+    <ul>
+      <li>Watch qualifying words like <strong>"established"</strong> and <strong>"still"</strong> — a question about an already-offloaded session is asking about what happens <em>after</em> establishment (FIN/RST), not the handshake that created it.</li>
+      <li>The pipeline order (DNAT → Routing → Policy → SNAT) is a recurring diagram source — memorize the <em>reasoning</em>, not just the sequence, since questions often test edge cases (e.g. "what if there's no VIP?").</li>
+      <li>NP Direct requires same-chip interfaces; general NP offload does not — don't conflate the two.</li>
+      <li>Virtual FortiGates run the identical pipeline logically, but the CPU handles everything — there's no NP/CP to offload to.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Key Takeaways</div>
+    <h2>What to Carry <em>Forward</em></h2>
+    <ul>
+      <li>Cheap checks before expensive ones — triage is a design principle, not just a FortiGate quirk.</li>
+      <li>NP = network-level specialist; CP = content-level specialist — same specialization logic as firewall role placement.</li>
+      <li>Session state changes (setup, teardown) are CPU territory; everything else in an established session can fast-path.</li>
+      <li>The pipeline never skips policy lookup — that's what makes segmentation enforceable rather than cosmetic.</li>
+    </ul>
+  </div>
+
+</main>
+<footer>LoFinance — NSE7 Enterprise Firewall 7.6 — Session 03 — Life of a Packet</footer>
+</body>
+</html>

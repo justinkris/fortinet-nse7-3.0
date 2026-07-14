@@ -1,0 +1,208 @@
+SESSION 15 SUMMARY — "Speaking OSPF on FortiGate"
+(OSPF network types, redistribution, route filtering, OSPF commands |
+Study guide 05 Dynamic Routing Protocols, pp. 129–131)
+Written for Claude. Read before Session 16.
+
+STORY EVENTS
+------------
+Tuesday 7:41 AM. Junior came in at 6:30 to "surprise everyone": cabled Chatswood's
+FortiGate, brought up its dial-up IPsec tunnel to the hub's shared To-Spokes interface
+(net-device disable — same dial-up setup as Parramatta and DR), then enabled OSPF on
+both ends with `set network-type broadcast` based on a blog post ("the internet is
+basically a big Ethernet"). Result: tunnel UP, pings work, OSPF neighbor table
+completely empty for 20 minutes. Señor taped a sticky note to the monitor: "EXHIBIT A.
+DO NOT FIX." — the broken config was preserved as a teaching object throughout.
+
+SESSION-OPENING COACHING MOMENT (important for continuity): Señor directly and
+collaboratively named the "finish the verdict" pattern to the student (3 data points:
+S12 stateful firewall, S13 DPD, S14 loop prevention), framed positively — "your first
+answers are correct at the core; lead with the mechanism, not just the verdict." New
+protocol established: Señor no longer asks "and why?" — if an answer is bare, he simply
+WAITS silently. This was invoked twice during the session (see below) and worked.
+
+Session was split across two days: student paused mid-Socratic-thread at the "what does
+P2MP do about the DR" question ("Good night, let's pick this up tomorrow") and resumed
+next morning ("Wednesday 7:38 AM") with the whiteboard untouched. Resume was clean.
+
+Running gag status: Riley/Señor "did you promise Penny a date" thread not touched this
+session — still available.
+
+BUSINESS PROBLEM
+-----------------
+Chatswood must join the routing domain as OSPF Area 1 via the dial-up hub. Junior's
+broadcast network type prevented any adjacency from forming. Secondary problem
+discovered post-fix: the DR site's legacy management subnet (10.99.50.0/24) exists only
+as a static route on the hub — OSPF doesn't advertise it, spokes can't reach it.
+Penny's compliance requirement: "only the management subnet may ever leave that box via
+redistribution, nothing else, ever."
+
+OUTCOME: Chatswood live as Area 1. Hub reconfigured point-to-multipoint, adjacencies
+Full to all three spokes. Redistribute static enabled, filtered by a one-line access
+list (MGMT-ONLY, exact-match 10.99.50.0/24). Hub now simultaneously ABR + ASBR +
+backbone router.
+
+TECHNICAL CONCEPTS COVERED
+---------------------------
+1. OSPF NETWORK TYPES as SETS OF ASSUMPTIONS ABOUT THE MEDIUM (core mental model of the
+   session — "config fails when assumptions and reality diverge; the CLI accepts the
+   lie cheerfully"):
+   - Broadcast: assumes shared medium where one multicast frame reaches everyone free
+     (Ethernet). Runs DR/BDR election. 224.0.0.5 AllSPFRouters (hellos; updates FROM
+     DR), 224.0.0.6 AllDRouters (updates TO DR/BDR).
+   - Point-to-point: FortiGate DEFAULT on tunnel interfaces; assumes exactly ONE
+     far-side neighbor. Correct for normal site-to-site tunnels.
+   - Point-to-multipoint: for dial-up hub with net-device disable (one shared interface,
+     many spokes). Treats interface as a bundle of individual P2P conversations;
+     REPLICATES AND UNICASTS hellos/updates per spoke; NO DR/BDR ELECTION AT ALL; each
+     spoke forms exactly one adjacency (with the hub); spokes learn each other's
+     networks via hub flooding LSAs, never via each other's hellos.
+2. WHY JUNIOR'S CONFIG PRODUCED TOTAL SILENCE (not flapping/half-formed): broadcast
+   mode's multicast hello has no shared medium to deliver it and broadcast mode does
+   not replicate per tunnel → hello dies at the interface → no hellos received → table
+   EMPTY, not broken. Also broadcast would attempt a DR election among spokes who
+   cannot hear each other's votes.
+3. NEIGHBOR OUTPUT AS FORENSIC FINGERPRINT: `get router info ospf neighbor` role column
+   reveals network type without reading config. Full/DR / Full/BDR / Full/DROther →
+   election happened → broadcast. `Full/ -` → no election possible → P2P or P2MP.
+   DROther is a CAMPAIGN RESULT (stood in an election and lost), not a neutral word for
+   "ordinary neighbor" — student initially answered DROther for P2MP and this
+   distinction landed hard. Exam trap explicitly flagged.
+4. ADJACENCY STATE LADDER retrieval: Init → 2-Way → ExStart → Exchange → Loading →
+   FULL; Full = identical LSDBs, healthy adjacency parks there. Student recalled Full
+   cold.
+5. REDISTRIBUTION: mechanism for injecting non-OSPF routes (static/connected/BGP/RIP/
+   ISIS) into OSPF; performing it makes the router an ASBR. DEFAULT: ALL SOURCES
+   DISABLED. Reasoned (not recalled) safety rationale built on Parramatta precedent:
+   open-by-default would have flooded the emergency statics and unencrypted default
+   route fleet-wide automatically — OSPF's superpower (automatic domain-wide trust) is
+   exactly its blast radius. `redistribute static` is ALL-OR-NOTHING without filtering.
+6. ROUTE FILTERING LADDER: access lists (simple prefix permit/deny) → prefix lists
+   (adds ge/le mask-length operators; applies only to distribute-list-in) → route maps
+   (can use access/prefix lists as match objects AND modify attributes). Design
+   principle taught: choose the LEAST powerful tool that meets the requirement —
+   "complexity you don't need is a standing tax on every future incident / paid at
+   2 AM." Penny's one-prefix requirement → access list with exact-match.
+7. COMPOUND ROUTER ROLES revisited on live topology: hub = ABR (Area 0 + Area 1) +
+   ASBR (redistributes static) + backbone router (interface in Area 0). NOT internal
+   (requires ALL interfaces in one area).
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "A network type is a set of assumptions about the medium" — session's anchor model.
+- "Deaf interface" — Señor wrote 'Deaf' above To-Spokes: the multicast hello has no
+  medium that can hear it.
+- "DROther is a campaign result, not a description" — role column only has content in
+  worlds where an election ran.
+- "The role column is a fingerprint of the network type."
+- "Redistribution default-closed because automatic trust = blast radius" (Parramatta
+  callback).
+- "Least powerful tool that meets the requirement" / "complexity is a 2 AM tax."
+- Role checklist: run ALL FOUR definitions as independent true/false tests, every time.
+
+KEY CLI COMMANDS DISCUSSED (dictated by Señor per standing S13 instruction; student
+reasoned about them, never asked to produce syntax cold)
+-----------------------------
+- config router ospf / config ospf-interface / edit Hub / set interface To-Spokes /
+  set network-type point-to-multipoint  (the fix — one line changed from Exhibit A)
+- get router info ospf neighbor  → Full/ - per spoke, no DR anywhere (output shown and
+  interpreted)
+- get router info routing-table ospf  (used to spot the missing management subnet)
+- config redistribute static / set status enable (default disable across
+  bgp/connected/isis/rip/static)
+- config router access-list / edit MGMT-ONLY / set prefix 10.99.50.0 255.255.255.0 /
+  set exact-match enable
+- Command table from p.131 referenced: get router info ospf interface / status /
+  database brief / database router lsa / get router info bfd neighbor (light touch —
+  database commands deliberately deferred to S16).
+
+TROUBLESHOOTING APPROACH
+---------------------------
+Textbook follow-the-packet: (1) symptom separation — tunnel up + pings OK + OSPF
+silent = transport fine, protocol assumptions wrong; (2) traced the multicast hello to
+its death at the interface; (3) distinguished EMPTY table from BROKEN table as
+diagnostic evidence; (4) eliminated P2P by its one-neighbor assumption; (5) selected
+P2MP by mechanism; (6) verified with neighbor output and read the fingerprint.
+
+CONFIGURATION DECISIONS
+--------------------------
+- Hub To-Spokes: network-type point-to-multipoint (spokes' dial-up terminates here;
+  net-device disable).
+- redistribute static: enabled, filtered to exactly 10.99.50.0/24 via access list
+  MGMT-ONLY with exact-match (compliance: nothing else ever leaves).
+- Deliberately chose access list over prefix list/route map (no ge/le need, no
+  attribute modification need).
+
+TOPOLOGY CHANGES
+-------------------
+Chatswood FortiGate LIVE — OSPF Area 1, dial-up spoke to HQ To-Spokes hub interface
+(point-to-multipoint). Hub is now ABR + ASBR + backbone router, redistributing one
+filtered static (10.99.50.0/24). Fleet: HQ hub (Area 0), DR spoke, Parramatta spoke,
+Chatswood spoke (Area 1).
+
+EXAM-RELEVANT NOTES
+----------------------
+- Dial-up hub + net-device disable → hub interface MUST be point-to-multipoint (p.129).
+- Default network type on FortiGate tunnel interfaces: point-to-point.
+- Full/ - vs Full/DROther as network-type fingerprint — high-value distractor.
+- Redistribution default disabled for ALL protocols (p.130).
+- Filtering comparison p.131: access list = simple prefix; prefix list = ge/le, only
+  distribute-list-in; route map = advanced, can modify attributes, can embed the others.
+- Compound roles "select all that apply" — see Q5 miss below.
+- 224.0.0.5 vs 224.0.0.6 precision: student had the two-address concept right but
+  swapped direction slightly (corrected: .5 = AllSPFRouters, hellos + DR sends updates;
+  .6 = AllDRouters, updates sent TO DR/BDR).
+
+EXAM QUESTIONS: 5 asked. Q1 (network type C) ✓, Q2 (Full/ - meaning B) ✓, Q3
+(redistribution default D) ✓, Q4 (prefix list ge/le B) ✓, Q5 (select-all roles) —
+answered A,B,C,D; correct B,C,D. Included Internal wrongly. Score 4.5/5. NOTE: Q5 is
+the OPPOSITE failure mode from S14's Q3 (then: stopped one label short; now:
+over-selected everything). Same root cause — not running each definition as an
+independent true/false test. Second data point on compound-role pattern, now with a
+richer shape: the issue is the CHECKING DISCIPLINE, not under/over-selection per se.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+---------------------------------------
+Junior configured network-type broadcast on a dial-up hub interface from a blog post's
+"internet is basically big Ethernet" reasoning. Taught: network types encode medium
+assumptions; the CLI happily accepts configs whose assumptions are false; an EMPTY
+neighbor table is itself evidence (hellos never delivered) vs a flapping one. Exhibit A
+framing (preserving the broken config untouched) worked well dramatically and
+pedagogically.
+
+STUDENT PERFORMANCE HIGHLIGHTS (for register cross-reference)
+-----------------------------
+- "Finish the verdict" pattern NAMED directly at open; new wait-protocol invoked twice:
+  (a) "They should be showing as neighbors" (bare), (b) initial redistribution answer
+  omitted the default-question third. Both times student recovered with mechanism after
+  the silent wait / nudge. ALSO: multiple answers this session led with mechanism
+  unprompted (DR/BDR explanation, P2P elimination, filtering-tool elimination) —
+  visible early improvement within one session of naming the pattern.
+- Filtering-tool question answered by elimination-of-mechanism, near-perfect senior
+  reasoning ("we don't need to modify attributes so no route maps; even with prefix
+  lists we don't need ge/le").
+- One genuine reasoning trap stepped in: asserted P2MP would elect a DR with hub as
+  winner — resolved via his OWN prior explanation of what a DR is for.
+- Multi-day pause/resume mid-thread handled cleanly; retention across the pause was
+  full.
+
+TEASER DELIVERED FOR SESSION 16 ("The Map Room")
+-------------------------------------------------------------------
+Thursday morning: Señor waits at the desk with a hand-drawn map of the entire
+LoFinance network — every router, link, and cost. "Every router in this building
+carries one of these in its head. Identical copies. They rebuild it from gossip and
+mathematics, and they never disagree. Tomorrow, you prove it. We open the database and
+read the map the machines drew." → LSDB, LSAs, cost, Dijkstra, the OSPF tree, areas
+(Dynamic Routing Supplement pp. 308–316). Note: `get router info ospf database brief`
+and `database router lsa` were name-dropped this session and deferred to S16 — natural
+opening hook.
+
+CARRIED-FORWARD OBLIGATIONS
+---------------------------
+- FortiManager IPsec templates STILL not taught (carried since S13; deferred from S15
+  because OSPF config filled the session, per register's explicit "defer rather than
+  compress" instruction). Must find a slot in S16 or explicitly reschedule.
+- "Redundancy = more entries" watch item (S13): NOT cleanly tested this session — no
+  static/OSPF coexistence decision arose. Still open.
+
+Date and Time completed: Wednesday (in-story) / real session concluded Monday,
+13 July 2026 (session spanned two sittings with an overnight pause).

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 03 Bite — Life of a Packet</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,500&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:32px 40px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px;}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+h1 em{color:var(--ink-accent);font-style:italic;}
+main{max-width:760px;margin:0 auto;padding:30px 30px 60px;}
+h2{font-family:'Playfair Display',serif;font-size:20px;padding-left:12px;border-left:3px solid var(--blue);margin:26px 0 10px;}
+p,li{font-size:16.5px;line-height:1.6;color:var(--text-soft);margin-bottom:8px;}
+li{margin-left:20px;}
+strong{color:var(--text);}
+.pipe{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;line-height:2;margin:10px 0;}
+.callout{border-left:3px solid var(--amber-border);background:var(--amber-light);border-radius:0 8px 8px 0;padding:10px 16px;margin:12px 0;font-size:15px;}
+footer{text-align:center;padding:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 03</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Bite</span></div>
+  <div class="eyebrow">Session 03 · 5-Minute Bite</div>
+  <h1>Life of a <em>Packet</em></h1>
+</header>
+<main>
+  <h2>The Core Idea</h2>
+  <p>Cheap checks first, expensive checks last. Marcus's order proves this: FortiGate does ACL / HPE / IP header checks at the interface (cheap, hardware, fast) <strong>before</strong> spending IPS/AV/SSL-decrypt cycles (expensive) on it.</p>
+
+  <h2>Two Chips, Two Jobs</h2>
+  <p><strong>NP</strong> (network processor) = forwarding specialist, works at the interface, wire-speed. <strong>CP</strong> (content processor) = content specialist, does IPS pattern matching / SSL decrypt / AV. Entry-level boxes combine both into one <strong>SP</strong> chip.</p>
+
+  <h2>Session Setup vs Fast Path</h2>
+  <ul>
+    <li>TCP: whole 3-way handshake through the CPU. UDP: just the first packet.</li>
+    <li>Session key installed in NP → rest of the session fast-paths, skips CPU.</li>
+    <li><strong>FIN/RST always go to the CPU</strong> — session teardown is CPU-owned, no matter how long it was offloaded.</li>
+  </ul>
+
+  <h2>The Pipeline Order</h2>
+  <div class="pipe">DNAT → Routing/RPF/SD-WAN → Policy Lookup → (UTM/CP inspection) → SNAT</div>
+  <p>Why: DNAT resolves the real destination before routing can pick an interface. Policy needs the resolved interface. SNAT happens last, after policy already decided.</p>
+
+  <h2>Segmentation Is Real Because...</h2>
+  <p>DNAT can be a no-op internally (no VIP needed). <strong>Policy lookup is never a no-op</strong> — implicit deny applies to every packet, everywhere. That's the mechanism that makes segmentation enforceable, not cosmetic.</p>
+
+  <div class="callout"><strong>Trap to remember:</strong> "established session" questions are about what happens <em>after</em> setup (FIN/RST), not the handshake that created it.</div>
+
+  <h2>Two Commands</h2>
+  <p><code>get hardware status</code> → model + ASIC version.<br><code>diagnose hardware lspci | grep 1a29</code> → which chip is on which interface (needed on multi-NP boxes).</p>
+</main>
+<footer>LoFinance — Session 03 Bite</footer>
+</body>
+</html>

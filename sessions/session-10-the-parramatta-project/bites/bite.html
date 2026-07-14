@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 10 Bite — The Parramatta Project</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital@0;1&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;}
+header{padding:32px 40px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--ink-accent);margin-bottom:8px;}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+main{max-width:760px;margin:0 auto;padding:28px 24px 60px;}
+h2{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:26px 0 8px;}
+p,li{font-size:17px;color:var(--text-soft);}
+ul{margin-left:20px;margin-bottom:10px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:12px 0;}
+.card.key{border-left:4px solid var(--green);background:var(--green-light);}
+.card.trap{border-left:4px solid var(--amber);background:var(--amber-light);}
+table{width:100%;border-collapse:collapse;font-family:'Outfit',sans-serif;font-size:14px;margin:10px 0;}
+th,td{border:1px solid var(--border);padding:6px 10px;background:var(--surface);}
+th{background:#f5eed9;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+code{font-family:'Outfit',monospace;font-size:13px;background:var(--blue-light);padding:1px 5px;border-radius:4px;}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.1em;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 10</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Bite</span></div><div class="eyebrow">STUDY BITE · 5 MINUTES · SESSION 10 · IPSEC TOPOLOGY DESIGN</div><h1>The Parramatta Project</h1></header>
+<main>
+
+<h2>The one idea</h2>
+<div class="card key"><b>Judge a topology against the actual traffic pattern.</b> LoFinance's trading feed lives at HQ → all critical traffic is branch↔HQ → hub-and-spoke's only weakness (spoke-to-spoke) lands where there is no traffic. That's why it wins — not the comparison table.</div>
+
+<h2>Scaling numbers</h2>
+<table>
+<tr><th>Sites</th><th>Full mesh n(n−1)/2</th><th>Hub-and-spoke n−1</th></tr>
+<tr><td>3</td><td>3</td><td>2</td></tr>
+<tr><td>5</td><td>10</td><td>4</td></tr>
+<tr><td>10</td><td>45</td><td>9</td></tr>
+</table>
+<p>Every mesh tunnel = phase 1 + phase 2 + policies both ends + a tunnel slot. <b>Branch models hold fewer tunnels than campus models</b> — the smallest box caps a mesh design.</p>
+
+<h2>Hub-and-spoke's two costs (spoke-to-spoke only)</h2>
+<ul>
+<li><b>Latency</b> — spoke→hub→spoke = double WAN traversal.</li>
+<li><b>Hub crypto burden</b> — separate SAs/keys per tunnel, so the hub must <b>decrypt then re-encrypt</b> every spoke-to-spoke packet. Hub = bottleneck + single point of failure.</li>
+</ul>
+
+<h2>Redundancy layers</h2>
+<p>Device (HA) → Link (dual ISP) → Tunnel: bind two tunnels into one interface with <b>ipsec-aggregate</b> (LACP for tunnels): <code>set algorithm redundant</code>.</p>
+<div class="card trap"><b>Trap:</b> per-packet <code>round-robin</code> over unequal-latency links → <b>out-of-order delivery</b> → jitter/glitches for real-time flows. Use <code>redundant</code>, or <code>L3</code>/<code>L4</code> (hash pins each flow to one tunnel).</div>
+
+<h2>Phase 1 / Phase 2 / Selectors</h2>
+<ul>
+<li>Phase 1 = secure authenticated channel between the firewalls.</li>
+<li>Phase 2 = what's carried; <b>selectors</b> = declared src↔dst subnet pairs; one phase 1, many phase 2s.</li>
+<li>No matching selector → traffic never enters the tunnel. <b>Declared pipe, not an open hose.</b></li>
+<li>Your analogy: <i>a trunk link, but over a tunnel</i> — phase 1 ≈ trunk, selectors ≈ allowed VLANs (matching src/dst pairs).</li>
+<li>Selectors don't replace policies — selectors gate entry, policies inspect. Two fences.</li>
+</ul>
+
+<h2>Exam-trap flash</h2>
+<div class="card trap">"Spokes share tunnel keys" = always FALSE. Each tunnel is its own SA with its own keys — exactly why the hub decrypts/re-encrypts.</div>
+
+</main>
+<footer>LOFINANCE · SESSION 10 BITE</footer>
+</body>
+</html>

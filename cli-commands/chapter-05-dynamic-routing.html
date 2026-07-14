@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 05 — Dynamic Routing CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Chapter 05</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 05 · CLI Reference</div>
+    <h1>Dynamic Routing, <em>By Command</em></h1>
+    <p>Every OSPF and BGP command from Chapter 5 — the area knobs, the neighbor plumbing, and the get commands that tell you why an adjacency won't come up.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">When a prefix isn't in the routing table, you'll live inside <em>get router info</em>.</div>
+  <p class="motivation-sub">Config commands stand up the protocol; the get and diagnose commands tell you why the LSDB is empty or the BGP session is stuck in Idle.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-ospf-core">OSPF Core</a>
+  <a class="nav-tab" href="#section-ospf-filtering">OSPF Filtering & Get</a>
+  <a class="nav-tab" href="#section-ospf-use-cases">OSPF Use Cases</a>
+  <a class="nav-tab" href="#section-bgp-core">BGP Core</a>
+  <a class="nav-tab" href="#section-bgp-convergence">BGP Convergence</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — OSPF CORE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OSPF CORE</span>
+      </div>
+      <p class="socratic-insight">OSPF is a link-state protocol — every router in an area holds an identical LSDB. Before you paste an <code>ospf</code> block, ask what identity the router uses on the wire (router ID) and which area each interface joins. Area type and network type dictate what LSAs get flooded.</p>
+      <ul class="socratic-questions">
+        <li>What is the default OSPF area type on a FortiGate, and what CLI keyword changes it to a stub or NSSA area?</li>
+        <li>Why would you set an interface's OSPF <code>network-type</code> to <code>point-to-multipoint</code> instead of the default <code>point-to-point</code>?</li>
+      </ul>
+      <div class="answer-area" data-section="ospf-core">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Default is <code>regular</code>. Change it under <code>config area &gt; edit &lt;area-id&gt;</code> with <code>set type stub</code> or <code>set type nssa</code>. A stub blocks type-5 external LSAs (the ABR injects a default instead); an NSSA is like a stub but allows an ASBR inside via type-7 LSAs.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Dial-up hub-and-spoke IPsec, where the hub uses <code>net-device disable</code> and shares one virtual tunnel interface for many spokes. Default <code>point-to-point</code> assumes exactly two neighbors on the segment; <code>point-to-multipoint</code> lets the hub form adjacencies with every spoke over that single interface.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ospf-core">
+      <div class="section-label">SECTION 01</div>
+      <h2>OSPF <em>Core Config</em></h2>
+      <p>The commands that stand the process up: the <strong>router-id</strong>, the <strong>areas</strong>, the <strong>networks</strong>, and the per-interface <strong>network type</strong>. Every command here lives inside <code>config router ospf</code>.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router ospf
+    set router-id 2.2.2.2
+    config area
+        edit 0.0.0.1
+            set type stub
+        next
+        edit 0.0.0.3
+            set type nssa
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Bootstrap OSPF with a router ID and two non-backbone areas — one <strong>stub</strong>, one <strong>NSSA</strong>. Every OSPF network must have at least one backbone area (<code>0.0.0.0</code>); ABRs bridge non-backbone areas to it.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Default area type is <code>regular</code> and doesn't need to be declared. Stub areas block type-5 external LSAs and see external destinations only through a default route from the ABR. NSSA is a stub that <em>does</em> allow an ASBR — external routes ride type-7 LSAs and get translated to type-5 by the ABR.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>Hub # config router ospf
+    config ospf-interface
+        edit "Hub"
+            set interface To-Spokes
+            set network-type point-to-multipoint
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Per-interface OSPF network type. Default is <code>point-to-point</code>. Change to <code>point-to-multipoint</code> on a dial-up hub with <code>net-device disable</code>, where one virtual IPsec interface is shared by every spoke and the hub must form multiple adjacencies over it.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Directly connected routers with <em>one</em> neighbor per link should stay on <code>point-to-point</code>. Reach for <code>point-to-multipoint</code> when the interface has more than one neighbor and you don't want a DR election (as you would on <code>broadcast</code>).</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>R2 # config router ospf
+    config redistribute bgp
+        set status enable
+    end
+    config redistribute connected
+        set status enable
+    end
+    config redistribute static
+        set status enable
+    end
+end</code></div>
+        <p class="cmd-desc">OSPF redistribution knobs. By default OSPF <strong>does not</strong> advertise routes learned from other protocols, or even directly connected networks that aren't declared inside <code>config network</code>. Flip <code>status</code> to <code>enable</code> for each source protocol you want an ASBR to inject.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Available sources: <code>bgp</code>, <code>connected</code>, <code>isis</code>, <code>rip</code>, <code>static</code>. All default to <code>disable</code>. Injecting the wrong set is how routing loops start — always pair a <code>redistribute</code> with a route-map or prefix-list to bound what gets leaked.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>R2 # config router ospf
+    set router-id 2.2.2.2
+    config area
+        edit 0.0.0.3
+            config virtual-link
+                edit VLINK_area
+                    set peer 4.4.4.4
+                next
+            end
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Virtual link. Used when a non-backbone area (here, <code>0.0.0.10</code>) has no physical connection to area <code>0</code> — you tunnel it through a <em>transit</em> area (<code>0.0.0.3</code>) to a router that <em>is</em> in the backbone. Configure it on both ends, each pointing at the other's router-id.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Transit area cannot be a stub. Both routers need matching <code>edit &lt;area&gt;</code> and <code>set peer &lt;other-router-id&gt;</code>. The pair extends area <code>0</code> across the transit area — a stopgap when your topology grew out of order.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Regular → stub → NSSA is a spectrum of "how much external stuff do I want to see." Default is regular. Redistribute is off by default on every source — that's why "my connected net isn't advertised" is the #1 OSPF new-user question.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ospf-core" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ospf-core','OSPF Core')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ospf-core" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ospf-core')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — OSPF FILTERING & GET ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OSPF FILTERING & GET</span>
+      </div>
+      <p class="socratic-insight">Filtering OSPF has three flavors — access-list, prefix-list, and route-map — each strictly more powerful. When something isn't showing up in the routing table, five <code>get router info ospf</code> commands cover 90% of the diagnosis.</p>
+      <ul class="socratic-questions">
+        <li>What's the difference between a prefix-list and an access-list when used with <code>distribute-list-in</code>?</li>
+        <li>Which <code>get router info ospf</code> command tells you whether an adjacency reached FULL, and what does the output look like?</li>
+      </ul>
+      <div class="answer-area" data-section="ospf-filtering">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Access-list matches purely on prefix + mask. Prefix-list adds <code>ge</code> and <code>le</code> logical operators, so one rule can match "any /24 or longer inside 10.0.0.0/8." Both are only usable on the <em>inbound</em> side (<code>distribute-list-in</code>) — for outbound OSPF filtering or attribute rewrite, you need a route-map with <code>distribute-route-map-in</code>.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>get router info ospf neighbor</code>. The <code>State</code> column shows the FSM state — <code>Full/DR</code>, <code>Full/BDR</code>, or <code>Full/DROther</code> means the LSDB exchange completed. If it's stuck in <code>Init</code>, <code>2-Way</code>, or <code>ExStart</code>, the adjacency never formed — usually mismatched hello/dead intervals, mismatched area, or an MTU mismatch.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ospf-filtering">
+      <div class="section-label">SECTION 02</div>
+      <h2>OSPF <em>Filtering and Get Commands</em></h2>
+      <p>Route-maps, access-lists, prefix-lists — and the <code>get router info ospf</code> family that tells you what OSPF <em>thinks</em> is happening.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router ospf
+    config distribute-list
+        edit 1
+            set access-list &lt;name&gt;
+            set protocol connected | static | rip
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Access-list-based inbound filter (<code>distribute-list-in</code>). Blocks external routes from other protocols before OSPF injects them into the routing table.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Simple, prefix-only match. Sits at the front of the OSPF-to-RIB path. Use when you just need to say "these subnets never make it into the table." For anything more nuanced, reach for a prefix-list or route-map.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router ospf
+    config distribute-list
+        edit 1
+            set prefix-list &lt;name&gt;
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Prefix-list variant of the same inbound filter. Adds <code>ge</code>/<code>le</code> range operators for "everything of length X or longer inside prefix Y."</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Still only <em>inbound</em> filtering — that's the entire capability of access-list / prefix-list in OSPF. If you need outbound, or if you want to rewrite metrics or tags, jump to a route-map with <code>distribute-route-map-in</code> or <code>config redistribute … set route-map</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info ospf neighbor</code></div>
+        <p class="cmd-desc">Status of every OSPF neighbor and the FSM state of each adjacency. First stop when something isn't converging.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <code>State</code> column — you want <code>Full/DR</code>, <code>Full/BDR</code>, or <code>Full/DROther</code>. Anything else (Init, 2-Way, ExStart, Exchange, Loading) is a stuck adjacency; usually mismatched hello/dead timers, MTU, area ID, or auth.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info ospf interface</code></div>
+        <p class="cmd-desc">Per-interface OSPF status: area, network type, hello/dead intervals, number of adjacencies, plus the current DR and BDR router IDs on that segment.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Check hello/dead — mismatched values silently kill adjacencies. Verify network type is what you set (<code>point-to-point</code> vs <code>point-to-multipoint</code>). DR/BDR fields are meaningful only on broadcast/NBMA segments.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info ospf status</code></div>
+        <p class="cmd-desc">The overall OSPF process view: this router's ID, the OSPF capabilities negotiated, the number of areas attached, and the count of fully adjacent neighbors.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Confirm the router ID is what you configured (it can be auto-picked from an interface if you didn't <code>set router-id</code>). Confirm the areas attached match your intent — a missing area means the interface wasn't picked up by <code>config network</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info ospf database brief
+# get router info ospf database router lsa</code></div>
+        <p class="cmd-desc">Dumps the OSPF LSDB. <code>brief</code> is the whole database ordered by LSA type; <code>router lsa</code> zooms into type-1 LSAs (each router's own advertisement of its links).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Every router in the same area must have an identical database. If two routers disagree on any LSA, there's a flooding problem. Type-1 LSAs are the "who am I connected to" record — missing a link there is a symptom of an interface not participating in OSPF.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info bfd neighbor</code></div>
+        <p class="cmd-desc">BFD (Bidirectional Forwarding Detection) neighbor status. When BFD is enabled on OSPF neighbors it accelerates failure detection from ~40s (default OSPF dead) to sub-second.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Session state <code>Up</code> and the detect timer around 150-300ms. If BFD isn't up, OSPF still runs but you'll wait for the OSPF dead interval on a failure — much slower failover.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Filter power ladder: access-list &lt; prefix-list (adds ge/le) &lt; route-map (adds outbound, tags, metrics). Diagnose ladder: <code>get router info ospf neighbor</code> → <code>interface</code> → <code>status</code> → <code>database brief</code>. Fix in that order.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ospf-filtering" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ospf-filtering','OSPF Filtering & Get')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ospf-filtering" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ospf-filtering')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — OSPF USE CASES ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OSPF USE CASES</span>
+      </div>
+      <p class="socratic-insight">Three canonical use cases: <strong>ECMP</strong> for load-spreading external routes, <strong>OSPF over IPsec</strong> for encrypting the routing plane, and <strong>virtual links</strong> for reaching an area that grew out of the backbone.</p>
+      <ul class="socratic-questions">
+        <li>By default, OSPF uses RFC 2328 path preference — why would you enable RFC 1583 compatibility with <code>set rfc1583-compatible enable</code>?</li>
+        <li>In an OSPF-over-site-to-site-IPsec design, which two things must be configured for the tunnel interfaces?</li>
+      </ul>
+      <div class="answer-area" data-section="ospf-use-cases">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">RFC 2328 prefers intra-area non-backbone paths over intra-area backbone paths (to reduce backbone load), which means two equal-cost external routes through <em>different areas</em> don't tie under 2328 — one wins by area. RFC 1583 picks strictly on cost, so equal-cost external routes across different areas both install and you get real ECMP. Recommended when you want ECMP to external destinations.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">(1) Route-based IPsec tunnels with explicit tunnel-end IPs assigned on the phase1 config so the tunnel interfaces have IPs to talk over. (2) The tunnel subnets must appear in the OSPF <code>config network</code> stanza (or the interfaces must be declared in <code>config ospf-interface</code>) so OSPF forms adjacencies across the tunnel.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ospf-use-cases">
+      <div class="section-label">SECTION 03</div>
+      <h2>OSPF <em>Use Cases</em></h2>
+      <p>ECMP, OSPF-over-IPsec, and virtual links — the three configurations you're most likely to see on a real Fortinet exam question.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>R2 # config router ospf
+    set rfc1583-compatible enable
+end</code></div>
+        <p class="cmd-desc">Enables RFC 1583 path preference. Selection then depends purely on cost, so equal-cost external routes learned through different areas will both install — real OSPF ECMP for external destinations.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>R2 # get router info routing-table all
+O E2  10.2.0.0/24 [110/10] via 10.1.1.100, port4, 00:00:21, [1/0]
+                  [110/10] via 10.1.0.1,   port3, 00:00:21, [1/0]</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Two <em>via</em> lines for the same prefix = ECMP installed. Under default RFC 2328 you'd only see one because 2328's path-preference rules kick in before cost. Turn RFC 1583 on when you want ECMP to <em>external</em> routes.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info routing-table all</code></div>
+        <p class="cmd-desc">Full routing table with source-protocol codes: <code>O</code> = OSPF intra-area, <code>O IA</code> = inter-area, <code>O E1/E2</code> = external type-1/type-2. The <code>[110/x]</code> is <code>[admin-distance/metric]</code>.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>OSPF's admin distance is 110. A prefix in OSPF's LSDB that <em>isn't</em> in the routing table means something with a lower distance beat it — usually a static (10) or a directly connected (0). Confirm before you blame OSPF.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>R2 # config router ospf
+    set router-id 2.2.2.2
+    config area
+        edit 0.0.0.3
+            config virtual-link
+                edit VLINK_area
+                    set peer 4.4.4.4
+                next
+            end
+        next
+    end
+end
+R4 # config router ospf
+    set router-id 4.4.4.4
+    config area
+        edit 0.0.0.3
+            config virtual-link
+                edit VLINK_area
+                    set peer 2.2.2.2
+                next
+            end
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Full virtual link config — both ends of the transit area (<code>0.0.0.3</code>) declare each other by router-id. After both apply, area <code>0.0.0.10</code> (behind R4) is virtually attached to backbone area <code>0</code>.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Router IDs must match what's configured on the peer (<code>set router-id</code>). Transit area cannot be a stub or NSSA. Verify with <code>get router info ospf neighbor</code> — you'll see a virtual neighbor listed once it's up.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">RFC 1583 = strict cost, enables external ECMP. RFC 2328 = area-aware preference, no ECMP for externals. Virtual links = "I forgot to make sure every area touches area 0" duct tape. OSPF-over-IPsec = tunnel interfaces need IPs and must appear in the OSPF network stanza.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ospf-use-cases" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ospf-use-cases','OSPF Use Cases')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ospf-use-cases" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ospf-use-cases')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — BGP CORE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BGP CORE</span>
+      </div>
+      <p class="socratic-insight">BGP is <em>path-vector</em>, not link-state. It runs over TCP 179 to explicit neighbors you declare by IP. The choice between EBGP and IBGP is decided by whether the neighbor's AS matches yours — no separate toggle.</p>
+      <ul class="socratic-questions">
+        <li>Why does BGP not advertise anything by default, and which command controls what does get injected?</li>
+        <li>When you peer BGP to a loopback (rather than a physical interface), which two settings are mandatory?</li>
+      </ul>
+      <div class="answer-area" data-section="bgp-core">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">BGP is a policy protocol — advertising a prefix implies you take responsibility for the traffic. So by default <code>connected</code>, <code>static</code>, <code>rip</code>, <code>ospf</code>, and even <code>bgp</code> (into other AFIs) all sit at <code>disable</code>. The command is <code>config redistribute &lt;protocol&gt; &gt; set status enable</code>, and each source has its own toggle. Alternatively use <code>config network</code> to advertise a specific prefix explicitly.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">(1) <code>set update-source &lt;loopback&gt;</code> — tells BGP to source the TCP session from the loopback IP so the peer's expected source matches. (2) <code>set ebgp-enforce-multihop enable</code> (or <code>ebgp-multihop</code>) — because the loopback is one hop away from any physical interface, the default TTL=1 for EBGP would drop the session. Loopbacks are used because they stay up even if one physical link fails.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-bgp-core">
+      <div class="section-label">SECTION 04</div>
+      <h2>BGP <em>Core Config</em></h2>
+      <p>The AS, the router-id, the neighbor block. Everything lives inside <code>config router bgp</code>. Neighbors are explicit — no auto-discovery.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    set as 65100
+    set router-id 172.16.1.254
+    config neighbor
+        edit 100.64.1.254
+            set remote-as 65101
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Minimum BGP config: local AS, router-id, one neighbor with its IP and its AS. If <code>remote-as</code> = local AS, this is IBGP; otherwise EBGP.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Neighbor IPs are TCP endpoints — they must be reachable via the routing table before BGP will come up. TCP 179 must not be blocked by any policy between the two speakers. Router-id is a 32-bit identifier — normally an IPv4, but doesn't need to be assigned to an interface.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    config redistribute bgp
+        set status enable
+    end
+    config redistribute connected
+        set status enable
+    end
+    config redistribute static
+        set status enable
+    end
+end</code></div>
+        <p class="cmd-desc">Same redistribution pattern as OSPF but for BGP. By default nothing gets advertised — flipping <code>status</code> to enable injects the named source into BGP's outbound updates.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Sources: <code>bgp</code>, <code>connected</code>, <code>isis</code>, <code>rip</code>, <code>static</code>. Alternative to redistribution: <code>config network</code> announces one prefix explicitly and is safer for well-known aggregates you own.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    set as 65100
+    set router-id 172.16.1.254
+    config neighbor
+        edit 100.64.1.254
+            set remote-as 65101
+            set update-source Loopback_Interface
+            set ebgp-enforce-multihop enable
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Loopback-sourced EBGP session. <code>update-source</code> forces the BGP TCP session to originate from the loopback IP; <code>ebgp-enforce-multihop</code> raises TTL above the default 1-hop EBGP limit because the loopback is not on the wire between the two boxes.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Loopbacks stay up even when a physical link fails, so BGP peering survives link flaps as long as another path exists. Firewall policy note: TCP 179 flows through a physical port even though it's sourced from the loopback — you need a policy that permits it between the loopback IP and the physical interface.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    set as 65100
+    set router-id 172.16.1.254
+    set ibgp-multipath enable
+    config neighbor-group
+        edit SpokeISP1
+            set interface ISP1
+            set remote-as 65100
+        next
+    end
+    config neighbor-range
+        edit 1
+            set prefix 10.1.0.0 255.255.255.0
+            set neighbor-group SpokeISP1
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Neighbor group + neighbor range. Used in SD-WAN hub configs: instead of explicitly declaring each spoke as a neighbor, the hub applies the group's common settings to any peer whose IP falls in the declared <code>prefix</code>. Spokes are dial-up BGP clients.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Any peer inside <code>10.1.0.0/24</code> that opens a BGP session to this hub inherits the <code>SpokeISP1</code> group's settings — interface ISP1 and AS 65100. Because the remote AS matches the local AS, this is IBGP; that's why <code>ibgp-multipath enable</code> is turned on to allow ECMP over the multiple underlays.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    set ebgp-multipath enable
+end</code></div>
+        <p class="cmd-desc">Enables ECMP for EBGP-learned routes. When there are multiple equal-cost paths to a BGP next hop (e.g. dual-ISP), BGP will install all of them for load balancing.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Same-cost EBGP paths only. For IBGP-learned same-cost paths, use <code>set ibgp-multipath enable</code> instead. Both default to disabled — without either, BGP picks the single best path per prefix.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info bgp summary</code></div>
+        <p class="cmd-desc">Per-neighbor summary: peer IP, remote AS, uptime, packet counters, and current session state.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Look at the "up/down" time and the FSM state. Anything other than <code>Established</code> (or a big prefix count in the last column) means the session never fully came up — check TCP reachability, AS numbers, and the neighbor's own view.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">SHOW / GET</div>
+        <div class="cmd-syntax"><code># get router info bgp neighbors
+# get router info bgp network
+# get router info routing-table bgp</code></div>
+        <p class="cmd-desc">Three levels of BGP detail: full neighbor detail (peer IP, router ID, remote AS, BGP state, negotiated capabilities); the BGP RIB (every prefix BGP knows about, best path or not); and the subset of BGP prefixes that made it into the actual routing table.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Prefix visible in <code>bgp network</code> but not in <code>routing-table bgp</code> = BGP received it but a better source won. Prefix visible on the peer's side but not here = an inbound filter (route-map, prefix-list) dropped it before it entered your local RIB.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">BGP defaults are quiet: no auto-neighbors, no redistribution, no ECMP. Every one of those requires an explicit toggle. IBGP vs EBGP is decided by remote-as vs local as — nothing else.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-bgp-core" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-bgp-core','BGP Core')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-bgp-core" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-bgp-core')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 5 — BGP CONVERGENCE ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BGP CONVERGENCE</span>
+      </div>
+      <p class="socratic-insight">BGP convergence has three dials: <strong>RIB size</strong> (filters), <strong>update propagation</strong> (route reflectors), and <strong>failure detection</strong> (keepalive tuning or BFD). Plus one HA-specific dial: <strong>graceful restart</strong> for keeping routes during a controlled failover.</p>
+      <ul class="socratic-questions">
+        <li>Why does an IBGP full mesh become a problem at scale, and what BGP construct concentrates the updates?</li>
+        <li>What does <code>set graceful-restart enable</code> plus <code>set capability-graceful-restart enable</code> do during an HA failover, and why does it matter?</li>
+      </ul>
+      <div class="answer-area" data-section="bgp-convergence">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">IBGP has a rule that a route learned from an IBGP peer will not be re-advertised to another IBGP peer (loop prevention). So every IBGP speaker must peer with every other IBGP speaker — an n(n-1)/2 mesh. Route reflectors (RRs) are IBGP speakers explicitly allowed to relay IBGP-learned routes to a list of "client" peers. Spokes only need to peer with the RR, not each other.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Only the primary FortiGate runs the BGP daemon in an HA cluster. Normally a failover would tear down every BGP session (peer sees the TCP session drop, invalidates all routes) — a big blip. Graceful-restart advertises capability to peers so they preserve the received routes during a brief BGP restart window; the new primary comes up with a fresh usable routing table, no traffic drop, no route flap.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-bgp-convergence">
+      <div class="section-label">SECTION 05</div>
+      <h2>BGP <em>Convergence and HA</em></h2>
+      <p>Route reflectors, BFD, and graceful-restart — the three levers between "BGP takes 3 minutes to reconverge" and "sub-second failover."</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    config neighbor
+        edit 100.64.1.254
+            set next-hop-self enable
+            set route-reflector-client enable
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Marks the neighbor as a <strong>route-reflector client</strong>. This BGP speaker will now relay IBGP-learned routes to this client — breaking the full-mesh requirement for scale. Configure on the RR, not the client.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Configure this <em>on the RR</em>, not on the client. The client has a normal neighbor block with no special setting. <code>next-hop-self</code> is usually paired with RR configs so the client resolves next-hop to the RR itself rather than to an external EBGP peer it can't reach.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    config neighbor
+        edit 100.64.1.254
+            set bfd enable
+            set ebgp-enforce-multihop enable
+        next
+    end
+end
+config router bfd
+    config multihop-template
+        edit 1
+            set src 100.64.2.0 255.255.255.0
+            set dst 100.64.1.0 255.255.255.0
+            set auth-mode md5
+            set md5-key password
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">BFD-accelerated BGP. Under <code>router bgp</code> the neighbor gets <code>bfd enable</code>; under <code>router bfd</code> a <code>multihop-template</code> defines source/dest ranges and authentication. Now instead of waiting for BGP hold time (~180s default) after a failure, BFD flags the drop in under a second.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Must be configured on <em>both</em> connected routers. Multihop path uses a template (source/dest range + auth); single-hop uses no template. Confirm operational status with <code>get router info bfd neighbor</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    set as 65100
+    set graceful-restart enable
+    set router-id 172.16.1.254
+    config neighbor
+        edit 100.64.1.254
+            set capability-graceful-restart enable
+            set remote-as 200
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Global graceful-restart for BGP, plus per-neighbor advertisement of the graceful-restart capability. Used to prevent traffic interruption during HA failover — the peer keeps the received routes marked as "stale" instead of tearing them down, so packets keep flowing while the new primary reconverges.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Only the primary FortiGate in an HA cluster runs BGP. Without graceful-restart, a failover flaps every BGP session — routes disappear, traffic drops. With it, the cluster advertises "I'm going offline briefly," peers hold onto the routes, and the new primary comes up with a usable table. Both sides must support and enable graceful-restart for it to work.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-execute">EXECUTE</div>
+        <div class="cmd-syntax"><code># execute router clear bgp all
+# execute router clear bgp ip &lt;neighbor-ip&gt; soft in</code></div>
+        <p class="cmd-desc">Force a BGP session reset. The <code>all</code> form is a hard reset of every session; the <code>soft in</code> form just re-processes inbound updates from one neighbor without dropping the TCP session — useful after changing an inbound route-map.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Hard resets flap the session — every route gets withdrawn and re-advertised. Use <code>soft</code> whenever you can. For a soft reset to work on the receive side, <code>set soft-reconfiguration enable</code> must be configured on the neighbor beforehand (or the peer must support route-refresh, which most modern implementations do).</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Speed levers: filters trim the RIB, route reflectors collapse IBGP fan-out, BFD kills the 180s hold-time wait, graceful-restart keeps routes alive across HA. Use as many as your peers support — every one shaves seconds off convergence.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-bgp-convergence" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-bgp-convergence','BGP Convergence')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-bgp-convergence" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-bgp-convergence')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-04-high-availability.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">High Availability CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-06-security-profiles.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Security Profiles CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Chapter 05 Dynamic Routing
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-ch05-dynroute';
+const SECTIONS = {
+  'section-ospf-core': 'OSPF Core',
+  'section-ospf-filtering': 'OSPF Filtering & Get',
+  'section-ospf-use-cases': 'OSPF Use Cases',
+  'section-bgp-core': 'BGP Core',
+  'section-bgp-convergence': 'BGP Convergence',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

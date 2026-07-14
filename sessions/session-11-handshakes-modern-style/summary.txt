@@ -1,0 +1,111 @@
+SESSION 11 SUMMARY — "Handshakes, Modern Style"
+(IKEv2 deep dive — exchanges, IKEv1 comparison, network-id | Study guide 07 IPsec pp. 200–206)
+Written for Claude. Read before Session 12.
+
+STORY EVENTS
+------------
+Wednesday, in-story. The Parramatta branch FortiGate has physically ARRIVED (still boxed).
+The S10 dual-tunnel design is pinned to Señor's topology wall. Junior arrives with a printout
+of a March 2014 blog post advocating IKEv1 aggressive mode "because it's faster" and "speed
+is the business." Cipher lowers himself into a chair in silence (his teased "sitting down").
+Señor folds the printout into a paper aeroplane, bins it, and delivers the teased line:
+"Faster — and it shouts your name across the internet while it does it." Mid-session, Junior
+accidentally asks the RIGHT question (how does HQ tell two handshakes apart from the same
+gateway pair?) — which pivots the session to network-id. Closing beat: Cipher retrieves the
+paper aeroplane from the bin and SHREDS it. Cipher spoke once: "Trading firm. Advertising
+its VPN endpoints. To everyone." (Two short appearances = within his established quota.)
+
+BUSINESS PROBLEM & OUTCOME
+--------------------------
+Problem: choose the IKE version/mode for the HQ↔Parramatta tunnels before Wednesday's build.
+Outcome: LoFinance standardises on IKEv2 for all tunnels. Cipher signs off wordlessly.
+Build unblocked. The "fast vs safe" dilemma exposed as false — IKEv2 wins both.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. The three jobs of any IKE handshake: (1) agree the language (proposals), (2) grow the
+   shared secret (Diffie-Hellman), (3) prove identity (authentication).
+2. THE ORDERING RULE: DH must complete BEFORE identities are sent, because pre-DH messages
+   are necessarily plaintext. "First grow the secret, then whisper your name inside it."
+3. IKEv1 aggressive mode = 3 msgs phase 1 + 3 quick mode = 6 total, peer IDs in CLEAR TEXT
+   (sends identity before DH protection — that's WHY it's faster).
+   IKEv1 main mode = 6 + 3 = 9 total, IDs encrypted.
+   IKEv2 = IKE_SA_INIT (2 msgs: proposals + DH publics, plaintext but nothing sensitive)
+   + IKE_AUTH (2 msgs: identities + auth, ENCRYPTED) = 4 total, IDs encrypted. No separate
+   quick mode — first child SA piggybacks inside IKE_AUTH.
+4. IKEv2 modern toolbox: AES-GCM, SHA-2/HMAC-SHA2 & AES-XCBC integrity, DH ECP groups 19/20
+   (MODP-equivalent strength, less CPU), EAP support, integrated mode config, simplified
+   renegotiation.
+5. network-id: Fortinet-PROPRIETARY phase 1 attribute; selects the correct phase 1 between
+   peers so MULTIPLE IKEv2 tunnels can exist between the same local/remote gateway pair.
+   IKEv2 ONLY (IKEv1 = N/A). Must match at both ends.
+
+KEY CLI
+-------
+config vpn ipsec phase1-interface
+  edit "ParraTunnel-ISP1" / set ike-version 2 / set network-overlay enable / set network-id 1
+  edit "ParraTunnel-ISP2" / set ike-version 2 / set network-overlay enable / set network-id 2
+(Verification CLI like diag vpn ike gateway list mentioned only in troubleshooting artefact;
+full phase1/phase2 build syntax deliberately reserved for Session 12.)
+
+MENTAL MODELS DEVELOPED
+-----------------------
+- "Judge a handshake by its job list and ORDER, not its message count" — the count is a
+  consequence of the design, not the point.
+- The secret is "GROWN, not posted" — DH key never crosses the wire because it never exists
+  on the wire; it is born simultaneously at both ends from private+public halves.
+- "First grow the secret, then whisper your name inside it" (Señor) — the ordering rule.
+- NIGHTCLUB WITH TWO IDENTICAL DOORS — network-id ≈ the event printed on the ticket; the
+  addresses can't disambiguate, the tag inside the negotiation does. Student's own phrase:
+  "different event information" (arrived at it from one hint — log as near-self-generated).
+- "Refuse the question" — when offered fast-vs-safe, first check whether the trade-off is
+  real. (Reusable senior-engineer heuristic.)
+
+SOCRATIC PATH & STUDENT PERFORMANCE (see register for full analysis)
+--------------------------------------------------------------------
+- Opening ("what must a handshake accomplish?"): student produced 2 of 3 jobs unaided
+  (identity proof + agree the language). Guided to job 3 via the symmetric-key puzzle.
+- Described Diffie-Hellman conceptually AND near-terminologically unprompted ("key exchange
+  algorithm using public private key pair to get a single secret key") — strong.
+- Ordering question: principle correct, WORDING INVERTED (said identity "after DH" would be
+  unencrypted, meaning "before"). Corrected via slow walk-through; likely part voice-dictation
+  artefact ("Dixie Helen exchange") but log as a watch item on ordering-language precision.
+- IKEv2 message count: honest "I wouldn't have a clue" — third session running he flags
+  confusion rather than bluffing. Recovery: build-your-own-protocol decomposition (two
+  envelopes) → student completed the derivation himself ("it's all encrypted at that point")
+  and effectively INVENTED the 4-message structure before being told its names. Session
+  high point; Señor line: "You did not learn IKEv2. You invented it."
+- network-id: answered the nightclub question correctly in three words.
+- Retrieval question (S10 criterion, asked as inversion-check per register plan): PERFECT —
+  "trading data only existed at HQ, no spoke-to-spoke latency-sensitive applications."
+  The design CRITERION stuck, not just the conclusion. S10 watch-item satisfied.
+
+EXAM QUESTIONS (end of session): 3/3 first attempt, zero hints.
+Q1 aggressive-mode trade-off → B (peer IDs unencrypted). Q2 IKEv2 = 4 msgs across
+IKE_SA_INIT + IKE_AUTH → C. Q3 T/F network-id on IKEv1 → False WITH justification
+volunteered unprompted ("it is only for IKEv2"). This is the SECOND consecutive clean
+justification data point (register threshold: 2–3 → downgrade to monitoring-only; now at 2).
+
+JUNIOR'S MISTAKE & LESSON
+-------------------------
+Trusting a 2014 blog over first-principles analysis; accepting a false trade-off (fast vs
+safe) without asking what the handshake must actually accomplish. Lessons: date-check
+sources; derive requirements before comparing options; when offered a trade-off, verify
+it's real. Redemption beat: Junior's dual-tunnel disambiguation question was genuinely good.
+
+TOPOLOGY CHANGES
+----------------
+Annotation only — no new devices. Both HQ↔Parramatta tunnels now SPECIFIED as IKEv2 with
+network-id 1 (ISP1 path) and network-id 2 (ISP2 path), enabling both phase 1s between the
+same gateway pair (feeds the S10 ipsec-aggregate design). Tunnels remain DESIGNED, NOT BUILT.
+HA at both sites still desired, still uncommitted.
+
+TEASER DELIVERED FOR SESSION 12 ("Tunnel Vision")
+-------------------------------------------------
+Install day at Parramatta. The branch FortiGate comes out of the box; Junior claims the
+console cable "for luck." Señor, marker in holster: "We have designed. We have argued about
+handshakes. Today we stop drawing — today we DIG." The whiteboard shows two empty columns:
+PHASE 1 and PHASE 2. Riley has pre-emptively opened a ticket titled "VPN down" — for a VPN
+that does not exist yet. "Optimist," says Señor. Session 12 covers building the tunnel:
+phase 1 / phase 2 configuration and route-based IPsec (pp. 207–214). Do not teach config
+syntax before S12; the IKEv2/network-id decisions from S11 must be carried into the build.

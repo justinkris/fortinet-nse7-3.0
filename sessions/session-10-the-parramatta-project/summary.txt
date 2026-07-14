@@ -1,0 +1,210 @@
+LOFINANCE — SESSION 10 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "The Parramatta Project" — SEASON 2 OPENER
+Format: Standard single-thread Socratic teaching of genuinely NEW material (first new
+content since Session 8; Session 9 was pure review). Study guide coverage: Chapter 07
+IPsec, pp. 193-199 — IPsec topology design (site-to-site, hub-and-spoke, dual hub-and-
+spoke, full mesh), design criteria (traffic pattern, scalability, branch hardware tunnel
+limits), IPsec tunnel aggregation (redundancy + load-balancing algorithms), multiple
+phase 2 selectors on one phase 1. IKE version comparison deliberately DEFERRED to Session
+11 per master plan (only touched implicitly).
+Status: COMPLETE. 3/3 on closing exam questions PLUS the curiosity-retrieval question
+answered perfectly. Notably, Q2's False verdict came WITH unprompted mechanism
+justification ("HQ needs to decrypt and re-encrypt") — see LEARNING OBSERVATIONS, this is
+the tracked justification-precision gap showing improvement.
+
+STORY EVENTS
+------------
+Monday 8:47 AM, week of Parramatta go-live. Penny fires all three favourite phrases in one
+breath ("How long? How much? Can we do it today?") — her established catchphrases, first
+time all three at once. Junior had taped three mutually-contradictory connection sketches
+to the whiteboard (one involving internet-facing RDP, one apparently routing via his home
+router, one just saying "VPN (the good kind)"); Señor silently turned all three face-down.
+Cipher appeared briefly at the doorway (second consecutive on-screen appearance, still
+minimal-word: "Today, if you want. Correctly, either way."), later challenged the single-
+tunnel SPOF by tapping the diagram line, and reacted to the phase-2 discussion silently.
+Señor's whiteboard line: "Two sites. One network. Draw it before you cable it." (carried
+over from the Session 9 teaser sticky note — continuity honoured). Mid-session Señor beat:
+"He asked where the traffic goes before he drew the lines. Write the date down." (to
+Cipher). Junior's mistake this session: the "garden hose" mental model — believing a
+tunnel, once up, is an open pipe where everything at one site can reach everything at the
+other. Corrected via phase 2 selectors. Penny closed by asking a FOURTH question ("And
+when we open the next branch?") and actually smiled at the answer ("one more tunnel, one
+more spoke, no redesign"). Ended with Señor capping the marker over the final whiteboard
+design.
+
+CHARACTERS INVOLVED
+-------------------
+Student (design lead for Parramatta, per Session 9's formal appointment — drove the entire
+design), Penny (triple-catchphrase opener, fourth-question closer), Señor (ran the Socratic
+design session, paper-aeroplane bin-filing of Junior's blog printout in the teaser), Junior
+(three bad sketches cold open + garden-hose misconception + IKEv1-aggressive-mode blog
+printout in the Session 11 teaser), Cipher (doorway one-liner, SPOF challenge — second
+on-screen appearance, minimal-presence characterization maintained).
+
+BUSINESS PROBLEM
+----------------
+Parramatta branch opens Monday and needs the HQ trading feed securely. Two sites today,
+more expected. Resolved: hub-and-spoke IPsec design approved, HQ = hub. Student's design
+answered Penny's three questions: How long — one tunnel, days; How much — branch-model
+FortiGate suffices (only one tunnel needed per spoke); Today — the design, yes.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. TOPOLOGY NAMES ONLY DIFFERENTIATE AT 3+ SITES. With two sites, site-to-site =
+   hub-and-spoke = mesh in practice. But the pattern is chosen at site two because it
+   becomes the template. Student articulated this himself with one guided step.
+2. FULL MESH TUNNEL COUNT = n(n-1)/2. Student calculated 3 sites=3, 5=10, 10=45 by hand
+   (summed 4+3+2+1 etc. — reasoned, not memorised). Quadratic growth; each tunnel = phase 1
+   + phase 2 + policies both ends + a tunnel slot; branch-model FortiGates support fewer
+   tunnels than campus models, so the smallest box caps the design.
+3. HUB-AND-SPOKE = n-1 tunnels, linear growth, but two costs for spoke-to-spoke traffic:
+   (a) LATENCY — double WAN traversal (student got this immediately, framed identically to
+   his own Session 9 VDOM chassis-binding reasoning — explicit callback made);
+   (b) HUB CRYPTO BURDEN — hub must DECRYPT (spoke A's SA/keys) then RE-ENCRYPT (spoke B's
+   SA/keys) every spoke-to-spoke packet both directions, because each tunnel has separate
+   keys. Hub becomes bottleneck + single point of failure (hub dies = all inter-branch
+   connectivity dies). Student got "resource intensive, scales with sites" himself; the
+   named decrypt/re-encrypt mechanic was supplied after his reasoning.
+4. DESIGN CRITERION THAT DECIDED IT: judge topology against the ACTUAL traffic pattern.
+   LoFinance's critical traffic (trading feed) lives AT the hub — all traffic is
+   branch<->HQ, which takes the DIRECT tunnel in hub-and-spoke. The topology's weakness
+   (spoke-to-spoke penalty) lands where LoFinance has no traffic. STUDENT REACHED THIS
+   HIMSELF from a single hint ("where does the trading feed actually live?") — the
+   session's centrepiece reasoning moment.
+5. LAYERED REDUNDANCY: student volunteered HA clusters (device layer, Season 1 recall) AND
+   dual ISP links (link layer) unprompted when Cipher challenged the SPOF. Taught on top:
+   IPSEC TUNNEL AGGREGATION — bind multiple tunnels into one virtual interface (explicit
+   LACP analogy, which maps to the student's existing L2 knowledge):
+     config system ipsec-aggregate / edit "PARRA-AGG" / set member "Tunnel-ISP-A"
+     "Tunnel-ISP-B" / set algorithm redundant / next / end
+   Algorithms: redundant (active/backup), round-robin (per-packet), L3, L4,
+   weighted-round-robin.
+6. PER-PACKET ROUND-ROBIN + UNEQUAL-LATENCY PATHS = OUT-OF-ORDER DELIVERY. Student named
+   the reordering consequence himself in one step. Supplied on top: jitter framing, TCP
+   re-sequencing cost, UDP glitching; L3/L4 hashing keeps each FLOW on one tunnel (flow
+   pinning) = aggregate capacity without intra-flow reordering. Polished answer: redundant
+   if one link has headroom; L3/L4 if capacity genuinely needed; NEVER per-packet
+   round-robin for latency-sensitive flows.
+7. PHASE 1 vs PHASE 2 (introduced at concept level only — deep config is Session 12):
+   phase 1 = secure authenticated channel between the firewalls; phase 2 = negotiates what
+   is carried, including SELECTORS (declared src-subnet<->dst-subnet pairs); ONE phase 1
+   can carry MULTIPLE phase 2 selectors. Traffic matching no selector never enters the
+   tunnel — dropped before encryption, structurally excluded, not policy-filtered after.
+   Segmentation philosophy extended across the WAN. NOTE: firewall policies on tunnel
+   interfaces are STILL required/expected on top of selectors ("two fences" framing —
+   selectors gate entry, policies inspect and log).
+
+MENTAL MODELS DEVELOPED
+-----------------------
+- "The pattern is chosen at site two" — topology decisions precede the third site.
+- "Judge the topology against the traffic pattern, not in the abstract" — THE session's
+  core design principle; hub-and-spoke wins HERE because the hub owns the data.
+- "The tunnel is a declared pipe, not an open hose" — refutes Junior's garden-hose model.
+- STUDENT-COINED ANALOGY (excellent, reuse it): "a trunk link, but over a tunnel" — one
+  phase 1 ≈ the trunk, each phase 2 selector ≈ an allowed VLAN. Refinement given: selectors
+  match src<->dst subnet PAIRS (closer to policy src/dst matching than a VLAN allow-list).
+  This is now the canonical selector analogy for this student.
+- LACP analogy for ipsec-aggregate (bind tunnels like bundling cables).
+- Session 9's "a VDOM doesn't move a building" explicitly re-invoked — successfully
+  retrieved verbatim-in-spirit at the closing curiosity question.
+
+KEY CLI DISCUSSED
+-----------------
+config system ipsec-aggregate / set member <t1> <t2> / set algorithm
+{redundant|round-robin|L3|L4|weighted-round-robin}
+(Phase 1/phase 2 config syntax deliberately NOT yet taught — Session 12 territory.)
+
+TROUBLESHOOTING APPROACH TAUGHT
+-------------------------------
+Embedded in exam Q3: symptom "data glitches despite both tunnels up" → cause per-packet
+round-robin over unequal-latency links → reordering/jitter. Design-review habit reinforced:
+identify where the traffic actually flows BEFORE evaluating a topology's pros/cons
+(extension of Session 9's "check geography before evaluating the logic").
+
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+------------------------------------------
+ADDED: Parramatta branch — branch-model FortiGate, DEFW role (per Session 9 Q1 reasoning).
+Hub-and-spoke IPsec: HQ = hub, Parramatta = spoke #1. Dual tunnels over dual ISPs, bound
+via ipsec-aggregate, algorithm redundant (active/backup — chosen pending real bandwidth
+data; student correctly framed the choice as capacity-driven). Phase 2 selectors declared:
+Parramatta-Trading <-> HQ VLAN 20 (Trading); Parramatta-Office <-> HQ file services.
+Nothing else declared. HQ internal topology unchanged from Season 1 close. NOTE: tunnels
+are DESIGNED, not yet built — actual phase 1/phase 2 negotiation and config is Sessions
+11-12. HA clusters at both sites raised by student as desirable but NOT committed to the
+topology yet.
+
+BUSINESS OUTCOME
+----------------
+Design approved by Penny (with visible smile at the scalability answer). Hardware ships
+Wednesday (in-story). Student's design lead role from Session 9 exercised successfully for
+the first time.
+
+EXAM-RELEVANT NOTES
+-------------------
+Closing questions 3/3 + curiosity retrieval correct:
+- Retrieval: VDOM chassis-binding / unnecessary WAN traversal — instant, own words.
+- Q1 (topology selection, 1 HQ + 7 branches, branch<->HQ traffic, entry-level branch
+  boxes) → B hub-and-spoke — instant. Question deliberately embedded TWO criteria (traffic
+  pattern + hardware tunnel limits); student read both.
+- Q2 (T/F: hub forwards spoke-to-spoke traffic WITHOUT decrypting because spokes "share
+  tunnel keys") → False, WITH UNPROMPTED MECHANISM ("HQ needs to decrypt and re-encrypt").
+  The "shared tunnel keys" distractor is a good trap — each tunnel is its own SA with its
+  own keys. Student did not need the justification prompted. MILESTONE — see below.
+- Q3 (round-robin aggregate + unequal-latency ISPs + glitchy real-time feed) → B
+  out-of-order delivery — instant.
+Exam-trap inventory from this session: "shared tunnel keys" distractor; per-packet vs
+per-flow balancing; n(n-1)/2 vs n-1 tunnel counts; branch-model tunnel-capacity limits as
+a design criterion; selectors-vs-policies (selectors gate entry, policies still required).
+
+JUNIOR'S MISTAKE AND WHAT IT TAUGHT
+-----------------------------------
+Garden-hose tunnel model ("once it's up, everything can reach everything") → phase 2
+selectors make the tunnel a DECLARED pipe; undeclared subnet pairs never enter it.
+Secondary comic beat: three contradictory whiteboard sketches (incl. internet-facing RDP)
+— not technically dissected, used as cold-open colour. Teaser mistake queued for Session
+11: IKEv1 aggressive mode "because a blog said so" (2014 blog printout; Señor paper-
+aeroplaned it into the bin; hook = aggressive mode exposes unencrypted peer IDs —
+"it shouts your name across the internet").
+
+STUDENT LEARNING OBSERVATIONS (feed the knowledge register)
+-----------------------------------------------------------
+1. JUSTIFICATION-PRECISION GAP (the remaining sub-pattern isolated in Session 9): exam Q2
+   answered False WITH the correct mechanism volunteered unprompted. First clean data point
+   on the justification layer since the gap was isolated. One point is not resolution —
+   keep light-touch testing — but trajectory is right.
+2. FIRST-ANSWER TOPIC-PROXIMITY BIAS: essentially ABSENT this session. Every first answer
+   was responsive to the actual question asked. Best session yet on this axis; the "what is
+   actually being asked" discipline may be maturing. Continue monitoring into OSPF/BGP
+   (Sessions 13+) where surface-similar scenarios multiply.
+3. ONE COMPREHENSION STALL: the combined "answer Junior + connect to Season 1 segmentation"
+   double-question on selectors produced an honest "I don't get the question." Recovery:
+   decomposed into a smaller concrete scenario (receptionist's PC vs trading workstation)
+   → student then produced the trunk-over-a-tunnel analogy, arguably the session's best
+   moment. LESSON FOR FUTURE SESSIONS: avoid stacking a new concept + a synthesis demand in
+   a single question; introduce the concept concretely first, ask for the synthesis second.
+   Student flags confusion honestly rather than bluffing — valuable trait, keep the
+   environment safe for it.
+4. INDEPENDENT SYNTHESIS (tracked category since Session 9): two strong instances —
+   (a) "the trading feed lives at HQ so branch traffic crosses the WAN once" (the design
+   decision itself, reached from a single hint); (b) the trunk-over-a-tunnel analogy,
+   self-generated. Also volunteered layered redundancy (HA + dual ISP) unprompted.
+5. QUANTITATIVE REASONING: computed mesh tunnel counts by summation rather than formula —
+   comfortable deriving rather than recalling. Fine to give formulas AFTER derivation.
+6. Capacity-driven answer on redundant-vs-balanced was correct on bandwidth but initially
+   missed the latency/reordering trap until walked one more step — not a gap, just new
+   material; landed in one step once concretised (4ms vs 9ms paths).
+7. Pacing: single-thread Socratic with short 1-2 step guidance worked well; no question
+   needed more than one redirect except the decomposition noted in (3).
+
+TEASER DELIVERED FOR SESSION 11 ("Handshakes, Modern Style")
+------------------------------------------------------------
+Hardware ships Wednesday (in-story). Junior arrives with a 2014 blog printout advocating
+IKEv1 aggressive mode "because it's faster"; Cipher sits down slowly; Señor folds the
+printout into a paper aeroplane, bins it, and says: "Faster — and it shouts your name
+across the internet while it does it. Sit. We talk about handshakes. The modern kind."
+Session 11 covers IKEv2 deep dive — exchanges, IKEv1 comparison (incl. aggressive mode's
+unencrypted peer-ID exposure, the payoff of Señor's line), and network-id (Fortinet-
+proprietary attribute for selecting the correct phase 1 so multiple IKEv2 tunnels can run
+between the same gateway pair — directly relevant to the dual-tunnel aggregate designed
+this session; use that as the business hook). Study guide pp. 200-206.

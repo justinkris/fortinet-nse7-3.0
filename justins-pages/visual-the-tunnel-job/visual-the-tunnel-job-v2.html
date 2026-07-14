@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visual — The Tunnel Job v2 (IKEv2 → IPsec, A Heist in Fourteen Frames)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  main{max-width:1200px;margin:0 auto;}
+  .main-content{max-width:980px;margin:0 auto;padding:36px 60px 60px;}
+
+  .section-block{margin-bottom:52px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:6px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .story-beat{border-left:3px solid var(--ink-accent);padding:14px 20px;margin:0 0 18px;background:var(--blue-glow);border-radius:0 10px 10px 0;}
+  .story-beat-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-dark);margin-bottom:10px;}
+  .story-beat ul, .section-block .story-beat ul{list-style:none;padding:0;margin:0;}
+  .story-beat li, .section-block .story-beat li{position:relative;padding:5px 0 5px 22px;font-family:'Cormorant Garamond',serif;font-size:16.5px;font-style:italic;line-height:1.7;color:var(--text-soft);margin-bottom:0;}
+  .story-beat li::before{content:'◆';position:absolute;left:0;top:8px;color:var(--ink-accent);font-size:10px;font-style:normal;}
+  .story-beat li strong{font-style:normal;color:var(--text);font-weight:600;}
+  .story-beat li em{font-style:italic;color:var(--blue);}
+
+  .tech-truth{border-left:3px solid var(--green-border);background:var(--green-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .tech-truth strong{color:var(--text);font-weight:600;}
+  .tech-truth .tt-label{display:block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--green);text-transform:uppercase;margin-bottom:6px;}
+  .tech-truth ul{list-style:none;padding:0;margin:6px 0 0;}
+  .tech-truth li{position:relative;padding:5px 0 5px 20px;line-height:1.65;}
+  .tech-truth li::before{content:'';position:absolute;left:4px;top:14px;width:7px;height:7px;border-radius:50%;background:var(--green);}
+  .tech-truth li strong{color:var(--text);font-weight:600;}
+
+  .scene-glance{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px 22px;margin:0 0 20px;}
+  .scene-glance-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+  .scene-glance ul{list-style:none;padding:0;margin:0;display:grid;gap:10px;}
+  .scene-glance li{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);display:flex;gap:14px;align-items:flex-start;}
+  .scene-glance li .sg-tag{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);flex-shrink:0;min-width:96px;margin-top:4px;}
+  .scene-glance li strong{color:var(--text);font-weight:600;}
+  .scene-glance li em{color:var(--blue);font-style:italic;}
+
+  .cast-grid{list-style:none;padding:0;margin:0 0 20px;display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;}
+  .cast-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:border-color 0.2s ease, box-shadow 0.2s ease;}
+  .cast-card:hover{border-color:var(--blue-border);box-shadow:0 4px 12px rgba(10,24,56,0.08);}
+  .cast-img{width:82px;height:82px;border-radius:50%;object-fit:cover;background:var(--surface-2);margin-bottom:10px;border:2px solid var(--border-dim);}
+  .cast-name{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text);margin-bottom:4px;}
+  .cast-role{font-family:'Outfit',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+  .cast-desc{font-family:'Cormorant Garamond',serif;font-size:14.5px;font-style:italic;line-height:1.5;color:var(--text-soft);}
+  @media(max-width:640px){.cast-grid{grid-template-columns:repeat(2, 1fr);}}
+
+  .key-points{background:var(--surface);border:1px solid var(--blue-border);border-radius:12px;padding:14px 22px;margin:18px 0 0;}
+  .key-points-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;}
+  .key-points ul{list-style:none;padding:0;margin:0;}
+  .key-points li{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);padding:5px 0 5px 20px;position:relative;}
+  .key-points li::before{content:'▸';position:absolute;left:0;top:5px;color:var(--blue);font-size:13px;font-weight:700;}
+  .key-points li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .deep-dive{background:var(--amber-light);border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:12px;margin-top:18px;overflow:hidden;}
+  .deep-dive-summary{cursor:pointer;padding:14px 20px;display:flex;align-items:center;gap:12px;list-style:none;user-select:none;flex-wrap:wrap;}
+  .deep-dive-summary::-webkit-details-marker{display:none;}
+  .dd-icon{color:var(--amber);font-size:14px;transition:transform 0.2s ease;flex-shrink:0;font-weight:700;}
+  .deep-dive[open] .dd-icon{transform:rotate(90deg);}
+  .dd-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--amber);flex-shrink:0;}
+  .dd-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--text);}
+  .deep-dive-body{padding:6px 22px 20px 22px;border-top:1px solid var(--amber-border);}
+  .deep-dive-body>p{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.7;color:var(--text-soft);margin:14px 0 6px;font-style:italic;}
+  .dd-message{background:rgba(255,253,246,0.65);border:1px solid var(--amber-border);border-radius:10px;padding:12px 18px;margin-top:14px;}
+  .dd-message-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--amber);margin-bottom:10px;}
+  .dd-message ul, .section-block .dd-message ul{list-style:none;padding:0;margin:0;}
+  .dd-message li, .section-block .dd-message li{position:relative;padding:6px 0 6px 20px;font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.65;color:var(--text-soft);margin-bottom:0;}
+  .dd-message li::before{content:'▸';position:absolute;left:0;top:6px;color:var(--amber);font-size:12px;font-weight:700;}
+  .dd-message li strong{color:var(--text);font-weight:600;}
+  .dd-message li em{color:var(--amber);font-style:italic;}
+
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-image{display:block;width:100%;max-width:320px;height:auto;border-radius:10px;margin:0 auto 14px;background:var(--surface);cursor:zoom-in;box-shadow:0 2px 6px rgba(10,24,56,0.08);transition:max-width 0.25s ease, box-shadow 0.25s ease;}
+  .ip-image:hover{box-shadow:0 4px 12px rgba(10,24,56,0.14);}
+  .ip-image.expanded{max-width:100%;cursor:zoom-out;box-shadow:0 6px 18px rgba(10,24,56,0.18);}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:0;font-family:'Cormorant Garamond',serif;line-height:1.6;}
+
+  .narration{background:var(--ink-dark);color:#fbf7ec;border-radius:12px;padding:16px 22px;margin:12px 0 22px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 4px 14px rgba(10,24,56,0.14);border:1px solid rgba(155,184,230,0.18);}
+  .narration-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .narration-inner{flex:1;}
+  .narration-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--ink-accent);text-transform:uppercase;margin-bottom:8px;}
+  .narration-text{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;font-style:italic;color:rgba(251,247,236,0.92);}
+  .narration-text::before{content:'“';font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:var(--ink-accent);margin-right:4px;line-height:0;}
+  .narration-text::after{content:'”';font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:var(--ink-accent);margin-left:2px;line-height:0;}
+
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .quiz-items{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+
+  .quiz-items{list-style:none;padding:0;margin:0;}
+  .quiz-item{border-bottom:1px solid var(--border-dim);padding:16px 0;}
+  .quiz-item:first-child{padding-top:4px;}
+  .quiz-item:last-child{border-bottom:none;padding-bottom:4px;}
+  .quiz-q{font-family:'Cormorant Garamond',serif;font-size:16.5px;color:var(--text);line-height:1.6;padding-left:24px;position:relative;margin-bottom:10px;}
+  .quiz-q .quiz-num{position:absolute;left:0;top:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;color:var(--blue);font-size:16px;}
+  .btn-reveal{background:var(--surface);color:var(--blue);border:1px solid var(--blue);border-radius:8px;padding:7px 14px;font-family:'Outfit',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;margin-left:24px;}
+  .btn-reveal:hover{background:var(--blue-glow);}
+  .quiz-answer{margin:12px 0 0 24px;background:var(--surface-2);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;padding:12px 16px;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.7;color:var(--text-soft);}
+  .quiz-answer strong{color:var(--text);font-weight:600;}
+  .quiz-answer em{color:var(--blue);font-style:italic;}
+
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">VISUAL LEARNING PAGE · IKEv2 → IPSEC · HEIST EDITION · v2</div>
+  <h1>THE <em>TUNNEL JOB</em></h1>
+  <p>A heist in seven scenes, fourteen frames. Every image now has its screenplay narration — read it, hear it, remember it. Two crews, one ritual, a spy who records everything and understands nothing.</p>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Your brain files <em>ridiculous</em> better than it files <em>correct</em>.</div>
+  <p class="motivation-sub">Every frame below is captioned twice: the narration line (what plays over the shot) and the technical truth it encodes. Remember the scene, hear the voice, and the protocol comes with them. Style: Packet Journey × Memory Palace × screenplay.</p>
+</div>
+
+<main>
+<div class="main-content">
+
+  <!-- ══════════ THE POSTER ══════════ -->
+  <div class="section-block" id="scene-poster">
+    <div class="section-label">OPENING TITLES</div>
+    <h2>The <em>Cast</em></h2>
+
+    <ul class="cast-grid">
+      <li class="cast-card">
+        <img class="cast-img" src="images/cast-01-senor.png" alt="Señor" onerror="this.style.display='none';">
+        <div class="cast-name">Señor</div>
+        <div class="cast-role">Mastermind</div>
+        <div class="cast-desc">Plans the job from a chair, never touches a keyboard.</div>
+      </li>
+      <li class="cast-card">
+        <img class="cast-img" src="images/cast-02-marcus.png" alt="Marcus" onerror="this.style.display='none';">
+        <div class="cast-name">Marcus</div>
+        <div class="cast-role">Client</div>
+        <div class="cast-desc">Wants one thing moved to HQ by 8 AM, doesn't care how.</div>
+      </li>
+      <li class="cast-card">
+        <img class="cast-img" src="images/cast-03-diplomats.png" alt="The Diplomats" onerror="this.style.display='none';">
+        <div class="cast-name">The Diplomats</div>
+        <div class="cast-role">IKE</div>
+        <div class="cast-desc">One per firewall. They negotiate, they never carry.</div>
+      </li>
+      <li class="cast-card">
+        <img class="cast-img" src="images/cast-04-convoy.png" alt="The Convoy" onerror="this.style.display='none';">
+        <div class="cast-name">The Convoy</div>
+        <div class="cast-role">ESP</div>
+        <div class="cast-desc">Dumb, armoured, magnificent. Carries everything, negotiates nothing.</div>
+      </li>
+      <li class="cast-card">
+        <img class="cast-img" src="images/cast-05-agent-static.png" alt="Agent Static" onerror="this.style.display='none';">
+        <div class="cast-name">Agent Static</div>
+        <div class="cast-role">Passive eavesdropper</div>
+        <div class="cast-desc">Sees every frame. Wins nothing, ever.</div>
+      </li>
+      <li class="cast-card">
+        <img class="cast-img" src="images/cast-06-junior.png" alt="Junior" onerror="this.style.display='none';">
+        <div class="cast-name">Junior</div>
+        <div class="cast-role">Cautionary tale</div>
+        <div class="cast-desc">Enthusiasm in human form. Once forgot a policy, still hears about it.</div>
+      </li>
+    </ul>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-01-title-card.png" alt="The Tunnel Job title card — searchlight-swept gold lettering, the cast in silhouette." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-01-title-card.png</div>
+      <div class="ip-title">Frame 01 — Title Card</div>
+      <div class="ip-caption">Purpose: the master memory anchor. One glance at the title card should recall the entire cast and their protocol roles.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 01</div>
+        <div class="narration-text">Two fortresses. One secret. Four messages. This... is The Tunnel Job.</div>
+      </div>
+    </div>
+
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">🧠</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">MENTAL NOTE</div>
+        <div class="mental-note-block-text">Diplomats negotiate, never carry. Convoy carries, never negotiates. The spy records everything and wins nothing. That's IKE, ESP, and a passive eavesdropper — the whole cast list.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SCENE 1 ══════════ -->
+  <div class="section-block" id="scene-1">
+    <div class="section-label">SCENE 1 · 7:58 AM</div>
+    <h2>The Job <em>Comes In</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-02-the-job.png" alt="Marcus slaps a letter on the vault counter; the route board clacks; the gatekeeper reaches for the red phone." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-02-the-job.png</div>
+      <div class="ip-title">Frame 02 — The Job Arrives</div>
+      <div class="ip-caption">Purpose: encode "interesting traffic triggers IKE" — packet with a matching route but no SA wakes the diplomat.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 02</div>
+        <div class="narration-text">Seven fifty-eight AM. Marcus wants it moved. There's a road on the map — but no treaty covering it. The gatekeeper holds the cargo... and wakes the Diplomat.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>Marcus drops a letter at Parramatta. The route board points to a tunnel, but there's no treaty covering it yet.</li>
+        <li><span class="sg-tag">Protocol</span>Packet matches the tunnel interface route — but no SA exists, so the firewall triggers IKE.</li>
+        <li><span class="sg-tag">Remember</span>"Interesting traffic" is what wakes IKE. No cargo waiting, no diplomat.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">THE COLD CALL</div>
+      <ul>
+        <li>Marcus slaps a letter on the vault counter at Parramatta: <strong>"HQ. Trading floor. Now."</strong></li>
+        <li>The vault door — a fortress gate with a route board behind it — checks the destination: <em>10.1.0.0/24 → HQTunnel-ISP1</em>. There's a road on the map… but no treaty covering it.</li>
+        <li>The gatekeeper freezes, letter in hand, and picks up a red phone: <strong>"I have cargo but no treaty. Wake the Diplomat."</strong></li>
+        <li>Across the city, Agent Static hears the phone click and smiles. <em>Finally. A job. He presses RECORD.</em></li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li>Marcus's plaintext packet (10.2.0.50 → 10.1.0.20) hit the Parramatta FortiGate.</li>
+        <li>The static route matched the virtual interface <strong>HQTunnel-ISP1</strong>.</li>
+        <li>No SAs exist yet — the firewall holds the packet and triggers IKE.</li>
+        <li>Interesting traffic summons the diplomat; the diplomat never wakes without cargo waiting.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>Route match ≠ tunnel ready.</li>
+        <li>No SA → trigger IKE.</li>
+        <li>The trigger packet is held while negotiation runs.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ SCENE 2 ══════════ -->
+  <div class="section-block" id="scene-2">
+    <div class="section-label">SCENE 2 · IKE_SA_INIT · MESSAGES 1–2</div>
+    <h2>The Meet — <em>In Broad Daylight, On Purpose</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-03-the-meet.png" alt="Two diplomats exchange oversized open postcards in a public square under a spotlight while Agent Static photographs them from a bench." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-03-the-meet.png</div>
+      <div class="ip-title">Frame 03 — The Meet: Open Postcards Under a Spotlight</div>
+      <div class="ip-caption">Purpose: encode that IKE_SA_INIT is plaintext ON PURPOSE — and exactly what it contains (proposals, DH publics, network-id).</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 03</div>
+        <div class="narration-text">They meet at noon. In the open. Under a spotlight they brought themselves. Proposals, public puzzle pieces, a little confetti — photograph all of it, Agent Static. You cannot leak what was never secret.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>Diplomats trade giant open postcards under a spotlight while Static photographs everything.</li>
+        <li><span class="sg-tag">Protocol</span>IKE_SA_INIT — two plaintext messages exchanging proposals, DH publics, nonces, network-id.</li>
+        <li><span class="sg-tag">Remember</span>Plaintext <em>by design</em>. You cannot leak what was never secret.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">UNDER THE SPOTLIGHT</div>
+      <ul>
+        <li>The two diplomats meet at noon in the middle of the town square — under a spotlight <em>they brought themselves.</em></li>
+        <li>They hand each other giant OPEN postcards while Agent Static photographs every word from a park bench three metres away, not even hiding.</li>
+        <li>Postcard one: <strong>"We propose AES256-SHA256, network-id ONE."</strong> Postcard two: agreement.</li>
+        <li>Each slides across a public puzzle-piece — half of something golden.</li>
+        <li>Static photographs the puzzle pieces. He photographs the postcards. He photographs the pigeons. <strong>The diplomats wave at him.</strong></li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li>IKE_SA_INIT: two messages, deliberately <strong>plaintext</strong>.</li>
+        <li>Carries proposals, DH public values, and nonces.</li>
+        <li>Includes Fortinet's <strong>network-id</strong> so the peer knows which phase 1 this belongs to.</li>
+        <li>Public <em>by design</em> — nothing in it is usable to an attacker.</li>
+        <li>The wave at the spy is the point: you cannot leak what was never secret.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>Two messages, plaintext.</li>
+        <li>Contents: proposals + DH publics + nonces + network-id.</li>
+        <li>Static gets nothing usable from this exchange.</li>
+      </ul>
+    </div>
+
+    <details class="deep-dive">
+      <summary class="deep-dive-summary">
+        <span class="dd-icon">▸</span>
+        <span class="dd-label">DEEP DIVE</span>
+        <span class="dd-title">What is Inside the IKE_INIT_AUTH</span>
+      </summary>
+      <div class="deep-dive-body">
+        <p>Straight to the postcard's fine print — good. Here's exactly what's written on each of the two IKE_SA_INIT messages.</p>
+
+        <div class="dd-message">
+          <div class="dd-message-label">MESSAGE 1 — INITIATOR (PARRAMATTA) → RESPONDER (HQ)</div>
+          <ul>
+            <li><strong>IKE header</strong> — contains the initiator's IKE SPI: a random 64-bit case number for this negotiation. <em>(Yes — IKE has its own SPIs, separate from ESP's wax stamp. The responder's SPI field is still zero; he hasn't opened a file yet.)</em></li>
+            <li><strong>SA payload (SAi1)</strong> — the proposal list: encryption algorithm, integrity/PRF algorithm, and DH group. This is the <strong>set proposal aes256-sha256</strong> and DH group lines from your <strong>phase1-interface</strong>, serialised onto the postcard. Can be multiple proposals — a menu, responder picks.</li>
+            <li><strong>KE payload</strong> — the initiator's DH public value. The golden puzzle-piece itself, computed for the offered group.</li>
+            <li><strong>Nonce (Ni)</strong> — a large one-time random number. New character in the story: <em>confetti</em>. Hold that thought.</li>
+            <li><strong>Extras</strong> — NAT-Detection payloads (hashes that reveal whether a NAT sits on the path — if so, everything shifts to UDP 4500), vendor IDs, and Fortinet's <strong>network-id</strong> riding here so HQ knows which phase 1 this handshake belongs to.</li>
+          </ul>
+        </div>
+
+        <div class="dd-message">
+          <div class="dd-message-label">MESSAGE 2 — RESPONDER → INITIATOR</div>
+          <ul>
+            <li><strong>IKE header</strong> — responder's SPI now filled in. The case officially has two file numbers.</li>
+            <li><strong>SA payload (SAr1)</strong> — the single chosen proposal from the menu. No negotiation ping-pong; pick one.</li>
+            <li><strong>KE payload</strong> — the responder's DH public value.</li>
+            <li><strong>Nonce (Nr)</strong> — his own confetti.</li>
+            <li><strong>Same NAT-D checks</strong>, plus (under attack) an optional <em>cookie challenge</em> to make DoS floods prove they're real before HQ spends CPU on DH.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ══════════ SCENE 3 — THE CENTREPIECE ══════════ -->
+  <div class="section-block" id="scene-3">
+    <div class="section-label">SCENE 3 · THE DH RITUAL · THE CENTREPIECE</div>
+    <h2>Growing <em>the Secret</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-04-ritual-pouring.png" alt="Cathedral greenhouse at midnight; two diplomats pour vials into a giant planter as coral laser beams sweep; Static dangles above with test tubes." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-04-ritual-pouring.png</div>
+      <div class="ip-title">Frame 04 — The Ritual: Pouring the Vials</div>
+      <div class="ip-caption">Purpose: encode the moment of the DH combination — each side pours the peer's public + their own private into the soil. Private vials chained to wrists.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 04</div>
+        <div class="narration-text">Midnight. The ritual. His public piece... my private vial — chained to the wrist. Never leaves the body.</div>
+      </div>
+    </div>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-05-ritual-key-grows.png" alt="A colossal golden key surges up like a beanstalk from the greenhouse planter; light pulses; Static swings on his wire, blown back." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-05-ritual-key-grows.png</div>
+      <div class="ip-title">Frame 05 — The Ritual: Growing the Secret (HERO IMAGE)</div>
+      <div class="ip-caption">Purpose: the most outrageous, most memorable frame on the page. Encodes DH completely: identical secret grown on both sides, eavesdropper defeated by mathematics, not secrecy.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 05</div>
+        <div class="narration-text">And the key is GROWN... not posted.</div>
+      </div>
+    </div>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-06-static-lair-cactus.png" alt="Cold dawn light in Agent Static's lair; his copied planter produces one small sombrero cactus; Static screams silently, tape reel unspooling." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-06-static-lair-cactus.png</div>
+      <div class="ip-title">Frame 06 — The Morning After: One Sarcastic Cactus</div>
+      <div class="ip-caption">Purpose: encode that a perfect passive recording still yields nothing without either private value. The mathematics wins.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 06</div>
+        <div class="narration-text">Static recorded everything. Every frame. Every droplet. At dawn, his copied ritual finally bore fruit — one small, sarcastic cactus. The mathematics sends its regards.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>The diplomats grow a giant key by mixing public halves with their own private vials.</li>
+        <li><span class="sg-tag">Protocol</span>Diffie-Hellman — peer-public + own-private = identical shared secret on both sides.</li>
+        <li><span class="sg-tag">Remember</span>The secret is <em>grown, not posted</em>. Static's perfect recording yields a cactus.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">INSIDE THE GREENHOUSE</div>
+      <ul>
+        <li>Midnight. A glass greenhouse the size of a cathedral, ringed with coral laser beams.</li>
+        <li>In the centre: one colossal golden planter. Each diplomat approaches from opposite doors carrying TWO vials.</li>
+        <li>One glowing vial chained to their wrist marked <strong>PRIVATE — NEVER LEAVES THE BODY</strong>, and the public puzzle-piece from the square.</li>
+        <li>Each pours <em>the other's public piece</em> together with <em>their own private vial</em> into the soil.</li>
+        <li>The greenhouse shakes. Organ music. Fog. Out of the planter <strong>grows a golden key the size of a lamppost</strong>, blooming like a beanstalk.</li>
+        <li>Agent Static dangles from the ceiling on a wire, Mission-style, inches above the planter — catching <em>every single droplet</em> in test tubes.</li>
+      </ul>
+    </div>
+    <div class="story-beat">
+      <div class="story-beat-label">THE MORNING AFTER</div>
+      <ul>
+        <li>Back at his lair, Static replays the tapes. He has both public puzzle-pieces, the soil samples, and 4K footage of the entire ritual.</li>
+        <li>He combines them in his own planter and waits, sweating, all night.</li>
+        <li>At dawn, his planter produces… <strong>one small, sarcastic cactus.</strong> He screams.</li>
+        <li>He is missing the one ingredient that never crossed the square, never crossed the wire, never left a wrist: <em>either private vial.</em></li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li><strong>Diffie-Hellman.</strong> Each side combines the peer's public value with its own private value.</li>
+        <li>Both sides independently arrive at the identical shared secret.</li>
+        <li>The secret is <strong>grown, not posted</strong> — it never exists on the wire.</li>
+        <li>Private values never transmit; only public halves cross the square.</li>
+        <li>Recording the wire perfectly still yields nothing.</li>
+        <li>This is why the open-air Meet was safe — the load-bearing wall of the entire protocol.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>Peer-public + own-private = same shared secret on both sides.</li>
+        <li>Private values never leave the box.</li>
+        <li>Passive recording is defeated by mathematics, not secrecy.</li>
+      </ul>
+    </div>
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">🧠</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">MENTAL NOTE</div>
+        <div class="mental-note-block-text">Peer's public piece + my private vial = the same giant key on both sides. The private vial never leaves the wrist. The spy who recorded everything grows a cactus. Grown, not posted.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SCENE 4 ══════════ -->
+  <div class="section-block" id="scene-4">
+    <div class="section-label">SCENE 4 · IKE_AUTH · MESSAGES 3–4</div>
+    <h2>The Whisper Room — <em>and the Paperwork Rides Along</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-07-whisper-room-names.png" alt="Inside a soundproof vault: two diplomats remove masks, handshake glowing with a verified seal; Static's parabolic mic bends against the wall outside." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-07-whisper-room-names.png</div>
+      <div class="ip-title">Frame 07 — The Whisper Room: Names Revealed</div>
+      <div class="ip-caption">Purpose: encode that identities and PSK proof are exchanged ONLY inside the encrypted channel — after the DH secret exists.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 07</div>
+        <div class="narration-text">Behind a metre of steel: masks off. 'I am Parramatta.' 'Prove it.' ...Verified.</div>
+      </div>
+    </div>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-08-treaty-clipboard.png" alt="Overhead shot: quill signing the cargo treaty; two wax stamps cross the table simultaneously, each SPI embossed in opposing hands." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-08-treaty-clipboard.png</div>
+      <div class="ip-title">Frame 08 — Treaty Signed, Wax Stamps Exchanged</div>
+      <div class="ip-caption">Purpose: encode that the first child SA piggybacks in this same encrypted exchange — one meeting, no quick-mode, both sides issue their own SPI for the return direction.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 08</div>
+        <div class="narration-text">And since we're both here — sign the cargo treaty too. Routes. Cipher. Expiry. And each gate issues its own wax stamp: 'when you write to me... use this.' One meeting. No second appointment.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>Diplomats step into a soundproof vault to reveal identities and sign the cargo treaty in one visit.</li>
+        <li><span class="sg-tag">Protocol</span>IKE_AUTH — two encrypted messages carrying identities, PSK proof, and the first child SA piggybacked.</li>
+        <li><span class="sg-tag">Remember</span>Grow the secret first, then whisper your name inside it. Four messages total, no quick mode.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">BEHIND THE VAULT DOOR</div>
+      <ul>
+        <li>The giant grown key unlocks a door that wasn't there before: a soundproof vault INSIDE the greenhouse, walls a metre thick. The diplomats step in.</li>
+        <li>Outside, Agent Static presses his parabolic microphone flat against the wall so hard it bends.</li>
+        <li>Inside, for the first time, the diplomats remove their masks: <strong>"I am Parramatta." "I am HQ. Prove it."</strong> Secret handshake — the PSK — performed and verified.</li>
+        <li>In the SAME visit, one diplomat produces a clipboard: <strong>"Since we're both here… sign the cargo treaty too."</strong></li>
+        <li>Routes 10.2.0.0/24 ↔ 10.1.0.0/24. Convoy cipher. Expiry date. Reference number. Signed.</li>
+        <li><em>One meeting. No second appointment. Static's microphone records sixty seconds of rich, meaningless static.</em></li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li>IKE_AUTH: two messages, fully <strong>encrypted</strong> under the freshly grown secret.</li>
+        <li>Identities and PSK proof are exchanged only now — <em>after</em> the secret exists.</li>
+        <li>The <strong>first child SA piggybacks</strong> in this same exchange: traffic selectors, cipher, lifetime, SPI.</li>
+        <li>IKEv2 has <strong>no quick mode</strong> — the whole handshake completes in four messages total.</li>
+        <li>Aggressive mode (deleted scene) shouts identity <em>before</em> any key exists — speed and leak, same fact.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>IKE_AUTH is encrypted.</li>
+        <li>Identities revealed only after DH.</li>
+        <li>First child SA rides along — 4 messages total, no quick mode.</li>
+      </ul>
+    </div>
+
+    <div class="callout callout-amber"><strong>The aggressive-mode cameo:</strong> in the deleted scene, a rival diplomat announces his name through a megaphone <em>before</em> the ritual, to save one trip to the square. Speed and leak: same fact. Señor binned the screenplay.</div>
+  </div>
+
+  <!-- ══════════ SCENE 5 ══════════ -->
+  <div class="section-block" id="scene-5">
+    <div class="section-label">SCENE 5 · THE HANDOFF</div>
+    <h2>Two Keycards, <em>Never Mixed</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-09-key-cutter.png" alt="The giant golden key lowered into a mechanical cutter; sparks; two keycards eject — gold, then green — landing on velvet." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-09-key-cutter.png</div>
+      <div class="ip-title">Frame 09 — The Key Cutter: One Secret, Two Cards</div>
+      <div class="ip-caption">Purpose: encode the derivation moment — one DH secret becomes two independent key sets. Different colours, different jobs.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 09</div>
+        <div class="narration-text">One secret grown. Two keys cut. Gold — for the diplomats' phone line. Green — for the convoy's ignition. Never mixed. Never shared.</div>
+      </div>
+    </div>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-10-handoff-convoy.png" alt="Pan across the room: gold card sways by the red phone; green card passes to the convoy driver who slots it into the ignition; the diplomat reclines with coffee." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-10-handoff-convoy.png</div>
+      <div class="ip-title">Frame 10 — The Handoff: Green Card to the Convoy</div>
+      <div class="ip-caption">Purpose: encode that after the handoff, data packets never touch IKE. IKE sits down; ESP does all the work.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 10</div>
+        <div class="narration-text">And then the diplomats... sit down. From here, the data never touches them again.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>The grown key is cut into two cards: gold for the diplomats' phone, sage for the convoy driver.</li>
+        <li><span class="sg-tag">Protocol</span>One DH secret → two independent key sets. IKE-SA keys and child-SA keys are different.</li>
+        <li><span class="sg-tag">Remember</span>Data packets never touch IKE again. IKE goes idle after the handoff.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">CUTTING THE CARDS</div>
+      <ul>
+        <li>Inside the whisper room, the diplomats hold the giant grown key over a cutting machine and press.</li>
+        <li>Out drop <strong>TWO different keycards</strong>.</li>
+        <li>Card one — gold, labelled <strong>DIPLOMATS ONLY</strong> — goes on a chain by a red phone in the corner: their private line, for renewals and are-you-alive calls.</li>
+        <li>Card two — sage green, labelled <strong>CONVOY</strong> — is walked outside and handed to the convoy driver, who grunts, slots it into the ignition, and asks precisely zero questions.</li>
+        <li>The diplomats pour themselves coffee and <em>sit down</em>. Their part is over. The driver revs the engine.</li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li>One DH secret, <strong>two independent key sets derived</strong>.</li>
+        <li><strong>IKE-SA keys</strong> encrypt IKE_AUTH, future rekeys, dead-peer detection.</li>
+        <li><strong>Child-SA keys</strong> are used by ESP on the data.</li>
+        <li>Compromising one set does not compromise the other.</li>
+        <li>IKE manufactures the keys; ESP consumes them.</li>
+        <li>After the handoff, <strong>data packets never touch IKE</strong>.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>Two key sets from one secret.</li>
+        <li>IKE keys ≠ child-SA keys.</li>
+        <li>IKE sits idle once ESP is running.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ SCENE 6 ══════════ -->
+  <div class="section-block" id="scene-6">
+    <div class="section-label">SCENE 6 · ESP · THE RUN</div>
+    <h2>The Run — <em>and the Stamp at the Gate</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-11-sealing.png" alt="POLICY #1 stamp slams down; the letter slides into an armoured envelope; a clerk presses the glowing SPI wax seal; the bolted 'JUNIOR — NEVER AGAIN' frame rattles." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-11-sealing.png</div>
+      <div class="ip-title">Frame 11 — Sealing: Policy #1 and the Wax</div>
+      <div class="ip-caption">Purpose: encode ESP encapsulation — the letter (inner packet) sealed inside an armoured envelope (outer header) with an SPI wax seal identifying the SA.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 11</div>
+        <div class="narration-text">Stamped. Sealed. Decoy address on the outside — the real letter sleeps within.</div>
+      </div>
+    </div>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-12-the-run.png" alt="Full-speed tracking shot alongside the armoured convoy; Agent Static clings to the roof, trenchcoat whipping, stethoscope vibrating; thought bubble = question mark." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-12-the-run.png</div>
+      <div class="ip-title">Frame 12 — The Run: Static Rides Along, Learns Nothing</div>
+      <div class="ip-caption">Purpose: encode the futility of on-path interception once ESP is running — perfect capture, zero comprehension.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 12</div>
+        <div class="narration-text">He rode ON the convoy the whole way... and still doesn't know what's inside.</div>
+      </div>
+    </div>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-13-the-stamp.png" alt="The HQ guard raises the wax seal to a wall of pigeonholes; one pigeonhole glows gold ('ParraTunnel-ISP1 · child SA'); envelope opens; POLICY #2 stamps the letter; reply letter hops into the truck." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-13-the-stamp.png</div>
+      <div class="ip-title">Frame 13 — The Stamp: SPI Lookup Before Decrypt</div>
+      <div class="ip-caption">Purpose: encode that SPI-based SA lookup precedes decryption. The right treaty first, then the right key. Reply of an established session rides free.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 13</div>
+        <div class="narration-text">At the gate: the wax against the pigeonholes FIRST. The right treaty — then the right key. Stamp two. Delivered. And the reply rides home for free.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>The letter is sealed in an armoured envelope with a different outer address; the HQ guard checks the wax stamp before unlocking.</li>
+        <li><span class="sg-tag">Protocol</span>ESP tunnel-mode encapsulation. SPI in the ESP header selects which child SA; policies run on both firewalls.</li>
+        <li><span class="sg-tag">Remember</span>Marcus is Packet B wearing a lanyard — replies of an established session ride free.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">ENVELOPE BOUND FOR HQ</div>
+      <ul>
+        <li>Marcus's letter is finally lifted from the counter, checked once against the house rules (<strong>Policy #1</strong> — the page Junior once forgot; the frame around it is bolted to the wall now).</li>
+        <li>Then sealed inside an armoured envelope with a completely different address on the outside: <em>203.0.113.45 → 198.51.100.10</em>.</li>
+        <li>The convoy thunders across the city. Agent Static leaps from a bridge onto the roof, stethoscope to the armour, and hears… gibberish. Beautiful, expensive, forty-terabyte gibberish.</li>
+        <li>At the HQ gate, the guard doesn't open the envelope first — he checks the <strong>reference number stamped on it</strong>, pulls the matching treaty from a wall of pigeonholes, and only THEN unlocks it with the convoy card.</li>
+        <li>Out slides Marcus's letter, untouched. One more stamp — <strong>Policy #2</strong> — and it's on the trading floor.</li>
+        <li>The reply hops into the convoy's return seat <em>without buying a ticket.</em></li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li>ESP encapsulation: the entire original packet is encrypted with child-SA keys and wrapped in a new outer header — <strong>envelope vs letter</strong>.</li>
+        <li>On arrival, HQ matches the <strong>SPI</strong> in the ESP header to the correct child SA <em>before</em> decrypting.</li>
+        <li>The SPI is the reference number that pulls the right treaty off the shelf.</li>
+        <li>Firewall policies apply on <strong>both</strong> firewalls.</li>
+        <li>Only the reply of an established session rides free.</li>
+        <li>Marcus is <strong>Packet B wearing a lanyard</strong> — a new initiator, not a reply.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>Letter inside envelope; outer address belongs to the truck.</li>
+        <li>SPI selects the SA <em>before</em> decryption.</li>
+        <li>Both firewalls run policy; replies of an established session ride free.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ SCENE 7 ══════════ -->
+  <div class="section-block" id="scene-7">
+    <div class="section-label">SCENE 7 · EPILOGUE · 2:00 PM</div>
+    <h2>Ten Thousand Runs Later — <em>the Spy's Wall</em></h2>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="grok/scene-14-spy-wall.png" alt="Agent Static's lair: evidence wall with photos, tapes, red string converging on a huge central question mark; a gold-framed trophy 'I AM PARRAMATTA!' on the right; two-armed sombrero cactus on the desk." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">grok/scene-14-spy-wall.png</div>
+      <div class="ip-title">Frame 14 — Agent Static's Evidence Wall</div>
+      <div class="ip-caption">Purpose: the wiretapper's notebook rendered permanent — exactly what a passive on-path attacker gets (and doesn't), plus aggressive mode's leak as his lone trophy.</div>
+    </div>
+    <div class="narration">
+      <div class="narration-icon">🎬</div>
+      <div class="narration-inner">
+        <div class="narration-label">Narration · Frame 14</div>
+        <div class="narration-text">Two PM. Ten thousand runs. The red phone rang twice — a renewal... and a 'you alive?' ...'Sí.' On his wall: endpoints. Existence. Proposals. Volume. Everything he knows. Nothing he needs. His one trophy hangs in gold — a man with a megaphone, twenty-fourteen. Aggressive mode. His only win. ...Cap the marker.</div>
+      </div>
+    </div>
+
+    <div class="scene-glance">
+      <div class="scene-glance-label">SCENE AT A GLANCE</div>
+      <ul>
+        <li><span class="sg-tag">Story</span>10,000 runs done. The diplomats nap by the red phone. Static's evidence wall points to nothing — one framed trophy: aggressive mode.</li>
+        <li><span class="sg-tag">Protocol</span>IKE SA stays up but <em>idle</em>. A passive recording reveals endpoints, existence, proposals, volume/timing — and nothing else.</li>
+        <li><span class="sg-tag">Remember</span>The only identity Static ever framed was aggressive mode — a plaintext shout, pre-DH, by design.</li>
+      </ul>
+    </div>
+
+    <div class="story-beat">
+      <div class="story-beat-label">THE SPY'S WALL OF NOTHING</div>
+      <ul>
+        <li>2 PM. The convoy has made ten thousand runs.</li>
+        <li>The diplomats are asleep in their armchairs by the red phone, which has rung twice all day: once to renew the treaty before it expired, once just to ask <em>"you alive?"</em> — <em>"sí."</em></li>
+        <li>Across town, Agent Static stands before his EVIDENCE WALL — hundreds of photographs, tapes, soil samples, red string everywhere, all converging on… nothing.</li>
+        <li>In the centre of the wall, in a golden frame with a museum light, hangs his single lifetime trophy: a photograph from another job, years ago, of a rival diplomat mid-shout through a megaphone: <strong>"I AM PARRAMATTA!"</strong> Aggressive mode. His one win.</li>
+        <li>He dusts the frame. The cactus on his desk has grown a second sarcastic arm.</li>
+      </ul>
+    </div>
+
+    <div class="tech-truth">
+      <span class="tt-label">WHAT REALLY HAPPENED</span>
+      <ul>
+        <li>The IKE SA stays up but <strong>idle</strong>.</li>
+        <li>It speaks only for <strong>rekey</strong>, <strong>dead peer detection</strong>, or <strong>teardown</strong>.</li>
+        <li>Data packets are pure ESP.</li>
+        <li>Passive recording yields: the two gateway IPs, the fact a VPN exists, the offered proposals, traffic volume and timing.</li>
+        <li>And <em>nothing else</em>.</li>
+        <li>The only way Static ever framed an identity was aggressive mode — plaintext, pre-DH, by design.</li>
+      </ul>
+    </div>
+
+    <div class="key-points">
+      <div class="key-points-label">KEY POINTS</div>
+      <ul>
+        <li>IKE idle after setup; ESP does the work.</li>
+        <li>Passive attacker gets: endpoints, existence, proposals, volume/timing — nothing more.</li>
+        <li>Aggressive mode is the historical exception — a plaintext identity leak.</li>
+      </ul>
+    </div>
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">🧠</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">MENTAL NOTE</div>
+        <div class="mental-note-block-text">The red phone rings for three reasons only: rekey, dead-peer check, teardown. The evidence wall holds four things: endpoints, existence, proposals, volume. The trophy is aggressive mode. The cactus is Diffie-Hellman's verdict.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ QUIZ ══════════ -->
+  <div class="section-block" id="scene-quiz">
+    <div class="section-label">POST-CREDITS · QUESTIONS ON THE STORY</div>
+    <h2>Interrogation <em>Room</em></h2>
+    <p>Answer from the story first — then translate to protocol. If you can do both, it's yours forever.</p>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">🎬</span>
+        <span class="socratic-label">THE TUNNEL JOB — FIVE QUESTIONS</span>
+      </div>
+      <p class="socratic-insight">Every absurd detail was load-bearing. These five questions test whether the scene and the protocol are welded together in your memory.</p>
+      <div class="quiz-items">
+        <div class="quiz-item">
+          <div class="quiz-q"><span class="quiz-num">1.</span>Why do the diplomats bring their OWN spotlight to the Meet — why is broad daylight safe?</div>
+          <button class="btn-reveal" onclick="toggleReveal(this)">💡 Reveal Answer</button>
+          <div class="quiz-answer" style="display:none;"><strong>The spotlight.</strong> Broad daylight is safe because nothing at the Meet is secret. IKE_SA_INIT carries proposals, DH public values, nonces, SPIs, network-id — all of it useless to an eavesdropper <em>by design</em>. Encrypting it would protect nothing; the diplomats bring the spotlight to make the point. <em>You cannot leak what was never secret.</em></div>
+        </div>
+        <div class="quiz-item">
+          <div class="quiz-q"><span class="quiz-num">2.</span>Static recorded the entire greenhouse ritual in 4K and caught the droplets. Why does his copied planter grow only a cactus?</div>
+          <button class="btn-reveal" onclick="toggleReveal(this)">💡 Reveal Answer</button>
+          <div class="quiz-answer" style="display:none;"><strong>The cactus.</strong> The grown key = <strong>peer's public piece + your own private vial</strong>. Static holds both publics and a perfect recording — but the private values never transmitted, never once crossed the square. Without either private vial, the maths simply doesn't produce the secret. <em>The secret is grown, not posted;</em> a flawless passive recording is defeated by arithmetic, not by hiding.</div>
+        </div>
+        <div class="quiz-item">
+          <div class="quiz-q"><span class="quiz-num">3.</span>Why does the cutting machine produce TWO keycards instead of one — and who holds each?</div>
+          <button class="btn-reveal" onclick="toggleReveal(this)">💡 Reveal Answer</button>
+          <div class="quiz-answer" style="display:none;"><strong>Two keycards.</strong> One seed (DH secret + both nonces), two separate derivations. <strong>Gold card — IKE SA keys:</strong> held by the diplomats, encrypts IKE_AUTH, rekeys, dead-peer checks. <strong>Green card — child SA keys:</strong> handed to the convoy, ESP uses it on every data packet. Siblings from one seed, but you can't compute one from the other — compromise of one channel doesn't open the other. <em>Cryptographic failure domains.</em></div>
+        </div>
+        <div class="quiz-item">
+          <div class="quiz-q"><span class="quiz-num">4.</span>The HQ gate guard checks the wax stamp against the pigeonholes BEFORE opening the envelope. What is the stamp, and why check it first?</div>
+          <button class="btn-reveal" onclick="toggleReveal(this)">💡 Reveal Answer</button>
+          <div class="quiz-answer" style="display:none;"><strong>The wax stamp.</strong> The <strong>SPI</strong> in the ESP header. HQ may hold many child SAs — multiple tunnels, mid-rekey overlaps — so the guard must identify which treaty (which keys, which cipher) the packet belongs to before decryption is even possible. <em>Pigeonhole first, envelope second: SA lookup precedes decrypt, always.</em></div>
+        </div>
+        <div class="quiz-item">
+          <div class="quiz-q"><span class="quiz-num">5.</span>The red phone rings twice all afternoon. Name all three reasons it is ever allowed to ring.</div>
+          <button class="btn-reveal" onclick="toggleReveal(this)">💡 Reveal Answer</button>
+          <div class="quiz-answer" style="display:none;"><strong>The red phone.</strong> <strong>Rekey</strong> (lifetime expiring — fresh keys cut), <strong>dead peer detection</strong> ("you alive?" — "sí"), and <strong>teardown</strong>. Otherwise silence — data is pure ESP and never touches the diplomats.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout"><strong>Exam translation table:</strong> the Meet = IKE_SA_INIT (plaintext, safe) · the Ritual = Diffie-Hellman (grown, not posted) · the Whisper Room = IKE_AUTH (encrypted identities + piggybacked child SA, no quick mode) · two keycards = separate IKE-SA and child-SA keys · the Run = ESP tunnel mode (envelope vs letter) · the wax stamp = SPI · the red phone = rekey / DPD / teardown · the trophy photo = aggressive mode's plaintext identity.</div>
+  </div>
+
+</div><!-- /main-content -->
+</main>
+
+<footer>
+  LoFinance<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Visual Page · The Tunnel Job v2 · Fourteen Frames with Narration
+</footer>
+
+<script>
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function toggleReveal(btn) {
+  const ans = btn.parentElement.querySelector('.quiz-answer');
+  const isHidden = ans.style.display === 'none' || !ans.style.display;
+  ans.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Answer' : '💡 Reveal Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+</script>
+</body>
+</html>

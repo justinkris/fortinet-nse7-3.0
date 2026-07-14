@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 6 — VDOM Design Decision Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--red:#b3261e;--red-light:#fdeceb;--red-border:#f3b8b0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;}
+header{background:#0d1a3a;padding:36px 44px;}
+header .eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:#9bb8e6;letter-spacing:.1em;margin-bottom:8px;}
+header h1{font-family:'Playfair Display',serif;color:#fbf7ec;font-size:32px;}
+main{max-width:840px;margin:0 auto;padding:32px 22px 80px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 28px;margin-bottom:20px;}
+.card h2{font-family:'Outfit',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.07em;color:var(--blue);margin-bottom:12px;}
+.card p, .card li{font-size:16.5px;color:var(--text-soft);}
+ul{padding-left:20px;}
+li{margin-bottom:6px;}
+.tree{background:#0d1a3a;color:#dfe9ff;border-radius:10px;padding:20px 24px;font-family:'Courier New',monospace;font-size:14px;white-space:pre;overflow-x:auto;}
+.deadend{background:var(--red-light);border:1px solid var(--red-border);border-radius:10px;padding:14px 18px;margin-top:10px;}
+.deadend b{color:var(--red);font-family:'Outfit',sans-serif;font-size:11px;text-transform:uppercase;display:block;margin-bottom:4px;}
+.check{background:var(--green-light);border:1px solid var(--green-border);border-radius:10px;padding:14px 18px;margin-top:10px;}
+.check b{color:var(--green);font-family:'Outfit',sans-serif;font-size:11px;text-transform:uppercase;display:block;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 06</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div><div class="eyebrow">SESSION 06 · DECISION-MAKING GUIDE</div><h1>Choosing (and Verifying) a VDOM Type</h1></header>
+<main>
+
+  <div class="card">
+    <h2>The Real Skill Here</h2>
+    <p>This session isn't a broken-config troubleshoot — it's a design decision under a business constraint. The senior-engineer skill is asking the right questions BEFORE typing any CLI, so you don't build the wrong VDOM type and have to unwind it later.</p>
+  </div>
+
+  <div class="card">
+    <h2>Questions To Ask Before Choosing a VDOM Type</h2>
+    <ul>
+      <li>Does this VDOM need to pass and route real user traffic — or is it purely for administering the box itself? (→ Admin vs Traffic/LAN-Extension)</li>
+      <li>If it passes traffic — can the network's IP addressing and routing topology change, or must it stay invisible to connected devices? (→ NAT vs Transparent)</li>
+      <li>Is the goal to inspect traffic locally, or purely to tunnel a remote site's LAN back to a central controller? (→ Traffic vs LAN Extension)</li>
+      <li>How close is the FortiGate to its VDOM ceiling (default 10)? Check before promising a client anything is "free."</li>
+      <li>Will this VDOM need internet/FortiGuard access independently, or can it rely on the existing management VDOM?</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Decision Tree</h2>
+    <div class="tree">Does the VDOM need to pass user traffic?
+│
+├─ NO  → ADMIN VDOM (max 1 per box, mgmt/licensing/updates only)
+│
+└─ YES → Is the traffic being routed/inspected locally,
+         or just tunneled to a central controller?
+         │
+         ├─ Tunneled to controller → LAN EXTENSION VDOM
+         │                           (Network + VPN modules only)
+         │
+         └─ Routed/inspected locally →
+              Can the network topology (IPs, routing) change?
+              │
+              ├─ YES → TRAFFIC VDOM, NAT MODE
+              │        (full router/firewall — most common)
+              │
+              └─ NO  → TRAFFIC VDOM, TRANSPARENT MODE
+                       (invisible L2 inspection —
+                        remember: still needs 1 manageip)</div>
+  </div>
+
+  <div class="card">
+    <h2>Verification Commands</h2>
+    <ul>
+      <li><code>get system status | grep "Max number of virtual domains"</code> — confirm the model's VDOM ceiling before promising capacity</li>
+      <li><code>get sys status</code> — confirm current VDOM mode (multi-vdom enabled?)</li>
+      <li>Global VDOM &gt; System &gt; VDOM — view current VDOM list, types, and which is flagged as the management VDOM (red dot)</li>
+      <li>Global VDOM &gt; System &gt; Global Resources / Edit VDOM (Override Maximum) — check current resource usage before allocating a new VDOM's limits</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Common Dead Ends</h2>
+    <div class="deadend"><b>Dead end</b>Assuming "isolated guest network" automatically means transparent mode. Isolation is about policy/interface separation (any traffic VDOM gives you that); transparent mode is specifically about topology invisibility, which a brand-new guest network doesn't need.</div>
+    <div class="deadend"><b>Dead end</b>Assuming a new VDOM is "free" without checking the current VDOM count and resource headroom first — the honest recommendation always includes the ceiling.</div>
+    <div class="deadend"><b>Dead end</b>Forgetting the manageip requirement on transparent VDOMs and being surprised by a failed node-check error during config.</div>
+  </div>
+
+  <div class="card">
+    <h2>Exam Traps</h2>
+    <div class="check"><b>Trap 1</b>"Transparent mode needs no IP at all" — false. It needs exactly one manageip for admin access.</div>
+    <div class="check"><b>Trap 2</b>Confusing "Global VDOM" (device-wide admin view) with "Admin VDOM type" (a traffic-free VDOM instance) — these are two different concepts that share the word "admin."</div>
+    <div class="check"><b>Trap 3</b>Assuming the only way past the 10-VDOM default is a new physical box — licensing extends the VDOM count first.</div>
+  </div>
+
+</main>
+</body>
+</html>

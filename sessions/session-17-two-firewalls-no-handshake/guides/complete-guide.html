@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 17 Complete — Two Firewalls, No Handshake</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-glow:rgba(30,64,175,0.07); --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --coral:#e0654a; --coral-light:#fbe6e0;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:44px 56px 32px;background:var(--ink-dark);}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+.dot{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;}
+h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;color:#fbf7ec;line-height:1.1;letter-spacing:-0.01em;}
+h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-size:16px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:10px;}
+.motivation{padding:20px 56px;background:var(--surface);border-bottom:1px solid var(--border);}
+.motivation b{font-family:'Playfair Display',serif;font-size:19px;color:var(--text);}
+.motivation b em{color:var(--coral);font-style:italic;}
+main{max-width:980px;margin:0 auto;padding:36px 56px 70px;}
+.section{margin-bottom:44px;}
+.section h2{font-family:'Playfair Display',serif;font-size:27px;font-weight:700;color:var(--text);border-left:4px solid var(--blue);padding-left:16px;margin-bottom:16px;}
+.section h2 em{color:var(--blue);font-style:italic;font-weight:500;}
+.section p{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+.section p strong{color:var(--text);}
+.section ul,.section ol{padding-left:24px;margin-bottom:14px;}
+.section li{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:5px;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-size:16px;color:var(--text-soft);}
+.callout strong{color:var(--text);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-coral{border-left-color:var(--coral);background:var(--coral-light);}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px;}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:10px 12px;text-align:left;}
+td{font-size:15px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+td:first-child{color:var(--text);font-weight:600;}
+.code{background:var(--ink-dark);border-radius:10px;padding:0;margin:14px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);}
+.code pre{padding:14px 16px;overflow-x:auto;}
+.code code{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.6;color:#e8efff;}
+.socratic{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);border-radius:12px;padding:16px 20px;margin:16px 0;}
+.socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--text-muted);text-transform:uppercase;}
+.socratic ul{list-style:none;padding:0;margin-top:8px;}
+.socratic li{padding:6px 0 6px 20px;position:relative;border-bottom:1px solid var(--border-dim);font-size:16px;}
+.socratic li::before{content:'?';position:absolute;left:0;color:var(--blue);font-style:italic;font-weight:700;}
+.exam-tip{background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;padding:12px 18px;margin:14px 0;font-size:15px;color:var(--text-soft);}
+.exam-tip b{color:var(--amber);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:4px;}
+.takeaway{background:var(--ink-dark);border-radius:14px;padding:26px 30px;margin-top:20px;}
+.takeaway h3{font-family:'Playfair Display',serif;color:#fbf7ec;font-size:20px;margin-bottom:12px;}
+.takeaway li{color:var(--ink-accent);}
+footer{text-align:center;padding:30px;color:var(--text-muted);font-size:13px;font-style:italic;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow"><span class="dot"></span> Study Guide · NSE7 EF 7.6 · Session 17</div>
+  <h1>Two Firewalls, <em>No Handshake</em></h1>
+  <p>Cowboy Hat Boss Battle — IPsec Phase 2 mismatch, OSPF backbone partition, and the static route that lied.</p>
+</header>
+
+<div class="motivation">
+  <b>Three faults, one lesson: <em>a healthy-looking system can still be wrong at every layer you haven't checked yet.</em></b>
+</div>
+
+<main>
+
+<div class="section">
+<h2>Session <em>Overview</em></h2>
+<p>Señor pre-broke a new DR↔Parramatta backup tunnel (DR2PAR) at both ends, then forced a live failover drill by shutting the primary HQ↔Parramatta link. Three faults surfaced in sequence, each hiding behind the last: a Phase 2 crypto mismatch, an OSPF area mismatch that risked partitioning the backbone, and — once everything else was fixed — a planted static route that silently outranked a perfectly healthy OSPF path the moment the primary link came back.</p>
+<p>The throughline: <strong>adjacency Full and LSDB-correct does not mean the routing table reflects it.</strong> Every fault this session lived one layer below where the previous check said "healthy."</p>
+</div>
+
+<div class="section">
+<h2>Learning <em>Objectives</em></h2>
+<ul>
+<li>Read <code>diagnose vpn tunnel list</code> output to distinguish "Phase 1 up, Phase 2 never established" from other failure signatures.</li>
+<li>Use bilateral IKE debug to find a proposal mismatch from both the initiator's and responder's perspective.</li>
+<li>Explain why an OSPF area mismatch produces a completely empty neighbor table rather than a stuck or flapping one.</li>
+<li>Recognise when a redundant link risks partitioning the OSPF backbone, and why area design rules override blast-radius concerns in that case.</li>
+<li>Diagnose a route that is correct in the LSDB but absent from the OSPF-filtered routing table, using administrative distance reasoning.</li>
+<li>Understand FortiManager IPsec templates as a shared-structure/per-site-variable split.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Fault 1 — <em>IPsec Phase 2 Never Establishes</em></h2>
+<p>Both ends showed Phase 1 as ready, but the tunnel carried nothing. The diagnostic signature:</p>
+<div class="code"><div class="code-label">diagnose vpn tunnel list name DR2PAR</div><pre><code>run_state=0 role=primary accept_traffic=0
+proxyid_num=1 child_num=0 refcnt=4
+stat: rxp=0 txp=0 rxb=0 txb=0
+dpd: mode=on-demand on=1 idle=20000ms retry=3 count=0
+proxyid=DR2PAR proto=0 sa=0 ref=1</code></pre></div>
+<p><strong>Reading it:</strong> <code>sa=0</code> means no active Security Association — Phase 2 never completed. <code>proxyid_num=1, child_num=0</code> means one phase2 definition exists but zero children (SAs) have been negotiated from it. <code>rxp=txp=0</code> confirms zero packets have ever crossed. This is a distinct signature from Phase 1 being down entirely — here, the IKE SA is healthy and ready to negotiate, it just never succeeds.</p>
+
+<div class="callout"><strong>Diagnostic ladder:</strong> tunnel-list (confirm which phase is broken) → IKE debug on <em>both</em> ends (see the actual rejection) → compare the two logged proposals line-by-line.</div>
+
+<div class="code"><div class="code-label">diagnose vpn ike log filter rem-addr4 &lt;peer&gt; ; diagnose debug application ike -1 ; diagnose debug enable</div><pre><code>Initiator (DR):
+  ...ESP proposal: AES_CBC/256, SHA256, DH_GROUP=MODP2048
+  received notify type NO_PROPOSAL_CHOSEN
+
+Responder (Parramatta):
+  incoming proposal: ...DH_GROUP=MODP2048
+  my proposal:       ...DH_GROUP=MODP1536
+  no proposal chosen</code></pre></div>
+
+<p>The DH group — the PFS group under <code>phase2-interface</code> — differed. Everything else matched.</p>
+
+<table>
+<tr><th>Setting</th><th>Where configured</th><th>Must match both ends?</th></tr>
+<tr><td>Encryption / integrity</td><td>phase2-interface proposal</td><td>Yes</td></tr>
+<tr><td>DH group (PFS)</td><td>phase2-interface <code>set dhgrp</code></td><td>Yes</td></tr>
+<tr><td>Traffic selectors</td><td>phase2-interface src/dst</td><td>Must be mirror images</td></tr>
+</table>
+
+<div class="callout callout-green"><strong>Fix direction:</strong> raise the weaker end (group 5 → 14) rather than downgrade the stronger one — harder math, stronger keys, and no legacy peer forcing a ceiling here. When there's no compatibility constraint, always upgrade toward the stronger setting.</div>
+
+<div class="exam-tip"><b>Exam trap</b>NO_PROPOSAL_CHOSEN can appear at Phase 1 <em>or</em> Phase 2 — read which exchange (IKE_SA_INIT vs CREATE_CHILD_SA) the log line belongs to before diagnosing which phase failed.</div>
+</div>
+
+<div class="section">
+<h2>Fault 2 — <em>OSPF Area Mismatch → Silent Discard</em></h2>
+<p>Once the tunnel carried traffic, OSPF still refused to form an adjacency across it — despite both interfaces up, both POINTOPOINT, matching cost, hellos leaving every 10 seconds into a proven-working tunnel.</p>
+
+<div class="socratic">
+<div class="socratic-label">Think First</div>
+<ul>
+<li>If hellos are actually arriving, why would the neighbor table stay completely empty instead of stuck partway through the adjacency ladder?</li>
+<li>What does a router check about an incoming hello before it does anything else with it?</li>
+</ul>
+</div>
+
+<p><strong>The mechanism:</strong> the OSPF header carries an area stamp. A receiving interface checks that stamp <em>before</em> any other OSPF processing happens. A mismatch means the packet is <strong>silently discarded at the door</strong> — not processed, not disputed, never logged as an attempted neighbor. Neither side has grounds to create even an <code>Init</code> entry, because as far as each router is concerned, no hello from that peer ever arrived.</p>
+
+<div class="callout"><strong>Same fingerprint, different murderer:</strong> this produces the identical symptom as Session 15's broadcast-network-type-on-a-tunnel fault — a completely empty neighbor table. But the failure lives in a different place: broadcast-on-tunnel kills the hello at the <em>sender</em> (no medium to deliver a multicast frame); area mismatch kills it at the <em>receiver</em> (header check fails before processing). Same symptom, opposite cause — the diagnostic lesson is to check both possibilities whenever the table is empty rather than flapping.</div>
+
+<div class="code"><div class="code-label">show router ospf (config network statement)</div><pre><code>LF-DR:   edit 3 / prefix 10.255.0.0/30 / area 0.0.0.0
+LF-PAR:  edit 3 / prefix 10.255.0.0/30 / area 0.0.0.1   ← mismatch</code></pre></div>
+
+<h3 style="font-family:'Playfair Display',serif;color:var(--text);margin:18px 0 8px;font-size:19px;">Why It Had To Stay Area 0</h3>
+<p>The first instinct — put the backup link in Area 1, to limit LSDB size / blast radius — is a real area-design principle, but wrong here. Walk the scenario: with the primary link down and the backup in Area 1, Parramatta's Area-0 LAN has <strong>no Area-0-only path</strong> to DR's Area-0 LAN. OSPF's inter-area rule is strict: all inter-area traffic must transit the backbone, and a non-backbone area can never serve as a relay between two disconnected pieces of Area 0.</p>
+<p>The result is called a <strong>backbone partition</strong> — Area 0 broken into disconnected islands, one of OSPF's genuinely forbidden states. A redundant link connecting two Area-0 sites must itself live in Area 0, precisely so it can keep the backbone whole when the primary path dies.</p>
+
+<div class="exam-tip"><b>Exam trap</b>When two area-design principles seem to conflict (minimize blast radius vs preserve backbone continuity), backbone continuity wins for any link that is structurally required for connectivity between Area-0 sites.</div>
+
+<div class="code"><div class="code-label">Fix</div><pre><code>LF-PAR # config router ospf
+       # config network
+       # edit 3
+       #   set area 0.0.0.0
+       # end</code></pre></div>
+<p>Result: <code>Full/ -</code> forms within seconds on both ends.</p>
+</div>
+
+<div class="section">
+<h2>Fault 3 — <em>The Static Route That Lied</em></h2>
+<p>With the drill "won," Señor restored the primary link at 09:00 as planned — and six minutes later, DR→Parramatta traffic silently died, even though every OSPF indicator remained green: adjacency Full, LSDB correct and verified on both ends via <code>get router info ospf database router &lt;id&gt;</code>, cost and area all matching.</p>
+
+<div class="callout callout-coral"><strong>The critical distinction:</strong> <code>get router info routing-table ospf</code> is a <em>protocol-filtered</em> view — it only shows routes OSPF actually won. <code>get router info routing-table all</code> shows every protocol's routes and who's actually installed. A route can be completely absent from the first and clearly present in the second under a different, higher-priority source.</p></div>
+
+<div class="code"><div class="code-label">get router info routing-table all (LF-DR)</div><pre><code>S    10.2.0.0/24 [10/0] via 10.254.0.1, To-HQ
+O    10.99.50.0/24 [110/10] is directly connected, Hub-Static (E2)
+C    10.255.0.0/30 is directly connected, DR2PAR</code></pre></div>
+
+<p>An <code>S</code> route — administrative distance 10 — silently outranked the OSPF route (distance 110) to the exact same prefix, even though OSPF's route was cheaper by cost and fully valid. Distance is compared <em>before</em> cost ever enters the decision, and it's compared across protocols, not within one.</p>
+
+<table>
+<tr><th>Source</th><th>Default AD</th><th>Wins when tied on prefix?</th></tr>
+<tr><td>Connected</td><td>0</td><td>Always</td></tr>
+<tr><td>Static</td><td>10</td><td>Beats any dynamic protocol by default</td></tr>
+<tr><td>OSPF</td><td>110</td><td>Loses to any static covering the same prefix</td></tr>
+</table>
+
+<div class="socratic">
+<div class="socratic-label">The Wrong Fix, Reasoned Away Correctly</div>
+<p style="font-size:16px;margin-bottom:8px;">First instinct: redistribute the static into OSPF. Checked against a Session 15 precedent instead of assumed:</p>
+<ul>
+<li>Does redistributing a static route into OSPF <em>delete</em> the original static route?</li>
+</ul>
+<p style="font-size:16px;margin-top:8px;"><strong>No.</strong> Redistribution is advertisement, not deletion — the static route (distance 10) would still sit there afterward, still beating the very OSPF route you'd just told the rest of the world about. This correctly ruled out the fix before it was tried.</p>
+</div>
+
+<div class="code"><div class="code-label">Actual fix</div><pre><code>LF-DR # config router static
+       # edit 4
+       #   set status disable
+       # end</code></pre></div>
+
+<p>The moment the static cleared, the correct OSPF route (cost 20, via DR2PAR) appeared immediately in the protocol-filtered view too.</p>
+</div>
+
+<div class="section">
+<h2>FortiManager <em>IPsec Templates</em> (Concept)</h2>
+<p>Motivation, stated plainly: the DH-group mismatch this session existed because a value was set by hand on each end, independently, and drifted. That is exactly the failure mode templates exist to prevent.</p>
+
+<table>
+<tr><th>Config block</th><th>Shared (template)</th><th>Per-site (variable)</th></tr>
+<tr><td>Phase 1</td><td>proposal, DH group, PSK method, DPD settings</td><td>peer public IP, tunnel name</td></tr>
+<tr><td>Phase 2</td><td>proposal, PFS dhgrp, encapsulation</td><td>src/dst selectors, tunnel-interface IPs</td></tr>
+<tr><td>OSPF</td><td>network-type, cost, hello/dead timers</td><td>interface name, area, network statement</td></tr>
+</table>
+<p>A FortiManager template locks the shared structure and exposes only the per-site variables as metafields — pushing consistent config to ten site pairs with zero chance of a hand-typed <code>dhgrp</code> drifting on one end. Hands-on configuration workflow: Session 18.</p>
+</div>
+
+<div class="takeaway">
+<h3>Key Takeaways</h3>
+<ul style="padding-left:20px;line-height:1.9;">
+<li>A protocol-healthy adjacency (Full, correct LSDB) does not guarantee the routing table reflects it — always check what's actually <em>winning</em>, not just what the protocol calculated.</li>
+<li>Empty OSPF neighbor tables have (at least) two distinct causes with the same symptom: sender-side hello death (wrong network type) and receiver-side header rejection (area mismatch). Check both.</li>
+<li>Backbone continuity overrides blast-radius minimization for any link structurally required to keep Area 0 connected.</li>
+<li>Administrative distance is compared before cost, across protocols — a lower-AD static will silently and permanently bury a cheaper, healthier OSPF route to the same prefix.</li>
+<li>Redistribution never deletes the source route — it only advertises it elsewhere.</li>
+</ul>
+</div>
+
+</main>
+<footer>Session 17 · LoFinance NSE7 Study Track · Complete Guide</footer>
+</body>
+</html>

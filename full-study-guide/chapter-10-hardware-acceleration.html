@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 10 — Hardware Acceleration on FortiGate</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 10</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 10 · NSE7 EF 7.6</div>
+    <h1>Silicon That Does the Firewall's Heavy Lifting — <em>Hardware Acceleration on FortiGate</em></h1>
+    <p>How Fortinet's NP, CP, and SP processors let a FortiGate move traffic at line rate without asking the CPU for permission on every packet.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">The CPU is a generalist. The <em>SPU</em> is a specialist. Enterprise-grade throughput is a story about knowing which packets need which brain.</div>
+  <p class="motivation-sub">Master this chapter and you can predict — for any given policy, profile, or tunnel — whether the traffic will fly on the fast path or crawl through the slow one.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-spu-architecture">SPU Architecture</a>
+  <a class="nav-tab" href="#section-nturbo-ipsa">NTurbo &amp; IPSA</a>
+  <a class="nav-tab" href="#section-life-of-packet">Life of a Packet</a>
+  <a class="nav-tab" href="#section-config-layers">Config by OSI Layer</a>
+  <a class="nav-tab" href="#section-best-practices">Best Practices</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ══════════════════════════════════════════ SECTION 1 ══════════════════════════════════════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SPU ARCHITECTURE</span>
+      </div>
+      <p class="socratic-insight">A FortiGate has a general-purpose CPU, but Fortinet also solders on specialized chips called SPUs. If the CPU can already run FortiOS and forward packets, why bother with dedicated silicon at all — and why split it into NP and CP flavors instead of one bigger chip?</p>
+      <ul class="socratic-questions">
+        <li>What is the practical difference between what an NP7 accelerates and what a CP9 accelerates, and how does that split map to real workloads?</li>
+        <li>Why do entry-level and mid-range FortiGates ship an SP (SoC4/SP5) instead of separate NP and CP chips?</li>
+      </ul>
+      <div class="answer-area" data-section="spu-architecture">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The NP works at the interface level and accelerates network functions: session fast-pathing, IP integrity header checking, and IPsec VPN encrypt/decrypt. The CP is application-focused and accelerates security-inspection work — flow-based IPS pattern matching, AV, application ID, and SSL/TLS deep-inspection crypto. NP moves packets; CP inspects them.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Cost, power, and PCB real estate. Entry-level and mid-range boxes don't need separate high-throughput NP and CP dies, so Fortinet fuses "light" versions of both onto a single system-on-chip (SoC4, SP5). You get most of the acceleration benefits at lower cost and lower throughput ceilings — appropriate for branch and small-office roles.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-spu-architecture">
+      <div class="section-label">SECTION 01</div>
+      <h2>NP, CP, and SP — <em>the three flavors of Fortinet silicon</em></h2>
+
+      <p>Fortinet <strong>hardware acceleration</strong> refers to the use of specialized chips — collectively called <em>Security Processing Units (SPUs)</em>, sometimes ASICs — that offload resource-intensive tasks from the main CPU. Instead of the general-purpose CPU handling every packet's crypto, pattern match, and header check in software, dedicated silicon executes those operations in hardware at wire speed. The net effect is higher throughput, lower latency, and headroom for security features that would otherwise crush a software-only firewall.</p>
+
+      <p>An SPU can be a <strong>network processor (NP)</strong>, a <strong>content processor (CP)</strong>, or both — depending on the FortiGate model. On larger boxes NP and CP are separate chips working in parallel with the CPU. On smaller models the SPU is a system-on-chip that packages a light NP and a light CP together.</p>
+
+      <table class="data-table">
+        <thead><tr><th>SPU</th><th>What it accelerates</th><th>Latest version</th><th>Example FortiGate</th></tr></thead>
+        <tbody>
+          <tr><td>NP</td><td>Interface-level offload of CPU-bound traffic; IPsec VPN encrypt/decrypt; IP integrity header checks</td><td>NP7</td><td>FortiGate 900G</td></tr>
+          <tr><td>CP</td><td>Common security workloads: application ID, IPS, flow-based AV, SSL/TLS deep-inspection crypto</td><td>CP10</td><td>FortiGate 200G</td></tr>
+          <tr><td>SP (SoC)</td><td>Combined light NP + CP on one die for entry/mid-range platforms</td><td>SP5</td><td>FortiGate 90G</td></tr>
+        </tbody>
+      </table>
+
+      <p>The <em>NP7</em> can hold up to <strong>12 million concurrent sessions</strong>, limited by on-chip memory. Once an NP7 hits its session limit, additional sessions spill back to the CPU — which is why, on multi-NP platforms, session distribution across NPs matters. You need to know which physical interfaces map to which NP, and design traffic paths so no single processor is overloaded.</p>
+
+      <p>To identify what silicon a given FortiGate ships with, the CLI gives you two commands. <code>diagnose hardware lspci | grep 1a29</code> lists Fortinet PCI devices (vendor ID <code>1a29</code>) — an NPID of <code>4e36</code> means NP6, <code>4e37</code> means NP7. For CP and SP identification, <code>get hardware status</code> exposes an <code>ASIC version:</code> line — <code>CP9</code>, <code>CP10</code>, <code>SoC4</code>, or <code>SP5</code>.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI · SPU identification</div>
+        <pre><code># diagnose hardware lspci | grep 1a29
+9b:00.0 Class 1000: Device 1a29:4e37 NPID     # → NP7
+
+# get hardware status
+Model name: FortiGate-900G
+ASIC version: CP9
+...</code></pre>
+      </div>
+
+      <p>On larger platforms, Fortinet also offers <strong>NP Direct architecture</strong>, available on FortiGates with two or more NP6 processors or on models where ports X5–X8 are directly wired to an NP7. NP Direct eliminates the internal switch fabric (ISF) between the front ports and the NP, cutting forwarding latency to the absolute minimum. The catch: traffic must enter and exit through interfaces attached to the <em>same</em> NP for the low-latency path to work.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">NP moves packets; CP inspects them. Big FortiGates split them into separate chips; small FortiGates fuse a lite version of each onto one SoC.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-spu-architecture" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-spu-architecture','SPU Architecture')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-spu-architecture" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-spu-architecture')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 2 ══════════════════════════════════════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · NTURBO &amp; IPSA</span>
+      </div>
+      <p class="socratic-insight">Ordinary NP offload works beautifully — until a firewall policy attaches a flow-based UTM profile. The NP can't inspect payloads, so those sessions would drop back to the CPU. That would be a performance cliff. Fortinet's answer is two features working together: NTurbo and IPSA.</p>
+      <ul class="socratic-questions">
+        <li>Why can't a straight NP offload accelerate a session that has a flow-based IPS or AV profile attached?</li>
+        <li>What does NTurbo actually do differently, and how does IPSA extend that acceleration into the CP?</li>
+      </ul>
+      <div class="answer-area" data-section="nturbo-ipsa">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The NP fast-paths a session by installing the session key and forwarding future packets without CPU involvement. But if a policy attaches a security profile, every packet must reach the IPS engine for inspection — and the IPS engine runs on the CPU. So plain NP offload has to punt.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">NTurbo creates a dedicated data path from the NP to a driver that hands packets directly to the IPS engine and returns them to the NP after inspection — avoiding the kernel's slow path. IPSA (IPS acceleration) then offloads the actual pattern-matching work from the IPS engine to the CP, so the flow inspection itself runs partly in hardware.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-nturbo-ipsa">
+      <div class="section-label">SECTION 02</div>
+      <h2>NTurbo and IPSA — <em>accelerating traffic the NP can't offload alone</em></h2>
+
+      <p>Standard NP offload works for sessions that don't need Layer-7 inspection. The moment a firewall policy carries a <strong>flow-based security profile</strong> — IPS, application control, flow-based AV, web filter — the NP can no longer fast-path those packets on its own, because the payload has to reach the <em>IPS engine</em> running on the CPU. Without help, throughput on such policies would collapse to CPU-bound rates.</p>
+
+      <p><em>NTurbo</em> is Fortinet's workaround. It offloads traffic that the NP alone cannot: it creates a special data path that redirects packets from the ingress interface to the IPS engine. For a new session, the NTurbo driver sends packets to the IPS engine, the engine performs its security action, and then hands the packet back to NTurbo, which forwards it back to the NP. Anything the IPS engine can handle — IPS, flow-based UTM, NGFW policies — can ride the NTurbo path. Proxy-based inspection stays on the CPU.</p>
+
+      <p><em>IPSA (IPS acceleration)</em> is the CP-side partner. When enabled, flow-based pattern-matching databases are compiled and pushed to the content processors. The IPS engine then offloads the pattern-matching work to CP hardware, dramatically reducing CPU load and lifting inspection throughput. Together, NTurbo and IPSA let flow-based UTM policies run at rates close to bare NP offload.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI · NTurbo / IPSA acceleration modes</div>
+        <pre><code>config ips global
+    set np-accel-mode {none | basic}
+    set cp-accel-mode {none | basic | advanced}
+end
+
+# Per-policy override — disable NTurbo only for troubleshooting
+config firewall policy
+    edit &lt;policy_id&gt;
+        set np-acceleration {disable | enable}
+    next
+end</code></pre>
+      </div>
+
+      <ul>
+        <li><strong><code>np-accel-mode basic</code></strong> — default, enables NTurbo distribution across IPS engine processes.</li>
+        <li><strong><code>cp-accel-mode basic</code></strong> — default on devices with a single CP8; offloads basic pattern matching.</li>
+        <li><strong><code>cp-accel-mode advanced</code></strong> — default on newer platforms; offloads more pattern-matching types for larger throughput gains.</li>
+        <li><strong><code>set np-acceleration disable</code></strong> — per-policy kill switch, used only for troubleshooting; leave enabled in production.</li>
+      </ul>
+
+      <div class="callout callout-amber"><strong>Common misconception:</strong> NTurbo does <em>not</em> accelerate proxy-based inspection. Only flow-based UTM/NGFW and IPS ride the NTurbo path. If your policy mixes flow-based and proxy-based profiles, the whole session drops to the CPU.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">NTurbo builds a shortcut between the NP and the IPS engine; IPSA drops pattern matching onto the CP. Together they turn "flow-based UTM" from a CPU tax into an accelerated workload.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-nturbo-ipsa" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-nturbo-ipsa','NTurbo &amp; IPSA')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-nturbo-ipsa" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-nturbo-ipsa')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 3 ══════════════════════════════════════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · LIFE OF A PACKET</span>
+      </div>
+      <p class="socratic-insight">If offload were unconditional, every packet would take the fast path. Instead, the CPU always inspects the <em>start</em> of a session — TCP three-way handshake or first UDP packet — before deciding what runs on the CPU, the NP, the CP, or a combination.</p>
+      <ul class="socratic-questions">
+        <li>Why does FortiGate always send the first packets of a session through the CPU, even on sessions that will eventually offload to the NP?</li>
+        <li>What is the difference between the "slow path" and the "fast path," and which scenarios stay entirely on the slow path?</li>
+      </ul>
+      <div class="answer-area" data-section="life-of-packet">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The CPU has to establish session state — do policy lookup, apply NAT rules, decide which security profiles apply, and negotiate whether the session even qualifies for offload. Only after that decision is made can the CPU install a session key in the NP so subsequent packets bypass it. FIN and RST also stay on the CPU so it can tear session state down cleanly.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Slow path = through the CPU (full processing, routing lookup, session helpers). Fast path = through the NP after the session key is installed, bypassing the CPU entirely. Sessions with proxy-based UTM stay on the slow path for their entire life; sessions with session helpers, tunnels (except IPsec), or policies that explicitly disable ASIC offload also can't fast-path.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-life-of-packet">
+      <div class="section-label">SECTION 03</div>
+      <h2>Life of a Packet — <em>slow path, fast path, and what runs where</em></h2>
+
+      <p>Every session on a FortiGate follows the same opening act. For TCP, the CPU processes the <strong>three-way handshake</strong>. For UDP, the CPU processes the <strong>first packet</strong>. During those first packets the CPU runs the full pipeline — quarantine, FortiTelemetry, captive-portal auth, destination NAT, routing/RPF, stateful policy lookup, session helpers, SSL VPN, source NAT, IPsec VPN encryption, traffic shaping, WAN optimization — and decides what the session's future will look like. FIN and RST packets also always ride the slow path, so the CPU can retire session state cleanly.</p>
+
+      <p>Once the session is established, one of three trajectories takes over:</p>
+
+      <ul>
+        <li><strong>Offloaded non-UTM sessions</strong> — the session key is installed in the NP, and subsequent packets are handled entirely by the NP: IP integrity, IPsec crypto, traffic shaping, egress interface. The CPU never sees them. This is the fastest possible fast path.</li>
+        <li><strong>NTurbo / flow-based UTM sessions</strong> — subsequent packets skip routing/kernel but still visit the IPS engine on the CPU, with IPSA offloading pattern matching to the CP. Much faster than pure CPU, still not as fast as pure NP.</li>
+        <li><strong>Proxy-based UTM sessions</strong> — the NP does <em>not</em> offload. Every packet passes through the FortiGate proxy for antispam, DLP, antivirus, web filtering, and VoIP inspection. The IPS engine still handles single-pass IPS/app-control/botnet/SSL inspection alongside. SSL deep inspection leverages the CP for TLS crypto but the flow is otherwise CPU-bound.</li>
+      </ul>
+
+      <div class="callout"><strong>Exam tip:</strong> When SSL deep inspection is configured, the flow is modified — the IPS engine sends the packet to the proxy, the proxy offloads TLS decrypt to the CP, decrypted content goes back to the IPS engine for inspection, back to the proxy for proxy-based inspection, then re-encrypted by the CP. Five hops, two CP round-trips per packet.</div>
+
+      <p>Virtual FortiGates (FortiGate-VM) follow the same pipeline logic, except there is no NP or CP hardware — every step runs on the vCPU. All the software-level optimizations still apply, but you should not expect ASIC-level throughput on a VM.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The first packets are always the CPU's — that's how the FortiGate decides who else gets to touch the session. After that, offload is a design decision the policy and profile mix already made for you.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-life-of-packet" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-life-of-packet','Life of a Packet')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-life-of-packet" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-life-of-packet')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 4 ══════════════════════════════════════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · CONFIG BY OSI LAYER</span>
+      </div>
+      <p class="socratic-insight">Hardware acceleration is not a single switch you flip. Different features hook into different layers of the packet's journey — physical, data link, IP, and application — and each layer has its own set of knobs.</p>
+      <ul class="socratic-questions">
+        <li>What does a "VDOM link" over an NP actually offload, and why do VLANs over the NP VDOM link matter?</li>
+        <li>How does FortiGate offload IPsec, and what does the <code>npu_flag</code> field on an IPsec SA tell you at a glance?</li>
+      </ul>
+      <div class="answer-area" data-section="config-layers">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">A VDOM link (<code>npu_vlink0</code>/<code>npu_vlink1</code>) is a pair of interfaces on an NP that lets inter-VDOM traffic ride the NP fast path instead of looping through the CPU. You assign one endpoint to each VDOM. VLANs layered on NPU VLINKs let you create additional accelerated inter-VDOM links beyond the fixed pair the NP provides — same VLAN ID on both NPU VLINKs, different VDOMs.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">FortiGate can offload the encrypt/decrypt operation itself to the NP for supported ciphers/HMACs. The <code>npu_flag</code> field on an IPsec SA tells you the offload state: <code>00</code> = both SAs still in the kernel; <code>01</code> = outbound copied to NPU; <code>02</code> = inbound copied; <code>03</code> = both copied (fully offloaded); <code>20</code> = unsupported cipher, cannot offload.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-config-layers">
+      <div class="section-label">SECTION 04</div>
+      <h2>Configuring Acceleration at Every OSI Layer — <em>from VDOM links to IPS</em></h2>
+
+      <p>Acceleration decisions attach to different features at different layers. From lowest to highest: <em>inter-VDOM links</em> at the physical/interface layer, <em>DVLAN and VXLAN</em> at the data-link layer, <em>IPsec</em> at the IP layer, and <em>traffic handled by IPS engines</em> at the application layer.</p>
+
+      <p><strong>Inter-VDOM link acceleration.</strong> Every NP has a fixed pair of VDOM link interfaces named <code>npu_vlink0</code> and <code>npu_vlink1</code>, both initially assigned to the root VDOM. To offload traffic between two VDOMs, assign one VLINK to each VDOM and route between them. Traffic then rides the NP instead of the CPU.</p>
+
+      <p>To scale beyond the built-in pair, layer VLAN interfaces over the NPU VLINKs. Create a VLAN interface with the same VLAN ID on both <code>npu_vlink0</code> and <code>npu_vlink1</code>, associate each with a different VDOM, and you've built an additional accelerated inter-VDOM path.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI · VLAN over NPU VDOM link</div>
+        <pre><code>config system interface
+    edit "VLANvlink1Sales"
+        set vdom "Sales"
+        set ip 10.10.10.10 255.255.255.252
+        set interface "npu_vlink1"
+        set vlanid 10
+    next
+end</code></pre>
+      </div>
+
+      <p>To verify inter-VDOM acceleration, run <code>diagnose sys session list</code> and check the <code>npu_info</code> line. The <code>offload=9/9</code> value indicates NP7 is doing the forwarding. Per-policy <code>set auto-asic-offload disable</code> forces a session to the CPU — useful for packet capture on VLINK interfaces during troubleshooting, but performance-costly and to be re-enabled ASAP.</p>
+
+      <p><strong>DVLAN and VXLAN.</strong> NP7 and SP5 (also called NP7lite) can offload 802.1ad and 802.1Q double-VLAN (Q-in-Q), as well as VXLAN. Default DVLAN mode is <em>802.1AD</em> (S-Tag <code>0x88a8</code> + C-Tag <code>0x8100</code>). Change it per NP ID or globally with <code>diagnose npu np7 dvlan-mode &lt;802.1Q|802.1AD|Disable&gt; &lt;dev-id&gt;</code>.</p>
+
+      <p><strong>IPsec encryption offload.</strong> FortiGate offloads IPsec encrypt/decrypt to the NP for supported algorithms. It is on by default; you can disable it per tunnel with <code>set npu-offload disable</code> under <code>config vpn ipsec phase1-interface</code>. The <code>npu_flag</code> field in <code>diagnose vpn tunnel list</code> shows offload state:</p>
+
+      <table class="data-table">
+        <thead><tr><th>npu_flag</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>00</td><td>Both IPsec SAs loaded to the kernel; no NPU offload (or no traffic yet)</td></tr>
+          <tr><td>01</td><td>Outbound SA copied to NPU</td></tr>
+          <tr><td>02</td><td>Inbound SA copied to NPU</td></tr>
+          <tr><td>03</td><td>Both inbound and outbound SAs copied to NPU (fully offloaded)</td></tr>
+          <tr><td>20</td><td>Unsupported cipher or HMAC — SA cannot be offloaded</td></tr>
+        </tbody>
+      </table>
+
+      <p>The <strong>IPsec Diffie-Hellman key exchange</strong> for ESP traffic is also accelerated by default via the CP. Disable globally with <code>config system global / set ipsec-asic-offload disable</code> — again, troubleshooting only.</p>
+
+      <p><strong>Strict header checking.</strong> By default the NP verifies L4 header length, IP header length, IP version, IP checksum, and IP options. Setting <code>check-protocol-header strict</code> under <code>config system global</code> adds ESP sequence number, SPI, and data-length checks — <em>and disables hardware acceleration on all NPs, CPs, and SPs</em>. Use it only for short troubleshooting windows.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Every layer of the stack has its own acceleration switch. If a session isn't offloading the way you expect, walk the layers: VDOM link, VLAN, IPsec SA, IPS mode, per-policy override.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-config-layers" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-config-layers','Config by OSI Layer')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-config-layers" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-config-layers')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 5 ══════════════════════════════════════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BEST PRACTICES</span>
+      </div>
+      <p class="socratic-insight">Every architecture decision — inspection mode, SSL policy, tunnel design — either enables acceleration or defeats it. The best-practice list is really a list of decisions that either preserve the fast path or knock traffic off it.</p>
+      <ul class="socratic-questions">
+        <li>Why is a firewall policy with a mix of flow-based and proxy-based security profiles a performance anti-pattern?</li>
+        <li>List at least three situations where an NP-capable FortiGate still won't offload a session, even though acceleration is nominally enabled.</li>
+      </ul>
+      <div class="answer-area" data-section="best-practices">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Mixed-mode policies never offload to the NP — they are always fully processed by the CPU. Even the flow-based portion loses its acceleration path, so you pay the proxy-based penalty on every packet. If you need proxy features, put them on a separate policy from the flow-only traffic.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">(1) <code>auto-asic-offload</code> disabled on the policy; (2) proxy-based security profiles attached; (3) session requires a FortiOS session helper; (4) tunneled traffic other than IPsec VPN (SSL VPN, GRE, etc.); (5) mixed flow-based + proxy-based profiles on the same policy; (6) unsupported IPsec cipher/HMAC combination.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-best-practices">
+      <div class="section-label">SECTION 05</div>
+      <h2>Hardware Acceleration Best Practices — <em>designing for the fast path</em></h2>
+
+      <p>Choosing inspection modes has a direct impact on resources. <strong>Flow-based inspection</strong> is the default and has hardware-offload paths (NTurbo + IPSA). It identifies and blocks threats in real time, typically uses fewer resources, and is recommended for high-throughput traffic. <strong>Proxy-based inspection</strong> buffers traffic and examines it as a whole before deciding — heavier, but supports advanced features (category usage quota, <em>web-profile override</em>). Proxy inspection runs on the CPU/proxy path; no NP offload.</p>
+
+      <p>Encrypted traffic requiring <strong>SSL deep inspection</strong> is the second big throughput sink. Every session needs decrypt → inspect → re-encrypt. Best practices to keep the impact manageable:</p>
+
+      <ol>
+        <li><strong>Limit the number of policies that allow encrypted traffic.</strong> Fewer inspected policies = less crypto load.</li>
+        <li><strong>Gradually deploy SSL inspection</strong> using device security policies rather than flipping it on globally at once.</li>
+        <li><strong>Exempt known-trusted traffic</strong> (banking, healthcare, well-known SaaS) from SSL deep inspection.</li>
+        <li><strong>Use CP hardware for SSL content scanning</strong> (CP9/CP10) whenever the platform supports it.</li>
+      </ol>
+
+      <p>Cases where sessions <em>will not offload</em> even with NP available:</p>
+
+      <ul>
+        <li><strong>NP acceleration is disabled</strong> on the firewall policy (<code>set auto-asic-offload disable</code>).</li>
+        <li><strong>The firewall policy includes proxy-based security profiles.</strong></li>
+        <li><strong>The session requires a FortiOS session helper</strong> — protocol helpers for FTP, SIP, PPTP, and similar aren't NP-friendly.</li>
+        <li><strong>Tunneling is enabled</strong> — traffic to or from SSL VPN, GRE, and similar tunnel interfaces. IPsec VPN is the exception; it can be offloaded.</li>
+        <li><strong>Mixed flow-based + proxy-based profiles</strong> on the same policy — the whole policy becomes CPU-bound.</li>
+      </ul>
+
+      <div class="callout callout-green"><strong>Remember:</strong> a firewall policy with a mix of flow-based and proxy-based security profiles never offloads to the NP and is always processed by the FortiGate CPU. Split the workloads onto separate policies if you need proxy features on some flows but want to keep others on the fast path.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Every acceleration decision is really a design choice. Flow-based, split policies, targeted SSL inspection, and CP-offloaded crypto — those four habits keep the fast path fast.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-best-practices" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-best-practices','Best Practices')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-best-practices" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-best-practices')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-09-security-fabric.html">
+    <span class="page-nav-label">← PREV</span>
+    <span class="page-nav-title">Chapter 9 · Security Fabric</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="supplement-dynamic-routing.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Dynamic Routing Supplement</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Chapter 10 · Hardware Acceleration on FortiGate
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-fullguide-ch10-hwaccel';
+const SECTIONS = {
+  'section-spu-architecture': 'SPU Architecture',
+  'section-nturbo-ipsa': 'NTurbo & IPSA',
+  'section-life-of-packet': 'Life of a Packet',
+  'section-config-layers': 'Config by OSI Layer',
+  'section-best-practices': 'Best Practices',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

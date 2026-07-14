@@ -1,0 +1,228 @@
+==================================================================
+LOFINANCE — SESSION 10 REVISION PACK — "The Parramatta Project"
+IPsec topology design · Study Guide 07, pp. 193–199 · Blueprint 5.1
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+Parramatta opens Monday and needs the HQ trading feed securely. With
+two sites, all topology names collapse into "one tunnel" — but the
+pattern is chosen at site two because it becomes the template.
+
+FULL MESH: every site tunnels to every other = n(n-1)/2 tunnels.
+3 sites=3, 5=10, 10=45, 20=190. Each tunnel = phase 1 + phase 2 +
+policies both ends + a tunnel slot. Branch-model FortiGates support
+fewer tunnels than campus models, so the smallest box caps a mesh.
+Benefit: direct spoke-to-spoke paths, no hub dependency.
+
+HUB-AND-SPOKE: n-1 tunnels, linear growth, cheap branch hardware.
+Costs land ONLY on spoke-to-spoke traffic: (1) double WAN traversal
+latency; (2) the hub must DECRYPT then RE-ENCRYPT every spoke-to-
+spoke packet (each tunnel = its own SA, its own keys) — the hub
+becomes a bottleneck and a single point of failure.
+
+THE DECIDING CRITERION: match the topology's weakness against the
+ACTUAL traffic pattern. LoFinance's feed lives at HQ; all critical
+traffic is branch<->HQ, which rides the direct tunnel. Hub-and-
+spoke's weakness lands where LoFinance has no traffic. HQ = hub,
+Parramatta = spoke #1.
+
+REDUNDANCY LAYERS: device (HA cluster), link (dual ISP), tunnel
+(IPsec tunnel aggregation — bind two tunnels into one virtual
+interface, "LACP for tunnels"). Algorithm choice matters: per-packet
+round-robin across unequal-latency links reorders packets (jitter,
+glitchy real-time feeds). Use redundant (active/backup) or L3/L4
+(per-flow hashing — each flow pins to one tunnel).
+
+PHASE 1 vs PHASE 2: phase 1 = secure authenticated channel between
+the firewalls; phase 2 = negotiates what's carried, including
+SELECTORS (declared src<->dst subnet pairs). One phase 1 carries
+multiple phase 2 selectors. No selector match = never enters the
+tunnel (dropped pre-encryption). "A trunk link, but over a tunnel."
+Selectors gate entry; firewall policies still inspect — two fences.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+TUNNEL COUNT FORMULAS
+  Full mesh:        n(n-1)/2
+  Hub-and-spoke:    n-1
+
+STUDY-GUIDE TOPOLOGIES (p.195 diagram)
+  Site-to-Site | Hub-and-Spoke | Dual Hub-and-Spoke | Full Mesh (ADVPN)
+
+DESIGN CRITERIA (p.194)
+  - Reliable/secure algorithms
+  - Scalability for future growth
+  - Firewall model at each site (branch = fewer tunnels than campus)
+  - Number of tunnels depends on traffic type inside them
+  - Robust authentication + appropriate encryption standards
+  - (Session lens) WHERE THE TRAFFIC ACTUALLY FLOWS
+
+IPSEC TUNNEL AGGREGATION (p.199-200)
+  GUI: VPN > VPN Tunnels (add tunnel as aggregate member)
+  CLI:
+    config system ipsec-aggregate
+        edit "IPSEC_AGG"
+            set member "Tunnel1" "Tunnel2"
+            set algorithm <redundant|round-robin|L3|L4|weighted-round-robin>
+        next
+    end
+  Algorithms:
+    round-robin          per PACKET            (reordering risk)
+    L3                   per L3-header flow    (flow-pinned)
+    L4                   per L4-header flow    (flow-pinned)
+    redundant            active/backup
+    weighted-round-robin round-robin w/ weights (per-packet)
+
+PHASE 2 SELECTORS (p.198-199)
+  GUI: VPN > VPN Tunnels (phase 2 selectors, editable names)
+  One phase 1 -> multiple phase 2 selectors. Most flexible selector
+  type = address subnet. IPv4 and IPv6 supported.
+  All-zero (0.0.0.0/0) selectors: used in migrations / overlapping-
+  subnet partner scenarios, but risk invalid paths when advertising
+  many routes — prefer routing protocols to scope allowed subnets.
+
+KEY BEHAVIOURS
+  - Each tunnel = its own SA = its own keys. Hub decrypts +
+    re-encrypts all spoke-to-spoke transit traffic.
+  - Selector-unmatched traffic is dropped BEFORE encryption — it is
+    not a policy deny and not a routing failure.
+  - Aggregate failover: if one member tunnel fails, another takes
+    over (redundancy is the point of aggregation).
+
+DESIGN RULES
+  - The pattern is chosen at site two.
+  - Judge topology weaknesses against the real traffic pattern.
+  - Redundancy is layered: device / link / tunnel.
+  - Never per-packet balancing for latency-sensitive flows.
+  - Segmentation continues across the WAN via selectors.
+
+------------------------------------------------------------------
+FLASHCARDS (Q -> A)
+------------------------------------------------------------------
+Q: Tunnels needed for a 10-site full mesh?
+A: 45. Formula n(n-1)/2.
+
+Q: Tunnels needed for 10 sites hub-and-spoke?
+A: 9. Formula n-1.
+
+Q: Two costs hub-and-spoke imposes on spoke-to-spoke traffic?
+A: Double WAN traversal (latency) + hub decrypt/re-encrypt burden.
+
+Q: Why must the hub decrypt spoke-to-spoke traffic?
+A: Each tunnel is a separate SA with separate keys; spokes never
+   share keys.
+
+Q: What does the hub become as spokes multiply?
+A: A bottleneck and a single point of failure.
+
+Q: Why can't a branch FortiGate anchor a large full mesh?
+A: Branch models support fewer tunnels than campus models — the
+   smallest box caps the design.
+
+Q: The design criterion that chose hub-and-spoke for LoFinance?
+A: Traffic pattern — the trading feed lives at HQ, so all critical
+   traffic is branch<->HQ and rides the direct tunnel.
+
+Q: FortiOS feature binding multiple IPsec tunnels into one virtual
+   interface?
+A: IPsec tunnel aggregation (config system ipsec-aggregate).
+
+Q: The five aggregation algorithms?
+A: round-robin, L3, L4, redundant, weighted-round-robin.
+
+Q: Which algorithm risks out-of-order delivery and why?
+A: round-robin (and weighted-round-robin) — per-packet balancing
+   across unequal-latency paths reorders packets.
+
+Q: Which algorithms keep a flow on one tunnel?
+A: L3 and L4 (header hashing pins each flow).
+
+Q: Phase 1's job?
+A: Establish the secure, authenticated channel between endpoints
+   and negotiate keys/policies for the SAs.
+
+Q: Phase 2's job?
+A: Negotiate what the tunnel carries — selectors defining which
+   network segments are encrypted and allowed in.
+
+Q: How many phase 2 selectors per phase 1?
+A: Multiple — one phase 1 can carry many phase 2 selectors.
+
+Q: What happens to traffic matching no selector?
+A: It never enters the tunnel — dropped before encryption.
+
+Q: Do selectors replace firewall policies on tunnel interfaces?
+A: No. Selectors gate entry; policies still inspect/log. Two fences.
+
+Q: The session's selector analogy?
+A: "A trunk link, but over a tunnel" — phase 1 = trunk, each
+   selector = an allowed VLAN (matching src<->dst subnet pairs).
+
+Q: When do topology names start meaning different things?
+A: At three or more sites — but choose the pattern at site two.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 10
+------------------------------------------------------------------
+Generate a 10-14 minute podcast episode script for "The Packet
+Path," a narrative networking-education show. Two hosts: a warm,
+curious NARRATOR and a dry, technically precise ANALYST. Episode
+title: "The Parramatta Project."
+
+STORY TO TELL: LoFinance (a Sydney trading firm whose logo is
+stacks of money frozen in an ice cube) is opening its first branch
+in Parramatta, live Monday. COO Penny fires her three famous
+questions in one breath: "How long? How much? Can we do it today?"
+The branch needs HQ's real-time trading feed, securely. Junior (the
+overconfident helpdesk kid) tapes three terrible connection ideas
+to the whiteboard — one involves internet-facing RDP — and Señor
+(the eccentric senior engineer in a sombrero) silently turns them
+face-down and hands our protagonist, the intermediate engineer, the
+marker: "Two sites. One network. Draw it before you cable it."
+
+TECHNICAL CONTENT TO TEACH THROUGH THE STORY:
+1. With two sites, every topology name is the same one tunnel — but
+   the pattern chosen at site two becomes the template.
+2. Full mesh scales at n(n-1)/2 tunnels (3 sites=3, 10 sites=45!)
+   and branch-model firewalls can't hold that many tunnels; hub-and-
+   spoke scales at n-1.
+3. Hub-and-spoke's hidden tax: spoke-to-spoke traffic crosses the
+   WAN twice AND the hub must decrypt then re-encrypt every packet,
+   because each tunnel has its own keys. The hub becomes a
+   bottleneck and single point of failure.
+4. THE BIG LESSON: judge a topology against the real traffic
+   pattern. LoFinance's feed lives at HQ, so all critical traffic
+   is branch-to-HQ — hub-and-spoke's weakness lands where there is
+   no traffic. That's why it wins.
+5. Redundancy in layers: HA clusters, dual ISPs, and IPsec tunnel
+   aggregation ("LACP for tunnels") — and the trap that per-packet
+   round-robin over unequal-latency links reorders packets and
+   makes real-time feeds glitch. Use redundant or L3/L4 per-flow.
+6. Phase 1 builds the authenticated channel; phase 2 selectors
+   declare exactly which subnet pairs may enter. Use the student's
+   own analogy: "a trunk link, but over a tunnel." A tunnel is a
+   declared pipe, not an open hose.
+
+JUNIOR'S MISTAKE (include it): Junior insists the tunnel is "just
+open — everything at Parramatta can reach everything at HQ, that's
+the point of a tunnel." Señor's one-word rebuttal: "Phase two."
+Walk through why the receptionist's PC can never touch the trading
+VLAN: the pair was never declared as a selector.
+
+MEMORABLE ANALOGIES TO USE: the garden hose vs the declared pipe;
+trunk-over-a-tunnel; LACP for tunnels; "the pattern is chosen at
+site two."
+
+END WITH THIS TEASER: The hardware ships Wednesday. Junior arrives
+with a printed 2014 blog post recommending IKEv1 aggressive mode
+"because it's faster." Señor folds it into a paper aeroplane, bins
+it, and says: "Faster — and it shouts your name across the internet
+while it does it. Sit. We talk about handshakes. The modern kind."
+Next episode: "Handshakes, Modern Style" — IKEv2.
+
+TONE: warm, funny, story-first, but technically rigorous. All facts
+above are accurate — do not alter the technical claims.
+==================================================================

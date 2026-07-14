@@ -1,0 +1,217 @@
+================================================================
+SESSION 12 REVISION PACK — "Tunnel Vision"
+Phase 1 / phase 2 build · route-based IPsec · pp. 207–214
+================================================================
+
+----------------------------------------------------------------
+QUICK SUMMARY (one page)
+----------------------------------------------------------------
+ROUTE-BASED IPSEC: creating a phase1-interface makes FortiOS create a
+VIRTUAL INTERFACE. The tunnel is a citizen of the routing table and the
+policy engine — no special machinery. Packets ENTER the tunnel by winning
+a route to it; they PASS by matching a policy on it. Therefore "tunnel
+established" and "traffic flows" are two separate achievements.
+
+FIVE-ITEM BUILD CHECKLIST:
+  1. Phase 1  (public IPs, IKE version, NAT-T question, PSK/cert)
+  2. Phase 2  (SAs + selectors — what may ride)
+  3. Tunnel interface IPs (optional now; required for dynamic routing later)
+  4. Route    (remote subnet → tunnel interface; static or dynamic)
+  5. Policies (per DIRECTION OF INITIATION, both firewalls)
+
+IKE FORMS WITHOUT POLICIES: the handshake is traffic TO the FortiGate
+(local-in), not through it. Policies govern only what rides inside.
+
+STATEFUL RULE, REFINED: replies match the session table and are free.
+NEW conversations are checked against policy at the door. A two-way site
+needs internal→tunnel AND tunnel→internal on BOTH firewalls (unless one
+side never initiates).
+
+IKEv2 TIMING: the first child SA (phase 2) piggybacks inside IKE_AUTH —
+the ENCRYPTED second exchange — because only after IKE_SA_INIT does the
+DH secret exist. That is why IKEv2 has no quick mode.
+
+TROUBLESHOOTING (one-way-silent tunnel): same symptom, two suspects —
+missing internal→tunnel at the source site (dies at home) vs missing
+tunnel→internal at the far site (dies after decryption). Harvest free
+evidence first (working replies prove the far routing table). Run
+diag debug flow CLOSEST TO THE SOURCE. "Denied by forward policy check
+(policy 0)" = implicit deny = a policy you forgot.
+
+----------------------------------------------------------------
+CHEAT SHEET
+----------------------------------------------------------------
+PHASE 1 (HQ, ISP1 path — S11 decisions carried in):
+  config vpn ipsec phase1-interface
+    edit "ParraTunnel-ISP1"
+      set interface "wan1"
+      set ike-version 2
+      set peertype any
+      set proposal aes256-sha256
+      set network-overlay enable
+      set network-id 1              ! ISP2 twin: network-id 2; match both ends
+      set remote-gw 203.0.113.45
+      set psksecret ***
+
+PHASE 2:
+  config vpn ipsec phase2-interface
+    edit "ParraTunnel-ISP1"
+      set phase1name "ParraTunnel-ISP1"
+      set proposal aes256-sha256
+      set src-subnet 10.1.0.0 255.255.255.0
+      set dst-subnet 10.2.0.0 255.255.255.0
+
+STATIC ROUTE INTO TUNNEL (NO gateway — point-to-point):
+  config router static
+    edit 0
+      set dst 10.2.0.0 255.255.255.0
+      set device "ParraTunnel-ISP1"
+
+POLICIES (per firewall, two-way site):
+  internal → tunnel   ACCEPT      (local users initiate)
+  tunnel   → internal ACCEPT      (remote users initiate)
+
+VERIFY:
+  diagnose vpn ike gateway list   → version: 2 / network-id / state: established
+
+DEBUG:
+  diagnose debug flow filter saddr <ip>
+  diagnose debug flow filter daddr <ip>
+  diagnose debug flow trace start 10
+  diagnose debug enable            (… reproduce …)   diagnose debug disable
+
+KEY OUTPUT LINES:
+  "find a route: ... via <tunnel>"                → routing acquitted
+  "Denied by forward policy check (policy 0)"     → implicit deny; ADD a policy
+
+GUI PATHS:
+  VPN > IPsec Tunnels (phase 1/2) · Network > Interfaces (virtual tunnel
+  interface appears here) · Network > Static Routes · Policy & Objects >
+  Firewall Policy
+
+DEFAULTS / BEHAVIOURS:
+  - Tunnel virtual interface auto-created with phase 1
+  - Tunnel static route: device only, no gateway
+  - IKE = local-in; tunnel forms with zero forward policies
+  - Implicit deny = "policy 0" in debug flow
+  - network-overlay/network-id: IKEv2 ONLY, Fortinet-proprietary,
+    must match at both ends
+
+DESIGN RULES:
+  - Policies count initiation direction, not travel direction
+  - Debug closest to the source; follow the packet in packet order
+  - Evidence before change: two read-only commands beat ten edits
+
+----------------------------------------------------------------
+FLASHCARDS
+----------------------------------------------------------------
+Q: What does "route-based IPsec" mean mechanically?
+A: The phase 1 creates a virtual interface; routing decides tunnel entry
+   and normal policies control passage. No special VPN machinery.
+
+Q: Tunnel established, no traffic either direction — two most likely causes?
+A: Missing route to the tunnel interface; missing firewall policy on it.
+
+Q: Do replies crossing back through a tunnel need a reverse policy?
+A: No — replies match the existing session (stateful). Only NEW
+   initiations need a policy in their direction.
+
+Q: A branch user opens a NEW connection to HQ; HQ only has internal→tunnel.
+   Result?
+A: No session exists, policy lookup finds no match, packet hits implicit
+   deny (policy 0), silently dropped.
+
+Q: Which IKEv2 exchange carries the first child SA, and why there?
+A: IKE_AUTH — the encrypted second exchange; the DH secret exists by then,
+   so subnets/keys never travel in plaintext. Hence no quick mode.
+
+Q: Two IKEv2 tunnels between the same gateway pair — commands?
+A: set network-overlay enable + set network-id N (IKEv2 only, must match
+   both ends).
+
+Q: What's unusual about a static route pointing into a tunnel?
+A: No "set gateway" — the interface name suffices (point-to-point).
+
+Q: What is "policy 0" in debug flow output?
+A: The implicit deny — nothing matched. It means a policy is MISSING,
+   not misconfigured.
+
+Q: One-way-silent tunnel — the two suspects?
+A: Missing internal→tunnel at the initiator's site (dies at home) vs
+   missing tunnel→internal at the far site (dies after decryption).
+   Identical symptom; debug flow at the source discriminates.
+
+Q: Does the tunnel need a forward policy to FORM?
+A: No — IKE is local-in traffic (to the FortiGate, not through it).
+
+Q: Where do you run debug flow first and why?
+A: On the firewall closest to the source — the first device to see the
+   packet is the first that can kill it; evidence propagates forward.
+
+----------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 12: Tunnel Vision
+----------------------------------------------------------------
+Generate a 10–14 minute podcast episode for "The Packet Path", a
+storytelling show that teaches Fortinet NSE7 Enterprise Firewall
+concepts through the ongoing saga of LoFinance, a quirky financial
+firm whose logo is stacks of money frozen in an ice cube.
+
+CAST: Señor — eccentric, quietly brilliant senior engineer in a
+sombrero; speaks in short, earned aphorisms. Junior — enthusiastic,
+overconfident junior who learns publicly. Riley — pragmatic help-desk
+lead with a headset. The Intermediate Engineer — the listener's
+stand-in, increasingly trusted, who did most of the reasoning today.
+
+EPISODE STORY: Install day at the new Parramatta branch. Riley has
+pre-emptively filed ticket #4471, "VPN down," against a VPN that does
+not exist yet — Señor declares it will end the day as "prophecy or
+comedy." Before a single command, the team answers the framing
+question: when the tunnel exists, what makes a packet actually USE it?
+Answer — routing, because the tunnel is an INTERFACE. Build the
+five-item checklist (phase 1 with IKEv2 and network-id carried from
+last episode, phase 2 selectors, tunnel IPs, the route with no
+gateway, and policies BOTH directions). The tunnel establishes —
+celebration — then Riley calls: HQ can reach the branch, but Marcus
+at the branch gets a spinner reaching HQ. Traffic flows one way and
+vanishes the other.
+
+TEACH THROUGH THE STORY:
+1) "The tunnel is an interface" — no special machinery; route in,
+   policy through.
+2) Replies are free; new conversations pay at the door — Packet A
+   (a reply, rides the session) versus Packet B (a new initiator,
+   needs its own direction's policy). Coin the line: "Marcus is not
+   a reply. Marcus is an initiator — Packet B wearing a lanyard."
+3) IKEv2's first phase 2 rides inside IKE_AUTH, the encrypted
+   exchange — why there is no quick mode.
+4) The troubleshooting method: harvest free evidence (working replies
+   prove the branch routing table), name the two suspects (missing
+   policy at the source vs at the destination — identical symptom),
+   then run diagnose debug flow CLOSEST TO THE SOURCE. The verdict
+   line: "Denied by forward policy check (policy 0)" — and explain
+   that policy 0 is not a policy anyone wrote; it is the implicit
+   deny, meaning a policy is missing.
+
+JUNIOR'S MISTAKE: he mirrored the tunnel, the route, and ONE policy,
+believing statefulness covered the other direction. It covers replies,
+not initiators. Treat him kindly but let the lesson land: learn the
+rule AND its boundary.
+
+ANALOGIES TO USE: the tunnel as a new door that still uses the
+building's existing corridors and security desks; replies as guests
+already wearing wristbands versus new arrivals paying at the door;
+"follow the packet in the order the packet travels."
+
+END: Riley closes the ticket as "was prophecy, now comedy." Señor taps
+the dark second-tunnel entry on the dashboard: "One road to Parramatta.
+What happens when there is roadwork?" — and mentions Penny has been
+reading about FortiManager templates, asking why they configure
+firewalls "like artisans." Señor's closer: "Nothing wrong with
+artisans. Until the fortieth tunnel." Tease Episode 13: "Two Roads to
+Parramatta."
+
+TONE: warm, wry, precise. Explain every concept so a commuter with no
+screen can follow. Repeat the two core aphorisms at least twice each:
+"The tunnel is an interface" and "Replies are free; new conversations
+pay at the door."
+================================================================

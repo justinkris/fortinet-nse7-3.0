@@ -1,0 +1,214 @@
+LOFINANCE — SESSION 07 REVISION PACK
+"Bridges Between Worlds" — Inter-VDOM Links and Routing
+=========================================================================
+
+QUICK SUMMARY (one-page recap)
+=========================================================================
+The new Guest-WiFi VDOM was correctly isolated from Trading, but also totally
+isolated from root — no internet access at all. Junior wanted to fix this with
+a physical cable (two wasted ports). The real fix: an inter-VDOM link — a
+paired virtual interface built once from Global VDOM context, auto-named
+base0/base1, one half assigned to each VDOM. The link alone does nothing:
+each VDOM still needs its OWN route (independent routing tables) and its OWN
+policy (independent policy tables, no such thing as a policy spanning two
+VDOMs) before traffic actually flows. Full path for guest→internet: Guest-WiFi
+route → Guest-WiFi policy → cross the link → root's pre-existing route → root
+policy → NAT → internet. Trading VDOM stays completely unreachable because no
+link/route/interface toward it exists anywhere — VDOMs default to "physically
+nonexistent to each other" unless deliberately linked, which is stronger
+isolation than any firewall deny rule could provide.
+
+=========================================================================
+CHEAT SHEET
+=========================================================================
+GUI PATH TO CREATE A LINK:
+  Global VDOM > Network > Interfaces > Create New > VDOM Link
+  (created ONCE, both VDOM assignments chosen in the same step)
+
+AUTO-NAMING CONVENTION:
+  Base name "X" → X0 (first-assigned VDOM) and X1 (second-assigned VDOM)
+  Verify which VDOM owns which via actual interface assignment — don't assume.
+
+THREE REQUIREMENTS FOR TRAFFIC TO FLOW (all required, both sides):
+  1. The link interface pair (virtual, no physical cable)
+  2. A route in EACH VDOM's own routing table
+  3. A policy in EACH VDOM's own policy table (srcintf/dstintf)
+
+CLI — STATIC ROUTE INSIDE A SPECIFIC VDOM:
+  config vdom
+  edit <vdom-name>
+  config router static
+  edit 0
+      set dst <network> <mask>       (or 0.0.0.0 0.0.0.0 for default)
+      set device "<link-interface-name>"
+  next
+  end
+
+KEY DEFAULT BEHAVIOR:
+  VDOMs are isolated by default — "physically nonexistent to each other"
+  unless an inter-VDOM link explicitly exists. Not "connected unless
+  blocked." This is stronger than a firewall deny rule.
+
+ORDER OF OPERATIONS (every hop):
+  Routing decision (pick egress interface) → THEN policy lookup (allow/deny)
+  A route with no matching policy still drops traffic — looks like a policy
+  bug but the routing succeeded.
+
+TWO DIFFERENT ISOLATION BOUNDARIES — DON'T CONFUSE THEM:
+  Internal VDOM isolation  = no link/route/interface inside the FortiGate
+  External L2/physical isolation = separate switch/cabling topology outside
+                                     the FortiGate entirely, unrelated to VDOMs
+
+=========================================================================
+FLASHCARDS
+=========================================================================
+Q: Why use an inter-VDOM link instead of a physical cable between two VDOMs
+   on the same FortiGate?
+A: Avoids wasting two physical ports; the two VDOMs already share the same
+   physical hardware.
+
+Q: How many times do you create an inter-VDOM link — once, or once per VDOM?
+A: Once, from Global VDOM context — both VDOM assignments chosen in the same
+   creation step.
+
+Q: A link is named "Finance_Link." What are the two auto-generated interface
+   names?
+A: Finance_Link0 and Finance_Link1.
+
+Q: How do you determine which VDOM owns Finance_Link0 vs Finance_Link1?
+A: Check each interface's actual VDOM assignment (config system interface or
+   GUI interface list) — it's not a fixed/memorizable rule.
+
+Q: True or False — creating the inter-VDOM link interface pair is enough for
+   traffic to flow between the two VDOMs.
+A: False. You also need a route AND a policy on both sides.
+
+Q: Can one firewall policy govern traffic across two different VDOMs?
+A: No — every VDOM maintains its own independent policy table; no policy
+   spans two VDOMs.
+
+Q: In the packet path Guest-WiFi → root → internet, does root need a NEW
+   route added?
+A: No — root already has a pre-existing default route to the internet via
+   its WAN interface; only Guest-WiFi needs a new route toward the link.
+
+Q: A route exists pointing at the link interface, but no matching policy
+   exists. What happens to the traffic, and at which stage does it fail?
+A: Traffic is dropped. Routing succeeds (egress interface is chosen); it
+   fails at the policy lookup stage.
+
+Q: Does routing or policy lookup happen first on a FortiGate?
+A: Routing decides the egress interface first; policy lookup happens after,
+   using that determined dstintf.
+
+Q: Trading VDOM has no inter-VDOM link, no route, and no interface pointing
+   toward it from any other VDOM. Can Guest-WiFi traffic reach Trading VDOM,
+   even accidentally, purely through VDOM configuration?
+A: No — there is no interface to route toward and no path exists at all.
+   This is stronger isolation than a policy deny rule.
+
+Q: Six months from now, someone wants Trading-to-Guest connectivity for one
+   file transfer. What's the single config artifact that must be newly built?
+A: A new inter-VDOM link, plus its own dedicated routes and policies on both
+   sides — the absence of a link isn't a rule that can be "loosened."
+
+Q: What's the difference between internal VDOM isolation and external L2/
+   physical topology isolation?
+A: Internal VDOM isolation is about link/route/interface existence inside the
+   FortiGate's virtual firewalls. External L2/physical isolation is about
+   actual cabling/switch topology outside the FortiGate — a completely
+   separate risk that VDOM configuration doesn't control.
+
+=========================================================================
+PODCAST PROMPT — "The Packet Path" (paste directly into an AI audio generator)
+=========================================================================
+Create a podcast episode for "The Packet Path," a technical study podcast for
+network security engineers preparing for the Fortinet NSE7 Enterprise
+Firewall exam. Two co-hosts, conversational and warm but technically sharp —
+think experienced engineers explaining a real production war story to a
+colleague, not a lecture.
+
+EPISODE TITLE: "Bridges Between Worlds — Inter-VDOM Links and the Myth of the
+Free Cable"
+
+STORY TO TELL:
+Open with the scene: a junior engineer at a financial services firm
+("LoFinance") wants to solve a connectivity problem by buying a $340 network
+switch and running a physical cable between two virtual firewalls that
+already live inside the SAME physical box. Walk through why this instinct is
+understandable but wrong — he's about to burn two ports and a cable run to
+solve a problem that has a zero-cost, purely-configuration solution already
+sitting inside the device he's staring at.
+
+TECHNICAL CONCEPTS TO EXPLAIN, WITH REASONING (not just facts):
+1. What an inter-VDOM link actually is — a paired virtual interface, created
+   ONCE from a global administrative context, not something you build twice.
+   Explain WHY it's created once (it's a single object spanning two VDOMs by
+   design) and use the analogy of two offices on the same floor installing
+   an internal door, instead of both offices mailing letters out to the
+   street and back.
+2. The auto-naming convention (base name + 0 / base name + 1) and WHY it
+   exists — two interfaces literally cannot share an identical name inside
+   one device's interface table, so FortiGate disambiguates automatically.
+   Make clear that which side is "0" and which is "1" is not something to
+   memorize as a fixed rule — you always verify by checking VDOM assignment.
+3. The critical insight that the link alone does NOTHING — you need a route
+   in EACH VDOM's own independent routing table, and a policy in EACH VDOM's
+   own independent policy table, because VDOMs never share either of those
+   tables. Walk through the full six-hop packet journey from a guest device
+   requesting an internet address, through Guest-WiFi's routing table, its
+   policy table, across the link, into root's pre-existing routing table,
+   root's policy table, and out through NAT to the internet.
+4. The sequencing rule that trips people up on the exam: routing ALWAYS
+   happens before policy lookup. A route can succeed while policy still
+   drops the traffic — explain why this produces a confusing symptom
+   (looks like a policy bug, but a missing route can cause a nearly
+   identical-looking failure at an earlier stage) and why a real engineer
+   traces the flow step by step instead of guessing which layer is broken.
+5. The central mental model of the whole episode: VDOMs default to being
+   "physically nonexistent to each other" — NOT "connected unless a policy
+   blocks it." No inter-VDOM link means no interface means no route is even
+   possible means no path exists at all. This is stronger than any firewall
+   deny rule, because there's nothing present to even evaluate a policy
+   against. Use this to explain why the Trading VDOM (holding sensitive
+   trading floor data) stays completely safe from the new guest network —
+   not because someone remembered to write a "deny" rule, but because nobody
+   ever built a bridge there in the first place.
+6. Include a "common near-miss" moment: a junior engineer might reach for
+   "maybe traffic could leak through some roundabout physical path outside
+   the box" when asked why one VDOM can't reach another — explain clearly
+   why that's a DIFFERENT problem entirely (physical/L2 switch topology
+   outside the firewall), completely separate from the internal VDOM
+   isolation model being discussed, and why good engineers keep these two
+   isolation boundaries mentally distinct.
+
+JUNIOR'S MISTAKE TO INCLUDE:
+Junior proposed running a physical cable and buying a $340 switch to connect
+the guest network to the internet-facing root VDOM, without realizing both
+virtual firewalls already live inside the same physical chassis and can be
+linked at zero hardware cost using a purely virtual inter-VDOM link. Frame
+this warmly, not as mockery — it's a completely reasonable first instinct
+for someone thinking in terms of physical networking, and the episode should
+explain why virtualized firewall thinking requires a slightly different
+mental model than physical network thinking.
+
+CLOSING:
+Wrap with the practical takeaway a working engineer should walk away with:
+whenever you need connectivity between two VDOMs on the same FortiGate,
+always reach for an inter-VDOM link with its own route and policy pair on
+both sides — never a physical workaround — and always verify all three
+layers (link, route, policy) independently on BOTH VDOMs when troubleshooting,
+because a failure on one side can look identical to a failure on the other.
+
+TEASER FOR NEXT EPISODE:
+End with an ominous, slightly playful teaser: next episode is a boss battle.
+Someone put on a cowboy hat, quietly broke something in the network overnight,
+and by morning VLAN 30 can suddenly reach finance systems it was never
+supposed to touch — while the guest Wi-Fi that was JUST fixed this episode
+can't reach anything at all, not even the root VDOM. No hints this time. Full
+VLANs and VDOMs review, layered faults, and the listener/engineer will have
+to drive the entire troubleshooting session themselves.
+
+TONE: Confident, warm, occasionally funny, respectful of the junior
+engineer's mistake, deeply technical but explained through story and
+reasoning rather than a dry list of facts. Target run time: 12-15 minutes.

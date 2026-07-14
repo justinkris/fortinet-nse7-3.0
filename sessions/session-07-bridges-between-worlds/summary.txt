@@ -1,0 +1,245 @@
+LOFINANCE — SESSION 07 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "Bridges Between Worlds"
+Study guide coverage: 03 VLANs and VDOMs, pp. 75-81 (inter-VDOM links — purpose,
+creation via Global VDOM > Network > Interfaces > VDOM Link, auto-generated 0/1
+interface naming convention; requirement for routing AND policy on both sides of a
+link; per-VDOM independent routing tables and policy tables; VDOM isolation-by-default
+model; per-VDOM administration and Global Resources / Override Maximum touched briefly
+as a forward reference, not deep-dived this session).
+Status: COMPLETE. Student answered all 3 exam questions correctly, with one needing a
+precision refinement (Q2 — correctly identified "traffic gets dropped" but needed
+prompting to name the exact failure stage: policy lookup, not routing).
+
+STORY EVENTS
+------------
+Tuesday, 3:40 PM, direct continuation of the Session 6 teaser. Junior has a $340
+4-port PoE switch in his cart, proposing to physically cable the newly-built but
+totally isolated Guest-WiFi VDOM straight into root VDOM's LAN port to get it
+internet access — bypassing VDOM architecture entirely. Penny is skeptical of paying
+for hardware to solve what sounds like a software problem. Señor, mid-CLI, redirects
+the question to the student without directly criticizing Junior: "Why does Junior's
+plan cost us a port we don't need to spend?" Cipher and Riley do not appear this
+session. Session closes with the student building the inter-VDOM link end-to-end
+(mentally: routes + policies on both sides), Junior canceling the cart order live,
+and Señor dropping a forward hook to Global Resources / Override Maximum before
+leaving for the day ("Don't let it inherit whatever root's ceiling was") — this is
+intentionally left unexplained, seeding it for a later resource-governance-focused
+session.
+
+CHARACTERS INVOLVED
+--------------------
+Student (protagonist, drove the entire technical build via strong first-principles
+reasoning), Junior (proposes the physical-cable "solution," cancels his cart order by
+the end — his mistake is corrected implicitly through the student's own reasoning,
+not by direct lecture), Penny (business-skepticism hook, questions the port purchase),
+Señor (opens the session with a single redirect question, closes it with the Global
+Resources forward-hook line, otherwise silent/working in the background — consistent
+with his established pattern of minimal on-screen presence when the student doesn't
+need heavy scaffolding).
+
+BUSINESS PROBLEM
+-----------------
+The new Guest-WiFi VDOM (built end of Session 6) is correctly isolated from Corporate/
+Cloud/Trading VDOMs but is ALSO fully isolated from the internet-facing root VDOM —
+it has zero connectivity, period. Junior's proposed fix (a physical cable/extra switch
+port from Guest-WiFi's switch into root's LAN interface) would work but wastes two
+physical ports and undermines the entire point of virtualizing multiple firewalls onto
+one box. Resolved: build a single inter-VDOM link (auto-generates a paired virtual
+interface, one end per VDOM), add a static default route in Guest-WiFi pointing at its
+end of the link, and add two firewall policies (Guest-WiFi: guest VLAN → link interface;
+root: link interface → WAN) — giving guest traffic internet access via root's existing
+NAT/WAN path while leaving Trading VDOM completely unreachable, since no link, route,
+or interface toward Trading exists anywhere. Business outcome: $340 hardware purchase
+cancelled; problem solved with existing licensing/hardware, engineering time only.
+
+TECHNICAL CONCEPTS COVERED
+----------------------------
+1. Inter-VDOM link purpose: connects two VDOMs on the SAME physical FortiGate via a
+   paired virtual interface instead of a physical cable — eliminates wasted physical
+   ports for VDOM-to-VDOM traffic. Student independently reasoned this out from first
+   principles (physical waste argument) before being told, extending the "carve the
+   control plane, share the physical plane" VRF analogy from Session 6.
+2. VDOM link creation: built once, from Global VDOM context (Global VDOM > Network >
+   Interfaces > Create New > VDOM Link) — NOT created twice, once per VDOM. It is a
+   single object spanning two VDOMs, with both VDOM assignments chosen in the same
+   creation step. Student initially assumed (incorrectly, briefly) that it needed to be
+   built on both sides independently — self-corrected almost immediately after the
+   naming-convention discussion, then explicitly asked the clarifying question, which
+   was answered directly (good instinct to check rather than assume).
+3. Auto-generated interface naming: FortiGate appends 0 and 1 to the base link name
+   (e.g. VDOM_Link → VDOM_Link0 / VDOM_Link1) because two interfaces cannot share an
+   identical name inside the same device's interface list — student reasoned this out
+   himself when prompted ("how would the CLI tell them apart?"). Refinement taught:
+   which side gets 0 vs 1 is NOT a meaningful choice to memorize — it's assigned based
+   on which VDOM you configure first in the creation dialog, and you verify placement
+   afterward via each interface's actual VDOM assignment (config system interface /
+   GUI interface list), not by assuming a fixed rule.
+4. Two separate config layers required per side, since each VDOM maintains a fully
+   independent routing table AND policy table:
+   - Routing: static (or dynamic) route in each VDOM pointing traffic toward its own
+     end of the link (device = VDOM_Link0 or VDOM_Link1, dst = far-side network or
+     0.0.0.0/0.0.0.0 for internet-bound default in Guest-WiFi's case).
+   - Policy: firewall policy in each VDOM's OWN policy table (srcintf/dstintf pair),
+     since Session 6 established Policy & Objects doesn't exist at the Global VDOM
+     level — there's no such thing as a policy spanning two VDOMs.
+   Student correctly derived the full two-hop packet path unprompted: Guest-WiFi route
+   → Guest-WiFi policy → cross link → root route (root's PRE-EXISTING default route,
+   correctly identified as already present, not newly needed) → root policy → WAN/NAT.
+5. Routing-before-policy retrieval (Session 4/5 callback): reconfirmed cold, with
+   minor phrasing looseness on first pass ("no routing and the dst int needs to be
+   chosen first") — restated cleanly by Claude and student's subsequent answers
+   (Q2 exam question) demonstrated the model landed correctly on retry.
+6. VDOM isolation-by-default model (the session's central mental model, self-built
+   through Socratic pressure, not handed over): VDOMs do NOT default to "connected
+   unless blocked by policy" — they default to "physically nonexistent to each other
+   unless an inter-VDOM link explicitly exists." No link = no interface = no route
+   possible = no path at all, which is STRONGER isolation than a firewall deny rule,
+   because there's nothing present to even evaluate a policy against. Student's first
+   attempt at explaining Trading's safety incorrectly reached for "accidentally through
+   root, physically out of the box and back" — a live, useful near-miss, since it
+   describes a genuine but DIFFERENT failure mode (external L2/switching misconfig,
+   completely outside VDOM routing/policy control) rather than anything internal to
+   VDOM link/route/policy state. This distinction (internal VDOM isolation vs.
+   external physical/L2 topology risk) was explicitly separated out and should be
+   considered "taught" but worth one light retrieval check in a future session, since
+   it required correction rather than being self-generated cleanly.
+7. Practical implication / exam-relevant takeaway: extending an inter-VDOM boundary
+   later (e.g. Trading ↔ Guest-WiFi for "one file transfer") requires building a brand
+   new inter-VDOM link plus its own routes and policies — the ABSENCE of a link is
+   itself the entire security control, not a rule that could accidentally be loosened.
+   Student named this correctly and immediately when asked directly.
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "He needed a route, not a router." — Señor's closing line, functions as the
+  session's memorable one-liner; ties directly to the physical-port-waste vs.
+  virtual-link reasoning the student built independently.
+- "Physically nonexistent to each other unless explicitly linked" — the core VDOM
+  isolation model, student-adjacent (built under guidance, not fully self-generated
+  on the first attempt, but articulated cleanly once corrected). This is the
+  strongest single takeaway of the session and should be retrieval-tested in a
+  future session (ideally before the Session 8 boss battle, if time allows, since
+  boss battles assume this model is solid).
+- Extends Session 6's "carve the control plane, share the physical plane" VRF
+  analogy: inter-VDOM links are the explicit, deliberate exception mechanism to that
+  otherwise-total separation — the one controlled "wire" you choose to run between
+  two carved-out control planes.
+
+KEY CLI COMMANDS / CONFIG REFERENCED (this session included hands-on typed CLI,
+unlike Session 6 which stayed conceptual)
+----------------------------------------------------------------
+Global VDOM > Network > Interfaces > Create New > VDOM Link (GUI path, conceptual).
+Auto-naming: base name → base0 (first-assigned VDOM) / base1 (second-assigned VDOM).
+config vdom / edit root / config router static / edit 0 / set dst <network> <mask> /
+  set device "VDOM_Link0" / next / end — Señor's worked example (root's route to a
+  Guest-WiFi-side network; illustrative, not itself the retained decision since root's
+  actual internet route already existed).
+Student's own typed block (correct, full marks):
+  config vdom
+  edit Guest-WiFi
+  config router static
+  edit 0
+  set dst 0.0.0.0 0.0.0.0
+  set device "VDOM_Link1"
+  next
+  end
+Policy pairing discussed at the srcintf/dstintf level (not fully typed line-by-line
+this session): Guest-WiFi policy (srcintf=guest VLAN, dstintf=VDOM_Link1); root policy
+(srcintf=VDOM_Link0, dstintf=WAN/internet-facing interface).
+
+TROUBLESHOOTING APPROACH TAUGHT
+----------------------------------
+Packet-path tracing across two independent VDOM tables: for any inter-VDOM traffic
+problem, always separate "did routing succeed" (egress interface determined) from
+"did policy allow it" (session actually permitted) as two distinct, sequential
+checkpoints, and remember each checkpoint exists TWICE — once per VDOM the packet
+transits. A working route with no matching policy silently drops traffic and looks
+like a policy misconfiguration, not a routing one, until you check which stage
+actually failed.
+
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+---------------------------------------------
+IMPLEMENTED (on-screen, live in the session): inter-VDOM link created between root and
+Guest-WiFi VDOM (auto-named VDOM_Link0/VDOM_Link1); default route added in Guest-WiFi
+pointing at VDOM_Link1; policies added on both sides (Guest-WiFi VLAN → VDOM_Link1 in
+Guest-WiFi's table; VDOM_Link0 → WAN in root's table). Verified working: test laptop on
+guest VLAN successfully loaded a webpage. Junior's $340 switch purchase cancelled.
+TOPOLOGY UPDATE: FortiGate now hosts root (management + internet-facing, pre-existing
+default route to WAN), Trading VDOM (still fully isolated — zero links, zero routes,
+zero interfaces pointing toward it from anywhere), Guest-WiFi VDOM (now connected to
+root ONLY via VDOM_Link0/VDOM_Link1 pair, with matching routes/policies on both ends,
+giving internet access with zero path to Trading). No link exists anywhere touching
+Trading VDOM — this absence IS the security boundary protecting trading floor data.
+
+EXAM-RELEVANT NOTES
+----------------------
+Q1 (T/F — creating an inter-VDOM link alone is sufficient for traffic to flow):
+correct — False; student correctly named that routes (static or dynamic) are still
+required on top of the link interface pair, and by extension (established earlier in
+the session, not restated as part of Q1 itself) policies are equally required.
+Q2 (route exists in Guest-WiFi pointing at the link, but no matching policy — what
+happens and at which stage): correct final answer ("gets dropped") but the *stage*
+needed one round of refinement — Claude had to explicitly walk the student through
+"routing succeeds, policy lookup is where it actually dies" rather than the student
+naming the exact stage unprompted. Track this: the student's Session 4/5 retrieval
+answer for the same underlying sequencing rule was also slightly loose in phrasing
+("no routing and the dst int needs to be chosen first") before tightening up correctly
+on the applied exam question. Pattern: concept is retained, but first-pass phrasing
+under retrieval pressure is looser than under direct guided construction — worth
+watching whether this persists or resolves with more reps.
+Q3 (auto-generated interface names for a link called Finance_Link, and how to verify
+which VDOM owns which): correct on the 0/1 naming pattern; initial phrasing implied
+the "0 vs 1" assignment might be more deterministic/rule-based ("0 is where you
+created it from") than it actually is — corrected to "assigned based on which VDOM
+you configure first in the single creation step, verified afterward via each
+interface's actual VDOM assignment, not assumed."
+
+STUDENT LEARNING OBSERVATIONS (feed the knowledge register)
+----------------------------------------------------------------
+Continues the Session 6 pattern: strong first-principles reasoning, comfortable
+generating the "why" before being told, and willing to ask a genuinely good
+clarifying question ("do you need to create the link on both VDOMs?") rather than
+silently assuming — this is a strength worth explicitly naming in the register, since
+it reflects real engineering judgment (checking assumptions rather than guessing under
+uncertainty) rather than just recall speed.
+Two soft misses this session, both worth tracking as a pattern rather than one-offs:
+  (a) First-pass phrasing under retrieval pressure is looser than reasoning built
+      fresh in-session — seen in both the Session 4/5 dstintf-sequencing retrieval
+      question ("no routing and the dst int needs to be chosen first," technically
+      correct but compressed/ambiguous) and in this session's Q2 exam answer
+      ("it gets dropped" — correct outcome, imprecise on stage). Recommend: future
+      retrieval questions should occasionally ask "at which specific stage" as an
+      explicit follow-up rather than accepting the first correct-but-vague answer,
+      to build precision under pressure, not just correctness.
+  (b) The Trading-VDOM-isolation reasoning attempt ("probably accidentally through
+      root VDOM... physically out of the box and back") was a genuine, useful
+      near-miss — the student reached for a real failure mode (external L2/switching
+      misconfiguration) when the question was actually testing an internal VDOM-
+      routing-table concept. This isn't a weak area so much as a sign the student
+      thinks in terms of real physical network topology risk (a mature instinct) but
+      hadn't yet cleanly separated "internal VDOM plane" from "external cabling
+      plane" as two independent isolation boundaries. Worth a light retrieval check
+      in Session 8 or later: "what's the difference between VDOM isolation and
+      physical/L2 network isolation, and which one protects against which kind of
+      mistake?"
+Recommend: Session 8 (boss battle, VLANs + VDOMs review) is a strong fit for this
+student's current trajectory — he has the conceptual model solid enough to drive
+troubleshooting with minimal hints, per the project's boss-battle format. Prioritize
+testing the "internal VDOM isolation vs external L2 topology" distinction and the
+"exact failure stage" precision habit during the boss battle, since both are the
+session's identified soft spots, and a layered-fault scenario is exactly the right
+format to expose whether they're truly resolved or still surface-level.
+
+TEASER DELIVERED FOR SESSION 8 ("Cowboy Hat: The Quiet Tuesday")
+--------------------------------------------------------------
+Delivered in-story as the closing beat: Señor's cowboy hat appears on the rack
+Wednesday morning with no visible config change from him. By 9 AM, VLAN 30 can
+suddenly reach finance systems it shouldn't be able to, AND the guest Wi-Fi (just
+fixed this session) can't reach anything at all, not even root. This is explicitly
+framed as a full boss-battle review of VLANs + VDOMs (Session 8, per the master study
+plan, pp. 54-81 review) — layered faults, minimal hints, student-driven troubleshooting
+with Claude returning realistic command outputs on request. Natural opening move for
+Session 8: cold open directly on the two simultaneous symptoms (unwanted VLAN 30 to
+finance reachability + total Guest-WiFi outage), no story preamble needed since the
+premise is self-explanatory from the teaser.

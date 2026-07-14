@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 14 Troubleshooting — OSPF Reasoning</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9; --border:#d4c89a;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:40px 60px 30px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:#fbf7ec;margin-bottom:8px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);}
+  main{max-width:900px;margin:0 auto;padding:36px 60px 60px;}
+  .section-block{margin-bottom:36px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--text);margin-bottom:14px;padding-left:14px;border-left:3px solid var(--blue);}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:12px;}
+  .section-block li{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:6px;}
+  .section-block li strong{color:var(--text);}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:14px 0;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .decision-tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:16px 0;}
+  .dt-step{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-dim);align-items:flex-start;}
+  .dt-step:last-child{border-bottom:none;}
+  .dt-num{font-family:'Outfit',sans-serif;font-weight:700;color:var(--blue);min-width:24px;font-size:15px;}
+  .dt-text{font-size:16px;color:var(--text-soft);line-height:1.6;}
+  .dt-text strong{color:var(--text);}
+  footer{padding:24px 60px;text-align:center;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:var(--text-muted);background:var(--ink-dark);}
+  footer span{color:rgba(251,247,236,0.4);margin:0 6px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow">SESSION 14 · TROUBLESHOOTING · OSPF REASONING</div>
+  <h1>Thinking Like a <em>Senior Engineer</em></h1>
+  <p>This session was conceptual, not incident-driven — so this guide focuses on the REASONING questions a senior engineer asks before touching OSPF config, not commands.</p>
+</header>
+
+<main>
+  <div class="section-block">
+    <div class="section-label">WHY THIS MATTERS</div>
+    <h2>No Config Yet — <em>But Reasoning Starts Now</em></h2>
+    <p>Session 14 built the mental model OSPF troubleshooting will depend on in later sessions. A senior engineer diagnosing an OSPF adjacency failure, a missing route, or an unexpected summary doesn't start with commands — they start by asking "which area is this happening in, and which router role is responsible for what I'm seeing?"</p>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">SYMPTOMS THAT WILL POINT BACK HERE</div>
+    <h2>Symptom Patterns to <em>Recognize Later</em></h2>
+    <ul>
+      <li><strong>"A route from another area just disappeared."</strong> — First question: did the ABR responsible for that area go down? A single ABR per area is a single point of failure for every summary LSA from that area.</li>
+      <li><strong>"Two areas seem to be exchanging routes directly, and something looks wrong / inconsistent."</strong> — This should never be possible in a correctly designed network. If it's happening, the backbone rule has been violated somewhere (a virtual link or misconfiguration bypassing Area 0).</li>
+      <li><strong>"This router isn't doing what I expect for its role."</strong> — Before troubleshooting further, check the router against EVERY role definition (internal / backbone / ABR / ASBR) — it may hold more than one role, and the config or behaviour you're troubleshooting might belong to a role you didn't consider.</li>
+      <li><strong>"External routes aren't showing up in OSPF."</strong> — Check for an ASBR performing redistribution; by default, protocols are NOT redistributed into OSPF (redistribute settings are disabled by default per protocol).</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">QUESTIONS TO ASK FIRST</div>
+    <h2>Before Touching Any <em>Configuration</em></h2>
+    <div class="decision-tree">
+      <div class="dt-step"><div class="dt-num">1</div><div class="dt-text"><strong>Which area is this?</strong> Backbone (0.0.0.0) or a numbered area? This changes which rules and which router (ABR vs internal) are relevant.</div></div>
+      <div class="dt-step"><div class="dt-num">2</div><div class="dt-text"><strong>Is the affected router an ABR, ASBR, backbone router, or internal router — or several at once?</strong> Don't assume a single role; check each definition independently.</div></div>
+      <div class="dt-step"><div class="dt-num">3</div><div class="dt-text"><strong>Is the missing/wrong route a summary (Type 3) or should it be a full internal route (Type 1)?</strong> A Type 3 issue points to the ABR; a Type 1 issue points to internal-area topology.</div></div>
+      <div class="dt-step"><div class="dt-num">4</div><div class="dt-text"><strong>Does this route originate inside OSPF, or is it external (redistributed)?</strong> External routes point to an ASBR and redistribution settings, not area/ABR logic.</div></div>
+      <div class="dt-step"><div class="dt-num">5</div><div class="dt-text"><strong>Is Area 0 contiguous and is every non-backbone area actually connected to it?</strong> A broken or missing backbone connection is a structural design fault, not a transient issue.</div></div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">COMMON DEAD ENDS</div>
+    <h2>Where This Reasoning <em>Gets Derailed</em></h2>
+    <div class="callout callout-amber"><strong>Dead end 1:</strong> Assuming a router only holds ONE role. A device can be ABR + backbone router + ASBR simultaneously — if you diagnose it as "just an ASBR," you'll miss ABR-specific summary behaviour it's also responsible for.</div>
+    <div class="callout callout-amber"><strong>Dead end 2:</strong> Treating a missing route as automatically an ABR/summary problem. If the route should be a Type 1 (internal, same-area) LSA, the fault is inside the area's own topology — checking the ABR first wastes time.</div>
+    <div class="callout callout-amber"><strong>Dead end 3:</strong> Assuming OSPF constantly re-announces everything, so "it'll just refresh in a minute." OSPF is quiet by design — a stale route may sit until the 30-minute refresh unless a real topology-change event triggers an update. Don't assume time alone fixes it.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">LIKELY ROOT CAUSES</div>
+    <h2>What's Usually <em>Actually Wrong</em></h2>
+    <ul>
+      <li>Single ABR serving an area with no redundancy (design gap, not a bug).</li>
+      <li>Redistribution not enabled on the ASBR for the specific protocol needed (default: disabled per protocol).</li>
+      <li>An area configured without a path to the backbone (violates the mandatory hub rule).</li>
+      <li>Confusion between "route summarization" (deliberate, ABR-only, via <code>config range</code>) and "route missing" (a fault).</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">EXAM TRAPS</div>
+    <h2>Distractor Patterns to <em>Watch For</em></h2>
+    <div class="callout callout-green"><strong>Trap 1:</strong> "OSPF areas can connect directly to each other for efficiency" — FALSE. Always through Area 0.</div>
+    <div class="callout callout-green"><strong>Trap 2:</strong> "An ABR keeps a single shared LSDB across all its areas" — FALSE. One full, separate LSDB per connected area.</div>
+    <div class="callout callout-green"><strong>Trap 3:</strong> Questions listing router roles as single-select when the correct answer is "select all that apply" — always check compound roles.</div>
+    <div class="callout callout-green"><strong>Trap 4:</strong> "OSPF continuously floods LSAs" — FALSE. 30-minute periodic refresh, event-triggered otherwise.</div>
+  </div>
+</main>
+
+<footer>LoFinance<span>.</span> NSE7 EF 7.6<span>.</span> Session 14 Troubleshooting Guide</footer>
+</body>
+</html>

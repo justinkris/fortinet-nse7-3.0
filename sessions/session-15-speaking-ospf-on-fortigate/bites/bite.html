@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 15 Bite — Speaking OSPF on FortiGate</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:17px}
+header{padding:32px 40px;background:var(--ink-dark)}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.12em}
+header h1{font-family:'Playfair Display',serif;font-size:30px;color:#fbf7ec;margin-top:8px}
+main{max-width:760px;margin:0 auto;padding:28px 24px 60px}
+.card{background:var(--surface);border:1px solid var(--border-dim);border-radius:10px;padding:18px 22px;margin-bottom:16px}
+.card h2{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:8px}
+pre{background:var(--ink-dark);color:#dbe7fb;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:12px 16px;border-radius:8px;overflow-x:auto;margin:10px 0;line-height:1.55}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.87em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:7px 10px;border:1px solid var(--border)}
+td{padding:7px 10px;border:1px solid var(--border-dim)}
+.trap{background:var(--amber-light);border-left:4px solid var(--amber);padding:10px 14px;border-radius:0 6px 6px 0;margin-top:8px;font-size:15.5px}
+ul{margin-left:20px}
+li{margin-bottom:5px}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 15 · STUDY BITE · ~5 MINUTES</div>
+  <h1>Speaking OSPF on FortiGate</h1>
+</header>
+<main>
+
+<div class="card">
+<h2>Network types = medium assumptions</h2>
+<table>
+<tr><th>Type</th><th>Assumes</th><th>DR/BDR</th><th>Use</th></tr>
+<tr><td>Broadcast</td><td>Shared medium; one multicast reaches all</td><td>Elected</td><td>Ethernet LAN</td></tr>
+<tr><td>Point-to-point</td><td>Exactly one far-side neighbor</td><td>None</td><td>Site-to-site tunnel (FortiGate <b>default</b>)</td></tr>
+<tr><td>Point-to-multipoint</td><td>Many spokes, no shared medium; per-spoke <b>unicast replication</b></td><td><b>Never</b></td><td>Dial-up hub, <code>net-device disable</code></td></tr>
+</table>
+<div class="trap"><b>The rule:</b> multiple dial-up spokes on one hub interface → hub interface <b>must</b> be <code>point-to-multipoint</code>.</div>
+</div>
+
+<div class="card">
+<h2>Why broadcast on a hub = total silence</h2>
+<p>Broadcast mode multicasts its hello to 224.0.0.5 and expects the <em>medium</em> to deliver it to everyone. A dial-up hub interface has no shared wire — three separate tunnels — and broadcast mode never replicates per tunnel. The hello dies at the interface. No hellos → <b>empty</b> (not flapping) neighbor table. Bonus absurdity: it would try a DR election among spokes who can't hear each other's votes.</p>
+</div>
+
+<div class="card">
+<h2>The fix + the fingerprint</h2>
+<pre><code>config router ospf
+    config ospf-interface
+        edit "Hub"
+            set interface "To-Spokes"
+            set network-type point-to-multipoint
+        end</code></pre>
+<p>Verify: <code>get router info ospf neighbor</code> → each spoke shows <b>Full/ -</b>.</p>
+<ul>
+<li><b>Full</b> = top of the ladder (Init → 2-Way → ExStart → Exchange → Loading → Full); identical LSDBs.</li>
+<li><b>Dash</b> = no election ran. <b>DROther means "lost an election"</b> — it can only appear on broadcast segments.</li>
+</ul>
+<div class="trap"><b>Fingerprint:</b> the role column reveals the network type. DR/BDR/DROther → broadcast. Dash → P2P or P2MP.</div>
+</div>
+
+<div class="card">
+<h2>Redistribution</h2>
+<ul>
+<li>Injects non-OSPF routes (static/connected/BGP/RIP/ISIS) into OSPF → router becomes an <b>ASBR</b>.</li>
+<li>Default: <b>disabled for every source</b> — OSPF floods trust automatically domain-wide, so an open valve turns one careless static into everyone's route.</li>
+<li><code>redistribute static</code> is <b>all-or-nothing</b> without a filter.</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Filtering ladder — least powerful tool wins</h2>
+<table>
+<tr><th>Tool</th><th>Power</th><th>Note</th></tr>
+<tr><td>Access list</td><td>Prefix permit/deny</td><td>Simplest; use when the requirement is one known prefix</td></tr>
+<tr><td>Prefix list</td><td>+ <code>ge</code>/<code>le</code> mask-length ranges</td><td>Applies only to <code>distribute-list-in</code></td></tr>
+<tr><td>Route map</td><td>Match + <b>modify attributes</b></td><td>Can embed the other two as match objects</td></tr>
+</table>
+<div class="trap"><b>2 AM tax:</b> unneeded machinery must be audited during every future incident. One-sentence requirement → roughly one-line config.</div>
+</div>
+
+<div class="card">
+<h2>Compound roles — check all four, every time</h2>
+<ul>
+<li><b>Internal:</b> ALL interfaces in one area?</li>
+<li><b>ABR:</b> interfaces in multiple areas?</li>
+<li><b>Backbone:</b> any interface in Area 0?</li>
+<li><b>ASBR:</b> any non-OSPF source imported?</li>
+</ul>
+<p>The LoFinance hub is ABR + backbone + ASBR simultaneously (not Internal). Under- and over-selecting are the same error: skipping the per-definition test.</p>
+</div>
+
+<div class="card">
+<h2>Command toolbox</h2>
+<ul>
+<li><code>get router info ospf neighbor</code> — states + roles</li>
+<li><code>get router info ospf interface</code> — per-interface, DR/BDR IDs</li>
+<li><code>get router info ospf status</code> — router ID, areas, full-adjacency count</li>
+<li><code>get router info ospf database brief</code> — LSDB by LSA type (Session 16)</li>
+<li><code>get router info bfd neighbor</code> — BFD status with OSPF</li>
+</ul>
+</div>
+
+</main>
+<footer>LoFinance · Session 15 Bite · pp. 129–131</footer>
+</body>
+</html>

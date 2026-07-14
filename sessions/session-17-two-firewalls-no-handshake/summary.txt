@@ -1,0 +1,304 @@
+SESSION 17 SUMMARY — "Two Firewalls, No Handshake" (COWBOY HAT BOSS BATTLE)
+(IPsec Phase 1/2 review + OSPF review: DH group mismatch, backbone partition,
+administrative distance override | Study Guide 07 IPsec pp. 193–221, 05 Dynamic
+Routing pp. 125–131 review)
+Written for Claude. Read before Session 18.
+
+STORY EVENTS
+------------
+Monday 6:58 AM. Señor is already in the office wearing (not holding) the cowboy hat.
+Whiteboard: Penny-approved failover drill, 07:00–09:00. At 07:00:00 he administratively
+downs ParraAgg (the HQ↔Parramatta aggregate) to force failover onto a new DR↔Parramatta
+backup tunnel (DR2PAR) built "Friday" — which he has pre-broken at both ends. Riley
+opens the incident 90 seconds later: Parramatta totally down, phase 1 shows up on
+DR2PAR, OSPF neighbor table on DR is a desert. Junior contributes one piece of real
+help (whispers the corrected 7.4+ syntax `diagnose vpn ike log filter rem-addr4`) and
+otherwise fetches coffee. Riley's ticket counter is the pressure gauge throughout,
+climbing to 61 before clearing. Marcus (trading) leaves his office, gets in a taxi, and
+arrives in person by the time the fix lands — sits down without a word when he sees the
+hat. Drill technically closes at 09:00 but the student's fix landed at 07:41; Señor
+restores ParraAgg at 09:00 as planned, and a THIRD, hidden fault (the promised "the
+routing will lie to you") surfaces at 09:06, resolved by 09:19 — 19 minutes past the
+official window, which Señor notes flatly ("you were slow... also correct, in the end,
+on both faults, without me telling you either answer outright. That is the whole point
+of the hat.").
+
+Post-drill, Señor immediately pivots to FortiManager IPsec templates — the hard
+commitment carried since S13, deferred S15, rescheduled explicitly in S16. Student
+tried to defer AGAIN ("let's do FMG templates another time"); Señor refused, delivered
+the concept-level teaching (shared-structure-vs-per-site-variable template model) in
+compressed form, and re-scheduled the hands-on button-pushing to S18 with a whiteboard
+note: "FMG TEMPLATES — S18. NO MORE ROOM TO MOVE." This is now the second deferral;
+treat as a hard, non-negotiable S18 commitment.
+
+Running gags: Riley/Señor "did you promise Penny a date" thread — still untouched,
+still available. Marcus's in-person appearance is new recurring-character material
+(first time he's been physically present rather than a phone/ticket voice).
+
+BUSINESS PROBLEM
+-----------------
+Prove the DR↔Parramatta backup tunnel can carry Parramatta's full load if HQ's primary
+path dies (Penny's explicit no-hairpin-through-HQ-if-HQ-burns requirement). Three
+layered, sequential faults, each masking the next:
+1. IPsec Phase 2 wouldn't establish (DH group mismatch) — tunnel looked "up" but
+   carried nothing.
+2. Once Phase 2 was fixed, OSPF adjacency never formed across the working tunnel —
+   OSPF area mismatch, discovered to risk a genuine backbone partition.
+3. Once the adjacency formed and the drill succeeded, restoring the PRIMARY link
+   (ParraAgg) at 09:00 caused DR→Parramatta traffic to silently vanish — a pre-planted
+   static route override, invisible to any OSPF-filtered view, discovered only via
+   `get router info routing-table all`.
+
+OUTCOME: All three faults independently diagnosed and fixed by the student, each with
+minimal hinting. DR2PAR now genuinely production-ready as a backup path; the "routing
+will lie to you" promise was paid off exactly as threatened. FortiManager IPsec
+templates concept taught (button-pushing deferred to S18, hard commitment).
+
+TECHNICAL CONCEPTS COVERED
+---------------------------
+1. IPSEC PHASE 2 NEGOTIATION FAILURE FORENSICS: `diagnose vpn tunnel list name <X>`
+   read cold — sa=0/rxp=txp=0/proxyid_num=1,child_num=0 = "phase 1 up, phase 2 never
+   established," recognized without prompting. Escalated correctly to
+   `diagnose vpn ike log filter rem-addr4 <peer>` + `diagnose debug application ike -1`
+   + `diagnose debug enable` on BOTH ends unprompted — good instinct, since a rejected
+   negotiation only tells the full story from both the initiator's rejection message
+   and the responder's stated reason. Read two side-by-side ESP proposal blocks and
+   pulled the single differing line (DH_GROUP: MODP2048 vs MODP1536) correctly.
+2. PFS/DH GROUP AS A PHASE-2-INTERFACE SETTING: confirmed `config vpn ipsec
+   phase2-interface / set dhgrp <N>` must match on both ends; this is what puts a
+   DH_GROUP line inside an ESP proposal in the first place (this is PFS group
+   negotiation, distinct from Phase 1's own DH group).
+3. DIRECTION-OF-FIX REASONING: given a mismatch (group 14 vs group 5), student
+   correctly reasoned to raise the weaker end rather than downgrade the stronger one
+   ("higher group, harder math, stronger keys... upgrade the weaker end rather than
+   dragging the stronger end down"), with the correct caveat structure (no legacy peer
+   forcing a ceiling).
+4. AREA-MISMATCH SILENT-DISCARD MECHANISM (core OSPF teaching moment): adjacency
+   staying at zero (not Init, not flapping) when both interfaces are up, POINTOPOINT,
+   correct cost, sending hellos every 10s into a proven-working tunnel — the header's
+   area stamp is checked BEFORE any other OSPF processing; mismatch = silent discard at
+   the door, not "processed and disputed." Student derived roughly two-thirds of this
+   independently, needed the closing mechanism ("checked before OSPF reads anything
+   else") supplied. Explicitly cross-referenced to S15's Chatswood broadcast-on-tunnel
+   fault: SAME symptom (empty table = hellos dying before processing), DIFFERENT
+   mechanism (sender-side death vs receiver-side death) — "same fingerprint, different
+   murderer," a genuine student-adjacent phrase worth reusing.
+5. BACKBONE PARTITION: student's first instinct was to place the DR2PAR backup link in
+   Area 1, reasoning from LSDB-size/blast-radius concerns (a real, legitimate area-
+   design instinct, but wrong target for this scenario). Corrected via a scenario walk:
+   with ParraAgg down and DR2PAR in Area 1, Parramatta's Area-0 LAN becomes an isolated
+   island with no Area-0-only path to DR's Area-0 LAN — because inter-area traffic MUST
+   transit the backbone, and a non-backbone area cannot serve as a relay between two
+   backbone fragments. Student needed this named explicitly ("backbone partition") but,
+   once told, correctly stated the resulting fix requirement (link must stay Area 0)
+   even though he could not initially articulate the "shape" question Señor was
+   pushing for. Filed as a newly-taught concept, not yet a derived one — needs a clean
+   unprompted retrieval next time it comes up.
+6. ADMINISTRATIVE DISTANCE OVERRIDING A HEALTHY OSPF ROUTE: the session's hardest
+   fault. Full adjacency, correct LSDB (verified via `get router info ospf database
+   router <id>` — DR2PAR link present and correctly described on both ends), yet
+   `get router info routing-table ospf` showed NO route for the neighbor's LAN at all
+   (not deprioritized — absent). Root cause only visible via `get router info
+   routing-table all`: a pre-planted static route (admin distance 10, default) to the
+   same prefix via the OLD path, silently beating OSPF's default 110 without any
+   config-level "wrongness" — the LSDB, the adjacency, and Dijkstra were all correct
+   the whole time. Student's first fix instinct (redistribute the static into OSPF)
+   was WRONG but reasoned to correction cleanly: asked whether redistribution deletes
+   the original static route, and correctly retrieved the S15 precedent (redistributing
+   10.99.50.0/24 never removed the hub's own static) to conclude redistribution would
+   not help. Landed on the correct fix (disable/remove the static override) once AD-vs-
+   cost was fully separated from AD-vs-route-existence.
+7. `get router info routing-table ospf` (protocol-filtered) VS `get router info
+   routing-table all` (every protocol, shows the actual winner) — the single most
+   important command-selection lesson of the session. A protocol-filtered view can
+   look "empty" for a route that fully exists elsewhere in the table under a different,
+   higher-priority source.
+8. FORTIMANAGER IPSEC TEMPLATES (concept only, hands-on deferred to S18): the shared-
+   structure-vs-per-site-variable split, worked out via a table the student was walked
+   through rather than lectured: Phase 1 (shared: proposal/DH group/PSK method/DPD;
+   variable: peer public IP, tunnel name), Phase 2 (shared: proposal/PFS group/
+   encapsulation; variable: src/dst selectors, tunnel-interface IPs), OSPF (shared:
+   network-type/cost/timers; variable: interface name, area, network statement). Framed
+   explicitly as "the boss battle we just fought is the exact failure mode templates
+   exist to prevent" (the DH-group mismatch specifically — a value that drifted because
+   it was set by hand on each end).
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "Same fingerprint, different murderer" (empty OSPF table: sender-side broadcast-
+  on-tunnel death vs receiver-side area-mismatch death — S15/S17 cross-reference).
+- "The map is complete and correct... the routing table is where the lie lives" — a
+  healthy LSDB and a healthy adjacency do not guarantee the routing table reflects
+  what OSPF calculated; administrative distance can silently bury it.
+- "Redistribution is advertisement, not deletion" — reused/re-confirmed from S15,
+  now applied to correctly rule out a wrong fix rather than merely explain a right one.
+- "Upgrade the weak end; don't downgrade the strong one" (DH group direction-of-fix,
+  reusable pattern for any two-sided crypto/parameter mismatch going forward).
+- Templates = "the boss battle we just fought is the exact failure mode templates
+  exist to prevent" — ties FMG motivation directly to lived pain rather than abstract
+  scalability argument.
+
+KEY CLI COMMANDS DISCUSSED
+-----------------------------
+- diagnose vpn tunnel list name <tunnel>   (sa=0/1, rxp/txp, proxyid_num vs child_num,
+  dpd on-demand — read cold this session)
+- diagnose vpn ike log filter rem-addr4 <peer-ip>   (NOTE: syntax changed in 7.4+ from
+  `log-filter` to `log filter` — flagged in-story via Junior; queue as an exam-trap
+  candidate, command-name-changed-across-versions category)
+- diagnose debug application ike -1 / diagnose debug enable
+- get router info ospf neighbor / get router info ospf interface
+- show router ospf (config-intent view — distinguished explicitly from the DB/route
+  views, which show current belief/result)
+- get router info ospf database brief / get router info ospf database router <id>
+  (Map Room command, correctly recalled and correctly applied to prove the LSDB was
+  NOT the problem)
+- get router info routing-table ospf  vs  get router info routing-table all  (the
+  session's key command-selection lesson)
+- show router static / show system interface (used to find the planted static route
+  and confirm interface/tunnel-IP assignments)
+- config router static → edit <id> → set status disable (the actual fix)
+- config vpn ipsec phase2-interface → set dhgrp <N> (the first fix)
+- config router ospf → config network → edit <id> → set area 0.0.0.0 (second fix)
+
+TROUBLESHOOTING APPROACH
+---------------------------
+Full boss-battle arc, minimal hints, three sequential faults each masking the next:
+(1) tunnel-state commands first on both ends before touching config — correct
+instinct, unprompted; (2) bilateral IKE debugging rather than one-sided; (3) for the
+OSPF silence, correctly moved from neighbor/interface view down into `show router ospf`
+config and then (with one nudge) into the LSDB itself, ruling OUT the database as the
+fault source before looking elsewhere; (4) for the routing-table lie, needed the nudge
+from protocol-filtered to `all` output, but reasoned the AD mechanism and the
+redistribution-doesn't-delete correction independently once the evidence was visible.
+Recurring near-miss pattern across all three faults: proposing a fix or explanation
+one step BEFORE fully checking it against evidence already on screen (network-type
+guess, Area 1 guess, redistribute-static guess) — each time, self-corrected when
+pushed to re-examine the actual output rather than defend the guess.
+
+CONFIGURATION DECISIONS
+--------------------------
+- LF-PAR phase2-interface DR2PAR: dhgrp raised from 5 to 14 (matches LF-DR).
+- LF-PAR OSPF network statement for 10.255.0.0/30: moved from Area 0.0.0.1 to
+  Area 0.0.0.0 (keeps backbone whole across both Area-0 LANs).
+- LF-DR router static entry (dst 10.2.0.0/24 via To-HQ, distance 10, comment "TEMP -
+  failover safety net, DO NOT LEAVE ENABLED"): disabled.
+
+TOPOLOGY CHANGES
+-------------------
+DR2PAR (DR↔Parramatta direct backup tunnel) now fully functional end-to-end: Phase 1/2
+up, OSPF adjacency Full/ – in Area 0, correct route in the table, verified under live
+failover conditions (ParraAgg down) AND under live primary-restored conditions
+(ParraAgg back up, DR2PAR still correctly usable/available as a path once the static
+override was removed). Fleet unchanged in device count; DR↔Parramatta is now a genuine
+second Area-0 path, not just a provisioned-but-untested tunnel.
+
+BUSINESS OUTCOME
+-------------------
+Failover drill technically succeeded 19 minutes past its official 09:00 window (fix
+landed 07:41 for the primary drill; hidden third fault resolved 09:19). Trading share,
+phones, and file access restored well within the drill window. DR-site replication/
+backup jobs were briefly disrupted (09:00–09:19) by the third fault but fully recovered
+with no data loss reported. Penny's no-hairpin-if-HQ-burns requirement is now genuinely
+provable, not just configured.
+
+EXAM-RELEVANT NOTES
+----------------------
+- `diagnose vpn tunnel list`: sa=0 + proxyid_num=1,child_num=0 = Phase 1 up / Phase 2
+  never established — a distinct signature from Phase 1 down entirely.
+- IKE debug NO_PROPOSAL_CHOSEN on a CREATE_CHILD (Phase 2) exchange = a Phase-2-level
+  proposal mismatch (commonly dhgrp/PFS, could also be proposal/encryption); read both
+  sides' logged proposals to find the differing line.
+- Area-mismatch on an OSPF interface = hello silently discarded at the receiver before
+  any state machine processing — resulting neighbor table is EMPTY, not stuck at Init.
+  Distinct exam-trap pairing with S15's broadcast-network-type-on-tunnel fault (empty
+  table, but hello dies at the SENDER instead).
+- Backbone partition: ALL non-backbone areas must connect TO the backbone; a non-
+  backbone area can never serve as a transit path between two disconnected pieces of
+  Area 0. A backup/redundant inter-site link connecting two Area-0 sites MUST itself be
+  Area 0.
+- Administrative distance: static (default 10) beats OSPF (default 110) regardless of
+  OSPF cost or LSDB correctness — a fully healthy, Full-adjacency OSPF domain can still
+  lose a route to a stale/forgotten static override. Diagnostic tell: protocol-filtered
+  routing-table view shows nothing for a prefix that IS present in the "all" view under
+  a different, higher-priority source.
+- Redistributing a static route into OSPF does NOT remove the original static route
+  from the originating router's own table — reused/reinforced from S15, now tested
+  under exam-adjacent conditions as a "would this fix it" reasoning check, not just MCQ
+  recall.
+- `diagnose vpn ike log filter` syntax: `log filter` (space) in 7.4+, NOT `log-filter`
+  (hyphen) — version-dependent CLI syntax is itself examinable/distractor material.
+
+EXAM QUESTIONS: 5 asked, all correct (5/5). Q1 (tunnel-list state reading, B) ✓, Q2
+(NO_PROPOSAL_CHOSEN cause, B) ✓, Q3 (backbone partition from an Area-1 backup link, A)
+✓, Q4 (healthy adjacency/LSDB but missing OSPF route + static route visible in `all`
+view, B) ✓, Q5 (redistribution does not remove the original static, C) ✓. First
+perfect exam set since tracking began; notably included two of the harder distractor
+shapes from prior sessions (version-specific CLI syntax framing in Q2's setup, AD-
+override framing in Q4) without a miss.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+---------------------------------------
+No independent Junior misconfiguration this session (he is not the fault-source — the
+faults are all Señor's deliberate sabotage). Junior's role was purely supportive: he
+correctly flagged the 7.4+ `log filter` syntax change to the student mid-session
+(useful, low-ego help offered quietly), and was otherwise on coffee duty per Señor's
+"Silencio" instruction. Taught: not every session needs Junior-as-cautionary-tale; here
+he functioned as a peer resource instead, which is a good recurring texture to keep
+available for boss-battle sessions where Señor wants the student solo.
+
+STUDENT PERFORMANCE HIGHLIGHTS (for register cross-reference)
+-----------------------------
+- Best moment of the session: when pushed on "why total silence, not partial
+  adjacency," responded "I don't know" rather than guessing again — recognized after
+  three straight sessions of "finish the verdict" progress that the SAME discipline
+  applies in reverse: knowing when you've run out of verdict to finish is not a
+  failure, it's the mirror-image skill.
+- Recurring near-miss pattern (see Troubleshooting Approach): proposing a fix/
+  explanation one beat before fully checking it against on-screen evidence, three
+  separate times (network-type, Area 1, redistribute-static) — each time self-
+  corrected under gentle pushback rather than needing the answer supplied. This is the
+  single clearest growth-tracking thread from this session; recommend one focused
+  retrieval question on "check the hypothesis against the evidence already in front of
+  you before reaching for the next command" in S18.
+- Successfully transferred a S15 concept (redistribution ≠ deletion) to rule OUT an
+  incorrect fix under live pressure, rather than merely recalling it for an MCQ — this
+  is a stronger form of retention than anything tested so far this season.
+- First deferral-and-reversal on FMG templates: attempted to defer a third time
+  ("let's do FMG templates another time") and was refused; took the redirection
+  without friction and engaged with the compressed concept-level teaching. Worth
+  watching whether the S18 hands-on session lands better with the motivation now tied
+  to lived pain from this session.
+- 5/5 exam score — first perfect set this season.
+
+TEASER DELIVERED FOR SESSION 18
+-------------------------------------------------------------------
+Whiteboard note, underlined twice: "FMG TEMPLATES — S18. NO MORE ROOM TO MOVE." Session
+18 title already fixed by prior scheduling: "Neighbors and Strangers" — OSPF internals
+II: router types, network types, adjacency states & requirements, DR/BDR election
+mechanics in depth (this builds directly on this season's recurring P2MP/DR-election
+thread and the area-mismatch/backbone material just covered).
+
+CARRIED-FORWARD OBLIGATIONS
+---------------------------
+- FortiManager IPsec templates hands-on configuration: HARD COMMITMENT for S18, second
+  deferral just occurred and was refused. Concept-level teaching already delivered
+  (shared-structure vs per-site-variable table) — S18 can move straight to the
+  FortiManager GUI/config workflow without re-teaching the concept.
+- "Check the hypothesis against the evidence already on screen before reaching for the
+  next command/fix" — new watch item from this session's recurring near-miss pattern
+  (network-type guess, Area 1 guess, redistribute-static guess). Plant one deliberate
+  test of this in S18 (e.g., present a config + output pair and ask for a verdict
+  before permitting another command).
+- Backbone-partition concept: taught, not yet derived independently. Queue a clean
+  retrieval check next time areas/backbone design comes up ("two Area-0 sites, primary
+  link down, only a non-backbone path remains — what happens and why").
+- 30-min-vs-30-sec OSPF/RIP timer distractor (S16 Q4 miss): not retested this session;
+  still open, low urgency, retest opportunistically.
+- "Redundancy = more entries" watch item (open since S13): PARTIALLY tested this
+  session in reverse — the student correctly identified an EXTRA route (the static)
+  that should NOT have existed, though the original "more entries expected" framing
+  wasn't directly probed. Consider closing this watch item in S18 with one direct
+  question.
+
+Date and Time completed: Monday 06:58–09:19 (in-story) / real session concluded
+Monday, 13 July 2026.

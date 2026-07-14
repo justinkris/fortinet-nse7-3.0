@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 12 Bite — Tunnel Vision</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-muted:#6b7794;
+--blue:#1e40af;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;
+--amber:#b45309;--amber-light:#fcf2c3;--red:#b91c1c;--red-light:#fdecec;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);font-size:17.5px;line-height:1.6;}
+header{background:var(--ink-dark);padding:30px 6%;}
+header .tag{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--ink-accent);}
+header h1{font-family:'Playfair Display',serif;font-size:30px;color:#fbf7ec;margin-top:6px;}
+main{max-width:820px;margin:0 auto;padding:28px 20px 60px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;}
+.card h2{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;}
+pre{background:var(--ink-dark);color:#dbe7fb;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;padding:14px 16px;border-radius:8px;overflow-x:auto;margin:10px 0;}
+.big{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;}
+ul{margin:8px 0 0 22px;}li{margin:6px 0;}
+.strip{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.step{flex:1;min-width:120px;background:var(--blue-light);border:1px solid #b8cce8;border-radius:8px;padding:10px;text-align:center;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:600;}
+.warn{background:var(--red-light);border-left:4px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.good{background:var(--green-light);border-left:4px solid var(--green);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 12</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Bite</span></div><div class="tag">⏱ 5-MINUTE BITE · SESSION 12 · ROUTE-BASED IPSEC BUILD</div><h1>Tunnel Vision</h1></header>
+<main>
+
+<div class="card"><h2>The one idea</h2>
+<p class="big">The tunnel is an INTERFACE.</p>
+<p>Creating a <code>phase1-interface</code> makes FortiOS create a virtual interface. Packets enter the tunnel by <strong>winning a route</strong> to it and pass by <strong>matching a policy</strong> on it — the same machinery as any physical port. So "tunnel up" ≠ "traffic flows."</p></div>
+
+<div class="card"><h2>The five-item checklist</h2>
+<div class="strip">
+<div class="step">1. Phase 1<br><span style="font-weight:400">handshake, public IPs</span></div>
+<div class="step">2. Phase 2<br><span style="font-weight:400">SAs + selectors</span></div>
+<div class="step">3. Tunnel IPs<br><span style="font-weight:400">optional; routing later</span></div>
+<div class="step">4. Route<br><span style="font-weight:400">remote subnet → tunnel</span></div>
+<div class="step">5. Policies<br><span style="font-weight:400">both directions!</span></div>
+</div>
+<p style="margin-top:10px">IKE is <strong>local-in</strong> traffic — the tunnel forms with zero forward policies. Policies govern what rides inside.</p></div>
+
+<div class="card"><h2>Replies free · initiators pay</h2>
+<p><strong>Packet A</strong> (a reply): matches an existing session → passes with no reverse policy. <strong>Packet B</strong> (a new connection from the far side): first packet of its life → policy lookup → no match → <strong>implicit deny, policy 0</strong>, silent drop.</p>
+<div class="good">Write policies per <strong>direction of initiation</strong>, not direction of travel. Two-way site = both directions, both firewalls.</div></div>
+
+<div class="card"><h2>The build, compressed</h2>
+<pre>config vpn ipsec phase1-interface
+  edit "ParraTunnel-ISP1"
+    set interface "wan1"
+    set ike-version 2
+    set network-overlay enable
+    set network-id 1        ← twin tunnel gets 2; must match both ends
+    set remote-gw 203.0.113.45
+    set psksecret ***
+config vpn ipsec phase2-interface
+  edit "ParraTunnel-ISP1"
+    set phase1name "ParraTunnel-ISP1"
+    set src-subnet 10.1.0.0/24
+    set dst-subnet 10.2.0.0/24
+config router static
+  edit 0
+    set dst 10.2.0.0/24
+    set device "ParraTunnel-ISP1"   ← NO gateway (point-to-point)</pre>
+<p>IKEv2's first phase 2 rides <strong>IKE_AUTH</strong> (the encrypted exchange) — hence no quick mode, four messages total.</p></div>
+
+<div class="card"><h2>Verify · convict</h2>
+<pre>diag vpn ike gateway list        → version: 2, network-id: 1, state: established
+diag debug flow …                → "find a route … via ParraTunnel-ISP1"  (routing OK)
+                                   "Denied by forward policy check (policy 0)"</pre>
+<div class="warn"><strong>Policy 0 is not a policy anyone wrote.</strong> It's the implicit deny — a policy is <em>missing</em>. One-way-silent tunnel = missing <code>internal→tunnel</code> at the source site OR missing <code>tunnel→internal</code> at the far site. Debug closest to the source first.</div></div>
+
+<div class="card"><h2>Junior's mistake</h2>
+<p>Mirrored phase 1, phase 2, and the route — then wrote <em>one</em> policy, trusting statefulness to cover the other direction. Statefulness covers <strong>replies</strong>, not <strong>initiators</strong>. Marcus was not a reply.</p></div>
+
+</main>
+</body>
+</html>

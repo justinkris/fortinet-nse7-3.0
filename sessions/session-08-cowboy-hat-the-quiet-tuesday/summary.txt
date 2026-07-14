@@ -1,0 +1,309 @@
+LOFINANCE — SESSION 08 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "Cowboy Hat: The Quiet Tuesday"
+Format: BOSS BATTLE — student-driven troubleshooting, minimal hints, layered faults.
+Study guide coverage: 03 VLANs and VDOMs, pp. 54-81 (full chapter review — VLAN tagging/
+trunking, hardware vs software switch + intra-switch-policy, VDOM overview/types, Global
+Resources/Override Maximum, inter-VDOM links + routing + policy, VDOM isolation model).
+Status: COMPLETE. Both tickets resolved via student-driven CLI troubleshooting. Debrief
+exam questions: 3/4 correct on first pass, 1 self-corrected immediately when pointed back
+at evidence already gathered in-session (see EXAM-RELEVANT NOTES).
+
+STORY EVENTS
+------------
+Wednesday, 8:57 AM. Señor's cowboy hat is on the rack, no visible config change from him
+(consistent with the established Cowboy Hat convention — Señor secretly sabotages config
+to force a review). Two simultaneous tickets from Riley: (1) VLAN 30 (Support, newly added
+off-screen since Session 7, 192.168.30.0/24) can reach into VLAN 10 (Finance,
+192.168.10.0/24) — a support tech accidentally RDP'd into a finance analyst's box; Cipher
+has seen the ticket and hasn't said anything yet. (2) Guest-WiFi VDOM (built in Session 7)
+has gone completely dark — no internet, no reachability to root, nothing, since sometime
+the previous day; it worked fine right after the bridge project. Cipher and Penny do not
+appear on-screen this session; Riley delivers both tickets at the open. Session closes with
+both tickets fixed, a short Señor sign-off line, and a genuine surprise beat: Señor
+announces "Season's done. Tell the board Monday" to Penny (off-screen), meaning Session 8
+is the true final full-teaching session of Season 1 — Session 9 ("Season Finale: The
+Announcement") is confirmed as a pure review/rapid-exam-drill capstone, not new material.
+
+CHARACTERS INVOLVED
+--------------------
+Student (protagonist, drove both tickets' entire troubleshooting sequence — command
+selection, hypothesis formation, fix, and verification — with Claude only supplying
+correct CLI syntax when asked and realistic command output), Riley (delivers both tickets
+at the cold open, off-screen otherwise), Señor (cowboy hat is on but he does not appear
+on-screen during the troubleshooting itself — true to the established pattern of being
+the unseen cause during boss battles; appears only in the closing sign-off line and the
+"season's done" announcement), Cipher (mentioned as already aware of Ticket 1, does not
+appear on-screen), Penny (mentioned only, off-screen recipient of the season-end line).
+
+BUSINESS PROBLEM
+-----------------
+TICKET 1: VLAN 30 (Support) had unintended Layer 2 reachability into VLAN 10 (Finance) —
+a support tech reached a finance workstation via RDP that should have been blocked by an
+existing, correctly-configured deny policy (policy ID 12, VLAN30-Support -> VLAN10-Finance,
+action deny). Root cause: someone (implied cowboy-hat sabotage) created a software switch
+object named "OpsBridge" (config system switch-interface) with VLAN10-Finance and
+VLAN30-Support both set as members, intra-switch-policy implicit. This merged the two VLAN
+interfaces into one Layer 2 broadcast domain at the switch-bridge layer, so traffic between
+them never reached FortiGate's routing/policy engine at all — the deny policy was correct
+and present but never got the chance to evaluate anything. Resolved: deleted the OpsBridge
+switch-interface object directly (delete works without detaching members first — student
+tested this assumption rather than assuming a two-step process was required), cleared the
+stale live session (treated correctly as an active unauthorized RDP connection needing
+remediation, not just housekeeping), then verified via `execute log filter` / `execute log
+display` that a retest now shows two distinct srcintf/dstintf VLAN interfaces and a real
+policyid=12 action=deny — confirming the correct enforcement mechanism, not just a
+different-looking failure.
+
+TICKET 2: Guest-WiFi VDOM total outage. All config-layer checks came back clean — VDOM_Link0/
+1 both up, static default routes present and correct on both sides, firewall policies
+present/enabled/correctly directional on both root and Guest-WiFi. Root cause (a direct,
+deliberate payoff of Session 7's unresolved forward-hook — Señor's unexplained line "Don't
+let it inherit whatever root's ceiling was"): when Junior originally built the Guest-WiFi
+VDOM, he cloned root's config as a starting template rather than building clean, and
+root's explicit `config system vdom-property` session override (session 50, set low
+historically to protect shared resources for Trading's latency-sensitive traffic) came
+along with the clone. This was invisible at launch under light testing traffic and only
+became a hard outage once real guest device volume grew and slammed into the 50-concurrent-
+session ceiling — confirmed via `diagnose sys session stat` showing session_count=50
+session_limit=50 clash=182 (182 rejected connection attempts piling up against a full
+table). Resolved: `config global / config system vdom-property / edit "Guest-WiFi" / set
+session 0` (0 = no override, draws from the shared global pool) to restore service
+immediately, with an explicit ticket follow-up item to baseline real usage first (student's
+own instinct, unprompted) before setting a deliberate, evidence-based cap later — correctly
+distinguished from just picking a new round number as a permanent "fix."
+
+TECHNICAL CONCEPTS COVERED
+----------------------------
+1. Software switch bridging as a VLAN-segmentation bypass mechanism (new synthesis this
+   session, building on Session 5's PrintGroup material): `config system switch-interface`
+   with `intra-switch-policy implicit` doesn't just bundle physical ports (Session 5) — it
+   can bundle any interface objects, including two already-tagged VLAN interfaces, merging
+   them into one Layer 2 broadcast domain at the bridge layer regardless of their VLAN IDs.
+   This is a stronger and more dangerous mistake than Session 5's version because it
+   actively UN-does existing segmentation rather than sitting inside an already-flat domain.
+2. The `diagnose sys session list` signature for this bypass class, generalized and
+   reapplied confidently: identical ingress/egress interface index (`dev=13->13/13->13`
+   this session, vs named different VLAN interfaces for genuinely routed traffic) plus
+   `policy_id=0` on a session that DOES show real byte/packet counters (i.e., traffic is
+   actually flowing) = bridged/switched, never reached the policy engine. Explicitly
+   distinguished from the OTHER thing that also shows `policy_id=0` — a genuine implicit
+   deny, which normally produces no persistent session entry at all, since a fully denied
+   packet is dropped before a session object is built. Student needed this distinction
+   handed to him directly (see STUDENT LEARNING OBSERVATIONS) — track as a real exam trap.
+3. `diagnose netlink interface list` as the way to map an opaque interface index number
+   (from session-list output) back to a named interface, and to read `master=<index>`
+   as the tell that an interface has been enslaved into a bridge/switch construct — new
+   command this session, introduced directly (student had no prior exposure).
+4. Interface-object deletion behavior: `config system switch-interface / delete "name"`
+   succeeds directly without first requiring `unset member` — student guessed a two-step
+   process was mandatory, then correctly tested the direct-delete assumption instead of
+   padding the command sequence defensively. Good instinct worth reinforcing as a pattern:
+   verify FortiOS's actual behavior rather than assuming extra caution steps are required.
+5. Session-table hygiene as part of remediation, not separate from it: a stale/live session
+   that predates a config fix is NOT automatically re-evaluated against the new config —
+   `diagnose sys session clear` (against an active filter set via `diagnose sys session
+   filter src/dst`) is required to force re-evaluation on the next connection attempt.
+   Student initially treated clearing the session as an optional/risky step ("gut feels
+   wrong") before correctly reasoning that leaving a live unauthorized session active IS
+   the ongoing security exposure, not neutral inaction.
+6. `execute log filter` / `execute log display` as the CLI equivalent of the GUI traffic
+   log, and — critically — the correct tool for distinguishing "genuinely denied by policy"
+   from "never reached policy at all," since a real deny decision (with policyid, action,
+   distinct srcintf/dstintf) shows up in the traffic log even when `diagnose sys session
+   list` shows nothing persistent for it. New command, introduced directly.
+7. `config system vdom-property` (global context only, NOT inside any individual VDOM) as
+   the actual CLI home for the "Global Resources / Override Maximum" concept seeded
+   unexplained back in Session 7. Session limit, policy limit, and other per-VDOM ceilings
+   live here. `set session 0` = no override (draws from shared global pool), NOT "zero
+   sessions allowed" — student briefly floated both readings before landing correctly on
+   "no override," an important precision distinction (0 as "unlimited/unset" vs 0 as "hard
+   zero cap" is a classic FortiOS reading trap that recurred structurally this session,
+   parallel to the policy_id=0 ambiguity in Ticket 1).
+8. `diagnose sys session stat` for per-VDOM session count vs. limit, including the `clash`
+   counter as direct, countable evidence of rejected connection attempts hitting a full
+   table — new command, gave the student the concrete "yes, this is really the bottleneck"
+   confirmation he asked for before accepting the resource-limit hypothesis as proven.
+9. VDOM config-object isolation, tested directly via a stretch/retrieval question (not
+   live troubleshooting): a `config system switch-interface` object built inside one VDOM's
+   config context cannot reference an interface belonging to a different VDOM, because each
+   VDOM is a fully separate config tree with its own interface namespace — the OpsBridge-
+   style bypass mechanism from Ticket 1 is structurally IMPOSSIBLE across a VDOM boundary
+   (e.g., root VDOM's OpsBridge could never have reached into the isolated Trading VDOM).
+   This directly resolves the specific soft spot flagged at the end of Session 7 (student's
+   near-miss reaching for "external L2/physical topology risk" instead of "internal VDOM
+   routing/config isolation" when reasoning about Trading VDOM's safety) — see below, this
+   took a full restart to land cleanly rather than being self-generated.
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "Same interface index in and out = switched, not routed" — generalized directly from the
+  Session 5 PrintGroup pattern into a broader signature the student can now recognize on
+  sight in any `diagnose sys session list` output, VDOM-agnostic.
+- "policy_id=0 is ambiguous by itself — pair it with whether a persistent session with real
+  traffic exists at all" — new this session; a genuine implicit deny produces (usually) no
+  lasting session object, while a Layer-2 bypass produces a real, actively-transferring
+  session that simply never got a policy_id assigned. Same numeral, opposite mechanism —
+  explicitly named as a recurring "read the specific field carefully" trap this session
+  (echoed again in the vdom-property `session 0` ambiguity).
+- "Baseline first, cap after" — entirely student-generated, unprompted, in response to the
+  resource-limit fix. Framed as a general resource-governance principle, not FortiGate-
+  specific; worth reusing and naming explicitly in future sessions on capacity planning.
+- "A stale session is part of the exposure, not just leftover state" — corrective mental
+  model; the "clear the session" step was initially treated as optional/risky before being
+  correctly reframed as completing the remediation rather than being separate from it.
+- Reinforced, this time successfully generalized rather than needing correction: "the
+  absence of a link/shared config object between two VDOMs is a physically stronger
+  isolation boundary than a policy decision" (from Session 7) — now explicitly extended to
+  cover config-object namespace isolation (switch-interface members), not just interface/
+  route/policy existence.
+
+KEY CLI COMMANDS / CONFIG DISCUSSED (all new this session unless noted)
+----------------------------------------------------------------
+diagnose sys session filter src <subnet> <mask> / filter dst <subnet> <mask> / session list
+  — reused from Session 4/5, now explicitly including the "clear an active filter before
+  trusting a subsequent unrelated result" lesson (student forgot Ticket 1's filter was
+  still active when Ticket 2's session list came back empty).
+diagnose sys session filter clear — clears an active session filter.
+diagnose sys session clear — clears sessions currently matching the active filter (new).
+diagnose netlink interface list — maps interface index numbers to names; `master=<idx>`
+  reveals bridge/switch-interface enslavement (new).
+show system switch-interface / show system virtual-switch — reused from Session 5,
+  confirmed virtual-switch empty and switch-interface holding the OpsBridge culprit config.
+config system switch-interface / edit "OpsBridge" / delete "OpsBridge" — direct object
+  deletion without requiring member detachment first (tested, confirmed).
+execute log filter category traffic / field srcip <ip> / field dstip <ip> / execute log
+  display — CLI traffic-log equivalent of the GUI, used to confirm a genuine policyid-
+  bearing deny decision post-fix (new).
+config global / config system vdom-property / edit "<vdom>" / set session <n> / set
+  policy <n> — per-VDOM resource override table, lives in global context only (new); shown
+  with root=50, Trading=0 (unset/unlimited), Guest-WiFi=50 (inherited clone of root) before
+  the fix, Guest-WiFi=0 after.
+diagnose sys session stat — per-VDOM session_count / session_limit / clash counter (new).
+get router info routing-table static — reused from Session 7, confirmed both sides' default
+  routes intact and unaffected.
+
+TROUBLESHOOTING APPROACH TAUGHT
+----------------------------------
+Reinforced and extended the Session 4/5 diagnostic split (no session = below the firewall;
+session with policy_id = policy logic) into a THREE-way read: no persistent session at all
+= likely genuine deny (verify via traffic log, not session list); persistent session with
+real traffic AND policy_id=0 AND identical dev in/out = Layer 2 bridge bypass; persistent
+session with a real policy_id = normal routed/policy-evaluated traffic, investigate policy
+logic/ordering from there. New this session: when EVERY config-layer check comes back
+clean (interfaces up, routes present, policies present/enabled/correct) but the symptom
+persists, the fault is not in a place `show`/`get` config commands can see at all — pivot
+to resource/state diagnostics (`diagnose sys session stat`, `vdom-property`) rather than
+re-checking the same config layer more carefully. Also reinforced: an active session filter
+left over from a previous ticket will silently narrow the next command's results without
+any error — always clear filters between distinct troubleshooting threads, don't assume an
+empty result is meaningful until the filter state itself is confirmed clean.
+
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+---------------------------------------------
+IMPLEMENTED: OpsBridge switch-interface object deleted entirely (was root VDOM, members
+VLAN10-Finance + VLAN30-Support, intra-switch-policy implicit) — both VLAN interfaces are
+now fully independent routed segments again. Stale VLAN30->Finance RDP session cleared.
+Verified via traffic log: retest shows policyid=12, action=deny, distinct srcintf=VLAN30-
+Support/dstintf=VLAN10-Finance.
+IMPLEMENTED: Guest-WiFi's `config system vdom-property` session override changed from 50
+(inherited clone of root's override) to 0 (no override, draws from shared global pool).
+Verified via `diagnose sys session stat`: session_count=1, session_limit=0, fresh test
+connection succeeded with zero clash. FOLLOW-UP ITEM (explicitly logged on the ticket, not
+yet done): baseline real Guest-WiFi session usage over time (student flagged FortiAnalyzer/
+FortiView or scripted polling of `diagnose sys session stat` as realistic options, correctly
+distinguishing this as a monitoring/logging gap rather than a single-command gap), then set
+a deliberate, evidence-based session override above the observed peak — NOT leave it at 0
+indefinitely as a permanent unmonitored state.
+TOPOLOGY UPDATE: New VLAN documented as already existing off-screen since Session 7 —
+VLAN 10 (Finance, root VDOM, 192.168.10.0/24) and VLAN 30 (Support, root VDOM,
+192.168.30.0/24, added recently for a growing support/ops team) — both correctly isolated
+from each other again via policy 12 (deny). Trading VDOM's isolation status unchanged and
+explicitly reconfirmed via the stretch question as structurally un-bridgeable by this class
+of mistake. Guest-WiFi VDOM's resource ceiling corrected; monitoring/rebaseline still owed.
+
+EXAM-RELEVANT NOTES
+----------------------
+Q1 (dev=X->X both ways + policy_id=0 → most likely cause): correct — B, Layer 2 bridge
+bypass, never reached the policy engine.
+Q2 (T/F — bundling two VLAN interfaces in one switch-interface bridges them, bypassing
+policy): student's first answer was WRONG (guessed False, reasoning "there is a policy
+evaluation but it's a permit") — this directly contradicted evidence the student had
+personally gathered and correctly interpreted less than 30 minutes earlier in-session
+(policy_id=0, no evaluation at all, on the exact scenario the question describes).
+Self-corrected immediately and cleanly once explicitly pointed back at "does 'never reaches
+the policy engine' sound like a permit decision, or no decision at all" — track this as the
+session's one real retrieval-under-pressure gap: reached for a plausible-sounding gut
+mechanism instead of retrieving the specific, already-proven mechanism. Worth an explicit
+future retrieval check phrased as an exam-style question rather than assuming it's fully
+resolved just because the correction was fast.
+Q3 (`set session 0` in vdom-property meaning): correct — B, no override, draws from shared
+global pool, NOT a hard zero-session cap. Correctly distinguished from the more intuitive
+"0 = none allowed" misreading, and the student had already reasoned through this exact
+ambiguity live during the session (root=50 vs Trading=0) before the exam question, so this
+one was solid retrieval, not a fresh derivation.
+Q4 stretch (could a root-VDOM switch-interface object bridge a Trading VDOM interface):
+correct on the core answer (no) but initial explanation was extremely compressed ("this is
+a construct within the VDOM itself") — technically sufficient but not fully articulated
+until directly asked to reconstruct the "why" from the VDOM-as-separate-config-tree model.
+This IS the specific soft spot flagged at the end of Session 7 (internal VDOM isolation vs.
+external L2/physical topology reasoning) — genuinely improved (student now reaches for the
+right general area unprompted, "no because this is a construct within the VDOM itself")
+but still needs the full mechanism walked through rather than self-generating it start to
+finish. Recommend one more light retrieval pass on this specific thread in a future session
+before considering it fully load-bearing.
+
+STUDENT LEARNING OBSERVATIONS (feed the knowledge register)
+----------------------------------------------------------------
+This was the strongest evidence yet of durable retention across session gaps: the core
+Session 4/5 diagnostic split (session-list-first, policy_id interpretation) was reused
+correctly, unprompted, on BOTH tickets, three-plus sessions after it was taught, without
+needing to be re-explained. The Session 7 "absence of a link/config path IS the isolation
+boundary" mental model was also successfully retrieved and extended (not just repeated) to
+cover config-object namespace isolation for the stretch question, though it required a full
+restart mid-question rather than landing in one pass — worth distinguishing "the concept is
+present and retrievable with a nudge" (true, demonstrated) from "the concept is fully
+self-generating under pressure" (not yet true, per the restart).
+The student's CLI syntax fluency is visibly behind his conceptual/diagnostic reasoning —
+this is expected and explicitly not a concern (production FortiGate hands-on-keyboard time
+is the actual gap, not understanding), but it was the dominant source of friction this
+session: `unset member "X" "Y"` (invalid — unset takes no values), `diagnose sys reset`
+(not a real command; correct form is `diagnose sys session filter clear`), `diagnose sys
+session count` (guessed; correct form is `diagnose sys session stat`), and a `show config
+system vdom-property` fragment mixed illegally into an edit sequence, were all corrected
+in-session. Pattern: the student's INSTINCT for what kind of command he needs (a mapping
+command, a clear-filter command, a stats command, a resource-override table) is consistently
+right — he's guessing at exact syntax, not guessing at the right tool. This is a genuinely
+good sign for exam scenario-interpretation questions (which usually supply the command and
+ask for the read), but worth flagging honestly as a real weak spot for any exam question
+that asks the student to SUPPLY exact CLI syntax from memory rather than interpret given
+output — recommend a future light drill session specifically on command recall/syntax
+precision, separate from the diagnostic-reasoning strength, which does not need more work.
+The Q2 exam-question stumble (reaching for "gut says false / implicit permit" instead of
+retrieving his own just-gathered evidence) is the same underlying pattern flagged as a soft
+spot in Session 7 — first-pass phrasing/retrieval under pressure being looser than reasoning
+built fresh in-session or under direct guided construction. This is now a THIRD session
+showing this same shape (Session 4/5 dstintf retrieval, Session 7 Q2 stage-of-failure
+answer, this session's Q2). Recommend explicitly naming this as a tracked pattern in the
+knowledge register going forward (not just a one-off note) and continuing the "ask the exact
+mechanism as an explicit follow-up rather than accepting a plausible-sounding first answer"
+technique, since it continues to reliably surface and resolve the gap when applied.
+"Baseline first, cap after" and treating the stale session as active remediation rather than
+housekeeping were both unprompted senior-engineer instincts this session — genuine growth
+beyond pure technical troubleshooting into resource-governance and security-posture judgment,
+worth naming explicitly as a strength in the register (new category, not previously tracked).
+
+TEASER DELIVERED FOR SESSION 9 ("Season Finale: The Announcement")
+--------------------------------------------------------------
+Delivered in-story as the closing beat: Señor tells Penny (off-screen, overheard) "Season's
+done. Tell the board Monday" — no further explanation given on-screen. Riley reacts with
+visible surprise ("Wait — Season finale? Since when—"), left as an open, deliberately
+unexplained hook. Session 9 is confirmed, per the master study plan, as a full Season 1
+review and rapid exam drill across architecture, VLANs, and VDOMs — NOT new technical
+material. Natural opening move for Session 9: treat the "announcement" itself as the
+in-story hook worth a brief cold-open beat (what is Penny announcing to the board, and why
+now, right after the quietest-looking Tuesday of the season) before transitioning into the
+rapid-fire review format. This is explicitly NOT the end-of-season retrospective — the
+end-of-season-1-review.html artefact should be generated only after Session 9 is complete,
+per the project's end-of-season instructions, using this file plus all prior session
+summaries and the knowledge register as source material.

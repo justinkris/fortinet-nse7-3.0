@@ -1,0 +1,186 @@
+LOFINANCE — SESSION 03 REVISION PACK
+"Life of a Packet" — NSE7 EF 7.6, Study Guide pp. 17-21
+=========================================================================
+
+QUICK SUMMARY (one page)
+-------------------------
+FortiGate processes every packet through a fixed pipeline. Cheap, hardware-level
+checks (ACL, Host Protection Engine, IP header integrity) run FIRST, at the
+network interface, handled by the Network Processor (NP) — because it's wasteful
+to spend expensive engines on traffic that hasn't proven it deserves scrutiny.
+
+Two specialist chips exist: the NP works at the network/interface level (forwarding,
+header checks, IPsec crypto); the CP (Content Processor) works at the content level
+(IPS pattern matching, SSL/TLS decrypt, antivirus). Entry/mid-range boxes combine
+both into a single SP chip at lower throughput.
+
+A brand-new session must pass through the CPU: the entire TCP three-way handshake,
+or the first UDP packet. Once the session key is installed in the NP, later packets
+fast-path and skip the CPU — EXCEPT FIN/RST packets, which always return to the CPU
+because tearing down a session is a state-table change, and the NP has no authority
+over session state, only forwarding.
+
+The kernel pipeline order for new sessions: Destination NAT -> Routing/RPF/SD-WAN ->
+Policy lookup/stateful inspection -> (content inspection if profiles attached) ->
+Source NAT. Each stage depends on the one before it: DNAT resolves the real
+destination before routing can pick an interface; policy lookup needs that resolved
+interface; SNAT happens last since policy has already decided by then.
+
+Segmentation is only real because POLICY LOOKUP NEVER SKIPS — implicit deny applies
+to every packet, internal or external. DNAT can be a no-op (no VIP = nothing to
+translate) but policy lookup cannot be. This is the mechanism, not a label, that
+makes east-west segmentation meaningful.
+
+=========================================================================
+CHEAT SHEET
+=========================================================================
+
+COMMANDS
+  get hardware status
+    -> shows Model name + ASIC version (NP6/NP7/CP9/CP10/SoC-SP)
+  diagnose hardware lspci | grep 1a29
+    -> 1a29 = Fortinet vendor ID
+    -> Device ID 4e36 = NP6 | 4e37 = NP7
+    -> needed on multi-NP boxes: tells you WHICH interface maps to WHICH chip
+
+DEFAULTS / LIMITS
+  NP7 max sessions: up to 12 million (limited by processor memory)
+  Overflow beyond NP7 session limit -> sent to CPU
+
+KEY DESIGN RULES
+  - TCP: full 3-way handshake -> CPU. UDP: first packet only -> CPU.
+  - FIN/RST: ALWAYS CPU, regardless of offload history.
+  - Policy lookup: NEVER a no-op, for any traffic.
+  - DNAT: CAN be a no-op if no VIP configured.
+  - NP Direct Architecture: requires SAME NP chip on ingress+egress interfaces
+    for the low-latency benefit. General offload across DIFFERENT NP chips still
+    works via the internal switch fabric (ISF) — just not the direct-path speed.
+  - Virtual FortiGate: identical logical pipeline, but CPU handles everything —
+    no NP/CP hardware to offload to.
+
+PIPELINE (memorize the shape, not just the order)
+  Interface In -> NP (ACL/HPE/header) -> DNAT -> Routing/RPF/SD-WAN ->
+  Policy Lookup/Stateful Inspection -> [CP: UTM/NGFW content inspection] ->
+  SNAT -> NP (egress fast path) -> Interface Out
+
+=========================================================================
+FLASHCARDS
+=========================================================================
+
+Q: Why do cheap checks (ACL/HPE/header) run before expensive checks (IPS/AV)?
+A: Triage — don't spend costly engines on traffic that hasn't earned scrutiny.
+
+Q: What does the NP handle vs the CP?
+A: NP = network-level (forwarding, header checks, IPsec crypto). CP = content-
+   level (IPS pattern matching, SSL/TLS decrypt, AV).
+
+Q: What must ALWAYS pass through the CPU for a TCP session?
+A: The entire three-way handshake (SYN, SYN/ACK, ACK) — plus any FIN/RST later.
+
+Q: What must pass through the CPU for a UDP session?
+A: Just the first packet.
+
+Q: Why do FIN/RST packets go to the CPU even on a long-established, offloaded
+   session?
+A: Session teardown is a state-table change; the NP only forwards for sessions
+   whose state it already recognizes — it has no authority to modify state.
+
+Q: What is the correct kernel pipeline order: SNAT, DNAT, Routing, Policy lookup?
+A: DNAT -> Routing -> Policy lookup -> SNAT.
+
+Q: Why must DNAT happen before routing?
+A: Routing needs to know the REAL destination to pick the correct egress
+   interface; if the packet was addressed to a VIP, that hasn't been resolved yet.
+
+Q: Why must policy lookup happen after routing, not before?
+A: Policy match requires the resolved destination interface, not the raw
+   unrouted packet.
+
+Q: Why does SNAT happen last?
+A: Policy has already made its allow/deny decision by then, so hiding the real
+   source address on the way out doesn't interfere with anything upstream.
+
+Q: Does internal (east-west) traffic skip any pipeline stages that external
+   (north-south) traffic goes through?
+A: DNAT can be a no-op (no VIP internally), but policy lookup is NEVER a no-op —
+   implicit deny applies everywhere. This is what makes segmentation enforceable.
+
+Q: What's the difference between general NP offload across two chips and NP
+   Direct Architecture?
+A: General offload works across different NP chips via the internal switch
+   fabric (ISF). NP Direct requires same-chip interfaces for the eliminated-ISF,
+   lowest-latency path — it is not a requirement for offload in general.
+
+Q: Why is `diagnose hardware lspci | grep 1a29` needed when `get hardware status`
+   already shows the ASIC version?
+A: The ASIC-version line is one summary for the whole box. On a multi-NP device,
+   it doesn't show which physical interfaces map to which specific chip — needed
+   for NP Direct topology planning and even session distribution.
+
+Q: What device ID corresponds to NP6? What about NP7?
+A: 4e36 = NP6. 4e37 = NP7 (both under Fortinet vendor ID 1a29).
+
+Q: Exam trap — "For an established session already offloaded to the NP, which
+   packets still hit the CPU?" What's the trap and the correct answer?
+A: Trap: assuming the answer includes the handshake. But the handshake happens
+   BEFORE establishment, so it can't be "still" happening on an already-
+   established session. Correct answer: FIN/RST packets only.
+
+=========================================================================
+PODCAST PROMPT — "The Packet Path" — Episode 3: "Life of a Packet"
+=========================================================================
+Generate a single-episode podcast script (~8-10 minutes spoken) for a technical
+learning podcast called "The Packet Path." Two co-hosts, warm and conversational,
+occasionally bantering, teaching a mid-level network security concept through
+story and analogy — never dry, never a lecture read aloud.
+
+EPISODE CONTEXT: A trader named Marcus corners our protagonist at the coffee
+machine and asks a question nobody in IT has ever actually answered him: "where
+does my order actually go?" This kicks off an exploration of what happens inside
+a FortiGate firewall between the moment a packet arrives and the moment it
+leaves.
+
+MUST COVER, IN NATURAL SPOKEN LANGUAGE (no bullet-point reading):
+1. The triage principle — why cheap checks (ACL, Host Protection Engine, IP
+   header integrity) happen before expensive checks (IPS, antivirus, SSL
+   decrypt). Use an analogy like airport security's fast bag-scanner before a
+   full manual search — cheap filter first, expensive scrutiny only for what's
+   earned it.
+2. The two specialist chips: NP (network processor) as the "traffic cop" that
+   only moves things at wire speed and never makes judgment calls about
+   content, and CP (content processor) as the "detective" that actually reads
+   what's inside a packet — pattern matching, decrypting, scanning.
+3. Session establishment: the ENTIRE TCP three-way handshake goes through the
+   CPU, not just the first packet (a subtlety worth calling out explicitly,
+   since it trips people up); UDP only needs its first packet. Once a session
+   key is installed in the NP, later packets get a free pass on the fast lane —
+   but closing a session (FIN/RST) always has to check back in with the CPU,
+   because ending something is a decision the traffic cop isn't allowed to make
+   on his own.
+4. The kernel pipeline order — Destination NAT, then routing, then policy
+   lookup, then Source NAT — and WHY that specific order isn't arbitrary: you
+   can't route to an address you haven't resolved yet, you can't check policy
+   against an unrouted packet, and hiding your source address early would be
+   pointless since the decision to allow the traffic hasn't even been made yet.
+5. The punchline that ties it to the business: internal, floor-to-floor traffic
+   and traffic headed out to an exchange run through the EXACT SAME pipeline.
+   Destination NAT might do nothing if there's no virtual address involved
+   internally — but the policy check NEVER gets skipped, ever, for anyone. Tie
+   this explicitly back to a segmentation lesson from a previous episode: a
+   VLAN without a firewall gateway forcing inspection isn't real segmentation —
+   this pipeline is what makes segmentation real.
+6. INCLUDE A MISTAKE: Our protagonist, when first asked whether internal traffic
+   skips pipeline stages, jumps straight to talking about chip throughput and
+   speed instead of answering the actual structural question — a relatable,
+   good-faith mistake (confusing "how fast" with "does it happen at all") that
+   the hosts should gently correct and explain why it's an easy trap to fall
+   into.
+7. Close with a natural, curiosity-driving teaser for next episode: the trading
+   floor is about to double in size, and four hundred new desks need to be kept
+   from being able to see each other's screens — setting up a conversation about
+   VLANs and network segmentation design, without giving away the technical
+   answer.
+
+TONE: Warm, curious, occasionally funny, respects the listener's intelligence.
+Avoid corporate-training voice. Should feel like two smart friends explaining
+something they find genuinely interesting to someone they like.

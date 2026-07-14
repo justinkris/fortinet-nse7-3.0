@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supplement — Dynamic Routing CLI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block > p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block > p strong{color:var(--text);font-weight:600;}
+  .section-block > p em{color:var(--blue);font-style:italic;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* CLI COMMAND CARDS */
+  .cmd-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+  .cmd-family{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+  .cmd-fam-config{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .cmd-fam-show{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .cmd-fam-diagnose{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .cmd-fam-execute{background:#f7e5f0;color:#7c1a5f;border:1px solid #d8a7c5;}
+  .cmd-syntax{background:var(--ink-dark);border-radius:6px;padding:10px 14px;margin-bottom:10px;overflow-x:auto;}
+  .cmd-syntax code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:13px;font-weight:500;color:#e8efff;background:transparent;padding:0;white-space:pre;}
+  .cmd-card p code, .cmd-look p code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12.5px;background:var(--surface-2);color:var(--text);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+  .cmd-desc{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:12px;}
+  .cmd-output{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 12px;}
+  .cmd-output-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;}
+  .cmd-output pre{margin:0;overflow-x:auto;}
+  .cmd-output pre code{font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;font-size:12px;line-height:1.55;color:var(--text);background:transparent;padding:0;}
+  .cmd-look{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:8px;}
+  .cmd-look-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .cmd-look p{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.55;color:var(--text-soft);margin:0;}
+  .cmd-look p strong{color:var(--text);font-weight:600;}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="index.html">CLI Commands</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Dynamic Routing Supplement</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Supplement · CLI Reference</div>
+    <h1>Dynamic Routing, <em>By Command</em></h1>
+    <p>Every OSPF and BGP command shown in the Dynamic Routing supplement — redistribution, network advertisement, prefix-list filtering, and the OSPF/BGP verification you'll run every time.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Adjacencies fail on tiny mismatches — <em>get router info</em> tells you which one.</div>
+  <p class="motivation-sub">OSPF areas, BGP route-selection tiebreakers, and prefix-list defaults all bite the same way: the config looks right, but a subtle default makes routes vanish.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-ospf-verify">OSPF Verification</a>
+  <a class="nav-tab" href="#section-bgp-origin">BGP Origination</a>
+  <a class="nav-tab" href="#section-bgp-filter">Prefix Lists & Filtering</a>
+  <a class="nav-tab" href="#section-bgp-verify">BGP Verification</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ── SECTION 1 — OSPF VERIFICATION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OSPF VERIFICATION</span>
+      </div>
+      <p class="socratic-insight">OSPF adjacencies have a strict checklist — same subnet/mask, same area, matching hello and dead intervals, matching MTU, unique router IDs, matching authentication. Any single mismatch stops the state machine before it reaches Full. Verification commands exist so you can see exactly where it stopped.</p>
+      <ul class="socratic-questions">
+        <li>Which single command shows this router's OSPF area membership, ABR/ASBR flags, LSA counts, and neighbour count in one screen?</li>
+        <li>You suspect a Type 3 (Summary) LSA is missing from a stub-adjacent area. Which OSPF database command narrows it down?</li>
+      </ul>
+      <div class="answer-area" data-section="ospf-verify">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>get router info ospf status</code>. It prints the router ID, the ABR/ASBR flags, the SPF timers, the LSA type counts, and — per area — the number of interfaces and fully adjacent neighbours. That's the one-liner you paste in when someone says "OSPF isn't working."</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>get router info ospf database</code> — that's the LSDB dump, broken out by LSA type per area. Filter by <code>network</code> for Type 2, <code>summary</code> for Type 3, <code>asbr-summary</code> for Type 4, or <code>external</code> for Type 5. Missing Type 3 = the ABR didn't generate/leak it, which usually means area 0 adjacency isn't Full or the area is stub with summary suppression.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ospf-verify">
+      <div class="section-label">SECTION 01</div>
+      <h2>OSPF <em>Status and Database</em></h2>
+      <p>Every router in an area maintains an identical LSDB, built from the LSAs its neighbours flood. The two <code>get router info ospf</code> variants let you see the local view (status, neighbour count) and the raw database (every LSA type, per area).</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info ospf status</code></div>
+        <p class="cmd-desc">One-shot OSPF health check. Prints the router ID, whether this router is an ABR/ASBR, SPF timers, LSA counts, and per-area neighbour statistics.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>Routing Process "ospf 0" with ID 0.0.0.3
+Process uptime is 1 hour 12 minutes
+...
+This router is an ABR, ABR Type is Standard (RFC2328)
+...
+Number of areas attached to this router: 2
+    Area 0.0.0.0 (BACKBONE)
+        Number of interfaces in this area is 1(1)
+        Number of fully adjacent neighbors in this area is 2
+        Area has no authentication
+        SPF algorithm executed 7 times
+        Number of LSA 5. Checksum 0x03bd6a
+    Area 0.0.0.1 (Stub)
+        Number of interfaces in this area is 1(1)
+        Number of fully adjacent neighbors in this area is 1</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><strong>"Number of fully adjacent neighbors"</strong> per area — if it's zero, the adjacency isn't Full. Check the area type (<code>Stub</code>/normal/<code>NSSA</code>) matches on both ends. <strong>Router ID</strong> must be unique. If the router shows <code>is an ABR</code>, it has interfaces in more than one area — one of which must be <code>0.0.0.0</code>.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info ospf database
+# get router info ospf database {router | network | summary | asbr-summary | external}</code></div>
+        <p class="cmd-desc">Dumps the OSPF LSDB. Without a filter you get every LSA type per area; with a filter you narrow to one of the five common types.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><strong>router</strong> = Type 1 (every router in the area). <strong>network</strong> = Type 2 (only DR-generated, one per multiaccess network). <strong>summary</strong> = Type 3 (ABR-generated inter-area). <strong>asbr-summary</strong> = Type 4 (ABR-generated, describes the path to an ASBR). <strong>external</strong> = Type 5 (ASBR-generated, redistributed routes). Type 5 is never seen in stub or NSSA areas.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info ospf neighbor</code></div>
+        <p class="cmd-desc">Lists every OSPF neighbour with its state (Down / Init / 2-way / ExStart / Exchange / Loading / Full) and the interface where it was learned.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><strong>Full</strong> = adjacency succeeded, LSDBs synced. <strong>2-way</strong> on multiaccess = normal for non-DR/BDR pairs; on point-to-point it's a problem. Stuck in <strong>ExStart</strong>/<strong>Exchange</strong> almost always means MTU mismatch on the interfaces. Stuck in <strong>Init</strong> means hellos are one-way (return path or ACL problem).</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info ospf interface</code></div>
+        <p class="cmd-desc">Per-interface OSPF settings: area, cost, network type (broadcast/point-to-point/point-to-multipoint), hello/dead intervals, DR/BDR, priority.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p><strong>Hello and dead intervals</strong> must match on both peers or the adjacency fails. <strong>Network type</strong> must match. <strong>Cost</strong> (1–65535) drives route selection — the sum of costs to the destination wins. On multiaccess, priority <code>0</code> means "never become DR."</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Adjacency requirements: same subnet + mask, same interface type + area, matching hello/dead, unique router ID, matching MTU, matching authentication. If <code>get router info ospf neighbor</code> shows anything other than Full, one of those six is wrong.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ospf-verify" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ospf-verify','OSPF Verification')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ospf-verify" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ospf-verify')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2 — BGP ORIGINATION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BGP ORIGINATION</span>
+      </div>
+      <p class="socratic-insight">By default, FortiGate BGP originates <em>no</em> prefixes at all. You have two ways to change that — protocol redistribution (from connected/static/OSPF/RIP into BGP) or the network command (explicit prefix list). Each has a subtle default trap.</p>
+      <ul class="socratic-questions">
+        <li>You typed <code>config router bgp / config network / edit 1 / set prefix 10.10.0.0/16</code> and BGP still isn't advertising it. What's the most likely reason?</li>
+        <li>Why does redistributing static routes into BGP sometimes advertise more than you intended, and how would you filter that?</li>
+      </ul>
+      <div class="answer-area" data-section="bgp-origin">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The <code>network</code> command only advertises a prefix when the <em>exact</em> prefix is active in the routing table. If <code>10.10.0.0/16</code> isn't a real active route (only, say, <code>10.10.1.0/24</code> is), it's suppressed. Fix: either add a matching static route, or set <code>network-import-check disable</code> under <code>config router bgp</code> to skip the check and advertise regardless.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Because <code>config redistribute "static"</code> pushes <em>every</em> static route into BGP — including ones you'd rather keep internal. Attach a route-map on the redistribution, or use a prefix-list on the outbound side of each neighbour, to filter the set. Route maps are the general-purpose filter/attribute-modify tool; prefix lists are the narrower "which prefixes are allowed" list.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-bgp-origin">
+      <div class="section-label">SECTION 02</div>
+      <h2>BGP <em>Prefix Origination</em></h2>
+      <p>Two ways to make FortiGate BGP say something. <code>config redistribute</code> pulls another protocol's routes into BGP. <code>config network</code> lists prefixes explicitly. Both default to <em>advertise nothing extra</em>.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># config router bgp
+    config redistribute "static"
+        set status enable
+    end
+end</code></div>
+        <p class="cmd-desc">Redistributes the named non-BGP source (<code>static</code>, <code>connected</code>, <code>ospf</code>, <code>rip</code>, <code>isis</code>) into BGP. Once <code>status enable</code> is set, every matching route in the routing table becomes a BGP-originated prefix on this router.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Redistribution is <strong>all-or-nothing</strong> unless you add a route-map. Attach one with <code>set route-map &lt;name&gt;</code> under the same <code>redistribute</code> block to selectively permit prefixes or rewrite BGP attributes as they enter BGP. Default is <code>status disable</code> — no redistribution at all.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># config router bgp
+    config network
+        edit &lt;id&gt;
+            set prefix &lt;prefix&gt;
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Explicit list of prefixes for BGP to advertise. Cleaner than redistribution because you name the exact prefixes — but by default each one is advertised only when a matching active route already exists in the routing table.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Set <code>set prefix</code> to the exact CIDR you want in BGP. If the routing table doesn't contain that exact prefix (mask included), FortiGate suppresses it — this is the <em>network-import-check</em> in effect. See the next card for the override.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code># config router bgp
+    set network-import-check disable
+end</code></div>
+        <p class="cmd-desc">Disables the "prefix must match an active route" check. After this, every prefix in the <code>config network</code> list is advertised regardless of what the routing table looks like.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Default is <code>enable</code> — safer, because you can't advertise a prefix you can't actually route. Turn it off only when you deliberately want to originate an aggregate that no interface holds (a summary announcement from an edge router, for example).</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">"BGP is broken and no prefixes appear" → default: BGP originates nothing. Add <code>config redistribute</code> or <code>config network</code>. "One prefix from the network list doesn't show up" → <code>network-import-check</code> is enforcing an exact match against the RIB.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-bgp-origin" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-bgp-origin','BGP Origination')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-bgp-origin" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-bgp-origin')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3 — PREFIX LISTS & FILTERING ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · PREFIX LISTS & FILTERING</span>
+      </div>
+      <p class="socratic-insight">By default, every route redistributed or in <code>config network</code> is announced to every neighbour, and every prefix received from every neighbour is accepted. Prefix lists let you tighten both ends — but they carry an invisible implicit deny at the end.</p>
+      <ul class="socratic-questions">
+        <li>Your prefix list has one rule permitting <code>10.0.0.0/8</code>. A neighbour advertises <code>172.16.5.0/24</code>. What happens, and why?</li>
+        <li>What's the difference between applying a prefix list with <code>set prefix-list-in</code> versus <code>set prefix-list-out</code> on a neighbour?</li>
+      </ul>
+      <div class="answer-area" data-section="bgp-filter">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The <code>172.16.5.0/24</code> is denied. Prefix lists have an <strong>implicit deny at the end</strong> — anything that doesn't match a rule is dropped. So a list with just one permit rule for <code>10.0.0.0/8</code> permits only <code>10.0.0.0/8</code> and denies everything else.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>prefix-list-in</code> filters what this router <em>accepts</em> from that neighbour (populates RIB-in → local RIB after the filter). <code>prefix-list-out</code> filters what this router <em>advertises</em> to that neighbour (RIB-out). Same list can be applied in one, the other, or both — each direction is independent.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-bgp-filter">
+      <div class="section-label">SECTION 03</div>
+      <h2>Prefix Lists <em>and Neighbor Filters</em></h2>
+      <p>Prefix lists live under <code>config router prefix-list</code>. They're evaluated top-down, first match wins, with an implicit deny at the end. Apply them per-neighbour, per-direction.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router prefix-list
+    edit filter-subnets
+        config rule
+            edit 1
+                set prefix 10.1.0.0/16
+                set action deny
+            next
+            edit 2
+                set prefix 10.0.0.0/8
+                set action permit
+            next
+        end
+    next
+end</code></div>
+        <p class="cmd-desc">Creates a named prefix-list <code>filter-subnets</code>. Rules are evaluated by ID, ascending — first match wins. Here, <code>10.1.0.0/16</code> is denied before the broader <code>10.0.0.0/8</code> permit, so that one specific subnet is filtered while the rest of <code>10/8</code> passes.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Rule order matters — put the specific <code>deny</code> before the broader <code>permit</code> or the broader match will hit first. <strong>Implicit deny</strong> at the end: any prefix that doesn't match a rule is denied. So if the list is meant to allow "everything except X," you need an explicit permit-all rule at the bottom.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-config">CONFIG</div>
+        <div class="cmd-syntax"><code>config router bgp
+    config neighbor
+        edit 10.3.1.254
+            set prefix-list-in filter-subnets
+        next
+    end
+end</code></div>
+        <p class="cmd-desc">Applies the prefix list to the <em>inbound</em> direction from neighbour <code>10.3.1.254</code>. Every prefix the neighbour advertises is checked against <code>filter-subnets</code>; denied prefixes are dropped before they hit the local RIB.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Same list can be applied outbound with <code>set prefix-list-out</code>. Route-maps (<code>set route-map-in</code> / <code>set route-map-out</code>) are the more powerful cousin — they can also rewrite BGP attributes (local-pref, MED, communities). Use prefix lists when you just want a filter; use route maps when you also need to shape the route's attributes.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Prefix list = who's allowed through the door. Route map = who's allowed through the door <em>and</em> what stamp we put on their forehead. If you're only filtering, prefix list. If you're changing local-pref, MED, or community, route map.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-bgp-filter" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-bgp-filter','Prefix Lists & Filtering')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-bgp-filter" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-bgp-filter')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4 — BGP VERIFICATION ── -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BGP VERIFICATION</span>
+      </div>
+      <p class="socratic-insight">A BGP router stores routes in three RIBs — RIB-in (raw from peers), local RIB (after inbound filters), RIB-out (what we advertise). Each has its own verification command, and the ten-step route-selection tiebreaker is what picks the winner in the local RIB.</p>
+      <ul class="socratic-questions">
+        <li>Two BGP routes to the same destination arrive with identical local preference and same AS-path length. Which attribute breaks the tie next?</li>
+        <li>You want to see every prefix a specific neighbour advertised to you, even the ones your inbound filter dropped. Which command?</li>
+      </ul>
+      <div class="answer-area" data-section="bgp-verify">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Origin type (IGP &lt; EGP &lt; incomplete — lowest wins), then MED (lowest), then EBGP over IBGP, then lowest IGP metric to the BGP next hop, then (with ECMP) up to 10 parallel routes, else the lowest router ID. Order of the ten tiebreakers is: weight → local-pref → locally-originated → AS-path length → origin type → MED → IGP-to-next-hop → EBGP-over-IBGP → ECMP → router ID.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>get router info bgp neighbors &lt;ip&gt; received-routes</code>. That's the RIB-in view for that peer — everything they sent you, filter-free. Compare against <code>routes</code> (post-filter local RIB) to see what the inbound filter dropped.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-bgp-verify">
+      <div class="section-label">SECTION 04</div>
+      <h2>BGP <em>Neighbors and Routing Table</em></h2>
+      <p>Three commands cover 90% of BGP troubleshooting — one for peer state, one for the RIB-in view per peer, one for the merged routing table.</p>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info bgp summary</code></div>
+        <p class="cmd-desc">One-line-per-neighbour summary. Local AS, router ID, and — per peer — the remote AS, uptime, and state or number of prefixes received.</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The <strong>State/PfxRcd</strong> column. A number = adjacency is Established and that's how many prefixes came in from RIB-in. A word (<code>Idle</code>, <code>Active</code>, <code>Connect</code>) = the session is not up. <code>Active</code> means "actively trying and failing" — check TCP 179, source IP, source-interface, or authentication mismatch.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info bgp neighbors &lt;ip&gt;
+# get router info bgp neighbors &lt;ip&gt; received-routes
+# get router info bgp neighbors &lt;ip&gt; routes
+# get router info bgp neighbors &lt;ip&gt; advertised-routes</code></div>
+        <p class="cmd-desc">Per-neighbour detail. Without a suffix you get the peer state, capabilities, and counters. With a suffix you get: <code>received-routes</code> (RIB-in, before local inbound filter), <code>routes</code> (local RIB after filter), <code>advertised-routes</code> (RIB-out to this peer).</p>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>Difference between <code>received-routes</code> and <code>routes</code> = what your inbound filter dropped. Difference between what you expect and <code>advertised-routes</code> = what your outbound filter dropped or what your <code>redistribute</code>/<code>network</code> failed to originate. That's the debugging triangle.</p>
+        </div>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-family cmd-fam-show">GET</div>
+        <div class="cmd-syntax"><code># get router info routing-table all
+# get router info routing-table bgp</code></div>
+        <p class="cmd-desc">Full RIB (all protocols) or just BGP-installed routes. Each entry shows the source code letter (<code>B</code> for BGP, <code>O</code> for OSPF, <code>S</code> for static), the administrative distance and metric in <code>[AD/metric]</code>, and the next-hop.</p>
+        <div class="cmd-output">
+          <div class="cmd-output-label">Sample output</div>
+          <pre><code>Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+
+S*    0.0.0.0/0 [10/0] via 100.65.5.35d, port2, [1/0]
+O    10.0.12.0/24 is directly connected, port5, [1/0]
+C    172.16.1.1/32 is directly connected, HUB1-VPN1
+B    172.20.3.0/24 [200/0] via 172.16.1.2 (recursive is directly connected, HUB1-VPN1_0), 00:02:56, [1/0]</code></pre>
+        </div>
+        <div class="cmd-look">
+          <div class="cmd-look-label">What to look for</div>
+          <p>The prefix's leading letter tells you which protocol won the AD contest. BGP AD defaults to <code>200</code> for IBGP and <code>20</code> for EBGP — connected (<code>0</code>) and static (<code>10</code>) beat BGP by default, so redistribution loops can silently disappear behind a static route. Also look for <code>recursive</code> next-hops — a BGP next-hop that resolves through a tunnel or an IGP-learned route.</p>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Ten-step BGP route selection: <strong>W</strong>eight → <strong>L</strong>ocal-pref → <strong>L</strong>ocally-originated → <strong>A</strong>S-path length → <strong>O</strong>rigin type → <strong>M</strong>ED → <strong>I</strong>GP metric to next-hop → <strong>E</strong>BGP over IBGP → <strong>E</strong>CMP → <strong>R</strong>outer ID. Memorise the order or you'll be second-guessing every close race.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-bgp-verify" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-bgp-verify','BGP Verification')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-bgp-verify" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-bgp-verify')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-10-hardware-acceleration.html">
+    <span class="page-nav-label">← PREVIOUS CHAPTER</span>
+    <span class="page-nav-title">Hardware Acceleration CLI</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="supplement-use-cases.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Use Case CLI</span>
+  </a>
+</div>
+
+<footer>
+  NSE7 EF 7.6 <span>·</span> CLI Reference <span>·</span> Dynamic Routing Supplement
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-cli-supp-dynroute';
+const SECTIONS = {
+  'section-ospf-verify': 'OSPF Verification',
+  'section-bgp-origin': 'BGP Origination',
+  'section-bgp-filter': 'Prefix Lists & Filtering',
+  'section-bgp-verify': 'BGP Verification',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

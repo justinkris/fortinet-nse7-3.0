@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 6 — One Box, Many Firewalls</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,.07);
+  --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;}
+header{padding:44px 56px 32px;background:var(--ink-dark);}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,.1);border:1px solid rgba(155,184,230,.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.1em;margin-bottom:14px;}
+header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;color:#fbf7ec;line-height:1.05;letter-spacing:-.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-size:16px;font-style:italic;color:rgba(251,247,236,.6);margin-top:10px;}
+main{max-width:920px;margin:0 auto;padding:40px 24px 100px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:24px;}
+.card h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--blue);margin-bottom:14px;letter-spacing:-.01em;}
+.card h3{font-family:'Outfit',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-soft);margin:18px 0 8px;}
+.card p, .card li{font-size:17px;color:var(--text-soft);}
+.card ul, .card ol{padding-left:22px;margin:6px 0;}
+.card li{margin-bottom:6px;}
+.tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);padding:3px 10px;border-radius:12px;margin-bottom:10px;}
+.socratic{background:var(--blue-light);border:1px solid var(--blue-border);border-left:4px solid var(--blue);border-radius:10px;padding:18px 22px;margin:14px 0;}
+.socratic strong{color:var(--blue);}
+.analogy{background:var(--amber-light);border:1px solid var(--amber-border);border-radius:10px;padding:16px 20px;margin:14px 0;font-style:italic;}
+.analogy b{font-style:normal;color:var(--amber);font-family:'Outfit',sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;}
+.gotcha{background:#fdeceb;border:1px solid #f3b8b0;border-radius:10px;padding:16px 20px;margin:14px 0;}
+.gotcha b{color:#b3261e;font-family:'Outfit',sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;}
+code, .code-block{font-family:'Courier New',monospace;}
+.code-block{background:var(--ink-dark);color:#dfe9ff;border-radius:10px;padding:18px 22px;margin:12px 0;font-size:14.5px;overflow-x:auto;white-space:pre;}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:15.5px;}
+th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;}
+th{background:var(--surface-2);font-family:'Outfit',sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-soft);}
+.diagram{background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;padding:20px;margin:14px 0;text-align:center;font-family:'Courier New',monospace;font-size:14px;color:var(--text-soft);white-space:pre;}
+.exam-q{border:1px solid var(--border-dim);border-radius:10px;padding:14px 18px;margin-bottom:10px;background:var(--surface-2);}
+.exam-q b{color:var(--blue);}
+details.ans summary{cursor:pointer;color:var(--blue);font-family:'Outfit',sans-serif;font-size:13px;margin-top:6px;}
+details.ans[open] summary{margin-bottom:6px;}
+.takeaway{background:var(--green-light);border:1px solid var(--green-border);border-radius:10px;padding:16px 20px;}
+.takeaway li{color:var(--green);font-weight:600;}
+footer{text-align:center;padding:30px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 06</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Complete Guide</span></div>
+  <div class="eyebrow">● SESSION 06 · COMPLETE STUDY GUIDE</div>
+  <h1>One Box, <em>Many Firewalls</em></h1>
+  <p>VDOM concepts and types — when and why to split a FortiGate · Study Guide 03, pp. 68–74</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <span class="tag">Story Recap</span>
+    <h2>The Business Hook</h2>
+    <p>Penny gets a vendor quote for $15,000: a dedicated, fully isolated firewall for a client's trading-floor guest network. Junior reaches straight for a rack diagram and new hardware. Señor stops him with one line: <em>"Why buy a box when we already own ten inside this one?"</em> The session is spent working out exactly what that means — and whether it's true.</p>
+  </div>
+
+  <div class="card">
+    <span class="tag">Learning Objectives</span>
+    <ul>
+      <li>Explain what a VDOM is and why it exists (virtualized firewall instances on shared hardware)</li>
+      <li>Describe the role of the Global VDOM and why Policy/VPN/User&amp;Auth are excluded from it</li>
+      <li>Name and distinguish all four VDOM types: Admin, Traffic (NAT), Traffic (transparent), LAN Extension</li>
+      <li>Explain the management VDOM concept and its relationship to root</li>
+      <li>Understand default VDOM limits and how to extend them</li>
+      <li>Understand Global Resources vs per-VDOM resource allocation</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>1. The Core Idea: Virtualized Firewalls</h2>
+    <p>A FortiGate is one physical appliance — one chassis, one CPU, one set of ports. A VDOM (Virtual Domain) lets that single box behave like <b>up to 10 independent firewalls</b> (default; more via licensing), each with its own isolated policy set, interfaces, and security configuration — all sharing the same underlying hardware.</p>
+    <div class="analogy">
+      <b>Analogy — carve the control plane, share the physical plane</b>
+      This is the same trick as a VRF on a router: one physical router, multiple independent routing tables, each instance blind to the others' routes. A VDOM does it one layer up — one physical firewall, multiple independent policy engines, each instance blind to the others' rules.
+    </div>
+    <div class="code-block">config system global
+    set vdom-mode multi-vdom
+end
+
+get system status | grep "Max number of virtual domains"</div>
+    <p>Enabling multi-VDOM mode automatically creates two VDOMs you cannot delete: the <b>Global VDOM</b> and the <b>root VDOM</b>.</p>
+  </div>
+
+  <div class="card">
+    <h2>2. Global VDOM — Not a Firewall Instance</h2>
+    <p>The Global VDOM is a Super-Admin-only administrative view, not a traffic-passing firewall. It governs settings that affect the <b>entire physical device</b>: interfaces, firmware, some logging, sandboxing configuration.</p>
+    <h3>Deliberately excluded from Global VDOM</h3>
+    <ul>
+      <li>Policy &amp; Objects</li>
+      <li>VPN</li>
+      <li>User &amp; Authentication</li>
+    </ul>
+    <div class="socratic"><strong>Why excluded:</strong> these constructs are inherently per-VDOM. A firewall policy is meaningless without a VDOM context to belong to — "which VDOM's policy?" is a nonsensical question at the Global layer, exactly like "which VRF's routing table?" is nonsensical outside any VRF.</div>
+    <h3>Resource governance</h3>
+    <table>
+      <tr><th>Scope</th><th>Location</th><th>Governs</th></tr>
+      <tr><td>Global Resources</td><td>Global VDOM &gt; System &gt; Global Resources</td><td>Limits for the whole physical device</td></tr>
+      <tr><td>Per-VDOM Resources</td><td>Global VDOM &gt; System &gt; VDOM &gt; Edit VDOM</td><td>Limits per individual VDOM (Override Maximum must be ≥ current usage)</td></tr>
+    </table>
+    <p>Shared hardware means shared limits (CPU, memory, session table) unless explicitly governed per VDOM — one noisy VDOM can starve the others without guardrails.</p>
+  </div>
+
+  <div class="card">
+    <h2>3. The Management VDOM</h2>
+    <p>By default, <b>root</b> is the management VDOM. Its job: validate the license, download FortiGuard updates, and provide admin access (HTTPS/SSH) and FortiManager connectivity — for the <em>whole device</em>, regardless of which VDOM you're configuring traffic in.</p>
+    <p>The management VDOM can be changed to any traffic VDOM (Global VDOM &gt; System &gt; VDOM &gt; Switch Management). If the management VDOM loses internet access or FortiManager/FDS connectivity, FortiGuard databases across <b>all</b> VDOMs can be affected.</p>
+  </div>
+
+  <div class="card">
+    <h2>4. The Four VDOM Types</h2>
+
+    <h3>Admin VDOM</h3>
+    <p>Management/administration only — <b>zero user traffic</b>. Limited to <b>one per FortiGate</b> (unlike traffic and LAN-extension types, which allow up to 10 by default).</p>
+    <div class="diagram">vdom: admin
+   |
+   |-- FortiGuard updates (allowed)
+   |-- port1 (mgmt access only)
+   |-- NO Policy & Objects
+   |-- NO Security Profiles
+   |-- NO VPN
+   |-- NO User & Authentication
+   |-- NO WiFi & Switch Controller</div>
+    <div class="code-block">config vdom
+    edit "admin-vdom"
+        config system settings
+            set vdom-type admin
+        end
+    end</div>
+    <div class="gotcha"><b>Gotcha</b>Changing an existing traffic VDOM to admin type deletes its Policy &amp; Objects, Security Profiles, WiFi &amp; Switch Controller, User &amp; Authentication configuration, and dashboards — FortiGate asks for confirmation before proceeding.</div>
+
+    <h3>Traffic VDOM — NAT mode</h3>
+    <p>Functions like a regular firewall: routes traffic, performs NAT, applies full Layer 3 policy. The most common VDOM type — used for ISFW, DCFW, NGFW, DEFW roles. This is the type selected for LoFinance's new guest-network VDOM.</p>
+    <div class="code-block">config vdom
+    edit "guest-wifi"
+        config system settings
+            set vdom-type traffic
+            set opmode nat
+        end
+    end</div>
+
+    <h3>Traffic VDOM — Transparent mode</h3>
+    <p>Operates purely at Layer 2 — no routing, no NAT. The network looks unchanged to every connected device; the firewall is an invisible "bump in the wire" doing UTM inspection only.</p>
+    <div class="analogy"><b>Trade-off</b>You give up full Layer 3 capability (routing, NAT, policy-based routing, WAN load-balancing) in exchange for zero-topology-impact security inspection. Used where a device or application is highly sensitive to any change in its network path, but compliance still requires inspection.</div>
+    <div class="code-block">config vdom
+    edit "transparent-seg"
+        config system settings
+            set vdom-type traffic
+            set opmode transparent
+            set manageip 172.16.16.1/255.255.255.0
+        end
+    end</div>
+    <div class="gotcha"><b>Gotcha — exam favorite</b>Transparent VDOMs still require ONE management IP (<code>manageip</code>) for admin access, even though no routed/NAT'd traffic passes through. Omit it and you get a failed node-check error on 'manageip'. "No routing" does not mean "no IP address at all."</div>
+
+    <h3>LAN Extension VDOM</h3>
+    <p>Connects a remote connector (FortiGate or FortiExtender) to a central FortiGate access controller via IPsec VPN wrapped in VXLAN encapsulation — extends a remote LAN back to the controller as if it were local.</p>
+    <p><b>Only two modules available:</b> Network (to build the tunnel interfaces) and VPN (the tunneling protocol itself). No Policy &amp; Objects, no Security Profiles, no User &amp; Authentication — this VDOM makes no local policy decisions.</p>
+    <div class="code-block">config vdom
+    edit "lan-ext-branch"
+        config system settings
+            set vdom-type lan-extension
+        end
+    end</div>
+  </div>
+
+  <div class="card">
+    <h2>5. Comparing VDOM Types</h2>
+    <table>
+      <tr><th>Type</th><th>Default per FortiGate</th><th>Passes traffic?</th><th>Typical use</th></tr>
+      <tr><td>Admin</td><td>1</td><td>No</td><td>Centralized management network</td></tr>
+      <tr><td>Traffic — NAT</td><td>10*</td><td>Yes, full L3</td><td>ISFW, DCFW, NGFW, DEFW</td></tr>
+      <tr><td>Traffic — Transparent</td><td>10*</td><td>Yes, L2 only</td><td>UTM inspection w/o topology change</td></tr>
+      <tr><td>LAN Extension</td><td>10*</td><td>Tunnel only</td><td>FortiExtender / remote LAN extension</td></tr>
+    </table>
+    <p style="font-size:13px;color:var(--text-muted);">* Expandable through additional VDOM licensing.</p>
+  </div>
+
+  <div class="card">
+    <h2>6. Senior Engineering Insight</h2>
+    <p>Before recommending "existing infrastructure" over a purchase, always surface the real constraint underneath the free option. In this session: the default 10-VDOM ceiling and shared CPU/memory/session-table resources across VDOMs. "Free" without a stated caveat is a sales pitch, not an engineering recommendation.</p>
+  </div>
+
+  <div class="card">
+    <span class="tag">Exam Tips</span>
+    <div class="exam-q"><b>Q1.</b> Which VDOM type is missing Policy &amp; Objects, Security Profiles, and User &amp; Authentication — and why?
+      <details class="ans"><summary>Show answer</summary>Global VDOM. It governs device-wide settings only and never passes user traffic, so per-VDOM constructs are meaningless there.</details>
+    </div>
+    <div class="exam-q"><b>Q2.</b> True or false: a transparent-mode traffic VDOM requires no IP address at all, since it operates purely at Layer 2.
+      <details class="ans"><summary>Show answer</summary>False. It requires exactly one management IP (manageip) for admin access, even though it passes no routed/NAT'd traffic.</details>
+    </div>
+    <div class="exam-q"><b>Q3.</b> A FortiGate is licensed for the default VDOM count and the business needs an 11th. What are the options?
+      <details class="ans"><summary>Show answer</summary>Purchase additional VDOM licensing to raise the cap (preferred), or as a last resort, deploy a second physical/virtual appliance.</details>
+    </div>
+  </div>
+
+  <div class="card takeaway">
+    <span class="tag">Key Takeaways</span>
+    <ul>
+      <li>One FortiGate can host up to 10 (default) independent VDOMs, each with isolated policy/interfaces/config</li>
+      <li>Global VDOM = device-wide admin view, not a firewall instance — excludes Policy/VPN/User&Auth by design</li>
+      <li>Root is the default management VDOM (updates, licensing, admin access) — changeable, but connectivity is essential</li>
+      <li>Four VDOM types: Admin (mgmt only, max 1), Traffic-NAT (full firewall), Traffic-Transparent (invisible L2, still needs manageip), LAN Extension (Network + VPN only, tunnel-only)</li>
+      <li>Resource limits are governed at Global and per-VDOM level — shared hardware needs explicit guardrails</li>
+    </ul>
+  </div>
+
+</main>
+<footer>LoFinance Study Program · Session 06 · Enterprise Firewall 7.6 Administrator Study Guide, pp. 68–74</footer>
+</body>
+</html>

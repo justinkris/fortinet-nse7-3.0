@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 15 Complete — Speaking OSPF on FortiGate</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;font-size:17px}
+header{padding:48px 60px 36px;background:var(--ink-dark)}
+.eyebrow{display:inline-block;background:rgba(155,184,230,.1);border:1px solid rgba(155,184,230,.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.1em;margin-bottom:14px}
+header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;color:#fbf7ec;line-height:1.05}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent)}
+header p{font-style:italic;color:rgba(251,247,236,.55);margin-top:10px}
+main{max-width:920px;margin:0 auto;padding:40px 32px 80px}
+h2{font-family:'Playfair Display',serif;font-size:28px;color:var(--blue-deep);margin:48px 0 16px;border-bottom:2px solid var(--border);padding-bottom:8px}
+h3{font-family:'Outfit',sans-serif;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin:28px 0 10px}
+p{margin-bottom:14px}
+.callout{border-left:4px solid var(--blue);background:var(--blue-light);padding:16px 20px;margin:18px 0;border-radius:0 6px 6px 0}
+.callout.amber{border-color:var(--amber);background:var(--amber-light)}
+.callout.green{border-color:var(--green);background:var(--green-light)}
+.callout strong{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+pre{background:var(--ink-dark);color:#dbe7fb;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;padding:18px 22px;border-radius:8px;overflow-x:auto;margin:16px 0;line-height:1.6}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88em;background:var(--surface-2);padding:1px 6px;border-radius:4px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15.5px;background:var(--surface)}
+th{font-family:'Outfit',sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:10px 14px;border:1px solid var(--border)}
+td{padding:10px 14px;border:1px solid var(--border-dim);vertical-align:top}
+.analogy{background:var(--surface);border:1px dashed var(--border);border-radius:8px;padding:16px 20px;margin:18px 0;font-style:italic;color:var(--text-soft)}
+.analogy b{font-style:normal;font-family:'Outfit',sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:6px}
+footer{text-align:center;padding:30px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted)}
+.story{background:var(--surface);border:1px solid var(--border-dim);border-radius:10px;padding:22px 26px;margin:20px 0;font-style:italic;color:var(--text-soft)}
+ul,ol{margin:0 0 14px 24px}
+li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">NSE7 EF 7.6 · SESSION 15 · COMPLETE GUIDE · Study Guide pp. 129–131</div>
+  <h1>Speaking OSPF <em>on FortiGate</em></h1>
+  <p>Network types · Redistribution · Route filtering · OSPF commands — Chatswood comes online as Area 1</p>
+</header>
+<main>
+
+<h2>Story Recap</h2>
+<div class="story">
+Junior arrived at 6:30 AM to "surprise everyone": Chatswood's dial-up tunnel to the hub's shared <b>To-Spokes</b> interface, OSPF enabled, <code>set network-type broadcast</code> — because a blog post said the internet is "basically a big Ethernet." Tunnel up, pings fine, neighbor table empty for twenty minutes. Señor taped a sticky note to the monitor: <b>"EXHIBIT A. DO NOT FIX."</b> By session's end: hub reconfigured point-to-multipoint, three adjacencies at Full, one legacy management subnet redistributed through a one-line access-list filter, and the hub wearing three role hats at once.
+</div>
+
+<h2>Learning Objectives</h2>
+<ul>
+<li>Explain the three OSPF network types as <em>assumptions about the medium</em>, and match each to a topology.</li>
+<li>Diagnose why a broadcast network type produces total silence on a dial-up hub interface.</li>
+<li>Read <code>get router info ospf neighbor</code> output as forensic evidence of network type.</li>
+<li>Explain redistribution, the ASBR role, and why FortiGate ships all redistribution disabled.</li>
+<li>Choose between access lists, prefix lists, and route maps by requirement, not sophistication.</li>
+<li>Run all four router-role definitions as independent checks against one device.</li>
+</ul>
+
+<h2>1. Network Types Are Assumptions About the Medium</h2>
+<p>OSPF's network type isn't cosmetic — it encodes what the protocol may assume about the wire underneath it. Configure a type whose assumptions the medium can't honour, and the CLI accepts the lie cheerfully while the protocol goes silent.</p>
+
+<table>
+<tr><th>Type</th><th>Core assumption</th><th>DR/BDR?</th><th>Where it fits</th></tr>
+<tr><td><b>Broadcast</b> (multiaccess)</td><td>Shared medium — one multicast frame reaches every attached router for free (Ethernet)</td><td>Yes — election held</td><td>LAN segments with multiple routers</td></tr>
+<tr><td><b>Point-to-point</b></td><td>Exactly <em>one</em> neighbor on the far side of the link</td><td>No</td><td>Dedicated site-to-site tunnels. <b>FortiGate default</b> on tunnel interfaces</td></tr>
+<tr><td><b>Point-to-multipoint</b></td><td>Many neighbors reachable through one interface, but no shared medium and no multicast delivery — treats the interface as a <em>bundle of individual P2P conversations</em></td><td><b>No — election never run</b></td><td>Dial-up VPN hub with <code>net-device disable</code>: one interface, many spokes</td></tr>
+</table>
+
+<div class="callout"><strong>The anchor rule (p.129)</strong><br>Multiple dial-up spokes terminating on a single hub interface (<code>net-device</code> disabled) → the hub's tunnel interface <b>must</b> be <code>point-to-multipoint</code>.</div>
+
+<h3>Broadcast machinery (for contrast)</h3>
+<p>On a real multiaccess segment, routers elect a <b>DR</b> and <b>BDR</b> (highest priority wins, ties broken by highest Router ID, priority 0 = never DR). Full adjacencies form only with the DR/BDR to cut resource use. Two multicast addresses do the work:</p>
+<ul>
+<li><b>224.0.0.5 — AllSPFRouters:</b> hello packets; the DR/BDR send LSA updates and acks here.</li>
+<li><b>224.0.0.6 — AllDRouters:</b> all <em>other</em> routers send their LSA updates and acks here (i.e., <em>to</em> the DR/BDR).</li>
+</ul>
+
+<h3>Why Junior's config produced total silence</h3>
+<p>The hub, in broadcast mode, addressed its hello to 224.0.0.5 and expected the medium to deliver it to everyone at once. But under To-Spokes there is no shared wire — three separate encrypted tunnels to three different public IPs. Broadcast mode does <em>not</em> replicate the packet per tunnel; that job belonged to the medium that doesn't exist. The hello dies at the interface. No hellos delivered → no neighbors discovered → the table is <b>empty</b>, not broken. (A wrong-but-compatible setting tends to produce flapping or stuck-in-Init neighbors; total emptiness points at delivery failure.)</p>
+<p>Broadcast mode would also attempt a DR election among spokes who cannot hear each other's votes — wrong at the delivery layer <em>and</em> the topology layer.</p>
+
+<div class="analogy"><b>Señor's whiteboard</b>One word written above To-Spokes: <b>"Deaf."</b> The multicast hello is a shout into an interface with no medium that can hear it.</div>
+
+<h3>What point-to-multipoint actually does</h3>
+<ul>
+<li>Treats the shared interface as a bundle of individual point-to-point conversations.</li>
+<li><b>Replicates and unicasts</b> hellos and updates per spoke — the protocol takes over the delivery job the medium can't do.</li>
+<li>Each spoke forms exactly <b>one adjacency — with the hub</b>. Spokes never hear each other's hellos; they learn each other's networks because the hub floods LSAs onward. Hellos stay per-link; <em>topology information</em> is what crosses the hub.</li>
+<li><b>No DR/BDR election, ever.</b> With one adjacency per spoke and no shared segment, there is nothing for a DR to optimise.</li>
+</ul>
+
+<h2>2. The Fix and Its Fingerprint</h2>
+<pre><code>config router ospf
+    config ospf-interface
+        edit "Hub"
+            set interface "To-Spokes"
+            set network-type point-to-multipoint
+        next
+    end
+end</code></pre>
+<p>Verification:</p>
+<pre><code>get router info ospf neighbor
+
+Neighbor ID     Pri   State      Dead Time   Address        Interface
+10.0.1.2        1     Full/ -    00:00:37    10.10.10.2     To-Spokes
+10.0.1.3        1     Full/ -    00:00:34    10.10.10.3     To-Spokes
+10.0.1.4        1     Full/ -    00:00:39    10.10.10.4     To-Spokes</code></pre>
+<ul>
+<li><b>Full</b> — top of the adjacency ladder (Init → 2-Way → ExStart → Exchange → Loading → <b>Full</b>). Full means both routers hold identical LSDBs; a healthy adjacency parks here.</li>
+<li><b>The dash</b> — no role, because no election ran. <b>DROther is a campaign result</b> ("I stood in an election and lost"), not a neutral word for "ordinary neighbor." It can only appear where an election happened.</li>
+</ul>
+<div class="callout green"><strong>Forensic rule</strong><br>The role column is a <b>fingerprint of the network type</b>. <code>Full/DR</code>, <code>Full/BDR</code>, <code>Full/DROther</code> → broadcast segment. <code>Full/ -</code> → point-to-point or point-to-multipoint. You can identify the network type without ever opening the config.</div>
+
+<h2>3. Redistribution — Teaching OSPF About Foreign Routes</h2>
+<p>The hub held a static route to the DR site's legacy management subnet (10.99.50.0/24). OSPF never advertises what it wasn't told about. <b>Redistribution</b> injects routes born outside OSPF (static, connected, BGP, RIP, IS-IS) into the OSPF domain — and the moment a router does this, it becomes an <b>ASBR</b> by definition.</p>
+<pre><code>config router ospf
+    config redistribute static
+        set status enable      &lt;- default is disable, for ALL sources
+    end
+end</code></pre>
+<div class="callout amber"><strong>Why default-closed matters (p.130)</strong><br>Every redistribution source ships <b>disabled</b>. OSPF's superpower — automatic, trusted, domain-wide propagation — is exactly its blast radius. During the Parramatta outage, the hub carried emergency statics and an unencrypted default route. Open-by-default redistribution would have flooded those fleet-wide, automatically, in seconds. One careless static on one box becomes everyone's route.</div>
+<p>And note: <code>redistribute static</code> is <b>all-or-nothing</b> — every static on the box goes in unless you filter.</p>
+
+<h2>4. Route Filtering — The Fine-Grained Valve</h2>
+<table>
+<tr><th>Tool</th><th>Type</th><th>Action</th><th>Extras / limits</th></tr>
+<tr><td><b>Access list</b></td><td>Simple — filter on prefixes</td><td>Prevent route injection via <code>distribute-list-in</code>; also filters redistributed protocols in distribute-list config</td><td>Simplest, most auditable</td></tr>
+<tr><td><b>Prefix list</b></td><td>Simple + logic — prefixes with operators</td><td><b>Applies only to <code>distribute-list-in</code></b></td><td><code>ge</code>/<code>le</code> operators match a prefix <em>and</em> a range of mask lengths</td></tr>
+<tr><td><b>Route map</b></td><td>Advanced</td><td>Filter incoming external routes via <code>distribute-route-map-in</code>; filter redistribution per protocol in <code>config redistribute &lt;...&gt;</code></td><td>Can embed access/prefix lists as match objects; can <b>modify attributes</b>, not just permit/deny</td></tr>
+</table>
+
+<h3>Choosing: the least-powerful-tool discipline</h3>
+<p>Penny's requirement: <em>"only the management subnet may ever leave that box, nothing else, ever."</em> One exact prefix, permit/deny only. Eliminate by mechanism: no attributes to modify → route map out; no mask-length ranges → <code>ge/le</code> unneeded → prefix list out. Access list wins.</p>
+<div class="callout"><strong>The 2 AM tax</strong><br>Every layer of machinery you deploy is a layer the on-call engineer must read and understand while the pager is screaming. A route map referencing a prefix list with operators is three indirections to audit; a one-line access list is self-evidently correct at a glance. Complexity you don't need is a standing tax on every future incident.</div>
+<pre><code>config router access-list
+    edit "MGMT-ONLY"
+        config rule
+            edit 1
+                set prefix 10.99.50.0 255.255.255.0
+                set exact-match enable
+            next
+        end
+    next
+end</code></pre>
+
+<h2>5. OSPF Command Toolbox (p.131)</h2>
+<table>
+<tr><th>Command</th><th>What it tells you</th></tr>
+<tr><td><code>get router info ospf neighbor</code></td><td>All neighbors, adjacency states, and roles (DR / BDR / DROther / -)</td></tr>
+<tr><td><code>get router info ospf interface</code></td><td>Per-interface status: adjacency count, DR and BDR router IDs</td></tr>
+<tr><td><code>get router info ospf status</code></td><td>Full process status: router ID, negotiated features, attached areas, fully adjacent neighbor count</td></tr>
+<tr><td><code>get router info ospf database brief</code></td><td>Complete LSDB, ordered by LSA type <em>(deep dive: Session 16)</em></td></tr>
+<tr><td><code>get router info ospf database router lsa</code></td><td>Detail on Type 1 LSAs <em>(Session 16)</em></td></tr>
+<tr><td><code>get router info bfd neighbor</code></td><td>BFD negotiation status when BFD is enabled on OSPF routers</td></tr>
+</table>
+
+<h2>6. Compound Router Roles — Live on the Hub</h2>
+<p>The hub now holds interfaces in Area 0 and Area 1, and redistributes a static. Run all four definitions as independent true/false checks:</p>
+<table>
+<tr><th>Role</th><th>Test</th><th>Hub result</th></tr>
+<tr><td>Internal router</td><td><em>All</em> interfaces in a single area?</td><td>✗ — straddles Area 0 and Area 1</td></tr>
+<tr><td>ABR</td><td>Interfaces in multiple areas?</td><td>✓</td></tr>
+<tr><td>Backbone router</td><td>Any interface in Area 0?</td><td>✓</td></tr>
+<tr><td>ASBR</td><td>Any non-OSPF routing source imported?</td><td>✓ — redistribute static</td></tr>
+</table>
+<div class="callout amber"><strong>Exam trap — both directions</strong><br>Roles are overlapping labels, not exclusive categories. Stopping early <em>and</em> selecting everything are the same error: skipping the per-definition check. "Select all that apply" punishes both. The discipline is in the checking, not the count.</div>
+
+<h2>Troubleshooting Workflow (as run this session)</h2>
+<ol>
+<li><b>Separate the symptom:</b> tunnel up + pings OK + OSPF silent → transport is fine; the protocol's assumptions are not.</li>
+<li><b>Follow the packet:</b> broadcast-mode multicast hello has no shared medium → dies at the interface.</li>
+<li><b>Read the evidence type:</b> an <em>empty</em> neighbor table means hellos were never delivered; a <em>broken/flapping</em> table means they were delivered but disagreed.</li>
+<li><b>Eliminate by assumption:</b> P2P assumes exactly one far-side neighbor; To-Spokes has three.</li>
+<li><b>Select by mechanism:</b> P2MP replicates-and-unicasts per spoke, no election.</li>
+<li><b>Verify the fingerprint:</b> <code>Full/ -</code> per spoke confirms both adjacency health and network type.</li>
+</ol>
+
+<h2>Common Mistakes</h2>
+<ul>
+<li>Configuring <code>broadcast</code> on a dial-up hub interface ("the internet is basically Ethernet").</li>
+<li>Expecting P2MP to elect a DR — no shared segment, no election, ever.</li>
+<li>Reading <code>DROther</code> as "ordinary neighbor" — it means <em>lost an election</em>, so it implies broadcast.</li>
+<li>Assuming redistribution is on by default, or forgetting it's all-or-nothing without a filter.</li>
+<li>Reaching for a route map when an access list satisfies the requirement.</li>
+<li>Treating router roles as a single-answer question — under- or over-selecting instead of checking each definition.</li>
+</ul>
+
+<h2>Senior Engineering Insights</h2>
+<ul>
+<li>A network type is a contract with the medium. Verify the medium can honour it before blaming the protocol.</li>
+<li>Command output is forensic evidence — the neighbor role column identifies the network type without the config.</li>
+<li>Defaults encode blast-radius judgments: OSPF's trust model is why redistribution ships closed.</li>
+<li>Choose the least powerful tool that meets the requirement; complexity is a tax paid at 2 AM.</li>
+<li>Compliance requirements stated in one sentence should be implementable in roughly one line — if they aren't, question the design.</li>
+</ul>
+
+<h2>Exam Tips</h2>
+<ul>
+<li>"Dial-up spokes, <code>net-device disable</code>, single hub interface" → answer is <b>point-to-multipoint</b>, every time.</li>
+<li>Default tunnel-interface network type: <b>point-to-point</b>.</li>
+<li><code>Full/ -</code> vs <code>Full/DROther</code> is a favourite distractor pair — the dash means no election ran.</li>
+<li>Redistribution: default <b>disabled</b> for bgp / connected / isis / rip / static alike.</li>
+<li>Prefix lists' <code>ge/le</code> and their restriction to <code>distribute-list-in</code>; route maps modify attributes and can embed the other two.</li>
+<li>Select-all role questions: run Internal / ABR / Backbone / ASBR as four independent tests.</li>
+</ul>
+
+<h2>Key Takeaways</h2>
+<ol>
+<li>Network type = medium assumptions. Broadcast needs a shared wire; a dial-up hub has none → point-to-multipoint.</li>
+<li>P2MP: per-spoke unicast replication, one adjacency per spoke, no DR — and <code>Full/ -</code> is its signature.</li>
+<li>Redistribution makes an ASBR; it ships disabled because OSPF propagates trust automatically and domain-wide.</li>
+<li>Filter with the simplest tool the requirement allows: access list → prefix list (ge/le) → route map (attributes).</li>
+<li>One router can be ABR + backbone + ASBR simultaneously. Check every definition, every time.</li>
+</ol>
+
+</main>
+<footer>LoFinance · Session 15 · NSE7 Enterprise Firewall 7.6 · Study Guide pp. 129–131</footer>
+</body>
+</html>

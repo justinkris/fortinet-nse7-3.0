@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 16 Troubleshooting — Reading the Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:36px 48px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.12em;margin-bottom:10px;}
+h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:#fbf7ec;}
+h1 em{font-style:italic;color:var(--ink-accent);font-weight:500;}
+main{max-width:900px;margin:0 auto;padding:32px 32px 70px;}
+h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--blue-deep);margin:34px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+p,li{font-size:17.5px;line-height:1.7;}
+ul,ol{margin:10px 0 10px 26px;}
+strong{color:var(--blue-deep);}
+code{font-family:Menlo,Consolas,monospace;font-size:.85em;background:var(--surface-2);padding:2px 6px;border-radius:5px;color:var(--blue-deep);}
+pre{background:var(--ink-dark);color:#dce8fb;font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.6;padding:16px 20px;border-radius:10px;overflow-x:auto;margin:14px 0;}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:15.5px;background:var(--surface);}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.07em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:9px 12px;border:1px solid var(--border-dim);}
+td{padding:9px 12px;border:1px solid var(--border-dim);line-height:1.55;}
+.mn{background:var(--blue-light);border-left:4px solid var(--blue);padding:12px 18px;margin:16px 0;border-radius:0 8px 8px 0;font-family:'Playfair Display',serif;font-style:italic;font-size:17.5px;}
+.trap{background:var(--amber-light);border:1px solid var(--amber-border);padding:12px 18px;margin:14px 0;border-radius:8px;font-size:16px;}
+.trap b{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px;}
+.tree{background:var(--surface);border:1px dashed var(--blue);border-radius:10px;padding:18px 22px;margin:16px 0;font-family:'Outfit',sans-serif;font-size:14.5px;line-height:2;}
+footer{padding:22px;background:var(--ink-dark);color:rgba(251,247,236,.5);font-family:'Outfit',sans-serif;font-size:11px;text-align:center;letter-spacing:.06em;}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">SESSION 16 · TROUBLESHOOTING GUIDE · THINK LIKE A SENIOR</div><h1>Reading the <em>Map</em> — OSPF Database-Layer Diagnosis</h1></header>
+<main>
+
+<h2>Where this layer sits</h2>
+<p>Sessions 14–15 gave you the neighbour layer: hellos, network types, the adjacency ladder. This session adds the layer <strong>beneath</strong> it: the database. Use it when the neighbour layer looks healthy but the routing outcomes are wrong. The core diagnostic principle:</p>
+<div class="mn">Adjacency Full but routes wrong, missing, or looping? Stop staring at the neighbor table. Open the database — the disagreement lives in the maps, not the handshake.</div>
+
+<h2>Symptoms this layer explains</h2>
+<ul>
+<li>Adjacencies all show <strong>Full</strong>, yet a subnet is missing from the routing table.</li>
+<li>Traffic <strong>loops</strong> or takes a nonsensical path while every device claims to be healthy.</li>
+<li>A route exists but with the <strong>wrong cost / wrong next hop</strong>.</li>
+<li>An external route appears in the domain that <strong>policy forbids</strong> (compliance leak) — or one that should exist doesn't.</li>
+<li>TCP sessions time out while pings work across parallel paths (→ asymmetric routing suspect).</li>
+</ul>
+
+<h2>Questions to ask before touching anything</h2>
+<ol>
+<li><strong>What exactly is the business symptom, and for whom?</strong> One subnet? One site? One direction?</li>
+<li><strong>Which routers should carry this destination in their LSDB, and in which area?</strong></li>
+<li><strong>Who is supposed to originate this information?</strong> A router LSA from a specific router? An external LSA from the ASBR?</li>
+<li><strong>Has anything flapped recently?</strong> (Fresh Ages everywhere = recent churn.)</li>
+<li><strong>Is the return path the same as the forward path?</strong> Never assume symmetry.</li>
+</ol>
+
+<h2>Verification commands & expected outputs</h2>
+<table>
+<tr><th>Command</th><th>What healthy looks like</th><th>What sick looks like</th></tr>
+<tr><td><code>get router info ospf neighbor</code></td><td>Full state; role column matches network type (Full/ - on P2P/P2MP)</td><td>Stuck in ExStart/Exchange/Loading = database exchange failing — the maps never synchronised</td></tr>
+<tr><td><code>get router info ospf database brief</code></td><td>One Router Link States section per connected area; Age &lt; 1800s; Seq# advancing sanely; externals list matches policy exactly</td><td>Missing LSA rows; Age near/above 1800 with no refresh; an LSA present on one router but absent on its area-mate; unexpected external LSAs</td></tr>
+<tr><td><code>get router info ospf database router lsa</code></td><td>Link list and costs match the physical/tunnel design</td><td>Wrong cost, missing link, or a link the design says shouldn't exist</td></tr>
+<tr><td><code>get router info routing-table ospf</code></td><td>The database's winners, installed</td><td>Route in LSDB but not in RIB (something better/administratively preferred is winning — check the whole RIB)</td></tr>
+</table>
+
+<h2>Decision tree</h2>
+<div class="tree">
+Symptom: routing outcome wrong<br>
+&nbsp;&nbsp;├─ Neighbour NOT Full? → S15 layer: network type, hellos, area/timers mismatch. Fix adjacency first.<br>
+&nbsp;&nbsp;└─ Neighbour Full →<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ Destination absent from LSDB? → originator problem: is the source router advertising it? (interface in OSPF? redistribution enabled? filter eating it?)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ In LSDB on router A but not on area-mate B? → flooding/sync problem between them — compare Seq# and Age both sides.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ In LSDB but wrong path chosen? → do the cost maths yourself: sum EXIT costs per candidate path; check for a mis-set interface cost. Check BOTH directions.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ In LSDB but not in RIB? → the RIB chose something else: static/other protocol/administrative distance. Read the full routing table, not just OSPF's slice.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ Unexpected AS External LSA? → read ADV Router → go to THAT box → audit its redistribution + filters. Compliance incident until proven otherwise.
+</div>
+
+<h2>Common dead ends</h2>
+<ul>
+<li><strong>Re-checking the neighbour table repeatedly.</strong> Full means the handshake succeeded; it says nothing about whether the right information was ever originated.</li>
+<li><strong>Blaming Dijkstra.</strong> The algorithm doesn't malfunction. Wrong output = wrong input: a wrong cost, a missing LSA, an unsynchronised database.</li>
+<li><strong>Auditing config to prove compliance.</strong> Config shows intent; the database shows reality. Read the AS External section.</li>
+<li><strong>Testing one direction only.</strong> A one-way traceroute proves nothing about the return path — and stateful firewalls only care about the pair.</li>
+</ul>
+
+<h2>Likely root causes, ranked</h2>
+<ol>
+<li>Originator never advertised it (interface not in OSPF / redistribution off / filter too aggressive).</li>
+<li>Mis-set interface cost — especially <strong>one-sided</strong> changes creating asymmetry.</li>
+<li>Route present in LSDB but beaten in the RIB by another source (administrative distance).</li>
+<li>Flooding/sync fault between area-mates (mismatched LSDBs → loops).</li>
+<li>Redistribution leak at an ASBR (filter missing/edited) — find it via ADV Router.</li>
+</ol>
+
+<h2>Exam traps at this layer</h2>
+<div class="trap"><b>Trap 1</b>"The output shows external LSAs, therefore this router is an ASBR." No — check <strong>ADV Router</strong>. Holding testimony ≠ giving it.</div>
+<div class="trap"><b>Trap 2</b>"Routers in an area have identical trees." Identical <strong>LSDBs</strong>. Trees differ — each is rooted at its own router.</div>
+<div class="trap"><b>Trap 3</b>Timer swaps: 30 <strong>seconds</strong> (RIP) planted in an OSPF question, or Age thresholds quoted in minutes. Read units twice.</div>
+<div class="trap"><b>Trap 4</b>"The ABR merges its areas into one database." It maintains one <strong>separate full LSDB per area</strong>.</div>
+
+<h2>The senior habit this session adds</h2>
+<p>When a link-state network misbehaves, a senior engineer's first mental question is not "which router is broken?" but <strong>"where do the maps disagree, and who failed to testify?"</strong> The database commands are how you ask it.</p>
+
+</main>
+<footer>Session 16 Troubleshooting · Next layer test: S17 COWBOY HAT — Two Firewalls, No Handshake</footer>
+</body>
+</html>

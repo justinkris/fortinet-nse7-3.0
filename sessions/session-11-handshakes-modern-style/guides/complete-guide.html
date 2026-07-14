@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 11 Complete — Handshakes, Modern Style</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;font-size:18px}
+header{background:var(--ink-dark);padding:44px 8% 34px}
+.eyebrow{display:inline-block;border:1px solid rgba(155,184,230,.3);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;padding:5px 14px;border-radius:20px;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:42px;color:#fbf7ec;line-height:1.05}
+h1 em{color:var(--ink-accent);font-weight:500}
+header p{color:rgba(251,247,236,.55);font-style:italic;margin-top:10px}
+main{max-width:900px;margin:0 auto;padding:40px 24px 80px}
+h2{font-family:'Playfair Display',serif;font-size:27px;margin:44px 0 14px;color:var(--text)}
+h3{font-family:'Outfit',sans-serif;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:26px 0 8px}
+p{margin:10px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px 26px;margin:18px 0}
+.analogy{background:var(--blue-light);border:1px solid var(--blue-border);border-left:4px solid var(--blue);border-radius:8px;padding:16px 20px;margin:16px 0;font-style:italic}
+.warn{background:var(--amber-light);border:1px solid var(--amber-border);border-left:4px solid var(--amber);border-radius:8px;padding:16px 20px;margin:16px 0}
+.win{background:var(--green-light);border:1px solid var(--green-border);border-left:4px solid var(--green);border-radius:8px;padding:16px 20px;margin:16px 0}
+code,pre{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:14px}
+pre{background:var(--ink-dark);color:#dbe7fb;padding:18px 20px;border-radius:8px;overflow-x:auto;margin:14px 0;line-height:1.55}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-family:'Outfit',sans-serif;font-size:14px}
+th{background:var(--ink-dark);color:#fbf7ec;text-align:left;padding:10px 12px}
+td{border:1px solid var(--border);padding:9px 12px;background:var(--surface)}
+tr.hl td{background:var(--green-light);font-weight:600}
+ul,ol{margin:8px 0 8px 26px}
+li{margin:6px 0}
+.footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--border);color:var(--text-muted);font-style:italic;font-size:15px;text-align:center}
+.tag{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.08em;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:3px 10px;color:var(--text-soft)}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 11</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Complete Guide</span></div>
+<span class="eyebrow">SESSION 11 · SEASON 2 · BLUEPRINT 5.1 · pp. 200–206</span>
+<h1>Handshakes, <em>Modern Style</em></h1>
+<p>IKEv2 exchanges · IKEv1 comparison · network-id — or: the day a 2014 blog met a shredder.</p>
+</header>
+<main>
+
+<h2>Story Recap</h2>
+<p>The Parramatta FortiGate arrived, and so did Junior — clutching a March 2014 blog post recommending IKEv1 aggressive mode "because it's faster." Cipher sat down without a word. Señor folded the printout into a paper aeroplane, binned it, and delivered the line of the season: <em>"Faster — and it shouts your name across the internet while it does it."</em> By the end of the session the blog was shredded, LoFinance had standardised on IKEv2, and Junior had accidentally asked the one question that made network-id necessary.</p>
+
+<h2>Learning Objectives</h2>
+<ul>
+<li>State the three jobs every IKE handshake must complete — and the order they must happen in.</li>
+<li>Explain why IKEv1 aggressive mode exposes peer IDs, and why that is the <em>same fact</em> as why it is faster.</li>
+<li>Describe the two IKEv2 exchanges (IKE_SA_INIT, IKE_AUTH), what travels in each, and why the total is four messages.</li>
+<li>Compare IKEv1 main mode, aggressive mode, and IKEv2 across messages, security, and peer-ID exposure.</li>
+<li>Explain what network-id does, why it is IKEv2-only, and configure it.</li>
+</ul>
+
+<h2>1 · The Three Jobs of a Handshake</h2>
+<div class="card">
+<p>Two FortiGates that have never met must, over a hostile wire, end up agreeing on and proving:</p>
+<ol>
+<li><strong>Agree the language</strong> — negotiate encryption/integrity proposals. Both ends must speak the same ciphers.</li>
+<li><strong>Grow the shared secret</strong> — symmetric ciphers need the same key at both ends, but sending a key over a monitored wire is suicide. <strong>Diffie-Hellman</strong> solves it: each side keeps a private value, exchanges only public halves, and the maths lets both ends compute the identical secret — while an eavesdropper holding both public halves cannot.</li>
+<li><strong>Prove identity</strong> — transmit an identity ("I am HQ-FortiGate") plus proof (PSK-derived auth, signature, or EAP in IKEv2).</li>
+</ol>
+</div>
+<div class="analogy">🔑 <strong>"The secret is grown, not posted."</strong> The DH key never crosses the internet because it never <em>exists</em> on the internet — it is born simultaneously in two places from private + public halves.</div>
+
+<h2>2 · The Ordering Rule (the whole session in one sentence)</h2>
+<div class="card">
+<p>Before DH completes, <strong>no shared secret exists</strong> — everything sent is necessarily plaintext. The moment DH completes, every further message can be encrypted.</p>
+<p>Therefore: <strong>identities must be sent <em>after</em> Diffie-Hellman.</strong> Send them before, and they cross the internet naked.</p>
+</div>
+<div class="analogy">🤝 <em>"First grow the secret. Then whisper your name inside it."</em> — Señor</div>
+<div class="warn"><strong>This rule is the entire aggressive-mode story.</strong> Aggressive mode is fast <em>because</em> it crams identities into the first messages — before DH protection exists. The speed and the leak are the same design choice. Exam questions love testing whether you know these are one fact, not two.</div>
+
+<h2>3 · IKEv2: Two Exchanges, Four Messages</h2>
+<div class="card">
+<p>IKEv2 packs the maximum into each round trip while obeying the ordering rule:</p>
+<table>
+<tr><th>Exchange</th><th>Messages</th><th>Contents</th><th>Protection</th></tr>
+<tr><td><strong>IKE_SA_INIT</strong></td><td>2 (request + response)</td><td>Proposal menu + DH public halves + nonces</td><td>Plaintext — but nothing sensitive travels here; public halves are safe by design</td></tr>
+<tr><td><strong>IKE_AUTH</strong></td><td>2 (request + response)</td><td>Identities + authentication + <em>first child SA</em></td><td><strong>Encrypted</strong> — the secret already exists</td></tr>
+</table>
+<p><strong>No separate quick mode.</strong> The first child SA (phase 2 equivalent) piggybacks inside IKE_AUTH — that's where the second half of the savings comes from. Later child SAs and rekeys use CREATE_CHILD_SA, and housekeeping uses INFORMATIONAL exchanges, but establishment is complete at four messages.</p>
+</div>
+
+<h2>4 · The Scoreboard</h2>
+<table>
+<tr><th>Detail</th><th>IKEv1 aggressive</th><th>IKEv1 main mode</th><th>IKEv2</th></tr>
+<tr><td>Phase 1 messages</td><td>3</td><td>6 (identity protection)</td><td><strong>2</strong> (IKE_SA_INIT)</td></tr>
+<tr><td>Phase 2 messages</td><td>3 (quick mode)</td><td>3 (quick mode)</td><td><strong>2</strong> (IKE_AUTH)</td></tr>
+<tr class="hl"><td>Total</td><td>6</td><td>9</td><td>4</td></tr>
+<tr><td>Peer IDs</td><td>⚠️ <strong>Clear text</strong></td><td>Encrypted</td><td>Encrypted</td></tr>
+<tr><td>Renegotiation</td><td>Extensive</td><td>Extensive</td><td>Simplified</td></tr>
+<tr><td>Security proposals</td><td>AES, SHA1, DH Grp 14</td><td>AES, SHA1, DH Grp 14</td><td>AES-GCM, SHA-256, ECP curves</td></tr>
+<tr><td>Network ID</td><td>N/A</td><td>N/A</td><td><strong>Yes</strong></td></tr>
+</table>
+<div class="win"><strong>The false dilemma:</strong> the blog offered "fast (aggressive) or safe (main mode)." IKEv2 is faster than aggressive mode <em>and</em> safer than main mode. When someone offers you a trade-off — first check whether the trade-off is real. <em>Refuse the question.</em></div>
+
+<h3>The IKEv2 modern toolbox</h3>
+<ul>
+<li><strong>Encryption:</strong> AES-GCM (authenticated encryption) vs IKEv1's DES/3DES/AES-CBC.</li>
+<li><strong>DH groups:</strong> 14/15/16 (large MODP) plus <strong>19/20 (elliptic curve)</strong> — ECP gives MODP-equivalent security with shorter keys and less CPU. (PFS in phase 2 = running fresh DH per session.)</li>
+<li><strong>Authentication:</strong> PSK, digital signatures, and <strong>EAP</strong> — plug in external authentication services.</li>
+<li><strong>Integrity:</strong> HMAC-SHA2, AES-XCBC vs IKEv1's MD5/SHA1.</li>
+<li><strong>Mode config:</strong> integrated directly into the exchange — fewer messages, less CPU/memory.</li>
+</ul>
+
+<h2>5 · network-id: Two Doors, One Address</h2>
+<div class="card">
+<p>LoFinance's design has <strong>two tunnels between the same two gateways</strong> (dual-ISP aggregate). When a handshake arrives at HQ, source and destination IPs are identical for both tunnels — the addresses cannot disambiguate. The tag must live <em>inside the negotiation</em>.</p>
+<ul>
+<li><strong>network-id</strong> is a <strong>Fortinet-proprietary</strong> phase 1 attribute.</li>
+<li>It <strong>selects the correct phase 1 between peers</strong>, so <strong>multiple IKEv2 tunnels can be established between the same local/remote gateway pair</strong>.</li>
+<li><strong>IKEv2 only.</strong> IKEv1 has no equivalent (scoreboard row: N/A · N/A · Yes).</li>
+<li>The value must <strong>match at both ends</strong> of each tunnel.</li>
+</ul>
+</div>
+<div class="analogy">🎟️ <strong>The nightclub with two identical doors:</strong> same club, same street address — the ticket disambiguates because the <em>event</em> is printed on it. network-id is the event on the ticket.</div>
+<pre>config vpn ipsec phase1-interface
+    edit "ParraTunnel-ISP1"
+        set ike-version 2
+        set network-overlay enable
+        set network-id 1
+    next
+    edit "ParraTunnel-ISP2"
+        set ike-version 2
+        set network-overlay enable
+        set network-id 2
+    next
+end</pre>
+<div class="warn"><strong>Two commands, not one:</strong> <code>network-overlay enable</code> switches the feature on; <code>network-id N</code> sets the tag. Forgetting the first is a classic lab error.</div>
+
+<h2>Configuration Decisions This Session</h2>
+<ul>
+<li>LoFinance standardises on <strong>IKEv2</strong> for all tunnels.</li>
+<li>HQ↔Parramatta tunnels annotated: <code>network-id 1</code> (ISP1 path), <code>network-id 2</code> (ISP2 path) — enabling both phase 1s between the same gateway pair for the S10 aggregate.</li>
+<li>Tunnels remain <strong>designed, not built</strong> — the build is Session 12.</li>
+</ul>
+
+<h2>Common Mistakes</h2>
+<ul>
+<li>Believing aggressive mode's speed and its ID leak are separate issues — they are one design choice.</li>
+<li>Reversing before/after in the ordering rule. Identities go <em>after</em> DH. Say it out loud.</li>
+<li>Counting IKEv2 as "2 messages" (forgetting IKE_AUTH) or "6" (inventing a quick mode it doesn't have).</li>
+<li>Expecting network-id to work on IKEv1, or on a third-party peer — it's Fortinet-proprietary, IKEv2-only.</li>
+<li>Setting <code>network-id</code> without <code>network-overlay enable</code>, or mismatching values between ends.</li>
+</ul>
+
+<h2>Senior Engineering Insights</h2>
+<ul>
+<li><strong>Judge a protocol by its job list and ordering, not its message count.</strong> The count is a consequence of the design.</li>
+<li><strong>Refuse false trade-offs.</strong> "Fast or safe?" was answerable with "both" — the question itself was the error.</li>
+<li><strong>Date-check sources.</strong> A 2014 VPN security blog is archaeology, not research.</li>
+<li><strong>Derive, then label.</strong> If you can rebuild IKEv2 from "DH before identity, pack the envelopes," you can never forget it in an exam hall.</li>
+</ul>
+
+<h2>Exam Tips</h2>
+<ul>
+<li>Message counts are pure marks: aggressive <strong>3+3=6</strong>, main <strong>6+3=9</strong>, IKEv2 <strong>2+2=4</strong> (IKE_SA_INIT + IKE_AUTH).</li>
+<li>Peer-ID exposure discriminator: only <strong>aggressive mode</strong> sends IDs in clear text. Main mode and IKEv2 both encrypt them.</li>
+<li>network-id keywords to pattern-match: "multiple tunnels, same gateway pair" → network-id; "Fortinet-proprietary" → network-id; "IKEv1" + network-id → <strong>false</strong>.</li>
+<li>Distractor alert: "aggressive mode skips DH" — false; it reorders, it doesn't skip. "PSK sent in clear text" — false; it's the <em>IDs</em> that are exposed.</li>
+<li>ECP groups (19, 20) = elliptic curve = same strength as big MODP with less CPU. PFS = fresh DH per phase 2 session.</li>
+</ul>
+
+<h2>Key Takeaways</h2>
+<div class="win">
+<p>① A handshake has three jobs: agree the language, grow the secret, prove identity — <strong>in that order</strong>.</p>
+<p>② Aggressive mode is fast because it breaks the order; the leak <em>is</em> the speed.</p>
+<p>③ IKEv2 = four messages, two exchanges, IDs encrypted, child SA piggybacked — faster than aggressive AND safer than main mode.</p>
+<p>④ network-id (Fortinet-proprietary, IKEv2-only) lets multiple tunnels coexist between the same gateway pair — the ticket for the two-door nightclub.</p>
+</div>
+
+<p class="footer">LoFinance · Season 2 · Session 11 — <span class="tag">Next: Session 12 · Tunnel Vision — the build begins</span></p>
+</main>
+</body>
+</html>

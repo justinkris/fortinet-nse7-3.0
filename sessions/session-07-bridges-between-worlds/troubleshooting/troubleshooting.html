@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 07 Troubleshooting — Inter-VDOM Connectivity</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --red:#b42318; --red-light:#fdeceb; --red-border:#f0b8b2;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:36px 48px 28px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:#fbf7ec;}
+  header h1 em{color:var(--ink-accent);font-style:italic;font-weight:500;}
+  header p{color:rgba(251,247,236,0.6);font-size:15px;font-style:italic;margin-top:8px;}
+  main{max-width:920px;margin:0 auto;padding:32px 48px 60px;}
+  h2{font-family:'Playfair Display',serif;font-size:24px;border-left:3px solid var(--blue);padding-left:14px;margin:34px 0 14px;color:var(--text);}
+  h2 em{color:var(--blue);font-style:italic;}
+  p, li{font-size:16.5px;line-height:1.7;color:var(--text-soft);}
+  ul, ol{padding-left:22px;margin-bottom:12px;}
+  li{margin-bottom:6px;}
+  li strong{color:var(--text);}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:14px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);}
+  .code-block pre{padding:14px 16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono',monospace;font-size:12.5px;line-height:1.6;color:#e8efff;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:15.5px;}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+  .tree{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin:14px 0;}
+  .tree-step{padding:8px 0 8px 20px;border-left:2px solid var(--blue-border);margin-left:6px;position:relative;}
+  .tree-step::before{content:'▸';position:absolute;left:-11px;color:var(--blue);font-weight:700;}
+  .tree-step b{color:var(--text);}
+  .tree-step .yn{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;}
+  .yn.yes{color:var(--green);}
+  .yn.no{color:var(--red);}
+  .dead-end{background:var(--red-light);border:1px solid var(--red-border);border-radius:8px;padding:10px 14px;margin:10px 0;font-size:15px;color:#7a2018;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;}
+  th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+  td{font-size:14.5px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:18px 48px;border-top:1px solid var(--border);text-align:center;}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 07</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div>
+  <div class="header-eyebrow">SESSION 07 · TROUBLESHOOTING GUIDE</div>
+  <h1>Diagnosing Broken <em>Inter-VDOM</em> Connectivity</h1>
+  <p>How a senior engineer thinks through "Guest-WiFi can't reach the internet," not just which commands to run.</p>
+</header>
+<main>
+
+  <h2>Symptom Intake — <em>Ask These First</em></h2>
+  <ul>
+    <li>Is this a total outage (nothing at all reaches anywhere) or partial (reaches root but not the internet, or vice versa)?</li>
+    <li>Did this VDOM <strong>ever</strong> work, or is this a brand-new build with no prior known-good state?</li>
+    <li>Was anything changed recently — new link, new route, new policy, VDOM resource limits touched?</li>
+    <li>Is the failure isolated to one VDOM, or does it affect traffic between multiple VDOM pairs?</li>
+  </ul>
+  <div class="callout">A "new build, never worked" report points you straight at missing config (link/route/policy). A "used to work, now broken" report points you at something that changed — check Global Resources / Override Maximum and recent commits first.</div>
+
+  <h2>The Three-Layer Model — <em>Where Could It Be Failing?</em></h2>
+  <p>Every inter-VDOM path has exactly three things that must all be true, in this order. Check them in order — don't jump to policy first just because that's usually where people look.</p>
+  <ol>
+    <li><strong>Does the link interface pair exist</strong> and is each half correctly assigned to the VDOM you expect?</li>
+    <li><strong>Does each VDOM's own routing table have a route</strong> pointing traffic toward its half of the link (or onward, on root's side)?</li>
+    <li><strong>Does each VDOM's own policy table have a matching policy</strong> (srcintf/dstintf) allowing that specific traffic?</li>
+  </ol>
+
+  <h2>Verification Commands — <em>What to Actually Run</em></h2>
+  <div class="code-block">
+    <div class="code-label">Confirm the link interface exists and check VDOM assignment</div>
+    <pre><code>diagnose sys vd list
+config system interface
+    show | grep -A 5 "VDOM_Link"</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Confirm the route exists, per VDOM</div>
+    <pre><code>config vdom
+edit Guest-WiFi
+get router info routing-table static
+get router info routing-table all</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Confirm the policy exists and is actually matching traffic</div>
+    <pre><code>config vdom
+edit Guest-WiFi
+show firewall policy
+diagnose firewall iprope list 100017</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Live packet trace — the single most useful command here</div>
+    <pre><code>diagnose debug flow filter addr &lt;guest-device-ip&gt;
+diagnose debug flow show console enable
+diagnose debug enable</code></pre>
+  </div>
+  <div class="callout callout-amber"><strong>Expected output shape:</strong> a healthy flow trace shows the packet being routed (egress interface chosen) as a distinct line BEFORE the policy match line. If the trace stops right after routing with no policy match logged at all, that's your stage-of-failure answer, not a guess.</div>
+
+  <h2>Decision Tree</h2>
+  <div class="tree">
+    <div class="tree-step"><b>Does the link interface pair show up in both VDOMs' interface lists?</b><br><span class="yn no">NO →</span> Link was never created, or was created but assigned to the wrong VDOM. Rebuild/reassign at Global VDOM &gt; Network &gt; Interfaces.<br><span class="yn yes">YES →</span> continue</div>
+    <div class="tree-step"><b>Does <code>get router info routing-table all</code> in the affected VDOM show a route pointing at its half of the link?</b><br><span class="yn no">NO →</span> Missing route. This is a routing-table problem, not a policy problem — flow trace will confirm the packet never gets an egress interface assigned.<br><span class="yn yes">YES →</span> continue</div>
+    <div class="tree-step"><b>Does the flow trace show a policy match on that VDOM for this traffic?</b><br><span class="yn no">NO →</span> Route is fine; policy is missing or the srcintf/dstintf pair doesn't match what's actually happening. Check policy order and interface names carefully — typos in interface names are the #1 cause here.<br><span class="yn yes">YES →</span> continue to the OTHER VDOM and repeat all three checks — remember, every hop needs its own full pass.</div>
+    <div class="tree-step"><b>Both VDOMs pass all three checks and it's still not working?</b><br>Check Global Resources / Override Maximum — a VDOM silently hitting a session-table or policy-count ceiling can behave exactly like a missing policy. Also check NAT configuration on root's egress policy — routing + policy can both succeed and traffic can still fail post-NAT.</div>
+  </div>
+
+  <h2>Common Dead Ends</h2>
+  <div class="dead-end"><strong>"The policy is definitely there, so it must be routing."</strong> — Check policy <em>order</em> and exact srcintf/dstintf spelling before assuming routing. A policy sitting below a broader deny rule, or referencing the wrong interface name, looks identical to "no policy" in symptoms.</div>
+  <div class="dead-end"><strong>"I added the physical cable as a workaround and now it 'sort of' works."</strong> — This masks the real gap (missing route or policy on the virtual link) and creates a second, undocumented path that will confuse the next engineer. Fix the actual link/route/policy chain instead.</div>
+  <div class="dead-end"><strong>"Root has internet, Guest-WiFi has a route to root, so it should work."</strong> — Having a route toward root doesn't mean root has a policy or route allowing THAT traffic onward to the internet. Every hop needs its own full three-layer check — don't assume the far side is fine just because it "already had internet."</div>
+
+  <h2>Likely Root Causes, Ranked</h2>
+  <table>
+    <tr><th>Likelihood</th><th>Root Cause</th><th>Tell-tale Sign</th></tr>
+    <tr><td>Most common</td><td>Missing or wrong-VDOM firewall policy</td><td>Flow trace shows routing succeeds, no policy match logged</td></tr>
+    <tr><td>Common</td><td>Missing route in the affected VDOM's own table</td><td>Flow trace never assigns an egress interface at all</td></tr>
+    <tr><td>Less common</td><td>Link interface assigned to wrong VDOM</td><td>Interface exists but doesn't show up where you expect it in that VDOM's interface list</td></tr>
+    <tr><td>Occasional</td><td>Resource ceiling hit (Global Resources / Override Maximum)</td><td>Everything "looks" correctly configured but new sessions silently fail</td></tr>
+    <tr><td>Rare, but real</td><td>External physical/L2 topology issue (unrelated to VDOMs at all)</td><td>Problem persists even with a perfect link/route/policy chain; check switch/VLAN config outside the FortiGate</td></tr>
+  </table>
+
+  <h2>Exam Traps</h2>
+  <ul>
+    <li>Assuming link creation alone enables traffic flow — it never does.</li>
+    <li>Assuming "no policy = deny logged" — in inter-VDOM contexts, a missing route means the packet may never even reach policy evaluation to be logged as a deny.</li>
+    <li>Confusing internal VDOM isolation (no link = no path) with external L2/physical isolation (a completely separate, non-VDOM concern).</li>
+    <li>Forgetting that BOTH VDOMs need independent verification — a fix on one side that "should" work is meaningless if the far side was never checked.</li>
+  </ul>
+
+</main>
+<footer>LoFinance · Session 07 Troubleshooting Guide</footer>
+</body>
+</html>

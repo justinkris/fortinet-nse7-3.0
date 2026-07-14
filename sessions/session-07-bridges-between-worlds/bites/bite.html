@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 07 Bite — Bridges Between Worlds</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:32px 40px 26px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:#fbf7ec;}
+  header h1 em{color:var(--ink-accent);font-style:italic;font-weight:500;}
+  main{max-width:820px;margin:0 auto;padding:30px 40px 50px;}
+  .item{margin-bottom:26px;}
+  .item h2{font-family:'Playfair Display',serif;font-size:21px;color:var(--text);border-left:3px solid var(--blue);padding-left:12px;margin-bottom:8px;}
+  .item p, .item li{font-size:16.5px;line-height:1.65;color:var(--text-soft);}
+  .item ul{padding-left:20px;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:15.5px;line-height:1.6;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .tag{display:inline-block;background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;border-radius:14px;margin-bottom:6px;}
+  code{font-family:'SF Mono',monospace;background:var(--surface-2);padding:1px 6px;border-radius:4px;font-size:14px;color:var(--text);}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;padding:16px 40px;border-top:1px solid var(--border);text-align:center;}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 07</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Bite</span></div>
+  <div class="header-eyebrow">SESSION 07 · BITE · INTER-VDOM LINKS</div>
+  <h1>Bridges Between <em>Worlds</em></h1>
+</header>
+<main>
+
+  <div class="item">
+    <span class="tag">The Problem</span>
+    <h2>No Cable Needed</h2>
+    <p>Two VDOMs on the <strong>same</strong> physical FortiGate never need a physical cable between them. Use an <strong>inter-VDOM link</strong> — a paired virtual interface — instead of burning two physical ports.</p>
+  </div>
+
+  <div class="item">
+    <span class="tag">Building It</span>
+    <h2>One Object, Two Auto-Named Interfaces</h2>
+    <p>Built <strong>once</strong> from Global VDOM &gt; Network &gt; Interfaces &gt; Create New &gt; VDOM Link — both VDOM sides chosen in that same step. Base name <code>X</code> becomes <code>X0</code> and <code>X1</code>.</p>
+    <div class="callout callout-amber"><strong>Gotcha:</strong> which side is 0 vs 1 isn't a fixed rule — verify each interface's actual VDOM assignment, don't assume.</div>
+  </div>
+
+  <div class="item">
+    <span class="tag">Three Requirements</span>
+    <h2>Link + Route + Policy — All Three, Both Sides</h2>
+    <ul>
+      <li><strong>Route</strong> in each VDOM's own routing table, pointing at its half of the link.</li>
+      <li><strong>Policy</strong> in each VDOM's own policy table (srcintf/dstintf) — no policy spans two VDOMs.</li>
+      <li>Routing decides the egress interface <strong>first</strong>; policy lookup happens <strong>after</strong>, using that dstintf.</li>
+    </ul>
+  </div>
+
+  <div class="item">
+    <span class="tag">The Core Model</span>
+    <h2>Isolation by Default, Connection by Exception</h2>
+    <p>VDOMs default to <strong>"physically nonexistent to each other"</strong> — not "connected unless blocked." No link = no interface = no route possible = no path. Stronger than a deny rule, because there's nothing to evaluate a policy against.</p>
+    <div class="callout"><strong>Trading VDOM stays safe</strong> because nobody ever built a bridge there — not because of a rule that could be loosened.</div>
+  </div>
+
+  <div class="item">
+    <span class="tag">Watch For</span>
+    <h2>Internal vs. External Isolation</h2>
+    <p>VDOM isolation (internal, routing-table level) is a <strong>different</strong> boundary from physical/L2 cabling isolation (external, outside the FortiGate entirely). Don't conflate the two on the exam.</p>
+  </div>
+
+</main>
+<footer>LoFinance · Session 07 Bite</footer>
+</body>
+</html>

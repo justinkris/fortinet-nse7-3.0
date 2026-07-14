@@ -1,0 +1,210 @@
+SESSION 14 SUMMARY — "Routes That Teach Themselves"
+(OSPF overview — link-state routing, areas, ABR/ASBR/backbone roles |
+Study guide 05 Dynamic Routing Protocols, pp. 125–128)
+Written for Claude. Read before Session 15.
+
+STORY EVENTS
+------------
+Monday, 8:52 AM. The OSPF whiteboard from Friday is still up, untouched — Señor's rule
+is whiteboards get wiped when the topic is finished, and this one hasn't started. Junior
+has gone quiet for eleven minutes (a medical event, per Riley) staring at a printout of
+every static route across the LoFinance fleet: HQ, DR, Parramatta, and the newly arrived
+Chatswood FortiGate sitting on the staging bench, still in its box. Count: 47 static
+routes. Junior's complaint is about the typing burden of scaling to Brisbane/Melbourne
+next year. Señor redirects the framing immediately — the real problem isn't typing, it's
+that the student HIMSELF named the fix during the Parramatta outage three weeks ago
+("I wish routes could just appear and disappear correctly on their own"). Señor treats
+OSPF as the answer to a wish the student already made, not new external content — this
+framing, delivered as the S13 teaser, paid off well as an opening hook.
+Purely story-and-concept session — no CLI was taught or drilled (matches the master
+plan's S14 scope: OSPF overview only, config deferred to S15). Session closes with
+Chatswood confirmed as a planned Area 1, hub-spoke off HQ's Area 0, still unconfigured.
+Señor previews S15 will be dictation of real config with the student explaining WHY each
+line is shaped that way, not memory-recall of syntax (respecting the S13 standing
+instruction). Riley denies having promised Penny a live-by-month-end date; Señor disputes
+that she "implied" one. Running gag, unresolved, carries forward.
+
+BUSINESS PROBLEM
+-----------------
+Problem (framed, not yet solved): LoFinance is about to scale past four sites (Chatswood
+live, Brisbane/Melbourne planned for next year), and static routing requires touching
+every box on the fleet for every new site — an O(n²) maintenance and error-surface
+problem, not merely a typing inconvenience. Outcome this session: no configuration
+performed yet. The student built a correct, mostly self-derived conceptual foundation
+(link-state vs distance-vector, LSDB, areas, ABR, ASBR, backbone rule) that S15 will
+build real Chatswood config on top of. Chatswood remains unconfigured hardware on the
+staging bench — the literal cliffhanger for S15.
+
+TECHNICAL CONCEPTS COVERED
+---------------------------
+1. WHY STATIC ROUTES DON'T SCALE (built from the student's own Parramatta experience,
+   not taught cold): a static route only knows what a human typed — it has zero
+   awareness of the rest of the network's shape, and doesn't ask "is there a better path
+   now?" The Parramatta outage demonstrated this isn't just "typos happen" — even a
+   PERFECTLY configured static route set still made a dangerous decision (unencrypted
+   fallback to default route) because nothing on the box knew an alternative existed.
+2. DISTANCE-VECTOR VS LINK-STATE (student coined "routing by rumour" for distance-
+   vector, unprompted — strong, reusable analogy): distance-vector routers trust
+   secondhand summaries from neighbors (Chinese-whispers risk — stale/wrong info
+   propagates undetectably). Link-state protocols like OSPF reject this: EVERY router
+   builds its own complete, independent copy of the network topology and calculates
+   routes from raw data, never from a neighbor's opinion.
+3. LSDB (Link-State Database): the identical topology database every router within an
+   area maintains. Since every router runs Dijkstra's algorithm on an IDENTICAL LSDB,
+   answers are always internally consistent — never contradictory, even though each
+   router's shortest-path TREE is rooted at itself (student briefly conflated "different
+   tree root" with "disagreement," self-corrected with one Socratic nudge distinguishing
+   "same map, different starting point" from "different maps").
+4. OSPF QUIETNESS: periodic full refresh every 30 minutes; otherwise silent except for
+   triggered updates on actual topology changes — student's Q4 exam answer captured the
+   concept correctly ("don't broadcast when unnecessary, only on demand") but used
+   imprecise terminology; exact term is "triggered/incremental LSA flood," worth one
+   terminology-only rep next session (continuing the S13 naming-recall watch item).
+5. SCALING PROBLEM WITH ONE FLAT LSDB: student independently derived BOTH costs when
+   asked — (a) database size growing unbounded with every new site, and (b) blast
+   radius: a single link flap ANYWHERE forces a full SPF recalculation EVERYWHERE,
+   recreating the fragility static routing was meant to fix, just automated.
+6. AREAS as the fix: carving the network into zones so a topology change stays inside
+   its area. The ABR's job, described almost completely correctly by the student before
+   being told: holds the FULL/detailed LSDB for each area it touches, but exports only a
+   SUMMARY (prefix + cost) across the boundary — "reach this, go through me." One
+   precision correction supplied: ABR maintains a SEPARATE full LSDB per connected area
+   (not a shared/tracked view) — student had said "keep track of," refined to "maintains
+   one full LSDB PER area."
+7. TYPE 3 SUMMARY LSA (named for the student after he described its function
+   unprompted): generated only by ABRs, carries a prefix+cost summary, deliberately
+   discards the area's internal topology detail — this detail-loss is BOTH the scaling
+   win (small, cheap to send) AND the reason for the backbone rule (see #8).
+8. BACKBONE AREA (0.0.0.0) MANDATORY HUB RULE: every non-backbone area MUST connect to
+   Area 0; areas may not exchange summaries directly with each other. Mechanism (student
+   reasoned to correctly after two nudges): once you're at a summary — prefix + cost,
+   detail already discarded — a router has NO WAY to independently verify a route it's
+   about to re-advertise isn't the same one it just received from another direction.
+   Without full topology detail, loop DETECTION is impossible; OSPF's actual solution is
+   structural loop PREVENTION — forbid the topology shape (direct inter-area shortcuts)
+   that could produce an undetectable loop in the first place, rather than trying to
+   detect it after the fact. Student's own words: "they threw away visibility into the
+   topology and would need a map to detect the loop" — this is the correct mental model,
+   arrived at through guided reasoning rather than being told directly.
+9. ROUTER ROLE TAXONOMY (all four correctly distinguished by session end):
+   - Internal router: all interfaces in one area, one LSDB.
+   - Backbone router: at least one interface in Area 0 (an ABR is automatically also a
+     backbone router, since it always touches Area 0 — this compound-role point was
+     tested directly in Q3 and initially MISSED — see below).
+   - ABR: interfaces in multiple (OSPF) areas, one full LSDB per connected area, always
+     touches the backbone.
+   - ASBR: imports non-OSPF routes (static, RIP, foreign AS) into OSPF via
+     redistribution. Student correctly and independently distinguished ASBR's job from
+     ABR's — "different from what an ABR does" — ABR connects two areas that are BOTH
+     already OSPF; ASBR is the doorway where something foreign enters.
+   A single physical router CAN hold multiple roles simultaneously (ABR + backbone
+   router + ASBR, if it touches Area 0, another area, AND redistributes statics) — this
+   compound-role concept was the one gap surfaced in the exam questions (Q3).
+
+EXAM QUESTIONS ASKED & RESULT
+-------------------------------
+Q1 (Area 1's sole ABR fails — impact on Area 2/3's reachability to Area 1):
+   Correct — identified loss of summary LSAs and the path to Area 1's ABR. Claude added
+   the explicit "single point of failure" framing and noted this is the real-world
+   justification for dual-ABR area design — student had implicitly discovered this
+   design rationale without being told the term.
+Q2 (True/false: internal router maintains multiple LSDBs):
+   Correct — False, one LSDB; ABRs carry more. Clean, well-justified.
+Q3 (Name every role for a router with interfaces in Area 0 + Area 2, also redistributing
+   statics): INCOMPLETE — named ASBR only (correct on that part), MISSED that the same
+   router is simultaneously an ABR (touches two areas) AND a backbone router (touches
+   Area 0). This is a genuinely new gap, not a repeat of a tracked pattern: treating
+   router roles as MUTUALLY EXCLUSIVE categories rather than compound/overlapping labels
+   that can all apply to one box at once. Flag for register as new watch item.
+Q4 (Why 30-min refresh instead of continuous, what happens on real change):
+   Correct concept, imprecise terminology — matches the ongoing "naming-recall vs
+   concept" pattern from S13 (three instances there: src-ip, DPD, PMTUD-ICMP). This is
+   now a FOURTH instance across two sessions — concept solid, exact term ("triggered/
+   incremental LSA flood") not supplied confidently.
+Q5 (Explain to Penny in plain terms why OSPF design scales better than statics):
+   Correct, well-pitched, appropriately non-technical language for the audience.
+
+MENTAL MODELS DEVELOPED
+-------------------------
+- "Routing by rumour" (student-coined, distance-vector) — strong, sticky, likely reusable
+  if BGP or any distance-vector-adjacent topic appears later in the course.
+- "Same map, different starting point" (why routers with identical LSDBs still have
+  individually-rooted SPF trees — this isn't disagreement, it's expected and correct) —
+  resolved a genuine but brief conflation the student had between "different result" and
+  "different root."
+- Detail-loss at area boundaries as BOTH the efficiency mechanism AND the reason for the
+  mandatory-backbone topology rule — one unified idea, not two separate facts to
+  memorize.
+
+IMPORTANT ANALOGIES
+---------------------
+- "Routing by rumour" / Chinese whispers (student-coined this session, distance-vector).
+- Reused from prior seasons: none directly reused this session (topic was genuinely new
+  territory) — but the STRUCTURE of teaching (one anchor fact, let him chain reasoning)
+  was deliberately applied per the S13 register recommendation, and worked well across
+  multiple threads (LSDB consistency, area scaling costs, ABR summary function).
+
+KEY CLI COMMANDS DISCUSSED
+-----------------------------
+None. Per master-plan S14 scope (concept-only, OSPF network types/redistribution/
+filtering/commands deferred to S15) AND per the S13 standing instruction (no cold CLI
+recall), this session was deliberately CLI-free. Real config begins S15.
+
+TROUBLESHOOTING APPROACH
+---------------------------
+Not applicable this session — no live incident, pure conceptual build. Diagnostic-style
+reasoning WAS exercised via Socratic questioning (e.g., "why would loop detection be
+impossible without full topology detail" mirrors real troubleshooting reasoning), but no
+formal troubleshooting workflow was invoked.
+
+CONFIGURATION DECISIONS
+--------------------------
+None made yet. Chatswood confirmed conceptually as a planned Area 1 connecting to HQ's
+Area 0 (hub-spoke). No area IDs, network types, interface configs, or redistribution
+settings decided — all deferred to S15 by design.
+
+TOPOLOGY CHANGES
+-------------------
+Chatswood FortiGate physically present (staging bench, unconfigured) — first mentioned
+this session as a concrete object, not just a business event. Planned as OSPF Area 1
+once configured in S15. No live topology change yet — whiteboard-only at this stage.
+
+EXAM-RELEVANT NOTES
+----------------------
+- A single router CAN simultaneously be an ABR, a backbone router, AND an ASBR — role
+  labels are compound, not mutually exclusive. This is a real exam distractor pattern
+  ("select ALL that apply" style questions) — student missed this in Q3, first clean
+  data point for this specific gap.
+- ABR maintains a SEPARATE, COMPLETE LSDB per connected area — not a shared or partial
+  view. Precision point, easy to blur into "tracks LSAs across areas" if not stated
+  exactly.
+- Type 3 (Summary) LSAs are generated ONLY by ABRs, carry prefix+cost only (no internal
+  topology detail) — this detail-loss is WHY the backbone-hub rule exists (loop
+  prevention by topology restriction, not by detection).
+- Every non-backbone area MUST connect to Area 0; direct inter-area summary exchange
+  bypassing the backbone is not permitted — structural rule, not just best practice.
+- OSPF full refresh interval: 30 minutes. Triggered/incremental LSA flooding on real
+  topology changes — the correct term for what the student described as "only on
+  demand."
+- Internal router = 1 LSDB. ABR = 1 LSDB per connected area. Backbone router = any
+  router with ≥1 interface in Area 0 (ABRs always qualify). ASBR = imports non-OSPF
+  routes via redistribution.
+
+JUNIOR'S MISTAKES & WHAT THEY TAUGHT
+---------------------------------------
+Junior didn't make a technical error this session (no CLI, no live incident) — his role
+was purely as story catalyst: his "47 static routes, all typed by hand" complaint and his
+narrow framing of the problem as "typing burden" gave Señor the opening to redirect
+toward the real underlying issue (topology blindness, not typing effort) — a useful
+contrast for the student, since HIS reasoning throughout the session correctly identified
+the deeper problem (blast radius, scaling cost) that Junior's framing missed.
+
+TEASER DELIVERED FOR SESSION 15 ("Speaking OSPF on FortiGate")
+-------------------------------------------------------------------
+Señor confirms S15 will be real FortiGate OSPF configuration — network types,
+redistribution, route filtering, actual commands — with the student expected to explain
+WHY each config line is shaped the way it is (not recall syntax from memory, per the S13
+standing instruction; Señor will dictate, student reasons about it). Chatswood's
+unconfigured FortiGate sits on the staging bench as the literal object S15 will bring
+online. Riley/Señor's unresolved "did you promise a date" exchange is a loose thread,
+likely comic relief rather than plot-critical.

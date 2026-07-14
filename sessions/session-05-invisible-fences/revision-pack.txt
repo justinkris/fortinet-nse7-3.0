@@ -1,0 +1,160 @@
+SESSION 05 — REVISION PACK
+"Invisible Fences" — Inter-VLAN routing edge cases; VLAN edge cases and verification
+Study Guide: 03 VLANs and VDOMs, pp. 62-67
+==========================================================================
+
+QUICK SUMMARY
+--------------------------------------------------------------------------
+Riley's ticket looked like one contradiction: floor-3 trading printers were
+unreachable from the rest of the network, yet printing fine for traders on the
+same floor. It was actually two unrelated bugs:
+
+1. Junior's firewall policy had dstintf set to the physical trunk ("internal1")
+   instead of the correct VLAN sub-interface ("VLAN20-Trading"). FortiGate
+   resolves its routing decision FIRST, then matches policies against the
+   resolved logical interface — never the physical wire. The policy never
+   fired; traffic fell to implicit deny.
+
+2. The three printers were bundled years ago into a FortiGate software switch
+   ("PrintGroup", ports 5-7, intra-switch-policy implicit). Traffic between
+   devices on that bundle never touches FortiGate at all — same logic as
+   same-VLAN traffic. This explained why local printing worked the whole time,
+   and it was never a bug.
+
+Fix applied: corrected dstintf to VLAN20-Trading. Software switch bundle left
+unchanged — it was working exactly as designed.
+
+--------------------------------------------------------------------------
+CHEAT SHEET
+--------------------------------------------------------------------------
+COMMANDS
+  diagnose sys session list         — no session at all = traffic never
+                                       reached FortiGate (Layer 2 problem).
+                                       Session with policy_id = check policy
+                                       logic (dstintf/srcintf resolution).
+  show system switch-interface      — confirm software switch config exists.
+  show system virtual-switch        — confirm hardware switch config exists.
+
+CLI CONSTRUCTS
+  config system virtual-switch      — hardware switch (ASIC-offloaded).
+  config system switch-interface    — software switch (CPU-processed).
+  set intra-switch-policy implicit  — same-bundle traffic skips the firewall.
+  set intra-switch-policy explicit  — same-bundle traffic forced through a
+                                       real firewall policy anyway.
+
+HARDWARE SWITCH vs SOFTWARE SWITCH
+  Feature              Hardware            Software
+  ------------------------------------------------------------
+  Processing            ASIC                CPU
+  STP support            Yes                 No
+  Wireless SSID members  No                  Yes
+  Supported models       Specific only       All
+  CLI                    virtual-switch      switch-interface
+
+KEY DESIGN RULES
+  - Policy dstintf/srcintf match the RESOLVED logical interface (post-routing),
+    never the physical trunk carrying it.
+  - VLAN sub-interfaces exist as separate objects specifically so policies can
+    have separate, independently controllable surfaces per VLAN on one trunk.
+  - Intra-switch traffic bypassing the firewall (implicit) is NORMAL, expected
+    behavior for devices sharing one broadcast domain — not automatically a
+    security gap unless explicit is actually required for that use case.
+  - A symptom that sounds contradictory is often two independent problems.
+    Split before diagnosing.
+
+--------------------------------------------------------------------------
+FLASHCARDS
+--------------------------------------------------------------------------
+Q: A firewall policy's dstintf is set to the physical trunk interface instead
+   of the VLAN sub-interface. Will traffic destined for that VLAN match it?
+A: No — FortiGate resolves the routing decision first, then matches the
+   resolved logical interface. The physical trunk and VLAN sub-interface are
+   separate objects to the policy engine.
+
+Q: Why must VLAN sub-interfaces exist as separate objects rather than just
+   letting policies reference the physical trunk directly?
+A: So policies can distinguish traffic to one VLAN from traffic to another on
+   the same physical wire — segmentation requires separate policy surfaces.
+
+Q: Which FortiGate switch construct is ASIC-offloaded and supports STP but not
+   wireless SSID members?
+A: Hardware switch (config system virtual-switch).
+
+Q: Which FortiGate switch construct is CPU-processed, supports SSID members,
+   but not STP, and works on all models?
+A: Software switch (config system switch-interface).
+
+Q: What does intra-switch-policy implicit do?
+A: Permits traffic between members of the same switch bundle automatically,
+   without ever routing it through the firewall policy engine.
+
+Q: What does intra-switch-policy explicit do, and does it require crossing a
+   Layer 3 boundary?
+A: Forces same-bundle traffic through an actual firewall policy. No — it
+   applies entirely within one broadcast domain, with no Layer 3 crossing
+   required at all.
+
+Q: If intra-switch-policy is set to explicit but no policy exists between the
+   members, what happens to traffic between them?
+A: It's dropped — falls to implicit deny, same as any other unmatched traffic.
+
+Q: diagnose sys session list shows nothing at all for a given traffic flow.
+   What does that tell you?
+A: The traffic never reached FortiGate — the problem is below the firewall,
+   at Layer 2 (VLAN tagging, trunk, ARP), not a policy misconfiguration.
+
+Q: A ticket describes a device as both unreachable and clearly functioning at
+   the same time. What's the first thing a senior engineer should check?
+A: Whether "unreachable" and "functioning" describe two different traffic
+   paths (e.g. local vs. remote) rather than assuming one bug explains both.
+
+--------------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path," Episode 5: "Invisible Fences"
+--------------------------------------------------------------------------
+Generate a ~10-12 minute narrated podcast episode for a show called "The
+Packet Path," a friendly, conversational two-host tech podcast about network
+engineering, in the same spirit as a well-produced explainer show — clear,
+warm, a little witty, never condescending.
+
+Episode context: At LoFinance, a quant trading firm, a ticket arrives claiming
+"the printers on the trading floor have become sentient" — nobody outside the
+floor can reach them, yet they keep printing fine for the traders sitting
+right next to them. A junior engineer treats this as one baffling mystery. A
+senior engineer, in one line, reframes it: "Sounds like two different
+questions wearing one ticket."
+
+Structure the episode to:
+1. Open with the ticket itself, read almost verbatim, letting the contradiction
+   land as genuinely funny and genuinely confusing before any explanation
+   begins.
+2. Walk through Path A first: why traffic between devices on the SAME software
+   switch bundle (three printers grouped years ago onto shared FortiGate
+   ports) never touches the firewall at all. Explain intra-switch-policy
+   implicit clearly, using an analogy — e.g., "it's like everyone at the same
+   dinner table can pass the salt without asking the house security guard,
+   because they never left the room."
+3. Walk through Path B next: the print server traffic, which DOES need to
+   cross FortiGate, but hits an invisible wall because the firewall policy was
+   pointed at the physical trunk cable instead of the actual VLAN interface
+   traffic gets routed onto. Explain clearly why FortiGate treats "the wire"
+   and "the VLAN riding on the wire" as two totally separate doors, and why a
+   policy watching the wrong door might as well not exist.
+4. Reinforce the mental model explicitly: a ticket that sounds like one
+   contradiction is very often two unrelated bugs, each explaining half of
+   what's reported. Teach listeners to split symptoms into separate traffic
+   paths before hunting for a single root cause.
+5. Include the junior engineer's mistake as a light, sympathetic moment —
+   not mockery, but a relatable "we've all done this" beat: assuming the
+   whole ticket must have one cause, and nearly spending a week staring at a
+   policy that was never going to be the problem.
+6. Close with a short, punchy teaser for Episode 6: a client wants their own
+   dedicated firewall for guest Wi-Fi, quoted at fifteen thousand dollars —
+   and someone on the team, without much explanation, asks why they'd buy a
+   whole new box when they already have ten firewalls hiding inside the one
+   they own. Don't explain what that means yet — just leave it hanging.
+
+Tone: warm, curious, occasionally funny, explains every acronym the first
+time it's used, treats the listener as smart but not yet expert. Avoid
+reading configuration syntax aloud in a robotic way — paraphrase CLI concepts
+in plain spoken language suitable for audio, describing what each command
+does rather than reciting it verbatim.

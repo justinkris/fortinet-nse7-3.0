@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 16 Bite — The Map Room</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:34px 46px;background:var(--ink-dark);}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.12em;margin-bottom:10px;}
+h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:#fbf7ec;}
+h1 em{font-style:italic;color:var(--ink-accent);font-weight:500;}
+main{max-width:820px;margin:0 auto;padding:32px 32px 64px;}
+h2{font-family:'Playfair Display',serif;font-size:22px;color:var(--blue-deep);margin:30px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+p,li{font-size:17.5px;line-height:1.65;}
+ul{margin:8px 0 8px 24px;}
+strong{color:var(--blue-deep);}
+code{font-family:Menlo,Consolas,monospace;font-size:.85em;background:var(--surface-2);padding:2px 6px;border-radius:5px;color:var(--blue-deep);}
+.mn{background:var(--blue-light);border-left:4px solid var(--blue);padding:12px 18px;margin:14px 0;border-radius:0 8px 8px 0;font-family:'Playfair Display',serif;font-style:italic;font-size:17.5px;}
+.trap{background:var(--amber-light);border:1px solid var(--amber-border);padding:12px 18px;margin:14px 0;border-radius:8px;font-size:16.5px;}
+.trap b{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px;}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:15.5px;background:var(--surface);}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.07em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:8px 12px;border:1px solid var(--border-dim);}
+td{padding:8px 12px;border:1px solid var(--border-dim);}
+footer{padding:22px;background:var(--ink-dark);color:rgba(251,247,236,.5);font-family:'Outfit',sans-serif;font-size:11px;text-align:center;letter-spacing:.06em;}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">SESSION 16 · STUDY BITE · ~5 MINUTES</div><h1>The <em>Map Room</em> — OSPF Internals I</h1></header>
+<main>
+
+<h2>The Pipeline (know the order cold)</h2>
+<p><strong>LSDB → Dijkstra → SPF tree → OSPF routes → routing table.</strong> The routing table is the last exhaust of the pipe. The map's payoff is <strong>independence</strong>: hear one fact, recompute everything locally. Distance-vector waits on daisy-chained rumour.</p>
+<div class="mn">"Rumour spreads answers. Link-state spreads facts."</div>
+
+<h2>LSAs & the LSDB</h2>
+<ul>
+<li>A router's only firsthand knowledge: <strong>its own connected networks + interface costs</strong>. That's what an LSA advertises — <strong>links (facts), never routes (answers)</strong>.</li>
+<li><strong>LSDB = all LSAs collected</strong> (own + received). LSAs are acknowledged.</li>
+<li><strong>Quietness:</strong> full re-advertisement every <strong>30 minutes</strong>; otherwise silence unless a topology change fires a <strong>triggered update</strong>.</li>
+</ul>
+<div class="trap"><b>Exam Trap</b>"Every 30 <strong>seconds</strong>" = RIP. OSPF = 30 <strong>minutes</strong> + triggered. Read the unit twice.</div>
+
+<h2>Cost</h2>
+<ul>
+<li><strong>16-bit, 1–65,535. Lowest total path cost wins.</strong></li>
+<li>Path cost = <strong>sum of EXIT interface costs</strong> along the way.</li>
+<li><strong>Cost is directional</strong> — each side pays its own exit price. Asymmetric costs on parallel paths → forward and return traffic take different paths → <strong>stateful firewalls drop the return</strong> (SYN one way, SYN-ACK the other, no session state). Every routing table "technically correct."</li>
+</ul>
+<div class="mn">"Cost is paid on exit. Symmetry is your job, not OSPF's."</div>
+
+<h2>Same Map, Different Trees</h2>
+<ul>
+<li><strong>Identical:</strong> the LSDB (per area). <strong>Different:</strong> each router's tree (rooted at itself).</li>
+<li>No contradictions because all trees derive from the same facts. <strong>Loops in link-state = unsynchronised LSDBs.</strong></li>
+<li><strong>Full</strong> = the two neighbours' LSDBs are identical & synchronised = routing through each other is now a safe bet.</li>
+</ul>
+
+<h2>Areas</h2>
+<ul>
+<li>Flat LSDB's two costs: <strong>unbounded size</strong> + <strong>blast radius</strong> (one flap anywhere = SPF everywhere).</li>
+<li>Area = 32-bit ID, decimal (<code>10</code>) ≡ dotted (<code>0.0.0.10</code>). <strong>Separate LSDB per area</strong>; multi-area router keeps one FULL LSDB per area — never merged.</li>
+<li>Benefits: smaller DBs, contained blast radius, summarisation at borders. Cost: design + troubleshooting complexity.</li>
+<li><strong>Backbone = Area 0.0.0.0, mandatory; all areas connect to it.</strong></li>
+</ul>
+
+<h2>Roles — run all four tests, every time</h2>
+<table>
+<tr><th>Role</th><th>Test</th></tr>
+<tr><td>Internal</td><td>ALL interfaces in one area?</td></tr>
+<tr><td>Backbone</td><td>≥1 interface in Area 0?</td></tr>
+<tr><td>ABR</td><td>Interfaces in multiple areas?</td></tr>
+<tr><td>ASBR</td><td>Redistributes non-OSPF routes?</td></tr>
+</table>
+
+<h2>Reading <code>database brief</code></h2>
+<ul>
+<li>Printed <strong>per area</strong> → number of Router Link States sections = number of LSDBs = ABR evidence.</li>
+<li><code>Age</code> healthy &lt; 1800s (30-min refresh). Higher <code>Seq#</code> = newer testimony wins.</li>
+<li><strong>AS External section:</strong> holding external LSAs ≠ being the ASBR — check <strong>ADV Router</strong>. Advertising them is what makes it you.</li>
+<li><code>database router lsa</code> unpacks one LSA into its full link/cost list.</li>
+</ul>
+
+</main>
+<footer>Session 16 Bite · Next: S17 COWBOY HAT — Two Firewalls, No Handshake</footer>
+</body>
+</html>

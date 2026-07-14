@@ -1,0 +1,178 @@
+===========================================================================
+LOFINANCE — SESSION 04 REVISION PACK: "THE FLOOR WARS"
+VLAN Design and Tagging on FortiGate | Segmenting the Enterprise
+===========================================================================
+
+---------------------------------------------------------------------------
+QUICK SUMMARY (one-page recap)
+---------------------------------------------------------------------------
+An exec-floor IP showed up inside a trading-floor packet capture: exec and
+trading were sharing one flat Layer 2 broadcast domain with no VLANs, no
+inspection point, no boundary of any kind. With the trading floor doubling
+to 400 desks, Cipher's one word — "Segment" — set the whole session's
+agenda.
+
+A VLAN (802.1Q tag, EtherType 0x8100, 4,094 possible IDs) partitions a
+shared physical medium into separate broadcast domains. FortiGate NEVER
+adds a tag on ingress — that's always the job of the preceding device (a
+switch access port). But FortiGate CAN and does change a tag when routing
+between VLANs: it strips the ingress tag, makes an L3 decision, and adds
+the destination VLAN's tag on egress. The tag is a property of the wire
+being crossed, not a permanent property of the packet.
+
+A VLAN interface object in FortiOS needs two things: a physical/aggregate
+interface (which wire) and a vlanid (which tag on that wire). VLANs aren't
+limited to physical ports — aggregate/LACP, FortiLink, hardware switch,
+software switch, and SSID interfaces can all carry them.
+
+Crucially: VLANs alone are NOT security. Real segmentation only exists once
+the VLAN's default gateway is hosted on FortiGate, forcing inter-VLAN
+traffic through an actual policy decision. Verify with
+`diagnose sys session list` — no session at all means the fault is at
+Layer 2 (tagging/trunk/ARP), not the policy; a session with a policy_id
+means you're now debugging policy logic (order, srcintf/dstintf).
+
+Design landed: VLAN 5 (exec) + VLAN 20 (trading, 400 desks) on a dot1q
+trunk via internal1, gateways on FortiGate, deny-by-default policy between
+them, full logging.
+
+---------------------------------------------------------------------------
+CHEAT SHEET
+---------------------------------------------------------------------------
+COMMANDS / CONFIG:
+  config system interface
+      edit "VLAN20-Trading"
+          set vdom "root"
+          set interface "internal1"
+          set vlanid 20
+          set ip 192.168.20.1 255.255.255.0
+          set allowaccess ping https
+      next
+  end
+
+  config firewall policy
+      edit 0
+          set name "Exec-to-Trading-Deny"
+          set srcintf "VLAN5-Exec"
+          set dstintf "VLAN20-Trading"
+          set srcaddr "all"
+          set dstaddr "all"
+          set action deny
+          set logtraffic all
+      next
+  end
+
+  diagnose sys session list        <- first verification command, always
+
+GUI PATHS:
+  Network > Interfaces > Create New > VLAN
+  Network > Interfaces > (add VLAN ID column to view all VLANs quickly)
+
+DEFAULTS / LIMITS:
+  802.1Q single tag: up to 4,094 VLANs (EtherType 0x8100)
+  802.1ad (QinQ) double tag: up to 16 million combinations
+    (EtherType 0x88A8 outer S-tag, 0x8100 inner C-tag)
+
+KEY DESIGN RULES:
+  - FortiGate never tags on ingress. Ever.
+  - FortiGate CAN change tags on egress as part of routing (switches cannot
+    alter a tag, only add/remove it unchanged).
+  - VLAN interface = physical/aggregate interface + vlanid. Both required.
+  - Segmentation is only real once the gateway sits on FortiGate.
+  - Troubleshooting order: session list first (Layer 2 vs. policy split),
+    then policy order/logic, never the reverse.
+
+---------------------------------------------------------------------------
+FLASHCARDS (Question -> Answer)
+---------------------------------------------------------------------------
+Q: What stops devices in a flat, VLAN-less broadcast domain from reaching
+   each other?
+A: Nothing — Layer 2 forwards by MAC address with no inspection check.
+
+Q: Who tags a frame on ingress into FortiGate?
+A: Never FortiGate — always the preceding device (e.g. a switch access
+   port).
+
+Q: What happens to a VLAN tag when FortiGate routes between two VLANs?
+A: Stripped on ingress, new tag added on egress matching the destination
+   VLAN interface. The tag belongs to the wire, not the packet.
+
+Q: Can a plain Layer 2 switch change a VLAN tag's value in transit?
+A: No — switches can only add or remove tags unchanged. Only Layer 3
+   devices (FortiGate) can change a tag as part of routing.
+
+Q: What two fields define a VLAN interface object in FortiOS?
+A: The parent interface (physical/aggregate) and the vlanid.
+
+Q: What link type carries multiple VLANs over one physical connection?
+A: A dot1q trunk.
+
+Q: Is a VLAN, by itself, a security boundary?
+A: No. It only becomes one once the gateway is hosted on FortiGate,
+   forcing traffic through a policy decision.
+
+Q: `diagnose sys session list` shows nothing for expected inter-VLAN
+   traffic. What do you check first?
+A: Layer 2 — VLAN tag assignment, trunk allowed-VLAN list, ARP — not the
+   firewall policy.
+
+Q: A deny policy exists but traffic still passes, and a session IS visible
+   with a policy_id. What's the likely cause?
+A: Policy order — a broader allow rule above it is matching first
+   (first-match-wins).
+
+Q: Name three non-physical interface types that can carry a VLAN in
+   FortiOS.
+A: Any three of: aggregate/LACP, FortiLink, hardware switch, software
+   switch, wireless SSID.
+
+---------------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path"
+---------------------------------------------------------------------------
+Generate a podcast episode for "The Packet Path" covering today's episode,
+"The Floor Wars." Structure:
+
+1. COLD OPEN: Tell the story — Riley's overnight packet capture, the
+   exec-floor IP sitting inside a trading-floor capture, Junior's "probably
+   fine, same switch stack" line, and Cipher's single word from across the
+   room: "Segment." Build a little tension around the Monday deadline and
+   the 400-desk floor expansion.
+
+2. THE CORE IDEA: Explain, in plain conversational language, why a flat
+   broadcast domain has no possible security boundary — Layer 2 just
+   delivers by MAC address, no questions asked. Use the "mailroom with no
+   locked slots" or similar everyday analogy to make the flooding/no-gate
+   problem vivid.
+
+3. THE MECHANISM: Walk through 802.1Q tagging conversationally — what the
+   tag is, why FortiGate never invents one on ingress, and the "it's a
+   property of the wire, not the packet" reframe as the single most
+   important idea of the episode. Use a physical metaphor (e.g., a coat
+   check ticket that only means something on the rack it was issued for)
+   to make tag-changes-on-routing intuitive.
+
+4. THE FIX: Describe the actual design — VLAN 5 (exec) and VLAN 20
+   (trading) on one trunk into FortiGate, gateways hosted on the firewall,
+   a deny-by-default policy between them. Emphasize why gateway placement
+   is the difference between "organized" and "secured" — callback to the
+   "filing cabinet with labelled but unlocked drawers" analogy from
+   earlier in the season.
+
+5. JUNIOR'S MISTAKE: Highlight Junior's "same switch stack, probably fine"
+   line as the seed of the whole lesson — explain what he got wrong and
+   why physical proximity means nothing at Layer 2.
+
+6. TROUBLESHOOTING TAKEAWAY: Explain the `diagnose sys session list`
+   split — no session means look at Layer 2, a session with a policy_id
+   means look at policy order — as the senior-engineer habit that saves
+   hours of wrong-turn debugging.
+
+7. TEASER: End on Monday's go-live, Cipher watching the dashboard in
+   silence, and Tuesday's ticket from Riley: "The printers on the new
+   VLAN have become sentient — nobody can reach them, yet they keep
+   printing." Tease that gateway placement, as it turns out, was
+   necessary but not sufficient.
+
+Tone: warm, curious, a little wry — like two engineers debriefing over
+coffee, not a lecture. Keep technical explanations exact but conversational.
+Target length: 8-12 minutes read aloud.

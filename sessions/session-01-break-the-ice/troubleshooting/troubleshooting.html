@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 01 Troubleshooting — Path, Policy, Feed</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#b91c1c;--red-light:#fee2e2;--red-border:#fca5a5;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:36px 48px 28px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;line-height:1.05;color:#fbf7ec;}
+  header h1 em{font-style:italic;font-weight:600;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+  main{max-width:980px;margin:0 auto;padding:32px 48px 56px;}
+  .section-block{margin-bottom:36px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  h2{font-family:'Playfair Display',serif;font-size:25px;font-weight:700;margin-bottom:12px;padding-left:14px;border-left:3px solid var(--blue);}
+  h2 em{font-style:italic;font-weight:600;color:var(--blue);}
+  p{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+  p strong{color:var(--text);font-weight:600;}
+  ul,ol{padding-left:22px;margin-bottom:12px;}
+  li{font-size:17px;line-height:1.65;color:var(--text-soft);margin-bottom:5px;}
+  li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 18px;margin:14px 0;font-size:16px;line-height:1.6;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:14px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:14px 0;}
+  .tree-node{font-family:'Outfit',sans-serif;font-size:14px;line-height:1.7;color:var(--text-soft);padding-left:0;}
+  .tree-node strong{color:var(--text);}
+  .tree-branch{padding-left:26px;border-left:2px solid var(--border-dim);margin-left:8px;margin-top:6px;margin-bottom:6px;}
+  .verdict{display:inline-block;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:2px 10px;border-radius:12px;text-transform:uppercase;}
+  .verdict-path{background:var(--red-light);color:var(--red);}
+  .verdict-policy{background:var(--amber-light);color:var(--amber);}
+  .verdict-feed{background:var(--green-light);color:var(--green);}
+  .data-table{width:100%;border-collapse:collapse;margin:14px 0;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+  .data-table td{font-size:15px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:18px 48px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:24px 20px 20px;}header h1{font-size:27px;}main{padding:24px 20px 40px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../../../sessions/index.html" style="color:#9bb8e6;text-decoration:none;">Sessions</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Session 01</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Troubleshooting</span></div>
+  <div class="header-eyebrow">SESSION 01 · TROUBLESHOOTING GUIDE</div>
+  <h1>Path → Policy → <em>Feed</em></h1>
+  <p>How a senior engineer investigates "the firewall didn't catch it" — before touching a single knob.</p>
+</header>
+<main>
+
+  <div class="section-block">
+    <div class="section-label">THE SCENARIO CLASS</div>
+    <h2>Symptom: <em>"Something bad happened and there are no logs"</em></h2>
+    <p>Riley's version: <em>"The traders got a virus and nobody warned us."</em> Junior's version: <em>"But the firewall is configured!"</em> Session 1 taught exactly one troubleshooting discipline, and it is the most valuable one in the entire course: <strong>most detection failures are not feature failures.</strong> They are failures of <em>path</em> (traffic never crossed an inspection point) or <em>feed</em> (the engine's intelligence is stale). Only the middle case is a configuration problem.</p>
+    <div class="callout"><strong>The senior habit:</strong> establish the packet's path before forming any other hypothesis. If you can't state, out loud, every device the traffic traversed, you are not troubleshooting yet — you are guessing.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">QUESTIONS TO ASK FIRST</div>
+    <h2>Interrogate the <em>Situation</em>, Not the Box</h2>
+    <ol>
+      <li><strong>What was the traffic path?</strong> Source, destination, and every hop between. Did it ever traverse a FortiGate? (Workstation → switch → server = the firewall was never in the conversation.)</li>
+      <li><strong>Was there an inspection point with a security profile applied</strong> on the specific policy that matched this traffic? A profile that exists but isn't applied to the matching policy protects nothing.</li>
+      <li><strong>Was the traffic encrypted, and was SSL inspection in play?</strong> Engines without decryption inspect a locked box.</li>
+      <li><strong>Is the intelligence current?</strong> Licence valid, FortiGuard reachable, packages updating?</li>
+      <li><strong>What does "nothing was caught" actually mean?</strong> No logs at all vs logged-and-allowed — these point to completely different layers.</li>
+    </ol>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">DECISION TREE</div>
+    <h2>The <em>Three-Verdict</em> Tree</h2>
+    <div class="tree">
+      <div class="tree-node"><strong>START:</strong> A threat got through / activity went undetected.</div>
+      <div class="tree-branch">
+        <div class="tree-node"><strong>Q1 — Did the traffic traverse a FortiGate at all?</strong></div>
+        <div class="tree-branch">
+          <div class="tree-node">NO → <span class="verdict verdict-path">PATH</span> Architectural gap. No feature can fix a missing inspection point. Fix: segmentation — put the gateway on the firewall so the flow is forced through inspection.</div>
+          <div class="tree-node">YES ↓</div>
+        </div>
+        <div class="tree-node"><strong>Q2 — Did the matching firewall policy have the relevant security profile applied?</strong></div>
+        <div class="tree-branch">
+          <div class="tree-node">NO → <span class="verdict verdict-policy">POLICY</span> Configuration gap. Apply the profile to the policy the traffic actually matched (not the policy you assumed it matched).</div>
+          <div class="tree-node">YES ↓</div>
+        </div>
+        <div class="tree-node"><strong>Q3 — Was the traffic encrypted without SSL inspection?</strong></div>
+        <div class="tree-branch">
+          <div class="tree-node">YES → <span class="verdict verdict-policy">POLICY</span> The engines saw a sealed envelope. Full inspection required for content verdicts.</div>
+          <div class="tree-node">NO ↓</div>
+        </div>
+        <div class="tree-node"><strong>Q4 — Are FortiGuard licences valid, servers reachable, packages current?</strong></div>
+        <div class="tree-branch">
+          <div class="tree-node">NO → <span class="verdict verdict-feed">FEED</span> Config ≠ protection. Restore the intelligence supply chain.</div>
+          <div class="tree-node">YES → Genuinely novel threat (zero-day) → this is what advanced threat protection / sandboxing exists for; escalate and capture evidence for TAC.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">VERIFICATION COMMANDS · FORTIOS 7.6</div>
+    <h2>Checking the <em>Feed</em> (previewed this session)</h2>
+    <div class="code-block">
+      <div class="code-label"># 1 — HOW IS THE BOX TALKING TO FORTIGUARD?</div>
+      <pre><code>FGT-EDGE # get system fortiguard
+protocol            : https
+port                : 443
+update-server-location : automatic
+antispam-force-off  : disable
+webfilter-force-off : disable
+...</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label"># 2 — PACKAGE VERSIONS &amp; LAST UPDATE TIMES</div>
+      <pre><code>FGT-EDGE # diagnose autoupdate versions
+AV Engine
+---------
+Version: 7.00034
+Contract Expiry Date: Wed Mar 17 2027
+Last Updated using manual update on Tue Jul  7 03:12:44 2026
+Last Update Attempt: Fri Jul 10 02:58:11 2026
+Result: Updates Installed
+
+IPS Attack Engine
+-----------------
+Version: 7.00541
+...</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label"># 3 — WEB-FILTER RATING SERVER REACHABILITY</div>
+      <pre><code>FGT-EDGE # diagnose debug rating
+Locale       : english
+License      : Contract
+Expiration   : Wed Mar 17 2027
+
+-=- Server List (Fri Jul 10 09:14:02 2026) -=-
+IP              Weight  RTT   Flags  TZ  FortiGuard-requests  Curr Lost  Total Lost
+173.243.140.16  10      37    DI     -8  1642                 0          0
+...</code></pre>
+    </div>
+    <p><strong>What to look for:</strong> a valid contract date in the future, a recent "Last Updated" timestamp, and rating servers with low RTT and zero "Curr Lost." Expired contract or "Result: Failed" on updates = your engines are frozen at yesterday's knowledge.</p>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">COMMON DEAD ENDS</div>
+    <h2>Where Junior <em>Wastes the Afternoon</em></h2>
+    <table class="data-table">
+      <tr><th>Dead end</th><th>Why it's wrong</th><th>What to do instead</th></tr>
+      <tr><td>Tuning IPS signatures for traffic that never crossed the firewall</td><td>No inspection point in path — no feature helps</td><td>Verify the path first; fix architecture</td></tr>
+      <tr><td>Blaming flow vs proxy inspection mode</td><td>Mode changes HOW inspection happens, not WHETHER traffic reaches the inspector</td><td>Classic exam distractor — rule out path/policy first</td></tr>
+      <tr><td>Assuming "profile exists" = "profile applied"</td><td>Profiles protect nothing until attached to the matching policy</td><td>Trace which policy the session actually hit</td></tr>
+      <tr><td>Trusting engines against encrypted traffic without SSL inspection</td><td>Sealed envelopes — content verdicts impossible</td><td>Confirm inspection depth on the policy</td></tr>
+      <tr><td>Never checking the licence</td><td>Expired FortiGuard = engines frozen in time, silently</td><td>diagnose autoupdate versions, read the dates</td></tr>
+    </table>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">LIKELY ROOT CAUSES &amp; EXAM TRAPS</div>
+    <h2>Pattern-Match Like a <em>Senior</em></h2>
+    <ul>
+      <li><strong>No logs at all</strong> → traffic never reached the firewall. Almost always a path/architecture answer on the exam (lateral movement scenarios, USB-borne malware).</li>
+      <li><strong>Logged and allowed</strong> → policy matched but no profile / wrong profile / no SSL inspection.</li>
+      <li><strong>Was caught last month, missed today</strong> → feed problem: expired contract, unreachable FortiGuard, failed updates.</li>
+      <li><strong>Exam trap wording:</strong> "signatures out of date" is only correct when the stem says detection <em>degraded</em> — never when the stem says the firewall <em>saw nothing</em>.</li>
+      <li><strong>Exam trap wording:</strong> any answer where an NGFW "replaces" traditional firewalling is wrong on sight.</li>
+    </ul>
+    <div class="callout callout-amber"><strong>Say it like Señor:</strong> "Before you ask what the firewall thought of the packet, prove the firewall ever met the packet."</div>
+  </div>
+
+</main>
+<footer>LOFINANCE · <span>SESSION 01 TROUBLESHOOTING</span> · PATH → POLICY → FEED</footer>
+</body>
+</html>

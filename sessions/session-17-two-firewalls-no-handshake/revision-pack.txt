@@ -1,0 +1,223 @@
+SESSION 17 REVISION PACK — "Two Firewalls, No Handshake"
+(Cowboy Hat Boss Battle: IPsec Phase 2 + OSPF area mismatch/backbone partition +
+administrative distance override)
+
+=========================================================================
+QUICK SUMMARY (one page)
+=========================================================================
+Señor pre-broke a new DR↔Parramatta backup tunnel at both ends, then forced a live
+failover drill. Three sequential faults, each hiding behind the last:
+
+1. IPSEC PHASE 2 NEVER ESTABLISHES — tunnel_list showed sa=0, rxp=txp=0,
+   proxyid_num=1/child_num=0 (Phase 1 healthy, Phase 2 never negotiated). Bilateral
+   IKE debug on both ends revealed NO_PROPOSAL_CHOSEN caused by a mismatched dhgrp
+   (PFS group) under phase2-interface — one end offered MODP2048 (group 14), the
+   other only accepted MODP1536 (group 5). Fix: raise the weak end to match the
+   strong one (no legacy-peer ceiling existed).
+
+2. OSPF AREA MISMATCH → SILENT DISCARD — interfaces up, POINTOPOINT, correct cost,
+   hellos flowing every 10s into a proven-working tunnel — yet neighbor table
+   completely empty on both ends. Cause: OSPF checks the header's area stamp before
+   ANY other processing; a mismatch means the hello is silently discarded at the
+   door, never even producing an Init entry. First instinct (put the backup link in
+   Area 1 to limit blast radius) was wrong: with the primary down and backup in
+   Area 1, Parramatta's Area-0 LAN becomes an isolated island — inter-area traffic
+   must transit the backbone, and a non-backbone area can't relay between two
+   Area-0 fragments. This is a BACKBONE PARTITION, one of OSPF's forbidden states.
+   Fix: keep the redundant link in Area 0.
+
+3. THE STATIC ROUTE THAT LIED — after the drill "succeeded" and the primary link
+   was restored, DR→Parramatta traffic silently died even though adjacency stayed
+   Full and the LSDB was confirmed correct on both ends. `routing-table ospf`
+   (protocol-filtered) showed nothing for the prefix; `routing-table all` revealed
+   a static route (AD 10, planted by Señor) beating the OSPF route (AD 110) to the
+   identical prefix. Redistributing the static into OSPF would NOT have fixed this
+   — redistribution advertises, it never deletes the source route (S15 precedent,
+   correctly retrieved and applied to rule out the wrong fix). Fix: disable the
+   static directly.
+
+CORE LESSON: Full adjacency + correct LSDB does not guarantee the routing table
+reflects it. Every fault this session lived one layer below where the last check
+said "healthy." Always confirm what's actually WINNING, not just what a protocol
+calculated.
+
+=========================================================================
+CHEAT SHEET
+=========================================================================
+COMMANDS
+- diagnose vpn tunnel list name <X>          — SA state, packet counters, DPD
+- diagnose vpn ike log filter rem-addr4 <ip> — 7.4+ syntax (space, not hyphen)
+- diagnose debug application ike -1 / diagnose debug enable — bilateral IKE debug
+- get router info ospf neighbor              — adjacency state, role column
+- get router info ospf interface             — per-interface area/cost/type/state
+- show router ospf                           — CONFIG INTENT (not live state)
+- get router info ospf database brief        — per-area LSDB summary
+- get router info ospf database router <id>  — unpack one router's full LSA
+- get router info routing-table ospf         — PROTOCOL-FILTERED view
+- get router info routing-table all          — EVERY protocol, shows actual winner
+- show router static / show system interface — find planted/forgotten statics
+- config router static / edit <id> / set status disable — disable a static
+- config vpn ipsec phase2-interface / set dhgrp <N> — set PFS group
+- config router ospf / config network / edit <id> / set area <A> — set area
+
+DEFAULTS / KEY NUMBERS
+- Administrative distance: connected 0, static 10, OSPF 110 (external OSPF E2 varies)
+- OSPF network types: broadcast (DR/BDR election), point-to-point (default on
+  FortiGate tunnel interfaces, one neighbor), point-to-multipoint (dial-up hub,
+  no election, replicated unicast hellos)
+- Adjacency ladder: Init → 2-Way → ExStart → Exchange → Loading → Full
+- Backbone = Area 0.0.0.0, mandatory, all areas connect to it directly or via
+  virtual link
+
+DESIGN RULES
+- A redundant link connecting two Area-0 sites MUST be Area 0 — never a
+  non-backbone area, or you risk partitioning the backbone the moment the
+  primary path fails.
+- Backbone continuity > blast-radius minimization when a link is structurally
+  required for Area-0 connectivity.
+- Redistribution = advertisement only. It never removes the original route from
+  its source protocol's table.
+- Upgrade the weaker end of a crypto/parameter mismatch rather than downgrading
+  the stronger end, absent a compatibility constraint.
+
+BEHAVIOURS TO REMEMBER
+- Area-mismatch hello: discarded silently at the RECEIVER, before OSPF processing.
+- Broadcast-network-type-on-tunnel hello (S15 callback): dies at the SENDER
+  (no medium to deliver the multicast frame). SAME symptom (empty table),
+  DIFFERENT mechanism — "same fingerprint, different murderer."
+- A static route can silently outrank a perfectly healthy, Full-adjacency OSPF
+  domain with zero visible OSPF-side error — check `routing-table all`.
+
+=========================================================================
+FLASHCARDS
+=========================================================================
+Q: diagnose vpn tunnel list shows sa=0, proxyid_num=1, child_num=0. What does this mean?
+A: Phase 1 is healthy; Phase 2 (child SA) never established.
+
+Q: What IKE notify type indicates a Phase 2 proposal mismatch?
+A: NO_PROPOSAL_CHOSEN (also possible at Phase 1 — check which exchange it came from).
+
+Q: Where is the PFS/DH group set for Phase 2?
+A: Under config vpn ipsec phase2-interface, set dhgrp <N> — must match both ends.
+
+Q: Given a DH group mismatch with no legacy-peer constraint, which end should you change?
+A: Raise the weaker end to match the stronger one; don't downgrade the strong end.
+
+Q: Two OSPF interfaces are up, POINTOPOINT, matching cost, sending hellos — but the
+   neighbor table is completely empty on both ends. What's the likely cause?
+A: An area mismatch on the interface — the header's area stamp is checked before
+   any other OSPF processing, and a mismatch causes silent discard at the receiver.
+
+Q: How does area-mismatch hello-death differ from broadcast-network-type-on-tunnel
+   hello-death, given both produce an empty neighbor table?
+A: Area mismatch kills the hello at the RECEIVER (header check fails). Broadcast
+   type on a tunnel kills it at the SENDER (no medium to deliver a multicast frame).
+
+Q: A backup link connects two Area-0 sites. What area must it be in, and why?
+A: Area 0 (backbone) — inter-area traffic must transit the backbone; a
+   non-backbone area cannot relay between two disconnected Area-0 fragments.
+   Putting it elsewhere risks a backbone partition if the primary path fails.
+
+Q: What is a backbone partition?
+A: Area 0 split into two or more disconnected fragments — one of OSPF's forbidden
+   states, since all inter-area traffic depends on backbone continuity.
+
+Q: Adjacency is Full, LSDB is confirmed correct on both ends, but the expected
+   route is missing from `get router info routing-table ospf`. What's your next
+   command?
+A: get router info routing-table all — check whether a different, lower-AD
+   source is winning the same prefix.
+
+Q: Default administrative distances: connected, static, OSPF?
+A: Connected 0, static 10, OSPF 110.
+
+Q: Does redistributing a static route into OSPF remove the static route from the
+   originating router's own table?
+A: No. Redistribution only advertises the route to OSPF; the original static
+   route remains unchanged and still governs the local routing table.
+
+Q: If a forgotten static route (AD 10) is silently beating a valid OSPF route
+   (AD 110) to the same prefix, what's the correct fix?
+A: Disable or remove the static route directly — redistributing it into OSPF
+   would not remove its local precedence.
+
+Q: In the 7.4+ FortiOS CLI, what is the corrected syntax for filtering IKE debug
+   logs by remote address (vs the older syntax)?
+A: diagnose vpn ike log filter rem-addr4 <ip>  (space, not hyphen — older syntax
+   was log-filter).
+
+Q: In a FortiManager IPsec template, which phase1/phase2/OSPF settings are
+   typically SHARED across site pairs, and which are per-site VARIABLES?
+A: Shared: proposal/DH group/PSK method/DPD (phase1); proposal/PFS group/
+   encapsulation (phase2); network-type/cost/timers (OSPF). Variable: peer IP,
+   tunnel name (phase1); selectors, tunnel-interface IPs (phase2); interface name,
+   area, network statement (OSPF).
+
+=========================================================================
+PODCAST PROMPT — "The Packet Path" — Episode: Two Firewalls, No Handshake
+=========================================================================
+Generate a ~12-15 minute narrated podcast episode for a show called "The Packet
+Path." Tone: warm, dry-witted, technically precise, aimed at a network/security
+engineer studying for the Fortinet NSE7 Enterprise Firewall exam. Use a single
+narrator voice with light dramatization (quoted dialogue for characters, but no
+need for multiple voice actors — describe tone shifts in the narration).
+
+STORY TO TELL:
+Open with the drill: 07:00 Monday, an office, a firewall engineer named Señor
+who has literally put on a cowboy hat — a running gag in this fictional company
+(LoFinance) meaning "boss battle troubleshooting mode, minimal hints." He shuts
+down the primary link between headquarters and a branch called Parramatta to
+force a failover drill onto a brand-new backup tunnel connecting Parramatta
+directly to a disaster-recovery site — a tunnel he has secretly sabotaged at
+both ends. A colleague, Riley, is fielding a rising tide of support tickets
+(mention the counter climbing past 60) while a trader named Marcus gets so
+frustrated he leaves his office and shows up in person by taxi.
+
+Walk through the three faults IN ORDER, explaining each one the way a patient
+senior engineer would explain it to a colleague — not a dry command listing,
+but the REASONING: what looked healthy, what didn't add up, and the "aha"
+moment:
+1. The tunnel showed "up" but nothing was flowing — explain the difference
+   between Phase 1 (the secure channel two firewalls set up to negotiate) and
+   Phase 2 (the actual data-carrying tunnel), and how a single mismatched
+   cryptographic setting (a Diffie-Hellman group — describe it simply as "how
+   hard the math problem is that keeps the encryption keys secret") on each
+   end silently killed the second phase. Use the analogy: two people agreeing
+   to speak in code, but one insists on an easy cipher and the other insists
+   on a much harder one — neither will budge, so no message ever gets sent.
+2. Once the tunnel finally worked, a routing protocol called OSPF still
+   refused to see the two ends as neighbors, even though everything looked
+   fine on the surface. Reveal the cause: a mismatched "area" label — explain
+   OSPF areas simply as filing an office memo under the wrong department
+   stamp: if the department stamp doesn't match, the memo gets silently
+   binned at the front desk, never even logged as received. Explain why this
+   ALMOST caused a much bigger problem — a "partitioned backbone" — using the
+   analogy of one company accidentally splitting into two islands with no
+   bridge between them, because someone tried to save money on a smaller
+   bridge instead of using the one that actually connects both mainlands.
+3. Everything is finally fixed and the drill succeeds — and then, when the
+   original path comes back online, traffic between two sites just silently
+   stops, even though every dashboard shows green. Reveal the twist: a
+   forgotten, deliberately "temporary" backup route someone left behind
+   months ago was silently and quietly outranking the perfectly healthy new
+   route the whole time, the instant it got the chance — because in routing,
+   some sources are trusted more than others by default, regardless of which
+   path is actually better. Use the analogy of an old standing order at a
+   restaurant that nobody cancelled, quietly overriding a customer's new,
+   better order every time, because "the standing order always wins unless
+   someone actually cancels it."
+
+INCLUDE JUNIOR'S MOMENT: a junior colleague named Junior, usually the
+one who makes mistakes, this time quietly helps by pointing out that a
+diagnostic command's syntax had changed in a recent software version — a
+small, humble, correct contribution, worth one warm beat in the narration.
+
+END WITH: the drill succeeding late, past its deadline, and Señor's dry
+verdict that being right eventually, without being told the answer, is what
+matters. Then tease next episode: "Neighbors and Strangers" — going deep on
+how routers on a network decide who's really a neighbor, who gets elected to
+run the show on a shared network segment, and why.
+
+Keep technical accuracy high throughout — do not oversimplify to the point of
+being wrong, and do not use exact quoted dialogue longer than a short phrase.
+End the script ready to paste directly into an AI audio generator.

@@ -1,0 +1,192 @@
+LOFINANCE — SESSION 06 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "One Box, Many Firewalls"
+Study guide coverage: 03 VLANs and VDOMs, pp. 68-74 (VDOM overview and enable/licensing;
+Global VDOM scope and excluded modules — Policy & Objects, VPN, User & Authentication;
+Global Resources vs per-VDOM resources and Override Maximum; VDOM types — Admin, Traffic
+NAT mode, Traffic transparent mode, LAN Extension; management VDOM concept; transparent
+VDOM manageip requirement; default 10-VDOM limit and licensing to extend it).
+Status: COMPLETE. Student scored 2/3 on exam questions (missed the transparent-VDOM
+manageip true/false, corrected in-session).
+
+STORY EVENTS
+------------
+Tuesday, 2:14 PM. Direct continuation of the Session 5 teaser. Penny stands in the ops
+room doorway with a vendor quote: $15k for a dedicated guest-network firewall for a
+trading-floor client. She asks the student point-blank whether that's "real money" or
+being sold a solution to a problem LoFinance doesn't have. Junior immediately starts
+sketching a new-appliance rack diagram. Señor, without looking up from his coffee,
+drops the session's title line: "Why buy a box when we already own ten inside this
+one?" then goes quiet and lets the student work it out. No further on-screen appearance
+from Señor until the closing exam-adjacent beat. Cipher and Riley do not appear this
+session. Session ends with the student correctly recommending a NAT-mode traffic VDOM
+for the guest network and flagging the real caveat (10-VDOM default ceiling, shared
+resources) rather than overselling "free."
+
+CHARACTERS INVOLVED
+--------------------
+Student (protagonist, drove nearly the entire session via strong prior exposure to
+VDOMs from real-world SRX-to-FortiGate migration experience), Penny (business hook —
+"how much?"), Señor (single riddle line at the open, then silent), Junior (reflexive
+instinct to just buy new hardware, briefly on-screen, not corrected on-screen this
+session — left as implicit contrast to the student's answer).
+
+BUSINESS PROBLEM
+-----------------
+Client wants a dedicated, fully isolated guest-network firewall for the trading floor,
+quoted externally at $15k for a second physical appliance. Resolved: the existing
+FortiGate has full VDOM headroom (nowhere near the default 10-VDOM ceiling, no resource
+strain), so a new NAT-mode traffic VDOM can be carved out at effectively zero hardware
+cost — engineering time only. Student explicitly flagged the honest caveat rather than
+promising unlimited free capacity: the 10-VDOM default ceiling and shared CPU/memory/
+session-table resources across VDOMs, governable via Global Resources and per-VDOM
+Override Maximum settings.
+
+TECHNICAL CONCEPTS COVERED
+----------------------------
+1. Core VDOM model: one physical FortiGate can host multiple independent virtual
+   firewalls (VDOMs), each with its own isolated policy set, interfaces, and security
+   config, all sharing the same underlying hardware. Student self-generated this via
+   direct analogy to VRFs (router virtualization) before being taught — a strong,
+   accurate cross-domain transfer of "carve the control plane, share the physical
+   plane" from a prior networking concept.
+2. Global VDOM: NOT a traffic-passing firewall instance. A Super-Admin-only
+   administrative view for settings that affect the entire physical device (firmware,
+   interfaces, some logging, sandboxing). Explicitly excludes Policy & Objects, VPN,
+   and User & Authentication — student correctly reasoned these are excluded because
+   they are inherently per-VDOM concepts; "which VDOM's policy?" is meaningless at the
+   Global layer, directly paralleling "which VRF's routing table?" being meaningless
+   outside any VRF.
+3. Management VDOM concept: root VDOM becomes the management VDOM by default (can be
+   changed). Its role — FortiGuard updates, license validation, admin HTTPS/SSH access,
+   FortiManager control — is entirely distinct from passing user traffic. Student
+   correctly inferred, before being told, that a VDOM could exist doing ONLY this and
+   never touching customer traffic — this is the Admin VDOM type.
+4. VDOM Types (student built the full taxonomy Socratically):
+   - Admin VDOM: management/admin only, zero user traffic, missing Policy & Objects,
+     Security Profiles, VPN, User & Authentication, WiFi & Switch Controller. Limited
+     to ONE per FortiGate (unlike traffic/LAN-extension VDOMs, which allow up to 10).
+   - Traffic VDOM, NAT mode: full router/firewall behavior — what the student
+     correctly selected for the guest-network use case, based directly on prior SRX
+     migration experience (Corporate + Cloud VDOMs).
+   - Traffic VDOM, transparent mode: invisible Layer 2 inspection appliance, no
+     routing/NAT, network topology unchanged from the perspective of connected
+     devices. Trade-off student articulated well: gives up full Layer 3
+     capability (routing, NAT, PBR, WAN load-balancing) in exchange for
+     zero-topology-impact UTM inspection — used where a device/application is highly
+     sensitive to any path change but compliance still requires inspection.
+     GOTCHA (this is the one exam miss): transparent VDOMs still require ONE
+     management IP (manageip) for admin access, even though they pass no
+     routed/NAT'd traffic. Missing this produces a failed node-check error on
+     'manageip'. Student initially answered "no IP needed at all" — corrected
+     in-session, reasoning re-anchored on "no routing ≠ no IP at all."
+   - LAN Extension VDOM: tunnel-only, connects a remote connector (FortiGate or
+     FortiExtender) to a central FortiGate access controller via IPsec VPN + VXLAN
+     encapsulation. Student needed one hint to land on this (guessed "VPN and
+     Routing" first) — corrected to Network + VPN modules only, reasoning that
+     "routing decisions" ≠ "network module needed to build interfaces/tunnels at
+     all" in a VDOM with no local policy engine.
+5. Resource governance: Global Resources (whole-device limits) vs per-VDOM resources
+   (editable per VDOM via Override Maximum, which must stay ≥ current usage). Shared
+   hardware means shared limits unless explicitly governed — student raised this
+   unprompted as the honest caveat to the "free" VDOM pitch.
+6. Default VDOM ceiling: most FortiGate models cap at 10 VDOMs by default; extendable
+   via additional licensing (student correctly guessed this by instinct before being
+   confirmed) rather than requiring a second physical appliance as the only option to
+   scale past the default.
+
+MENTAL MODELS DEVELOPED
+------------------------
+- "Carve the control plane, share the physical plane" — VRF-to-VDOM cross-domain
+  transfer, explicitly named this session; likely to be a durable analogy for the
+  student going forward given how quickly and accurately he generated it unprompted.
+- "Global settings are things that are physically shared no matter how you slice the
+  box" — student's own phrasing, used to explain why Policy/VPN/User&Auth can't exist
+  at the Global layer.
+- "No routing ≠ no IP at all" — corrective mental model from the Q2 exam miss;
+  transparent mode gives up Layer 3 traffic handling, not admin reachability.
+
+KEY CLI COMMANDS / CONFIG REFERENCED (conceptual this session, not hands-on typed)
+----------------------------------------------------------------
+config system global / set vdom-mode multi-vdom — enabling multi-VDOM (referenced,
+not re-taught in depth this session; assumed known from Session prior exposure).
+config vdom / edit "name" / config system settings / set vdom-type {admin|traffic|
+lan-extension} / set opmode {nat|transparent} / set manageip — full VDOM-type
+creation syntax discussed at the concept level per the study guide, not yet
+hands-on typed by the student this session (deferred to a lab-style session).
+get system status | grep "Max number of virtual domains" — referenced as the way to
+confirm a given FortiGate's VDOM ceiling.
+
+TROUBLESHOOTING APPROACH TAUGHT
+----------------------------------
+Not a troubleshooting session in the Session 4/5 diagnostic sense — this was a design/
+capacity-planning session. The senior-engineer habit taught: when recommending
+"existing infrastructure" over a purchase, always surface the real constraint
+underneath the free option (VDOM count ceiling, shared resource limits) rather than
+just declaring it free. Student applied this unprompted at the close.
+
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+---------------------------------------------
+DECIDED (not yet implemented on-screen): new NAT-mode traffic VDOM to be carved out
+on the trading-floor FortiGate for the client's guest network, isolated from existing
+Corporate/Cloud-style VDOMs, within current VDOM and resource headroom.
+TOPOLOGY UPDATE: FortiGate now documented as hosting (or about to host) multiple
+VDOMs: root (management VDOM), plus existing traffic VDOMs, plus the new planned
+Guest-WiFi VDOM. No VDOM links or inter-VDOM routing configured yet — that isolation
+gap is the deliberate hook for Session 7.
+
+EXAM-RELEVANT NOTES
+----------------------
+Q1 (which VDOM type lacks Policy & Objects, Security Profiles, User & Authentication,
+and why): correct — Global VDOM, reasoned via "device-wide settings only, no user
+traffic, so per-VDOM constructs are meaningless there."
+Q2 (T/F — transparent VDOM needs no IP address at all since it's pure L2): answered
+True, actually False — corrected in-session; transparent VDOMs still require ONE
+manageip for admin access even though they don't route/NAT traffic.
+Q3 (options when a business needs an 11th VDOM past the default ceiling): correct —
+led with the accurate option (purchase additional VDOM licensing) via stated gut
+instinct, also correctly named "buy a second box" as the last-resort alternative.
+
+STUDENT LEARNING OBSERVATIONS (feed the knowledge register)
+----------------------------------------------------------------
+This was the strongest-prior-knowledge session so far — the student had genuine
+production experience migrating two Juniper SRX firewalls to VDOMs on a single
+FortiGate (Corporate + Cloud VDOMs), which meant most of the NAT-mode traffic VDOM
+concept and the VRF analogy arrived instantly and unprompted, well ahead of where
+guided discovery normally lands a student at this stage of the course. This required
+the pacing to shift live: less scaffolding, more direct synthesis questions, and one
+stretch question (LAN Extension module set) that intentionally sat past what real-
+world VDOM experience alone would cover, since NAT/transparent mode alone wasn't
+enough of a stretch given his background.
+Specific pattern worth tracking: the one genuine miss (transparent VDOM manageip
+requirement) was a "gotcha" detail rather than a conceptual gap — the sort of thing
+production experience doesn't necessarily surface (you set it once during initial
+config and never think about it again), while formal study-guide-level detail does.
+This suggests the student's growth edge going forward is less "understanding VDOM
+concepts" (strong, arguably ahead of course pace) and more "the specific configuration
+details and edge-case requirements that don't come up naturally in typical field
+deployments" — worth deliberately hunting for these gotchas in future sessions rather
+than assuming production experience covers everything.
+The LAN Extension VDOM module-set question needed one hint (initial guess "VPN and
+Routing," corrected to "Network and VPN") — reasonable, since this is a genuinely
+niche VDOM type (FortiExtender-specific) that real-world SRX/FortiGate generalist
+experience wouldn't naturally cover. Not a concerning gap.
+Recommend: Session 7 can move at a faster-than-default pace on inter-VDOM routing
+fundamentals given this student's demonstrated networking maturity (VRF fluency,
+accurate first-principles reasoning throughout), but should deliberately probe for
+"gotcha" configuration details (manageip-style edge cases) rather than assuming
+conceptual strength implies full config-detail coverage. Consider a light retrieval
+check on Session 4/5 material (VLAN sub-interface objects, dstintf-after-routing) to
+keep that thread fresh before it goes stale, since Session 6 didn't touch it.
+
+TEASER DELIVERED FOR SESSION 7 ("Bridges Between Worlds")
+--------------------------------------------------------------
+Delivered in-story as the closing scene: Penny is satisfied with the guest-VDOM plan,
+but when Junior actually attempts to build the new Guest-WiFi VDOM, it has no internet
+access at all — correctly isolated from Corporate/Cloud VDOMs, but also isolated from
+the internet-facing root VDOM entirely. Señor's closing line: "You wanted separation.
+You didn't ask for exile." Natural opening move for Session 7: treat this literally as
+the cold open — the new VDOM's total isolation is the hook, and inter-VDOM links plus
+routing between VDOMs (and, time permitting, per-VDOM administration/resource limits
+in daily-use terms rather than just theory) should be discovered Socratically as the
+fix, directly building on this session's Global Resources / Override Maximum thread.
