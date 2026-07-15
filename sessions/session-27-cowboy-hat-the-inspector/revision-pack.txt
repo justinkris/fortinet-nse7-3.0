@@ -1,0 +1,184 @@
+========================================================================
+LOFINANCE — SESSION 27 REVISION PACK  ·  "Cowboy Hat: The Inspector"
+Boss Battle / Season 2 Finale  ·  Security Profiles (SSL / filter / IPS)
+========================================================================
+
+------------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------------
+Señor's cowboy hat = deliberate sabotage of three security profiles.
+The inspection chain was over-blocking corp AND under-protecting trading.
+
+THREE FAULTS, THREE ROOT CAUSES:
+1. Corp cert warnings — the outbound full-inspection profile re-signs with
+   CA "LoFinance_Deep_Inspect_CA", which is NOT in the client trust stores
+   (never distributed). Re-signing is correct; the missing distribution is
+   the fault. Fix: push the CA to all corporate devices.
+2. Trading uninspected + gambling site loads — Policy 7 (service ALL, no
+   UTM) sits ABOVE the gambling block (Policy 5). First-match-wins means
+   trading matches 7 and never reaches 5, AND Policy 7 inspects nothing.
+   Two faults on one policy. Fix: a scoped trading-egress policy carrying
+   the gambling web filter under CERTIFICATE-INSPECTION (no decryption, no
+   latency cost) — not full deep inspection.
+3. Trading-API attack executed, no IPS event — IPS rule 51398 explicitly
+   DISABLED in the sensor. Flow trace showed SSL deep inspection working
+   ("state=works, matched") and "no signature match" — so the fault is
+   inside the sensor, not the SSL layer. Entry 1 also on Monitor (the
+   fault behind the fault). Fix: enable 51398 AND flip Entry 1 to Block.
+
+METHOD LESSON: follow the packet, not the dashboard. When faults stack,
+name the one that owns THIS packet from evidence, then the second-order one.
+REGISTER LESSON: to George, lead with the money, not the technical noun.
+
+------------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------------
+COMMANDS
+  diagnose sys session filter clear
+  diagnose sys session filter src <ip>
+  diagnose sys session list
+      -> av_idx=0  => NO UTM bound to the flow
+      -> "state=log may_dirty" with no UTM binding => just logged/forwarded
+  diagnose debug flow filter clear
+  diagnose debug flow filter saddr <src>
+  diagnose debug flow filter daddr <dst>
+  diagnose debug flow filter dport <port>
+  diagnose debug flow trace start <N>     <-- REQUIRED (student twice omitted)
+  diagnose debug enable
+      -> "Allowed by Policy-N"        = matched policy
+      -> "do_ssl ... state=works,matched" = SSL inspection ran
+      -> "ips_receive... no signature match" = IPS ran, matched nothing
+      -> absence of do_ssl / ips lines = traffic bypassed inspection
+  show firewall ssl-ssh-profile   (server-cert-mode re-sign; caname; cert vs deep)
+  show firewall policy            (config order = evaluation order, first-match-wins)
+  show ips sensor                 (Filter entry vs signature-override entry;
+                                   action monitor|block; set rule <id> status)
+
+FIX SNIPPETS
+  # re-enable the disabled signature
+  config ips sensor / edit "protect-trading-api" / config entries
+    edit 2 / set rule 51398 / set status enable / next
+    edit 1 / set action block / next          # flip Monitor -> Block
+  # scoped trading egress with category blocking, no latency
+  config firewall policy / edit <new>
+    set srcaddr "VLAN20_Trading" / set service <known-trading-web>
+    set utm-status enable
+    set ssl-ssh-profile "certificate-inspection"
+    set webfilter-profile "block-gambling"
+
+DEFAULTS / KEY BEHAVIOURS
+  - Certificate inspection categorises HTTPS via SNI (ClientHello) + cert
+    CN/SAN. No key, no decryption. Enough for web-filter category blocking.
+  - Full/deep inspection = MITM re-sign; needs the CA + private key; opens
+    the payload. Required for IPS/AV to see inside HTTPS. Costs latency.
+  - Monitor ALWAYS logs on a match (pass but log). No log => no match.
+  - Firewall policy: top-down, first match wins. A broad accept above a
+    specific block makes the block dead code.
+  - Re-sign warnings on ALL sites for SOME users = CA missing from those
+    users' trust stores (distribution), not an inspection bug.
+
+------------------------------------------------------------------------
+FLASHCARDS (Q -> A)
+------------------------------------------------------------------------
+Q: Cert warnings on most HTTPS sites for corp users only. First check?
+A: The certificate issuer in the browser, then whether that CA is in the
+   client's Trusted Root store.
+
+Q: You see "Issued by: LoFinance_Deep_Inspect_CA" and it's absent from the
+   trust store. Root cause?
+A: The re-sign CA was never distributed. Re-signing is correct behaviour;
+   the missing distribution is the fault. Fix = push the CA.
+
+Q: In a session list, what does av_idx=0 tell you?
+A: No UTM/security profile is bound to that session — nothing is scanning it.
+
+Q: A blocked gambling site loads for the trading VLAN. Two faults are
+   possible on the matching policy — name both.
+A: (1) It's ordered above the gambling block (first-match-wins), and
+   (2) it carries no UTM at all. Fixing order alone doesn't inspect it.
+
+Q: How do you block the gambling category for trading without adding
+   latency to trades?
+A: Scoped policy + web filter under certificate-inspection (reads SNI +
+   CN/SAN, no decryption). Not full deep inspection.
+
+Q: Flow trace: "do_ssl profile deep-inspect-trading, state=works, matched"
+   then "no signature match, action=pass". Is SSL inspection the problem?
+A: No. SSL deep inspection worked and handed decrypted payload to IPS. The
+   fault is inside the sensor (a disabled/mis-actioned signature).
+
+Q: An attack passes a sensor with NO IPS log at all. Can the cause be a
+   Monitor action?
+A: No. Monitor logs on match. No log => no match => a disabled/absent entry
+   is the cause.
+
+Q: You re-enable the disabled signature. Are you done?
+A: No. If the broad filter is still on Monitor, everything else it matches
+   is only logged, not blocked. Flip it to Block too.
+
+Q: True/False: certificate inspection can block a gambling site without
+   decrypting it.
+A: True — via SNI in the ClientHello and CN/SAN in the server certificate.
+
+Q: Who broke the config, and what's the tell?
+A: Señor. The cowboy hat is the Cowboy Hat convention's confession —
+   deliberate sabotage to force a review.
+
+------------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path" (paste into an AI audio generator)
+------------------------------------------------------------------------
+Produce a single ~9-minute episode of "The Packet Path", a warm, slightly
+noir technical-storytelling podcast about enterprise firewall engineering.
+Two hosts: a calm senior narrator and a curious co-host who asks the
+questions a smart learner would ask. Tone: cinematic but precise, dry
+humour, never dumbed-down.
+
+EPISODE: "The Inspector" — the Season 2 finale of the LoFinance saga.
+
+Tell it as a story:
+- Friday, 4:55 PM. The sombrero is on the hook; the cowboy hat is on
+  Señor's head — and everyone at LoFinance knows what that means: he broke
+  something on purpose. Meanwhile, behind the glass, Penny is signing the
+  Vaultline Financial acquisition. "Fix it and Season Two closes clean."
+- The split symptom: half the web broken (corporate users drowning in
+  certificate warnings) and half wide open (the trading floor browsing a
+  betting site that's supposed to be blocked). And worst of all, an
+  order-injection attack on the trading API executed with HTTP 200 and no
+  alarm — the exact attack the sensor caught last week.
+- Walk the three faults as a detective story, in order:
+  1) The re-sign gate: the firewall was stamping every site with its own
+     seal, but nobody had handed the corporate laptops the key to recognise
+     that seal. The fix isn't to stop stamping — it's to deliver the key.
+     Analogy: a bouncer using a wax seal no one at the door was told to trust.
+  2) The two-fault turnstile: a wide-open policy for the trading floor sat
+     above the gambling block, so trading traffic matched it first and
+     stopped — and that policy inspected nothing. Two faults wearing one
+     coat. And the fix respects physics: the trading floor is microseconds
+     from losing money, so you block the category with certificate
+     inspection — reading the envelope, not opening the letter — instead of
+     full decryption. Bring in George Kanellis, the trader who measures
+     everything in money-per-microsecond, and have security finally speak
+     his language.
+  3) The silenced detector: the IPS scanner was on, SSL was decrypting, and
+     the attack STILL walked through — because one specific signature had
+     been switched off by ID. The clue was "no signature match": the
+     scanner looked and found nothing, which meant the thing that catches
+     this attack wasn't looking. And the loud Monitor setting? A red
+     herring — it never fired, because it never matched.
+- The engineering lesson, said plainly: when every health check is green
+  but the behaviour is wrong, the fault is inside the logic, not on the
+  path. Follow the packet, not the dashboard. When faults stack, find the
+  one that owns THIS packet from the evidence — don't blame the loudest one.
+- JUNIOR'S MISTAKE: Junior went pale at the cowboy hat and would have
+  configured all seven of Vaultline's incoming firewalls one at a time, by
+  hand — the seed of next season's problem. Use him as the comic relief who
+  learns the lesson late.
+- END on the teaser: the Vaultline acquisition is signed. Seven strangers'
+  firewalls are being loaded onto a truck. Next season, doing it by hand
+  stops being funny. Final line, in Señor's voice: "Two seasons ago you
+  looked for the firewall. Now you look for the packet that lied. Next
+  season — you'll manage seven of them at once. Better learn to point."
+
+========================================================================
+Date/time completed: Friday (in-story) / real session Wed 15 July 2026.
+========================================================================

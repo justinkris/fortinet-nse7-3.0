@@ -1,0 +1,200 @@
+LOFINANCE — SESSION 27 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "Cowboy Hat: The Inspector"
+Format: BOSS BATTLE — student-driven troubleshooting, minimal hints, layered/masking
+faults. SEASON 2 FINALE.
+Study guide coverage (review): 06 Security Profiles, pp. 159–191 — SSL/SSH inspection
+(cert vs deep, re-sign, CA distribution), web filter + application control + ISDB,
+IPS sensors (filters vs signature overrides, action monitor vs block), UTM placement.
+Status: COMPLETE. All three root causes found and correctly signed. Debrief exam 4/4
+(Q3 self-corrected in one nudge). Method: strong pass — the cleanest labelling
+discipline of the season.
+
+STORY EVENTS
+------------
+Friday 4:55 PM. The sombrero is on the hook; the COWBOY HAT is on Señor's head (the
+established boss-battle sabotage signal — Señor secretly broke config the night before).
+Junior goes pale. Riley delivers the symptom: half the web is broken (Finance/Exec/
+Support flooded with "your connection is not private" cert warnings on most HTTPS sites),
+half is wide open (trading floor browsing normally, INCLUDING a categorically-blocked
+betting site that loaded clean). Cipher puts a printed log on the desk: an order-injection
+attempt against the trading API COMPLETED with HTTP 200 and NO IPS event — the exact
+signature that fired and blocked in S25 stayed silent. "Everything is green. Everything
+is wrong." Behind the glass, Penny is signing the VAULTLINE FINANCIAL ACQUISITION
+AGREEMENT; she mouths "fix it and Season Two closes clean." Señor slides over a folder
+(NGFW SSL profiles, IPS sensor, filtering policies, a packet capture), no summary, no
+hint: "One inspection chain. Several faults. Some hide behind the others. TAC is not
+coming — you are TAC now. Show me you can inspect the inspector." Session closes: all
+three faults resolved, Señor removes the cowboy hat and puts the sombrero back on,
+Penny files the signed Vaultline folder, and seven Vaultline firewalls are loaded onto
+a truck (S3 teaser). Señor: "Two seasons ago you looked for the firewall. Today you
+looked for the packet that lied, and you found who told it to."
+
+CHARACTERS INVOLVED
+-------------------
+Student (protagonist — drove the ENTIRE diagnosis: command selection, evidence ladder,
+verdicts, and business-aware fixes across all three symptoms). Señor (unseen saboteur
+per Cowboy Hat convention; wore the cowboy hat; delivered the folder and the closing
+lines; NOT in sombrero until the finale beat). Cipher (on-screen; delivered the attack
+log; "that's not a bug, that's a decision" — recognised the sabotage as deliberate;
+later proposed "deep inspect trading too, no blind spots" as the Q4 register bait).
+Penny (behind glass signing Vaultline; money-first framing; "fix it and Season Two
+closes clean"). Riley (relayed both floor symptoms at the cold open). George Kanellis
+(referenced as the stakeholder whose 11µs/money framing governs the trading-floor fix —
+not on-screen but load-bearing in the reasoning). Junior (comic pale-face reaction to
+the hat; otherwise off-screen).
+
+BUSINESS PROBLEM
+----------------
+LoFinance's inspection chain is simultaneously OVER-blocking (corp users can't reach
+HTTPS sites — cert warnings everywhere) and UNDER-protecting (trading floor uninspected,
+gambling block bypassed, and a real attack executed against the trading API). All of it
+must be fixed cleanly on the same afternoon Penny closes the Vaultline acquisition — the
+event that launches Season 3 (seven inherited firewalls, central management).
+
+THREE ROOT CAUSES (all found, all correctly signed by the student)
+------------------------------------------------------------------
+SYMPTOM 1 — Corp cert warnings.
+  Root cause: the NGFW outbound full-inspection profile `deep-custom-outbound` is
+  re-signing with CA `LoFinance_Deep_Inspect_CA`, which is ABSENT from the corporate
+  client trust stores (never distributed / rolled back). The re-signing is CORRECT
+  behaviour; the missing CA distribution is the fault.
+  Evidence: browser cert viewer showed issuer = LoFinance_Deep_Inspect_CA; the
+  workstation Trusted Root store did not contain it; `show firewall ssl-ssh-profile`
+  confirmed re-sign + caname.
+  Fix: distribute the CA to all corporate trust stores (GPO/MDM), or correct the
+  profile's caname to a CA already trusted.
+
+SYMPTOM 2 — Trading floor uninspected + gambling block bypassed. TWO STACKED FAULTS.
+  (a) Ordering: Policy 7 "Trading-Floor-Internet" sits ABOVE Policy 5
+      "Block-Gambling"; first-match-wins stops evaluation at 7, so the gambling web
+      filter never runs for VLAN20. Policy 5 is dead code for trading.
+  (b) No UTM: Policy 7 is `service ALL`, `utm-status` absent, zero profiles — a
+      wide-open accept. Even correct ordering wouldn't inspect it.
+  Evidence: `diagnose sys session list` (av_idx=0, no UTM binding, session just
+  logged/forwarded) → `diagnose debug flow` ("Allowed by Policy-7: SNAT", no
+  inspection stage) → `show firewall policy` (revealed the ordering + the bare Policy 7).
+  Fix (business-aware — the student reasoned this himself): a SCOPED trading-egress
+  policy carrying AT MINIMUM the gambling web filter under CERTIFICATE-INSPECTION
+  (reads SNI + cert CN/SAN to categorise, no decryption) — NOT full deep inspection,
+  because latency on the trading path costs money on every trade. "Know the traffic
+  first, then build." George-facing framing: "blocks the betting sites without adding
+  a microsecond to a trade."
+
+SYMPTOM 3 — Trading-API attack executed with no IPS event. TWO FAULTS, one owns the packet.
+  Root cause (owns THIS packet): IPS signature rule 51398 was explicitly DISABLED in
+  the sensor `protect-trading-api` (config entries / edit 2 / set rule 51398 /
+  set status disable). Flow trace read `no signature match` — proving deep SSL
+  inspection WAS working (do_ssl profile deep-inspect-trading, state=works, matched;
+  IPS receives session; sensor attached) and the failure was the disabled signature,
+  NOT the SSL layer and NOT the Monitor action.
+  Second-order fault: Entry 1 (broad filter, severity high/critical, server-side)
+  is on `action monitor` — so re-enabling 51398 fixes THIS attack, but the sensor
+  still only watches everything else until Entry 1 flips to Block. Two fixes required.
+  Evidence: correct box (DCFW) + correct direction (inbound) → `diagnose debug flow`
+  → `show ips sensor`.
+  Fix: `set status enable` on rule 51398; flip Entry 1 action monitor → block.
+
+THE ACTOR: Señor (Cowboy Hat convention). All three faults are deliberate sabotage —
+CA pulled from distribution, Policy 7 stripped to a bare accept, signature 51398
+switched off by ID. Student joked "Señor's wife, Señorita" — corrected: there is no
+Señorita; the hat is the confession; Señor built all three. Cipher's "that's not a
+bug, that's a decision" is the in-story tell.
+
+METHOD ASSESSMENT (for the retrospective + register)
+----------------------------------------------------
+STRONG: (1) Behaviour-before-config every time — symptom → evidence → verdict, never
+symptom → guess → change. (2) Senior-grade evidence ladders on all three (browser+store;
+session→flow→policy; box+direction→flow→sensor). (3) DISCRIMINATED stacked faults —
+on Symptom 3 correctly identified that `no signature match` meant disabled-51398 owned
+the packet, NOT the loud Monitor action. This is the Q8-from-S26 verdict-vs-reasoning
+weakness CLOSING under real pressure. (4) Held the business constraint in the Symptom-2
+fix (cert-inspection not deep, refused "same as Finance").
+NEEDED HELP: (1) Reading raw session/flow output cold — chose the right command
+(`diagnose sys session list`) but couldn't interpret the empty av_idx / missing UTM
+binding without a walkthrough. Season-long pattern: command SELECTION is senior, OUTPUT
+INTERPRETATION on unfamiliar raw dumps still needs reps. THE drill priority before the
+exam. (2) Flow-debug syntax completeness — twice omitted `diagnose debug flow trace
+start N`. Minor but exam-punishable.
+REGISTER (business translation — the last standing growth edge): fired but SECOND, not
+first. Q4 rejection of "deep inspect trading" led with "SSL inspection will cause
+latency… and latency will cost money" — money present but trailing the technical noun.
+Coached to lead with the consequence ("cost us money on every trade, for zero extra
+protection, because…"). This is now a FRAMING habit, not a knowledge gap. Carry into S3.
+
+KEY CLI / CONFIG DISCUSSED
+--------------------------
+show firewall ssl-ssh-profile            (re-sign / caname / cert vs deep-inspection)
+diagnose sys session filter clear / src <ip> ; diagnose sys session list
+  → read av_idx (0 = no UTM bound) and session flags (log/may_dirty = forwarded only)
+diagnose debug flow filter clear / saddr / daddr / dport <n>
+diagnose debug flow trace start <N>      (REQUIRED — student twice omitted this)
+diagnose debug enable
+  → "Allowed by Policy-N" gives the matched policy; presence/absence of do_ssl +
+    ips_receive lines shows whether inspection ran
+show firewall policy                     (order = evaluation order, first-match-wins)
+show ips sensor                          (filters vs signature-override entries;
+                                          action monitor vs block; set rule <id> status)
+Fix commands: distribute CA; scoped trading policy + webfilter under certificate-
+  inspection; set rule 51398 status enable; Entry-1 action monitor → block.
+
+MENTAL MODELS / ANALOGIES (KEEPERS)
+-----------------------------------
+- "Inspect the inspector." (Session thesis — the tools themselves were sabotaged.)
+- "Faults hide behind each other — find the one that owns THIS packet, don't blame
+  the loud one." (Symptom 3 discrimination: no-signature-match owns it, Monitor is
+  the fault-behind-the-fault.)
+- "The re-signing is correct; the missing distribution is the fault." (Symptom 1 —
+  don't blame the behaviour, blame the gap.)
+- "Ordering AND inspection are two independent faults on one policy." (Symptom 2.)
+- "Certificate inspection reads the envelope (SNI + cert CN/SAN) — enough to
+  categorise and block gambling without paying a microsecond." (Business-aware fix.)
+- "Lead with the money, the mechanism follows." (Q4 register coaching — the S3 habit.)
+- The cowboy hat is the confession. (Cowboy Hat convention.)
+
+CACTUS TALLY (carried): pre-finale 2 half-happy (S18/S19 OSPF skipped), 1 crying (FMG
+IPsec-templates hands-on undone), 4 happy. This session: HAPPY cactus — labelling
+weakness (verdict-vs-reasoning) demonstrably closing; all three verdicts correctly
+signed; Q3 self-corrected in one nudge. Updated: 2 half-happy, 1 crying, 5 happy.
+
+EXAM-RELEVANT NOTES
+-------------------
+- SSL deep inspection running + IPS attached + "no signature match" → the fault is
+  INSIDE the sensor (disabled/mis-actioned signature), NOT the SSL layer. Classic
+  "everything upstream looks healthy" NSE7 trap. Student nailed it (Q1).
+- Certificate inspection categorises HTTPS via SNI (ClientHello) + cert CN/SAN — no
+  decryption. Student nailed both fields (Q2).
+- Monitor ALWAYS logs on match → "no log at all" proves no match, so cause must be
+  elsewhere (disabled/absent entry). Student initially reached past this (offered "no
+  SSL inspection" as an alt cause — a true-but-not-graded statement, same shape as the
+  S26 Q8 slip) then self-corrected to TRUE in one nudge (Q3).
+- Business register (Q4): lead with money, not the technical noun. Still fires second
+  under exam pressure — the S3 priority.
+
+JUNIOR'S MISTAKES THIS SESSION
+------------------------------
+Junior's only real beat was going pale at the cowboy hat (comic). The student's own
+missteps were the teaching moments: (a) needed help reading the session dump; (b)
+omitted trace-start twice; (c) joked past the actor ("Señorita"); (d) Q3 first-pass
+reached for a true-but-off-target cause; (e) Q4 led with the technical noun. All minor,
+all consistent with the tracked patterns; (a) and (e) are the two to carry into S3.
+
+TEASER DELIVERED FOR SESSION 28 — "Seven Firewalls, One Junior" (SEASON 3 OPENER)
+--------------------------------------------------------------------------------
+Vaultline's firewalls arrive on a pallet. Junior starts configuring them one at a time,
+by hand, with a smile that won't last. Topic: FortiManager architecture; ADOMs; the
+global database (Study Guide 02 Central Management, pp. 24–28; Blueprint 2.1). The
+business driver: LoFinance has just swallowed Vaultline whole (HQ + 3 branches) and
+managing dozens of devices by hand stops being funny. Natural S28 opening: treat the
+pallet of unconfigured inherited firewalls as the cold open, and let FortiManager +
+ADOM segregation (LoFinance ADOM vs Vaultline ADOM) + the global object database be
+discovered Socratically as the answer to "how do you manage seven strangers' firewalls
+without touching each one seven times." This is also where the FMG IPsec-templates
+hands-on (the crying cactus, carried since Season 2) can finally be paid off.
+
+NOTE: end-of-season-2-review.html generated immediately after this session per the
+project's end-of-season instructions, using this summary + all S10–S26 summaries +
+knowledge registers as source.
+
+Date and Time completed: Friday (in-story) / real session concluded Wednesday,
+15 July 2026.
