@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 25 — How Flow-Based IPS Reads Sealed Envelopes</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --coral:#c2410c; --coral-light:#fdece2; --coral-border:#f4c3a3;
+    --seal:#b91c1c; --seal-light:#fde8e8;
+  }
+  html{scroll-behavior:smooth;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;text-transform:uppercase;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.02;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:10px;line-height:1.6;max-width:680px;}
+
+  .motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  .main-content{padding:44px 60px 60px;max-width:1000px;margin:0 auto;}
+  .section-block{margin-bottom:52px;}
+  .section-eyebrow{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:var(--blue);text-transform:uppercase;margin-bottom:10px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:18px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-coral{border-left-color:var(--coral-border);background:var(--coral-light);}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.7;color:#e8efff;white-space:pre;}
+  .code-block .cm{color:#7d93c4;}
+  .code-block .hl{color:#ffd479;}
+
+  /* ── SIGNATURE INTERACTIVE: THE ENVELOPE JOURNEY ── */
+  .stage-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 30px 30px;margin:20px 0;}
+  .stage-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
+  .mode-switch{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:24px;padding:4px;gap:2px;}
+  .mode-btn{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.02em;padding:8px 18px;border-radius:20px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;transition:all .18s;}
+  .mode-btn.active{background:var(--blue);color:#fffdf5;box-shadow:0 1px 4px rgba(30,64,175,0.3);}
+  .mode-hint{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--text-muted);}
+
+  .track{position:relative;height:280px;background:linear-gradient(180deg,#fbf8ee,#f5eed9);border:1px solid var(--border-dim);border-radius:12px;overflow:hidden;}
+  .fgt-zone{position:absolute;top:0;bottom:0;left:34%;width:32%;background:rgba(30,64,175,0.06);border-left:2px dashed var(--blue-dim);border-right:2px dashed var(--blue-dim);}
+  .zone-label{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);white-space:nowrap;}
+  .endpoint{position:absolute;top:50%;transform:translateY(-50%);text-align:center;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;color:var(--text-soft);width:90px;}
+  .endpoint.left{left:2%;}
+  .endpoint.right{right:2%;}
+  .endpoint .ep-icon{font-size:26px;display:block;margin-bottom:6px;}
+
+  /* the moving packet = envelope */
+  .envelope{position:absolute;top:50%;left:8%;width:58px;height:40px;transform:translateY(-50%);transition:left 1.1s cubic-bezier(.5,0,.5,1),background .4s,border-color .4s;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 2px 8px rgba(0,0,0,0.12);}
+  .envelope.sealed{background:var(--seal-light);border:2px solid var(--seal);}
+  .envelope.open{background:var(--green-light);border:2px solid var(--green);}
+  .env-flap{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;letter-spacing:0.04em;}
+  .envelope.sealed .env-flap{color:var(--seal);}
+  .envelope.open .env-flap{color:var(--green);}
+
+  /* the IPS scanner beam inside the zone */
+  .scanner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:120px;border:2px solid var(--coral);border-radius:8px;background:rgba(194,65,12,0.06);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0.35;transition:opacity .35s,box-shadow .35s;}
+  .scanner.active{opacity:1;box-shadow:0 0 0 4px rgba(194,65,12,0.12);}
+  .scanner-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--coral);text-transform:uppercase;text-align:center;line-height:1.3;}
+  .scanner-eye{font-size:20px;margin-bottom:4px;}
+
+  .verdict{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;padding:6px 16px;border-radius:20px;opacity:0;transition:opacity .4s;white-space:nowrap;}
+  .verdict.show{opacity:1;}
+  .verdict.caught{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .verdict.blind{background:var(--seal-light);color:var(--seal);border:1px solid #f0b5b5;}
+
+  .step-readout{margin-top:20px;background:var(--surface-2);border:1px solid var(--border-dim);border-radius:10px;padding:16px 20px;min-height:76px;}
+  .step-readout .sr-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+  .step-readout .sr-text{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);}
+  .step-readout .sr-text strong{color:var(--text);font-weight:600;}
+  .play-row{display:flex;gap:10px;margin-top:16px;align-items:center;}
+  .play-btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;padding:10px 22px;border-radius:24px;border:none;cursor:pointer;background:var(--blue);color:#fffdf5;transition:all .16s;}
+  .play-btn:hover{background:var(--blue-vivid);}
+  .play-btn.ghost{background:transparent;color:var(--blue);border:1px solid var(--blue-border);}
+  .play-btn.ghost:hover{background:var(--blue-light);}
+  .step-dots{display:flex;gap:7px;margin-left:auto;align-items:center;}
+  .step-dots .d{width:9px;height:9px;border-radius:50%;background:var(--border);transition:background .2s;}
+  .step-dots .d.on{background:var(--blue);}
+
+  /* ── COMPARE CARDS ── */
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0;}
+  .cmp-card{border-radius:14px;padding:22px 24px;border:1px solid;}
+  .cmp-card.flow{background:var(--blue-light);border-color:var(--blue-border);}
+  .cmp-card.proxy{background:var(--amber-light);border-color:var(--amber-border);}
+  .cmp-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;margin-bottom:4px;}
+  .cmp-card.flow .cmp-title{color:var(--blue);}
+  .cmp-card.proxy .cmp-title{color:var(--amber);}
+  .cmp-sub{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;}
+  .cmp-card ul{list-style:none;padding:0;}
+  .cmp-card li{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.55;color:var(--text-soft);padding-left:22px;position:relative;margin-bottom:10px;}
+  .cmp-card li::before{content:'';position:absolute;left:0;top:9px;width:8px;height:8px;border-radius:2px;}
+  .cmp-card.flow li::before{background:var(--blue);}
+  .cmp-card.proxy li::before{background:var(--amber);}
+  .cmp-card li strong{color:var(--text);font-weight:600;}
+
+  .keeper{background:var(--ink-dark);border-radius:14px;padding:26px 30px;margin:24px 0;}
+  .keeper-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-accent);margin-bottom:10px;}
+  .keeper-text{font-family:'Playfair Display',serif;font-size:22px;font-weight:600;line-height:1.35;color:#fbf7ec;}
+  .keeper-text em{font-style:italic;color:var(--ink-accent);font-weight:500;}
+
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+
+  @media(max-width:760px){
+    header{padding:28px 24px 24px;}header h1{font-size:32px;}
+    .motivation-banner{padding:16px 24px;}.main-content{padding:28px 24px 44px;}
+    .compare-grid{grid-template-columns:1fr;}
+    .track{height:240px;}.endpoint{width:70px;font-size:10px;}
+    footer{padding:16px 24px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="header-eyebrow"><span class="dot-live"></span>Session 25 · Crying Wolf · Visual</span>
+  <h1>Reading a <em>sealed envelope</em><br>without opening the whole letter</h1>
+  <p>Your question: if flow-based inspection just lets traffic stream through, how can the IPS see inside encrypted HTTPS — and wouldn't it need the full file buffered first? Press play and watch a single packet make the trip.</p>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">The IPS is a <em>pattern-matcher</em>, not a file-hasher.</div>
+  <div class="motivation-sub">That one fact is the whole answer. It changes what "seeing inside" actually requires.</div>
+</div>
+
+<div class="main-content">
+
+  <!-- SIGNATURE INTERACTIVE -->
+  <div class="section-block">
+    <div class="section-eyebrow">The envelope journey — interactive</div>
+    <h2>One packet, three inspection depths</h2>
+    <p>The market-data feed arrives over <strong>HTTPS</strong> — a sealed envelope. Choose an inspection depth, then step the packet through the FortiGate. Watch when the seal comes off, when the IPS scanner can actually read the letter, and what verdict comes out the other side.</p>
+
+    <div class="stage-panel">
+      <div class="stage-controls">
+        <div class="mode-switch" role="group" aria-label="Inspection depth">
+          <button class="mode-btn" data-mode="none">No SSL inspection</button>
+          <button class="mode-btn" data-mode="cert">Certificate inspection</button>
+          <button class="mode-btn active" data-mode="full">Full (deep) inspection</button>
+        </div>
+        <span class="mode-hint" id="modeHint">Full inspection: FortiGate holds the key, so the seal comes off in-stream.</span>
+      </div>
+
+      <div class="track" id="track">
+        <div class="endpoint left"><span class="ep-icon">💻</span>Client</div>
+        <div class="fgt-zone">
+          <span class="zone-label">FortiGate · flow mode</span>
+          <div class="scanner" id="scanner">
+            <span class="scanner-eye">👁</span>
+            <span class="scanner-label">IPS<br>engine</span>
+          </div>
+        </div>
+        <div class="endpoint right"><span class="ep-icon">🖥</span>Trading<br>server</div>
+        <div class="envelope sealed" id="envelope">✉<span class="env-flap" id="envFlap">encrypted</span></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+
+      <div class="step-readout">
+        <div class="sr-label" id="srLabel">Ready</div>
+        <div class="sr-text" id="srText">Full inspection selected. The packet is a sealed HTTPS envelope carrying a PHP-injection exploit. Press play to send it through.</div>
+      </div>
+
+      <div class="play-row">
+        <button class="play-btn" id="playBtn">▶ Send the packet</button>
+        <button class="play-btn ghost" id="resetBtn">↺ Reset</button>
+        <div class="step-dots" id="dots">
+          <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-coral">
+      <strong>The seam that matters:</strong> the exploit signature exists in the IPS database in <em>all three</em> modes. What changes between modes is whether the scanner has anything readable to match against. A signature can only fire on content the engine can actually see.
+    </div>
+  </div>
+
+  <!-- WHY NO FULL BUFFER -->
+  <div class="section-block">
+    <div class="section-eyebrow">The core of your question</div>
+    <h2>Why flow mode doesn't need the whole file</h2>
+    <p>You reasoned it yourself: <em>"IPS is just matching a signature and seeing behaviour — which doesn't require the whole file. AV would."</em> That's exactly right, and here's the mechanism underneath it.</p>
+    <p>A <strong>signature is a pattern</strong> — a string like <code>system('dir')</code>, a byte sequence, or a rate-based cadence. You can recognise a pattern the moment it streams past you. You don't need the end of the letter to spot a threatening phrase in the middle of it.</p>
+    <p>So flow-based inspection keeps only a small <strong>sliding buffer</strong> — just enough context to catch a signature that spans a few packets — matches as the bytes go by, and lets the traffic keep moving. The complete object is <em>never</em> assembled. That's why it's fast enough to sit in front of a market-data feed that cannot tolerate delay.</p>
+
+    <div class="compare-grid">
+      <div class="cmp-card flow">
+        <div class="cmp-title">Flow-based (IPS)</div>
+        <div class="cmp-sub">Match the stream</div>
+        <ul>
+          <li>Inspects packets <strong>as they stream</strong>, in real time</li>
+          <li>Small sliding buffer, not the full object</li>
+          <li>Signature = pattern → visible mid-stream</li>
+          <li>SSL: decrypts <strong>in-line</strong>, one connection</li>
+          <li>Low latency, low memory — feed-safe</li>
+        </ul>
+      </div>
+      <div class="cmp-card proxy">
+        <div class="cmp-title">Proxy-based (often AV)</div>
+        <div class="cmp-sub">Reassemble, then inspect</div>
+        <ul>
+          <li>Buffers the <strong>whole file</strong> first</li>
+          <li>Needed to hash or unpack an archive</li>
+          <li>Can't judge a file it hasn't fully seen</li>
+          <li>SSL: terminates <strong>two</strong> TLS sessions</li>
+          <li>More thorough, more latency + memory</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Both modes can do full inspection.</strong> That was the Session 20 table: full (deep) inspection works in <em>flow</em> and <em>proxy</em> mode alike. Flow decrypts in-stream without splitting the connection; proxy terminates two independent TLS sessions with plaintext in the gap. Same visibility, different plumbing.
+    </div>
+  </div>
+
+  <!-- SSL INSPECTION IN EACH MODE -->
+  <div class="section-block">
+    <div class="section-eyebrow">SSL inspection · under the hood</div>
+    <h2>How the seal comes off in <em>flow</em> vs <em>proxy</em></h2>
+    <p>Both inspection modes can perform full (deep) SSL inspection — the IPS engine ends up with the same plaintext to scan either way. What changes is the <strong>connection shape</strong>, the <strong>memory profile</strong>, and which security services the mode was built to feed.</p>
+
+    <div class="compare-grid">
+      <div class="cmp-card flow">
+        <div class="cmp-title">Flow-based SSL inspection</div>
+        <div class="cmp-sub">Decrypt in-stream · one logical flow</div>
+        <ul>
+          <li>FortiGate <strong>decrypts packets as they arrive</strong>, feeds plaintext to the scanner, re-encrypts on the way out</li>
+          <li>No full-object buffering — only a small <strong>sliding window</strong> of bytes lives in memory at any moment</li>
+          <li>The forwarding path stays intact: a single logical flow with FortiGate as the invisible middleman</li>
+          <li>Lower CPU and memory — safe in front of latency-sensitive traffic like a market-data feed</li>
+          <li>Best pairing: <strong>IPS, application control, web filter</strong> — anything pattern-based</li>
+        </ul>
+      </div>
+      <div class="cmp-card proxy">
+        <div class="cmp-title">Proxy-based SSL inspection</div>
+        <div class="cmp-sub">Terminate · reassemble · re-originate</div>
+        <ul>
+          <li>FortiGate <strong>terminates two independent TLS sessions</strong> — one to the client, one to the server</li>
+          <li>Buffers the <strong>full object in plaintext</strong> between the two sessions before it forwards</li>
+          <li>Required for anything that needs the whole file: AV hashing, archive unpacking, DLP fingerprinting</li>
+          <li>Higher CPU, memory, and latency — trade-off is thoroughness and file-level visibility</li>
+          <li>Best pairing: <strong>antivirus, DLP, content-heavy web filtering</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Same certificate, same key material.</strong> Whichever mode you choose, FortiGate presents its own certificate to the client (signed by a CA the client trusts) and acts as an authorised man-in-the-middle. What differs is <em>how many TLS sessions exist</em> and <em>how much of the object is held in memory</em> when the scanner reads it.
+    </div>
+
+    <div class="callout callout-amber">
+      <strong>Two knobs, not one.</strong> The <strong>SSL/SSH inspection profile</strong> on the policy sets <em>depth</em> — certificate vs full. The <strong>inspection mode</strong> (flow vs proxy) is set on the security profiles themselves — the AV, IPS, web-filter, and app-control profiles each carry their own mode flag. Deep inspection can run in either mode; picking flow vs proxy is a separate decision from picking certificate vs full.
+    </div>
+  </div>
+
+  <!-- TWO AXES — THE TRAP -->
+  <div class="section-block">
+    <div class="section-eyebrow">The trap · don't conflate the axes</div>
+    <h2>Full inspection <em>≠</em> proxy mode</h2>
+    <p>Full (deep) SSL inspection and proxy-based inspection are <strong>two independent things</strong>. Full inspection is a <em>depth</em> — does the FortiGate decrypt the payload or not. Flow-vs-proxy is an <em>inspection mode</em> — how the engine handles the traffic. Two separate axes, and full inspection works in <strong>both</strong> modes.</p>
+
+    <div class="callout callout-coral">
+      <strong>"Full inspection = proxy mode only" is FALSE.</strong> Here's the mechanism that makes it false:
+    </div>
+
+    <div class="compare-grid">
+      <div class="cmp-card flow">
+        <div class="cmp-title">Flow + full inspection</div>
+        <div class="cmp-sub">One continuous connection</div>
+        <ul>
+          <li>FortiGate <strong>decrypts in-stream</strong> — cracks the seal as bytes go by</li>
+          <li>Hands the plaintext to the IPS engine, re-encrypts on the way out</li>
+          <li><strong>No splitting the session</strong> — one logical flow, invisible middleman</li>
+        </ul>
+      </div>
+      <div class="cmp-card proxy">
+        <div class="cmp-title">Proxy + full inspection</div>
+        <div class="cmp-sub">Two sessions, plaintext in the gap</div>
+        <ul>
+          <li>FortiGate terminates <strong>two separate TLS sessions</strong> (client↔FGT, FGT↔server)</li>
+          <li>Fully reassembles the object before inspecting</li>
+          <li>Plaintext lives between the two sessions until the object is complete</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>Both give the IPS the decrypted payload. <em>Different plumbing, same visibility.</em></p>
+
+    <p>Now watch the trap carefully — it has two halves that pull in opposite directions:</p>
+
+    <div class="callout callout-green">
+      <strong>Full inspection does NOT require proxy mode.</strong> ✓ Flow mode decrypts happily too.
+    </div>
+    <div class="callout callout-amber">
+      <strong>But proxy mode IS required for some things</strong> — specifically the AV case. When the engine needs the whole file reassembled to hash it or unpack an archive, that's proxy territory. <em>Not because of encryption — because of file reassembly.</em>
+    </div>
+
+    <p>Don't let those two collapse into each other. <strong>Decrypting an encrypted session</strong> (a depth question) and <strong>reassembling a whole file</strong> (a mode question) are different problems. Flow-based full inspection decrypts happily — it just won't buffer the entire object. If your task needs the entire object, <em>that's</em> what pushes you to proxy. The encryption has nothing to do with it.</p>
+  </div>
+
+  <!-- DEPTH DECISION -->
+  <div class="section-block">
+    <div class="section-eyebrow">The exam trap</div>
+    <h2>Certificate vs full — the fork that catches people</h2>
+    <p>There are two <em>depths</em> of SSL inspection, and picking the wrong one is the single most common mistake on this topic:</p>
+    <p><strong>Certificate inspection</strong> reads only the unencrypted handshake — the SNI, the certificate CN/SAN, the issuer. It never decrypts the payload. <em>Envelope only.</em></p>
+    <p><strong>Full (deep) inspection</strong> is the authorised man-in-the-middle: FortiGate terminates the TLS session, decrypts, lets the IPS read the plaintext payload, then re-encrypts onward. <em>It reads the letter.</em></p>
+
+    <div class="callout callout-green">
+      <strong>The rule to bank:</strong> any time you need the IPS to catch something <em>inside</em> an encrypted session — PHP injection over HTTPS, DNS exfiltration hidden in DNS-over-TLS — the depth is always <strong>full inspection</strong>, never certificate. The <code>DNSExfiltrator.Data.Exfiltration</code> signature requires full inspection for exactly this reason: the hostile DNS is the DNS an attacker has wrapped in encryption to blind you.
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">The one line that turns the IPS from blind to seeing</div>
+<pre><code>config firewall policy
+    edit &lt;feed-to-trading-server&gt;
+        set ips-sensor "protect-trading-api"
+        <span class="cm"># swap certificate-inspection OUT for the deep profile:</span>
+        set ssl-ssh-profile <span class="hl">"deep-inspect-trading"</span>
+    next
+end</code></pre>
+    </div>
+    <p>Everything else was already in place — the sensor, the signatures, the policy. It was only ever the <strong>inspection depth</strong> holding the whole thing back.</p>
+  </div>
+
+  <div class="keeper">
+    <div class="keeper-label">Keeper for long-term memory</div>
+    <div class="keeper-text">Certificate inspection reads the <em>envelope</em>. Full inspection reads the <em>letter</em>. The IPS is a letter-reader — so to catch anything inside encryption, the depth is always <em>full</em>. And because IPS matches a <em>pattern</em>, not a whole file, flow mode can read that letter as it streams by — no buffering the entire thing. AV, which must hash or unpack, is the one that reaches for the full object.</div>
+  </div>
+
+</div>
+
+<footer>LoFinance · NSE7 EF 7.6 · Session 25 — Crying Wolf · Flow-based IPS &amp; encrypted attacks</footer>
+
+<script>
+(function(){
+  var mode = 'full';
+  var step = 0;
+  var playing = false;
+
+  var envelope = document.getElementById('envelope');
+  var envFlap  = document.getElementById('envFlap');
+  var scanner  = document.getElementById('scanner');
+  var verdict  = document.getElementById('verdict');
+  var srLabel  = document.getElementById('srLabel');
+  var srText   = document.getElementById('srText');
+  var modeHint = document.getElementById('modeHint');
+  var dots     = document.getElementById('dots').children;
+  var playBtn  = document.getElementById('playBtn');
+
+  var hints = {
+    none: 'No SSL inspection: the FortiGate never touches the seal. The IPS is blind on HTTPS.',
+    cert: 'Certificate inspection: reads the SNI + cert on the outside only. The seal stays on the payload.',
+    full: 'Full inspection: FortiGate holds the key, so the seal comes off in-stream and the IPS reads the letter.'
+  };
+
+  // Each mode is a 4-step script: [envLeftPct, sealed?, scannerActive?, label, text, verdictType?, verdictText?]
+  var scripts = {
+    none: [
+      {left:8,  sealed:true, scan:false, l:'Step 1 · arrives sealed', t:'The HTTPS packet enters. It is an encrypted envelope — a PHP-injection exploit is hidden inside, but nobody can see that yet.'},
+      {left:40, sealed:true, scan:false, l:'Step 2 · passes the FortiGate', t:'With <strong>no SSL inspection</strong>, the FortiGate never decrypts. The IPS scanner is dark — there is nothing readable to match against.'},
+      {left:64, sealed:true, scan:false, l:'Step 3 · IPS sees only ciphertext', t:'The scanner tries to pattern-match, but the payload is encrypted noise. The exploit signature exists — it just has nothing to fire on.'},
+      {left:92, sealed:true, scan:false, l:'Step 4 · delivered', t:'The exploit reaches the trading server <strong>undetected</strong>. This is a false negative — the real wolf walked straight past.', v:'blind', vt:'✗ Missed — attack delivered'}
+    ],
+    cert: [
+      {left:8,  sealed:true, scan:false, l:'Step 1 · arrives sealed', t:'Same encrypted envelope, same hidden exploit. This time certificate inspection is on.'},
+      {left:40, sealed:true, scan:true,  l:'Step 2 · reads the outside', t:'The scanner reads the <strong>envelope</strong> only — the SNI and the certificate CN/SAN. Useful for web filtering and app ID, but the payload seal stays shut.'},
+      {left:64, sealed:true, scan:true,  l:'Step 3 · payload still sealed', t:'Certificate inspection never decrypts. The IPS can confirm <em>where</em> the traffic is going, but not <em>what</em> is inside it.'},
+      {left:92, sealed:true, scan:false, l:'Step 4 · delivered', t:'The clean-looking envelope passes. The exploit inside was never visible — <strong>certificate inspection gives no protection against payload attacks in HTTPS</strong>.', v:'blind', vt:'✗ Missed — payload never seen'}
+    ],
+    full: [
+      {left:8,  sealed:true, scan:false, l:'Step 1 · arrives sealed', t:'The encrypted envelope enters, carrying the PHP-injection exploit. Full inspection is armed and the FortiGate holds the server key.'},
+      {left:40, sealed:false, scan:true, l:'Step 2 · seal comes off in-stream', t:'FortiGate decrypts <strong>as the packet streams</strong> — no full file buffered. The letter is now plaintext and the IPS scanner lights up.'},
+      {left:56, sealed:false, scan:true, l:'Step 3 · pattern matched', t:'The IPS matches the exploit string <code>system(&#39;dir&#39;)</code> against its signature the moment it slides past. A pattern needs no whole file — just a sliding buffer.'},
+      {left:92, sealed:true, scan:false, l:'Step 4 · re-encrypted &amp; blocked', t:'FortiGate re-encrypts on the way out. Because the signature fired, the exploit is <strong>dropped</strong> before it reaches the server. The wolf is caught.', v:'caught', vt:'✓ Caught — exploit dropped'}
+    ]
+  };
+
+  function setDots(n){
+    for(var i=0;i<dots.length;i++){ dots[i].classList.toggle('on', i<=n); }
+  }
+
+  function render(){
+    var sc = scripts[mode];
+    var s = sc[step];
+    envelope.style.left = s.left + '%';
+    if(s.sealed){
+      envelope.className = 'envelope sealed';
+      envFlap.textContent = 'encrypted';
+    } else {
+      envelope.className = 'envelope open';
+      envFlap.textContent = 'plaintext';
+    }
+    envelope.firstChild.nodeValue = s.sealed ? '✉' : '📄';
+    scanner.classList.toggle('active', !!s.scan);
+    srLabel.innerHTML = s.l;
+    srText.innerHTML = s.t;
+    if(s.v){
+      verdict.className = 'verdict show ' + s.v;
+      verdict.textContent = s.vt;
+    } else {
+      verdict.className = 'verdict';
+      verdict.textContent = '';
+    }
+    setDots(step);
+  }
+
+  function reset(){
+    step = 0; playing = false;
+    var sc = scripts[mode];
+    envelope.style.left = '8%';
+    envelope.className = 'envelope sealed';
+    envelope.firstChild.nodeValue = '✉';
+    envFlap.textContent = 'encrypted';
+    scanner.classList.remove('active');
+    verdict.className = 'verdict';
+    srLabel.textContent = 'Ready';
+    var lead = { none:'No SSL inspection selected. ', cert:'Certificate inspection selected. ', full:'Full inspection selected. ' };
+    srText.innerHTML = lead[mode] + 'The packet is a sealed HTTPS envelope carrying a PHP-injection exploit. Press play to send it through.';
+    setDots(-1);
+    dots[0].classList.add('on');
+    playBtn.textContent = '▶ Send the packet';
+  }
+
+  function advance(){
+    var sc = scripts[mode];
+    if(step < sc.length - 1){
+      step++;
+      render();
+      playBtn.textContent = (step < sc.length-1) ? '▶ Next step' : '↺ Run again';
+    } else {
+      reset();
+    }
+  }
+
+  document.querySelectorAll('.mode-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+      modeHint.textContent = hints[mode];
+      reset();
+    });
+  });
+
+  playBtn.addEventListener('click', advance);
+  document.getElementById('resetBtn').addEventListener('click', reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>
