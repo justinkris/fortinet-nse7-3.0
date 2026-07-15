@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 24 — Visual: The Packet Path Through the Tripwire</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;--blue-glow:rgba(30,64,175,0.07);--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+html{scroll-behavior:smooth;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{padding:48px 60px 36px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.02;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:10px;line-height:1.6;max-width:760px;}
+.motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+.motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+.motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+.motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+main{max-width:1100px;margin:0 auto;}
+.main-content{padding:36px 60px 60px;}
+.section-block{margin-bottom:44px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.section-block h2{font-family:'Playfair Display',serif;font-size:29px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+.section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+.section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text-soft);margin:20px 0 10px;}
+.section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+.section-block p strong{color:var(--text);font-weight:700;}
+.section-block p em{color:var(--blue);font-style:italic;}
+.section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+.section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:5px;}
+.section-block li strong{color:var(--text);font-weight:700;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+.callout strong{color:var(--text);font-weight:700;}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+.data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+.data-table tr:hover td{background:var(--blue-glow);}
+.data-table td:first-child{color:var(--text);font-weight:700;}
+.code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+.code-block pre{padding:16px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;white-space:pre;}
+.mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+.mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+.mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+.analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+.analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:6px;text-transform:uppercase;}
+.analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+.socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;border-top:3px solid var(--blue);}
+.socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;}
+.socratic-questions{list-style:none;padding:0;margin:0;}
+.socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 24px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+.socratic-questions li:last-child{border-bottom:none;}
+.socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+.image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:22px 24px;margin:18px 0;}
+.ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+.ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;font-family:'Cormorant Garamond',serif;}
+.ip-prompt{margin-top:10px;padding:12px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);line-height:1.65;}
+.ip-meta{font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.7;}
+.ip-meta strong{color:var(--text-soft);}
+footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+footer span{color:var(--blue);}
+.pill{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+.big-idea{background:var(--ink-dark);border-radius:14px;padding:24px 28px;margin:20px 0;}
+.big-idea .k{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-accent);margin-bottom:8px;}
+.big-idea .v{font-family:'Playfair Display',serif;font-size:22px;font-weight:600;color:#fbf7ec;line-height:1.35;}
+.big-idea .v em{font-style:italic;color:var(--ink-accent);}
+@media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:32px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> SESSION 24 · VISUAL LEARNING</div>
+  <h1>The Packet Path through the <em>Tripwire</em></h1>
+  <p>Recommended style: <strong>Packet Journey + Real-World Analogy</strong>. The concept is inherently sequential — a packet passing checkpoint after checkpoint, each reading a different part of it, until it reaches the one checkpoint that opens it up. A journey visual anchors that sequence in memory far better than a static diagram.</p>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Why this style: the whole lesson is a <em>sequence of who-reads-what.</em></div>
+  <div class="motivation-sub">Web filter, App Control and ISDB each glance at the outside of the envelope and wave it on. IPS is the checkpoint that slits it open and reads the letter. A journey down a corridor of checkpoints makes the envelope-vs-letter seam physical and unforgettable.</div>
+</div>
+
+<main>
+<div class="main-content">
+
+  <div class="section-block">
+    <div class="section-label">Primary Visual · Packet Journey</div>
+    <h2>The corridor of checkpoints</h2>
+    <p>This is the anchor image. A single suspicious packet — Sunday's exploit — travels a corridor and is inspected by four checkpoints in sequence. The first three only look at the outside; the fourth opens it.</p>
+    <div class="image-placeholder">
+      <div class="ip-filename">IMG-01 · packet-journey-checkpoints.png</div>
+      <div class="ip-caption">A single packet walking a security corridor: three envelope-readers wave it through, IPS opens the letter and stops it.</div>
+      <div class="ip-prompt">
+      Flat minimalistic but highly detailed vector illustration on a warm cream (#faf5e9) background, clean bold soft-brown outlines, no gradients, no photorealism, coral (#e07856) and muted-gold and sage-green accents, storybook-but-professional. COMPOSITION: a long horizontal corridor read left to right, like an airport security lane, divided into four labelled checkpoint gates. Travelling through the corridor is a single anthropomorphic envelope character — a sealed paper envelope with tiny legs, a slightly shifty expression, carrying a small briefcase — representing one network packet (Sunday's exploit from the guest VLAN). GATE 1 labelled "WEB FILTER — where are you going?": a checkpoint officer reading only the ADDRESS written on the front of the envelope, stamping it, waving it on. GATE 2 labelled "APP CONTROL — what are you?": an officer scanning the envelope's SHAPE and posture with a handheld scanner, identifying its type, waving it on. GATE 3 labelled "ISDB — are you on the list?": an officer checking a clipboard list of IP/port names, glancing at a badge on the envelope, waving it on. GATE 4, larger and lit differently with a coral spotlight, labelled "IPS — what does the letter SAY?": this officer SLITS THE ENVELOPE OPEN with a letter-opener and reads the folded letter inside, whose text is visibly a malicious code string; a red STOP barrier drops. Above the first three gates a small muted-gold banner reads "THE ENVELOPE"; above gate 4 a coral banner reads "THE LETTER". Small side detail bottom-left: a doorway marked "GUEST VLAN / LOBBY WI-FI" where the envelope entered, subtly showing the threat came from inside. Visual hierarchy: gates 1–3 rendered lighter/flatter (quick glances), gate 4 rendered with more weight and the only red element in the scene. Clear readable labels. Do NOT include: real brand logos, photorealistic faces, gore, dense technical jargon walls. LEARNING PURPOSE: cements that web filter / App Control / ISDB inspect the envelope-and-sender while IPS alone reads the payload — the central seam of the session.
+      </div>
+      <div class="ip-meta"><strong>Aspect ratio:</strong> 16:9 &nbsp;·&nbsp; <strong>Placement:</strong> top of page, primary anchor &nbsp;·&nbsp; <strong>Alt text:</strong> Four security gates in a corridor; the first three read the outside of an envelope-shaped packet and wave it on, the fourth opens it and reads a malicious letter inside, dropping a stop barrier. &nbsp;·&nbsp; <strong>Reinforces:</strong> Envelope vs letter — the question IPS answers that the other three don't.</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Visual 2 · The Wrecking Ball vs the Scalpel</div>
+    <h2>Two ways to hold the tool</h2>
+    <p>A side-by-side that makes the false-positive danger visceral and pairs it with the surgical fix.</p>
+    <div class="image-placeholder">
+      <div class="ip-filename">IMG-02 · wrecking-ball-vs-scalpel.png</div>
+      <div class="ip-caption">Left: Junior swings a wrecking ball at the whole trading floor. Right: Se&ntilde;or makes one precise cut above the wall.</div>
+      <div class="ip-prompt">
+      Flat minimalistic detailed vector illustration, warm cream (#faf5e9) background, soft-brown outlines, coral / muted-gold / sage-green accents, no gradients, no photorealism, split into two panels with a thin vertical divider. LEFT PANEL, tinted faintly amber/red, header "ALL SEVERITIES · ALL PROTOCOLS · ALL OS · BLOCK": a young overconfident engineer character (Junior — early 20s, hoodie, slightly cocky grin, a small "10,320" counter floating over his head) gleefully swinging a giant wrecking ball labelled "FILTER: BLOCK EVERYTHING" into a glass-walled trading floor full of tiny panicked traders at desks with market screens; screens going dark; the LoFinance logo (a stack of banknotes frozen inside a clear ice cube) on the wall cracking. Caption ribbon: "stops the attack AND the market-data feed AND the settlement batch." RIGHT PANEL, tinted faintly sage/calm, header "SIGNATURE · MONITOR · ABOVE THE FILTER": a calm older engineer character (Se~nor — wearing a sombrero, kind weathered face, immaculate) making a single precise cut with a scalpel through ONE brick near the top of an otherwise-intact brick wall; the wall is labelled "FILTER: BLOCK" and the single removed brick is labelled "MONITOR — this one app"; behind the wall the same trading floor is calm and lit, traders working. A small stacked-order diagram beside the wall shows two rows: top row "SIGNATURE (Monitor)" with a check, bottom row "FILTER (Block)" — an arrow labelled "first match wins" pointing at the top row. Do NOT include: real logos other than the described fictional LoFinance ice-cube mark, blood, realistic faces. Keep both engineers' designs consistent with a storybook cast. LEARNING PURPOSE: contrast the wrecking-ball danger of a block-everything Filter (false positives that halt the business) with the scalpel fix — a specific signature set to Monitor, placed above the Filter, first-match-wins.
+      </div>
+      <div class="ip-meta"><strong>Aspect ratio:</strong> 16:9 &nbsp;·&nbsp; <strong>Placement:</strong> beside the false-positive / exception concept &nbsp;·&nbsp; <strong>Alt text:</strong> Left, a junior engineer wrecking-balls a whole trading floor with a block-everything filter; right, a senior engineer removes a single brick with a scalpel above an intact wall, keeping the floor running. &nbsp;·&nbsp; <strong>Reinforces:</strong> Wrecking ball vs scalpel; exception = Signature+Monitor ABOVE the Filter; first match wins.</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Visual 3 · Content vs Count</div>
+    <h2>The machine gun, not the handgun</h2>
+    <p>The rate-based concept, made physical with the student's own keeper analogy.</p>
+    <div class="image-placeholder">
+      <div class="ip-filename">IMG-03 · content-vs-count-machinegun.png</div>
+      <div class="ip-caption">One checkpoint reads what a packet SAYS; another counts how FAST they arrive.</div>
+      <div class="ip-prompt">
+      Flat minimalistic detailed vector illustration, warm cream (#faf5e9) background, soft-brown outlines, coral / muted-gold / sage-green accents, no gradients, two contrasting halves joined by a central "vs". LEFT HALF header "CONTENT — a normal signature": a single envelope-packet on an inspection table, opened, an officer with a magnifying glass reading the LETTER inside and finding one obviously malicious word highlighted in coral; caption "matches what's INSIDE one packet." RIGHT HALF header "COUNT — a rate-based signature": a rapid-fire stream of IDENTICAL, perfectly innocent-looking white envelopes being fired from a stylised machine-gun-shaped mailer (playful, non-graphic, clearly a mail-cannon not a real weapon) toward a doorway labelled "TRADING API / LOGIN"; each envelope is stamped "VALID"; an officer beside the door is NOT reading them — instead he watches a large tally counter and a stopwatch, the counter reading "512 attempts / 10 sec" glowing coral, a threshold line being crossed. Speech bubble from the officer: "each one is legal — the RATE is the attack." Small caption strip along the bottom: "Handgun = one shot to inspect. Machine gun = the danger is the rate of fire." A tiny label near the mail-cannon: "brute-force / DoS." Do NOT include: realistic firearms, violence, gore, real logos. Keep the mail-cannon whimsical and clearly a mail device. LEARNING PURPOSE: distinguish content-matching (inspect one payload) from rate-based counting (event + window + threshold), and show brute-force/DoS as the class where every packet is valid and only the cadence is hostile.
+      </div>
+      <div class="ip-meta"><strong>Aspect ratio:</strong> 3:2 &nbsp;·&nbsp; <strong>Placement:</strong> beside the rate-based signatures concept &nbsp;·&nbsp; <strong>Alt text:</strong> Left, an officer reads the malicious content of a single opened packet; right, an officer ignores a stream of identical valid envelopes fired rapidly and instead watches a counter reading 512 attempts in 10 seconds crossing a threshold. &nbsp;·&nbsp; <strong>Reinforces:</strong> Content vs count; rate-based catches brute-force/DoS; "machine gun, not handgun."</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Visual 4 · Placement — Inside the House</div>
+    <h2>Why the perimeter never saw it</h2>
+    <p>The architecture insight — the single most exam-relevant judgment of the session.</p>
+    <div class="image-placeholder">
+      <div class="ip-filename">IMG-04 · inside-the-house-isfw.png</div>
+      <div class="ip-caption">The guard was watching the front gate. The intruder was already in the lobby, walking to the vault.</div>
+      <div class="ip-prompt">
+      Flat minimalistic detailed vector illustration, warm cream (#faf5e9) background, soft-brown outlines, coral / muted-gold / sage-green accents, no gradients, cutaway "dollhouse" cross-section of a single corporate building on the LoFinance campus so all rooms are visible at once. AT THE FRONT GATE (building entrance, facing an "INTERNET" cloud outside): a large alert guard tower labelled "EDGE NGFW" with a spotlight aimed OUTWARD at the internet cloud, its back turned to the building interior — clearly watching the wrong direction. INSIDE the building, lower-left room labelled "GUEST VLAN — LOBBY WI-FI": a hooded intruder figure has already entered here (a small footprint trail shows they came in through a side "visitor" door, not the front gate). An internal corridor connects the lobby to an upper-right vault room labelled "TRADING API" containing the LoFinance logo (banknotes frozen in an ice cube) glowing like treasure. WHERE THE CORRIDOR CROSSES BETWEEN the guest room and the vault, place a second, alert guard tower turned to face the INTERNAL corridor, labelled "ISFW" with a coral spotlight catching the intruder mid-step and a small tripwire drawn across the floor lighting up. A banner across the top reads: "PERIMETER assumes the threat is OUTSIDE — SEGMENTATION assumes it's already INSIDE." A small dashed callout near the ISFW tower: "the tripwire goes HERE." Visual hierarchy: the edge NGFW faded/greyer (looking the wrong way), the ISFW vivid and central. Do NOT include: real brand logos beyond the fictional ice-cube mark, gore, weapons, realistic faces. LEARNING PURPOSE: show that an internal guest-VLAN-to-trading-segment attack never crosses the edge NGFW, so the IPS tripwire must live on the ISFW between the internal zones.
+      </div>
+      <div class="ip-meta"><strong>Aspect ratio:</strong> 16:9 &nbsp;·&nbsp; <strong>Placement:</strong> beside the architecture / placement concept &nbsp;·&nbsp; <strong>Alt text:</strong> Cutaway of a building; the edge NGFW guard tower faces the internet with its back to the interior while an intruder moves from the guest-VLAN lobby toward the trading-API vault, caught only by a second guard tower — the ISFW — placed on the internal corridor between them. &nbsp;·&nbsp; <strong>Reinforces:</strong> Internal attack → IPS on the ISFW, not the edge NGFW; perimeter vs segmentation.</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Visual 5 · Watch Before Block</div>
+    <h2>The tripwire is strung — not yet armed</h2>
+    <p>Closes the loop and sets up Session 25's tuning problem.</p>
+    <div class="image-placeholder">
+      <div class="ip-filename">IMG-05 · monitor-first-tripwire.png</div>
+      <div class="ip-caption">One week of watching, learning what "normal" looks like, before the wire is armed to block.</div>
+      <div class="ip-prompt">
+      Flat minimalistic detailed vector illustration, warm cream (#faf5e9) background, soft-brown outlines, coral / muted-gold / sage-green accents, no gradients. CENTRE: a taut tripwire stretched across a doorway labelled "GUEST VLAN → TRADING API", but the wire is drawn in a soft muted-gold DASHED style with a small tag hanging from it reading "MONITOR — logging only, not blocking yet." Beside the doorway, the calm security lead character Cipher (composed, minimalist dark clothing, understated, a single earpiece) sits at a desk watching a rolling log feed on a screen; the log shows a growing list of entries, MOST tagged sage-green "normal / legit app" and a FEW tagged coral "suspicious", with a magnifier hovering over a green one that's about to be turned into an exception card. A small wall calendar shows a 7-day watch window with days being ticked off. In the background, Se~nor (sombrero) gives a quiet approving nod; Junior watches, hands in pockets, having been talked out of arming it immediately. A subtle foreshadow element in the corner: one log entry is loudly flashing coral and labelled "?!" beside a small thought-bubble of a wolf — hinting the next episode ("Crying Wolf") where innocent traffic sets off alarms. Banner along the bottom: "WATCH BEFORE BLOCK — learn normal, then arm the wire." Do NOT include: real logos beyond the fictional LoFinance ice-cube mark, gore, realistic faces. Keep cast designs consistent with the series. LEARNING PURPOSE: reinforce the senior habit of deploying a new IPS profile in Monitor mode first to learn baseline behaviour and carve exceptions before enforcing, and tee up the Session 25 false-positive tuning arc.
+      </div>
+      <div class="ip-meta"><strong>Aspect ratio:</strong> 16:9 &nbsp;·&nbsp; <strong>Placement:</strong> end of page, transitions to the teaser &nbsp;·&nbsp; <strong>Alt text:</strong> A dashed, unarmed tripwire tagged "Monitor — logging only" across a doorway; Cipher watches a log feed mostly marked normal, a 7-day calendar ticking down, one entry flashing beside a wolf thought-bubble foreshadowing the next episode. &nbsp;·&nbsp; <strong>Reinforces:</strong> Monitor-first / watch-before-block; sets up "Crying Wolf".</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">How to Use This Page</div>
+    <h2>Study method</h2>
+    <p>Generate the five images, then run them as a sequence in this order — corridor → wrecking-ball/scalpel → machine-gun → inside-the-house → tripwire. Each one carries one concept. When you can look at IMG-01 and say the envelope-vs-letter seam from memory, at IMG-02 recite "Signature/Monitor/above/first-match-wins," at IMG-03 explain content-vs-count, at IMG-04 justify ISFW-not-edge, and at IMG-05 explain watch-before-block — you own the session.</p>
+  </div>
+
+</div>
+</main>
+<footer>LoFinance NSE7 · Session 24 — <span>The Tripwire</span> · Visual Learning Page</footer>
+</body>
+</html>

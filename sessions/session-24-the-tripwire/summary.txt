@@ -1,0 +1,248 @@
+SESSION 24 SUMMARY — "The Tripwire"
+(Integrating IPS into enterprise networks | Study Guide 06 Security Profiles pp. 175–186)
+Written for Claude. Read before Session 25.
+
+NOTE ON SEQUENCE: S18/S19 (OSPF internals II & III) remain SKIPPED. FMG IPsec
+templates hands-on remains UNDONE. Cactus tally carried from S23: 2 half-happy,
+1 crying (FMG IPsec templates), 1 happy. This session earned a NEW happy cactus
+(10/10 with both planted inversion traps defeated). Updated tally: 2 half-happy,
+1 crying, 2 happy.
+
+STORY EVENTS
+------------
+Tuesday, 8:03 AM. Penny arrives fast, no coffee, holding Cipher's threat-intel
+report (now face-up). Cipher — his arc episode — writes on the board: "Sunday
+02:14 — exploit attempt against the trading API. Source: internal. Guest VLAN."
+Junior objects that the guest VLAN (lobby/visitor Wi-Fi) shouldn't reach the
+trading API. Cipher: it reached the front door; the API answered the handshake;
+the payload was MALFORMED (size field didn't match payload) and fell over on its
+own — a parser error + connection reset. The ONLY reason no regulator call.
+
+Señor's thesis (delivered rudely, as promised): "We did not stop that attack. The
+ATTACKER stopped it, by being clumsy." The firewall let the exploit through because
+it looked like a permitted connection to a permitted port. The firewall checked the
+ENVELOPE, not the LETTER. There is idle, licensed machinery on the box — the IPS
+engine — that reads the letter. Today we turn it on and point it at the trading API.
+Warning: Junior's instinct is "turn everything on, block everything" — that would
+take the trading floor down harder than any attacker.
+
+SOCRATIC ARC (student reasoning — strong throughout)
+----------------------------------------------------
+1. "What question does IPS ask?" Student offered TWO framings; Claude separated
+   them: "what is the envelope trying to do" (still App-Control intent territory)
+   vs the sharper "does this pattern look familiar / common to an attack" — which
+   contains a REFERENCE LIBRARY. Landed on: IPS asks "does the CONTENT of this
+   traffic match a known pattern of attack?" First thing on the box that reads the
+   LETTER against a catalogue of known-hostile letters. Envelope = web/app/ISDB;
+   letter = IPS.
+2. "Where does the catalogue live?" Student: FortiGuard source (correct), then
+   waffled local-vs-phones-home, offered "combination." Claude used the student's
+   OWN S22/S23 rule: if it appears in `diagnose autoupdate versions`, it's stored
+   LOCALLY. IPS Attack Definitions IS in that output → local DB, like App Control,
+   unlike web filter. Per-packet phone-home would recreate the S23 hang on every
+   session. Model: MATCH LOCALLY, UPDATE PERIODICALLY. Student's "combination"
+   instinct redirected to the correct mechanism (periodic push, not per-packet).
+   Key security consequence student grasped: novel exploit with no signature yet
+   sails through; freshness of local DB IS a security posture; expired box looks
+   healthy while blind.
+3. "How select 10,000 sigs at once?" Student: "category or severity rating."
+   → This IS the FILTER (Type: Filter). Guide's example resolves to 10,320 sigs.
+   FILTER = broad brush (severity/protocol/OS/target criteria). SIGNATURE = scalpel
+   (name one, set its action). This answered pre-reading Q1.
+4. "Danger of block-everything?" Student: "legitimate traffic could match a sig."
+   = FALSE POSITIVE. Claude pushed to WHO GETS HURT/HOW using the guide's hping3
+   oversized-ICMP scenario (hping3 -1 -d 654001 -c 8). Student described it as
+   "a hang, no info why, bad UX." Claude sharpened: SILENT failure worse than LOUD;
+   the false positive LOOKS LIKE CORRECT BEHAVIOUR, so the team hunts everywhere
+   except the one box that's confidently wrong. Business layer: self-inflicted
+   trading halt has no attacker to blame — internal post-mortem with your name on
+   it. "Junior could take the floor down harder than any attacker."
+5. "Build the exception." Student first said "hand-pick the signature" (RIGHT) then
+   drifted into Filter-thinking (severity/protocol/OS/target) — Claude flagged this
+   as reaching for the broad brush when a scalpel was asked for. Corrected to:
+   Type: Signature, Action: Monitor (+ packet logging), placed ABOVE the broad
+   Filter. GOTCHA (guide hammers it): top-down, first-match-wins; exception below
+   the Filter = dead config. Student's clean retrieval nailed all three (a) Signature
+   (b) Monitor (c) Above, otherwise broader filter matches first. Connected to the
+   general rule: specific exception goes ABOVE general rule in ANY Fortinet ordered
+   list (policy, IPS, SD-WAN).
+6. "Rate-based." Student: content-match misses volume attacks; monitors behaviour
+   over short window. Coined the KEEPER analogy: "fired like a machine gun, not a
+   handgun." Named DDoS (correct family). Claude redirected to Cipher's single-source
+   scenario → BRUTE-FORCE / credential stuffing (each login packet valid content;
+   attack exists ONLY in the rate). Rate-based sig = count + window + threshold, not
+   content match. Full toolkit assembled: signature-match (content), filter (broad),
+   signature-exception (scalpel/Monitor on top), rate-based (cadence).
+7. Precision lock: "content signature is blind to a ___ attack because ___." Student:
+   "resource-exhaustion, because it looks for payload patterns not volume/rate."
+   Claude accepted as a MORE GENERAL (valid) category; clarified resource-exhaustion
+   (drown the service) vs brute-force (guess credentials) — both rate-based, both
+   content-blind. Rule taught: match on MECHANISM (content vs count), not on the
+   attack's name.
+8. PLACEMENT (pre-reading Q3). Student answered "ISFW to segment the network" in
+   five words — the senior answer. Full reasoning drawn out: edge NGFW never saw
+   Sunday's traffic (internal, never left building); IPS must sit where the two
+   internal zones MEET = ISFW acting in NGFW dual-role. THESIS LINE OF THE EPISODE:
+   "Perimeter model assumes threat is outside; segmentation assumes threat is already
+   inside." Guest VLAN is inside the walls and untrusted → point IPS inward.
+
+CLI TAUGHT (real syntax, student built it with Señor narrating traps)
+---------------------------------------------------------------------
+config ips sensor / edit "protect-trading-api"
+  config entries / edit N
+    set filter enable
+    set severity high critical         # NOT "all severities"
+    set protocol HTTP HTTPS            # scoped to what hits the API
+    set location server                # target = protected servers
+    set status enable
+    set action block
+    set log-packet enable
+  (exception entry, LOWER number = evaluated first):
+    set rule <signature-id>
+    set status enable
+    set action monitor                 # pass but log
+    set log-packet enable
+config firewall policy / edit <guest-to-trading-policy>
+    set ips-sensor "protect-trading-api"
+    set ssl-ssh-profile "certificate-inspection"   # deep needed for HTTPS payload
+
+diagnose autoupdate versions           # proves IPS Attack Definitions stored LOCALLY
+
+MENTAL MODELS / ANALOGIES (KEEPERS)
+-----------------------------------
+- "Envelope vs letter": web filter/App Control/ISDB read the envelope+sender; IPS
+  reads the LETTER (payload) against a catalogue of known-hostile letters.
+- "Match locally, update periodically" (IPS DB is local; FortiGuard keeps it fresh;
+  NOT a per-packet phone-home).
+- "Scalpel on top of the wall": specific Signature (Monitor) ABOVE broad Filter
+  (Block); first match wins.
+- "Content vs count": signatures match content; rate-based sigs count cadence.
+- "Fired like a machine gun, not a handgun" (STUDENT'S OWN — rate-based attack:
+  individually-innocent packets, hostile only in cadence). Keeper.
+- "Perimeter assumes threat-outside; segmentation assumes threat-inside." (Episode
+  thesis. The call is coming from inside the house — guest VLAN.)
+- "The difference between a firewall and a wrecking ball" (Señor, re: scoped Filter
+  vs all-severities-block).
+- "Checking IDs at the door but never searching the bags" (Riley's root-cause line
+  for envelope-not-letter inspection).
+- "Watch before block" (Cipher — Monitor mode first, learn normal, then enforce).
+
+BUSINESS PROBLEM
+----------------
+Sunday exploit attempt against the trading API, launched from INSIDE the guest VLAN,
+reached the API and was stopped only by the attacker's own malformed packet — not by
+any LoFinance control. The firewall permitted it because it inspected envelope not
+letter. RESOLVED (staged): IPS sensor "protect-trading-api" built with a SCOPED
+Filter (high/critical, HTTP/HTTPS, server-side, Block) + rate-based brute-force
+coverage, attached to the guest-VLAN→trading policy on the ISFW with certificate-
+inspection SSL profile. DEPLOYED IN MONITOR MODE FIRST — one week of watching before
+flipping to Block, to learn "normal" and avoid self-inflicted false-positive trading
+halts. (The tripwire is strung but NOT yet armed — this is the deliberate hook into S25.)
+
+CHARACTERS
+----------
+Penny (arrived fast, demanded the board briefing, asked for the one-line business
+translation). Junior ("turn everything on/block everything" instinct — used to teach
+the wrecking-ball danger; admitted "I did want that"; the near-miss he'd have caused
+is worse than the attack). Cipher (HIS ARC EPISODE — threat-intel report, wrote the
+timeline, spoke his longest lines of the season, insisted on Monitor-first/"watch
+before block", teed up S25). Señor (did NOT touch the FortiGate until the profile was
+designed; "envelope not letter"; "attacker stopped the attack by being clumsy";
+scalpel/wrecking-ball line; drew the happy cactus silently after 10/10; foreshadowed
+S25 with "you'll understand why when we turn this on and it starts screaming at
+perfectly innocent things"). Riley (root-cause line: "checking IDs but never searching
+the bags").
+
+TROUBLESHOOTING APPROACH TAUGHT
+-------------------------------
+The senior move today was JUDGMENT SEQUENCE, not a command:
+(1) recognise the attack was INTERNAL → edge NGFW is the wrong place to look;
+(2) locate the zone boundary the traffic actually crosses (ISFW);
+(3) scope the Filter NARROW ON PURPOSE (severity/protocol/target) BEFORE deploying,
+    to shrink false-positive surface;
+(4) deploy in MONITOR first, watch, THEN Block. Evidence before enforcement.
+Also taught: false positives don't look like faults — they look like correct
+behaviour — so they're the hardest outage to diagnose. Check the IPS log, because
+every other angle (server/network/app) shows healthy.
+
+CONFIGURATION DECISIONS
+-----------------------
+ISFW promoted from segmentation-only to IPS-bearing (NGFW dual-role) on the guest-
+VLAN→trading-segment boundary. Filter deliberately NARROW (high/critical, HTTP/HTTPS,
+server-side) rather than the guide's cautionary all-severities/all-protocols/all-OS.
+Certificate-inspection SSL profile attached (note: deep/full inspection would be
+required to catch payloads INSIDE HTTPS — flagged as S25 territory). Monitor mode
+first; Block after a week of log review.
+
+TOPOLOGY UPDATE
+---------------
+ISFW gains a role: IPS enforcement point (NGFW dual-role) between guest VLAN and
+trading segment. New sensor "protect-trading-api" attached to that policy. CURRENTLY
+IN MONITOR — not yet blocking. "The tripwire is strung. It is not yet armed."
+No new hardware/links. Topology grew smarter, not bigger (recurring line).
+
+EXAM QUESTIONS: 10 asked, 10/10.
+Q1 ✓ Signature type + Monitor (omitted "above" but Q front-loaded Type/Action).
+Q2 ✓ C (false positives) — walked past the FortiGuard-latency familiar-fact
+   distractor that caught him in S23. Q3 ✓ FALSE — compound T/F with false qualifier
+   "fully protected"; INVERSION TRAP #1, CAUGHT. Q4 ✓ rate-based; content vs count.
+Q5 ✓ diagnose autoupdate versions, instant. Q6 ✓ ISFW with full internal-vs-edge
+   reasoning + blast-radius callback (S21). Q7 ✓ FALSE — compound T/F with false
+   qualifier "regardless of where it is placed"; INVERSION TRAP #2, CAUGHT.
+Q8 ✓ SSL inspection for HTTPS (fine point noted: deep, not cert-inspection).
+Q9 ✓ Monitor first (watch before block). Q10 ✓ business-language false-positive
+   risk; tighter than S22/S23 first attempts — register gap closing.
+
+INVERSION-UNDER-QUESTIONING WATCH (S20/S21/S23): TWO traps deliberately planted
+(Q3 "fully protected", Q7 "regardless of where placed"). BOTH DEFEATED. First fully
+clean session on this pattern. Keep on spot-check through S25 per the "three clean
+sessions before downgrade" rule established in S23; this is clean session #1.
+
+SCOPE-OF-FAILURE WATCH (NEW in S23): not directly retested with a trap this session,
+but student volunteered scope-reasoning naturally in the false-positive discussion
+("what does the human at the desk experience"). Keep on watch; retest with a surgical-
+scope stem in S25.
+
+REGISTER-OF-LANGUAGE (EXECUTIVE): Q10 + the Penny one-liner. Content accurate;
+Q10 answer tighter than prior sessions. Coached the "why-now / watch-first" clause
+addition. Trending to closure — one more clean Penny-translation in S25 should retire
+it. This was the 4th consecutive session of Penny-language work and clearly improving.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+1. "Turn everything on, block everything" (all severities/all protocols/all OS/Block)
+   — used to teach the wrecking-ball danger and the study guide's headline "know your
+   network protocols and workflows." Junior admitted the instinct; Señor named that
+   it would have blocked Sunday's attack AND the market-data feed AND the settlement
+   batch. The wrecking-ball vs firewall distinction.
+2. Implicit: Junior's assumption that the guest VLAN "can't reach" the trading API —
+   used to teach that segmentation by address (envelope) is not the same as inspection
+   (letter); the guest VLAN is INSIDE the walls and untrusted.
+
+CARRIED-FORWARD OBLIGATIONS (updated)
+-------------------------------------
+- S18/S19 OSPF internals II & III: STILL SKIPPED (2 half-happy cacti).
+- FMG IPsec templates hands-on: STILL UNDONE (crying cactus endures).
+- Inversion-under-questioning: DOWNGRADE TO SPOT-CHECK begins — clean session #1
+  of 3 required. Keep planting at least one compound T/F through S25.
+- Scope-of-failure reading: keep on watch; retest with surgical-scope stem S25.
+- Register-of-language: one more Penny-translation in S25, then evaluate retirement.
+- Signature-override CLI depth: TESTED this session (built it live). Can close the
+  S23 "signature-override config still untested" note.
+- DEEP vs CERTIFICATE SSL inspection for IPS-on-HTTPS: SEEDED this session (Q8 fine
+  point). This is core S25 territory (encrypted attacks) — reinforce there.
+
+TEASER DELIVERED FOR SESSION 25 — "Crying Wolf"
+------------------------------------------------
+The tripwire is live but in MONITOR only. Señor's foreshadow: "You'll understand why
+when we turn this on and it starts SCREAMING at perfectly innocent things." Cipher's
+"watch before block" is the hook. S25 = IPS TUNING: false positives (the market-data
+feed, the settlement batch, and other legitimate traffic that trips signatures), plus
+protecting against UNENCRYPTED vs ENCRYPTED attacks (the deep-vs-certificate SSL
+inspection distinction seeded in Q8 — DNS exfiltration / PHP-injection-over-HTTPS use
+cases, pp. 179–186). The week of Monitor logs comes back full of alerts, most of them
+wolves that aren't there. Study Guide 06, pp. 176–186 (use cases 2–5). Signal: the
+alert count climbs and NOTHING is actually under attack.
+
+Date and Time completed: Tuesday (in-story) / real session concluded Wednesday,
+15 July 2026.

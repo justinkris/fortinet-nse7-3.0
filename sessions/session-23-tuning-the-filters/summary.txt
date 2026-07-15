@@ -1,0 +1,251 @@
+SESSION 23 SUMMARY — "Tuning the Filters"
+(Web filter / app control / ISDB configuration + FortiGuard dependencies |
+Study Guide 06 Security Profiles pp. 171–176, config depth + FortiGuard resilience)
+Written for Claude. Read before Session 24.
+
+NOTE ON SEQUENCE: S18/S19 (OSPF internals II & III) remain SKIPPED. FMG IPsec templates
+hands-on remains UNDONE. Cactus tally UPDATED this session: previously two sad (one
+crying) + one happy. NOW: TWO HALF-HAPPY (Junior's calendar reminder for FortiGuard
+renewal earned S18/S19 a half-shelf move; backbone-partition COLD retrieval passed
+this session earned the other), one still crying (FMG IPsec templates — the debt
+endures), plus one fully happy (S22's 10/10). Track as: 2 half-happy, 1 crying, 1 happy.
+
+STORY EVENTS
+------------
+Monday, 8:57 AM. The weekend was suspiciously perfect — Riley's queue at zero for 48
+hours, screenshotted as evidence. 9:02 AM: every trading-floor browser hangs — not
+blocked, no red block page, just spinning. Queue goes 0 → 31 in eleven minutes. But
+the pattern is strange: Facebook APP is still being blocked correctly on phones;
+Slack works; trading platform works; only browsing hangs. Junior loudly confirms
+"NOTHING CHANGED — I diffed the config" and for once is correct. Señor arrives 9:14,
+does NOT go to the FortiGate. Walks to his own desk, moves a coffee mug, lifts out
+an unopened envelope postmarked eleven days ago — FortiGuard Services Renewal. Sets
+it on the whiteboard ledge next to the cacti. Pats the crying cactus. Turns to the
+student. "Junior is correct. The configuration did not change. Ask yourself what
+else our firewall depends on that is not written in its configuration."
+
+Student reasoned the failure from principles in three steps (all correct, first
+attempt each): (1) web filter DB isn't local, must query FortiGuard live; (2)
+FortiGate must be caching recent lookups, which is why the weekend was fine and
+familiar sites still work Monday; (3) the cache is a DECAYING asset — every entry
+that ages out is one that can never be replaced while FDS is down, so the situation
+gets worse, not better, over time. Señor moved the happy cactus up a shelf.
+
+Evidence phase: student named `diagnose autoupdate versions` (paperwork) AND the
+webfilter cache diagnostic (behaviour) — correctly split by purpose. Claude refined
+to `diagnose debug rating` as the money shot (Status=Disable, RTT=-1, DI flags on
+all three anycast servers). Junior panicked at "License Expired" appearing THREE
+times — student correctly separated "database expired" from "feature broken":
+app control and ISDB continue running on frozen July-11th databases while web filter
+dies immediately. Board line added: "License expired ≠ feature broken. App control /
+ISDB → degrade slowly (stale signatures). Web filter → degrade fast (cache decay),
+then hang."
+
+Fail-open vs fail-closed: student correctly identified the two philosophies as
+"permit or deny." Claude named them, explained business trade-offs, and then set the
+trap: FortiGate defaults to FAIL-OPEN, yet the trading floor is hanging. Student
+flagged "not sure" — good honesty. Claude walked him into the timing insight:
+fail-open governs the VERDICT, not the LATENCY. FortiGate holds the packet waiting
+for FortiGuard; browser and user time out first. Board line: "Fail-open governs the
+verdict. Timeouts govern the experience."
+
+The elegant fix — FortiManager as local FDS — landed cleanly because student had
+already glimpsed the concept in S22 register work. `set include-default-servers
+disable` under central-management to decouple from the public FortiGuard anycast pool.
+
+Penny arrived silently, said one word ("Renew.") and asked for a business-language
+explanation. First attempt was technically accurate but jargon-heavy ("cache",
+"database", "verdict"). Claude coached a rewrite anchored to the invoice line items
+Penny had highlighted last week. Same coaching item as S22 Q10 — third session
+running where technical accuracy is 100% and polish gap is at register-of-language.
+Second attempt (Q10 answer) was noticeably improved. Progress is real and worth
+naming.
+
+Ticket queue: 31 → 0 by 10:40 AM. Penny signed renewal before her 11 AM. Junior set
+a real annual calendar reminder for T-30 days FortiGuard expiry — first genuinely
+senior thing he has done all season. Riley closed the incident: "Root cause: an
+envelope."
+
+CHARACTERS: Penny (renewal signed, business-language question posed at Q10),
+Junior (correct that config didn't change; panicked over triple "License Expired";
+redeemed by calendar reminder), Riley (screenshot the empty queue, closed the
+incident with the envelope line), Señor (did not touch the FortiGate, envelope
+reveal, moved happy cactus up, watched student translate to Penny).
+Cipher NOT on-screen this session — but teased for S24 opener.
+
+BUSINESS PROBLEM
+----------------
+Silent, gradual failure of web browsing on the trading floor due to lapsed FortiGuard
+subscription. Nothing in the configuration explained the outage. RESOLVED:
+(1) contract renewed (Penny), (2) FortiManager staged as local FDS for resilience,
+(3) T-30 annual reminder set (Junior), (4) `set include-default-servers disable`
+staged in central-management so lookups go inward instead of to public FortiGuard.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. WEB FILTER FortiGuard model: NO local DB. Live rating lookups over HTTPS/443 to
+   the FortiGuard anycast pool. Only a CACHE of recent verdicts lives locally.
+2. CACHE DECAY: cache is a decaying asset. Entries have a TTL. FDS down → cache
+   entries can never be refilled → hit rate slopes down monotonically → outage
+   feels progressively worse over hours/days.
+3. Fail-open (default) vs fail-closed: verdict philosophy. Fail-open ≠ instant
+   permit — it's "permit AFTER giving up waiting." User experience is governed by
+   the REQUEST TIMEOUT, not by the fail policy.
+4. `diagnose debug rating` output structure: License, Service, Status, per-server
+   RTT/Flags/Curr Lost/Total Lost. Status=Disable is the internal kill switch
+   FortiGate flips the moment the license expires.
+5. `diagnose autoupdate versions` output: Virus/Application/Internet-service
+   sections each have Version, Contract Expiry Date, Last Update Attempt, Result.
+   Web filter NOT in that output — proves absence-of-local-DB by absence-from-list.
+6. FortiManager as local FDS: `set include-default-servers disable` under
+   `config system central-management`, plus rating server entry pointing at FMG IP.
+   Decouples the FortiGate's ability to filter from the internet's ability to
+   answer. This is the enterprise-grade resilience posture.
+7. Web filter profile CLI: `config webfilter profile` → `config ftgd-wf` → `config
+   filters` → per-category `set action block/monitor/allow`. Category IDs (26=Social
+   Networking, 62=Gambling).
+8. Application list CLI: `config application list` → `config entries` → per-signature
+   or per-category action. NO FortiGuard live-lookup dependency; runs on the local
+   Application Definitions database.
+9. ISDB reference on policy: `config firewall internet-service-name` for the object,
+   then `set internet-service enable` + `set internet-service-name` on the policy
+   itself. NOT a profile attachment.
+10. Verification order under fire: `diagnose autoupdate versions` (paperwork) →
+    `diagnose debug rating` (live conversation) → `diagnose webfilter fortiguard
+    cache dump` (current belief) → `get webfilter status` (profile-side view).
+11. Feature Visibility gap CLOSED: student retrieved "System > Feature Visibility"
+    unprompted on Q9 (was Q3 gap in S22).
+
+MENTAL MODELS / ANALOGIES (KEEPERS)
+-----------------------------------
+- "The service we pay Fortinet for stopped answering our calls" (Penny-register
+  translation for FortiGuard outage — reuse for any subscription-dependent feature).
+- "Fail-open governs the VERDICT. Timeouts govern the EXPERIENCE." (Fortinet-
+  specific insight that most engineers only learn during their first outage.)
+- "License expired ≠ feature broken. App control/ISDB degrade SLOWLY, web filter
+  degrades FAST." (Diagnostic key for asymmetric FortiGuard outage symptoms.)
+- "The cache is a decaying asset" (cache-decay direction-of-time argument).
+- "The renewal is the licence. The FortiManager work is the insurance." (Business-
+  language framing for enterprise-grade resilience posture.)
+- Envelope-on-the-shelf as the physical avatar of unmonitored dependencies.
+
+KEY CLI
+-------
+diagnose autoupdate versions           # paperwork state (Version/Contract/Last/Result)
+diagnose debug rating                  # live FortiGuard rating conversation
+diagnose webfilter fortiguard cache dump   # current cache verdicts
+get webfilter status                   # profile-side view
+config webfilter profile / edit / config ftgd-wf / config filters
+config application list / edit / config entries
+config firewall internet-service-name
+config system central-management / set include-default-servers disable
+config webfilter fortiguard / set cache-mode ttl / set request-packet-size-limit
+
+TROUBLESHOOTING APPROACH TAUGHT
+-------------------------------
+Silent-degradation pattern: nothing changed in config, symptoms appeared gradually.
+Diagnostic order: (1) paperwork check first (`diagnose autoupdate versions`) —
+proves contract state without changing anything, (2) live-conversation check
+(`diagnose debug rating`) — proves reachability without changing anything,
+(3) current-belief check (cache dump) — proves what the box thinks right now.
+Only THEN consider changes. Junior's move (`execute update-now`) explicitly
+called out as a diagnostic anti-pattern: it's an action, not a read, and it
+destroys evidence.
+
+Also taught: SYMPTOM SCOPE reading (see Q2 loss below). "No logs for Zoom
+specifically" — surgical scope — points at a signature-DB problem, NOT an engine
+problem. Engine-wide failure would show broad symptoms, not one-app symptoms.
+
+CONFIGURATION DECISIONS
+-----------------------
+FortiManager promoted from central-management-only to LOCAL FDS role for rating
+lookups. `set include-default-servers disable` under central-management. Web
+filter and app control lookups now go inward to 10.0.100.10. Web filter cache-mode
+set to TTL. No new hardware. No new links. Junior annual reminder T-30 days.
+
+TOPOLOGY UPDATE
+---------------
+No hardware/link changes. FortiManager gains a role: LOCAL FDS. Every FortiGate
+now points inward for rating lookups. Public FortiGuard anycast pool becomes
+optional fallback (currently disabled — purist enterprise posture). "Topology
+grew smarter, not bigger" — third session running with that line.
+
+EXAM QUESTIONS: 10 asked, 9/10.
+Q1 ✓ evidence-before-config CLI (cache dump). Q2 ✗ scope-of-failure — chose D
+(IPS engine) instead of B (stale Application Definitions); the trap was the
+"familiar fact" distractor using S22's retained IPS-engine mechanism as the wrong
+answer; coached "no logs for Zoom specifically = surgical scope = database
+problem, not engine problem." Q3 ✓ ISDB as destination in SD-WAN rule with clean
+four-way elimination (impressive). Q4 ✓ instant retrieval of asymmetric failure
+mode. Q5 ✓ dodged the "immediately" absolute-qualifier trap on fail-open.
+Q6 ✓ either/or trap RESOLVED — closed the S22 follow-up. Q7 ✗ inversion-under-
+questioning — the "correctly" qualifier in a True/False; student answered True,
+correct is False. Pattern is BACK ON ACTIVE WATCH (S22 downgraded it to spot-
+check; one occurrence brings it back up). Q8 ✓ diagnose autoupdate versions
+instant. Q9 ✓ System > Feature Visibility retrieved unprompted — closed S22 Q3
+gap. Q10 Penny translation — content accurate, register-of-language coached one
+more time; noticeable improvement from morning attempt to Q10 attempt.
+
+INVERSION-UNDER-QUESTIONING (S20/S21 pattern): Q7 caught him. Statement "app
+control and ISDB continue to function correctly during outage" is FALSE because
+of the word "correctly" — they function but not correctly, only with frozen data.
+Two true premises + a "therefore" with a subtly false qualifier in the conclusion.
+This is the exact pattern flagged in S20/S21. Downgrading to spot-check in S22
+was premature. Restore to active watch through at least S25.
+
+BACKBONE PARTITION COLD RETRIEVAL: PASSED. First cold ask (no mnemonic prompt,
+no hint), first try. Name is properly hooked. Retire the follow-up.
+
+EITHER/OR PROFILE-ASSIGNMENT TRAP: PASSED via Q6. Student chose B (two profiles,
+two policies) without hesitation. Close the follow-up.
+
+MENU-PATH (System > Feature Visibility): PASSED via Q9 unprompted retrieval.
+Close the follow-up.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+1. Panic at triple "License Expired" — used to teach the license-expired ≠
+   feature-broken distinction. Junior sees three lines and concludes three
+   broken things. Senior sees three lines and separates paperwork from
+   behaviour.
+2. Implicit trap of `execute update-now` as a diagnostic (Q1 distractor D) — a
+   state change dressed as a read. Explicitly named as a Junior anti-pattern.
+3. Junior REDEEMED himself with the T-30 calendar reminder. First senior thing
+   all season. Named on-screen. Half-shelf move for the sad cactus.
+
+CARRIED-FORWARD OBLIGATIONS (updated)
+-------------------------------------
+- S18/S19 OSPF internals II & III: STILL SKIPPED. Half-happy cactus now (Junior's
+  reminder-setting behaviour earned the move — the tone shifted).
+- FMG IPsec templates hands-on: STILL UNDONE. Still crying cactus.
+- Inversion-under-questioning: RESTORED to active watch. Spot-check was
+  premature. Ask ≥ 1 compound True/False per session through S25.
+- SCOPE-OF-FAILURE reading habit (NEW, from Q2): teach student to state failure
+  scope out loud before choosing an answer ("one app? one category? everything?
+  one user?"). Add as an active watch item.
+- Register-of-language for executive audiences: coached S22 Q10 + S23 morning
+  translation + S23 Q10. Third session running. Trending toward closure but not
+  yet closed — one more session of Penny-language coaching should retire it.
+- Backbone partition: CLOSED (cold retrieval passed).
+- Either/or profile trap: CLOSED (Q6 passed).
+- Feature Visibility menu-path: CLOSED (Q9 passed).
+
+TEASER DELIVERED FOR SESSION 24 — "The Tripwire"
+------------------------------------------------
+Tuesday, 7:41 AM. Riley's queue empty. Too calm. Cipher — CIPHER, who has spoken
+twice all season — walks into the office without knocking, carrying a printed
+security incident report from an external threat intel feed LoFinance subscribes
+to. Puts it on Señor's desk face-down. "Someone tried something on us Sunday
+night. It didn't work. But it didn't work because they were sloppy, not because
+we caught them." Señor turns it over. Señor's face CHANGES. For the first time
+all season, Señor picks up the phone before speaking to anyone. Dials Penny.
+Four words: "You should come down."
+
+Topics: Integrating IPS into enterprise networks — protocol decoders, signature
+databases, rate-based signatures, custom signatures, and the difference between
+SEEING an attack and CATCHING one before it lands. Study Guide 06, pp. 176–186.
+IPS engine is the tripwire that has been sitting quietly on the box all season.
+This is Cipher's arc episode. Signal: Señor picks up the phone.
+
+Date and Time completed: Monday (in-story) / real session concluded Wednesday,
+15 July 2026.

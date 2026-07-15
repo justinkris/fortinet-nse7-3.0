@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 23 Complete — Tuning the Filters</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#a12b28; --red-light:#fbe5e3; --red-border:#e7a8a5;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;}
+header{padding:44px 60px 32px;background:var(--ink-dark);}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;text-transform:uppercase;}
+header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;color:#fbf7ec;margin-bottom:8px;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;line-height:1.6;}
+main{max-width:1080px;margin:0 auto;padding:36px 60px 60px;}
+.section-block{margin-bottom:44px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);margin:18px 0 10px;}
+p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+p strong{color:var(--text);font-weight:600;}
+p em{color:var(--blue);font-style:italic;}
+ul,ol{padding-left:22px;margin-bottom:14px;}
+li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+li strong{color:var(--text);font-weight:600;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+.callout strong{color:var(--text);font-weight:600;}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+.callout-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+.callout-green .callout-label{color:var(--green);}
+.callout-amber .callout-label{color:var(--amber);}
+.callout-red .callout-label{color:var(--red);}
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+.data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+.data-table td:first-child{color:var(--text);font-weight:600;}
+.code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+.code-block pre{padding:14px 16px;overflow-x:auto;margin:0;}
+.code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;white-space:pre;}
+.mental-note{border:2px solid var(--blue);border-radius:12px;padding:14px 20px;margin:18px 0;background:var(--blue-light);}
+.mental-note-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+.mental-note p{margin:0;font-size:16px;font-weight:500;color:var(--text);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:16px 0;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+.card h4{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);margin-bottom:6px;}
+.card p{font-size:15px;margin-bottom:6px;}
+.tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:12px;background:var(--surface-2);color:var(--text-soft);}
+.tag-blue{background:var(--blue-light);color:var(--blue);}
+.tag-green{background:var(--green-light);color:var(--green);}
+.tag-amber{background:var(--amber-light);color:var(--amber);}
+.tag-red{background:var(--red-light);color:var(--red);}
+footer{padding:24px 60px;border-top:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;text-align:center;text-transform:uppercase;}
+@media (max-width:720px){
+  header{padding:32px 24px 24px;} header h1{font-size:32px;}
+  main{padding:24px;} h2{font-size:22px;}
+  .grid-2,.grid-3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow"><span style="width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;"></span> Session 23 · Complete Guide</div>
+  <h1>Tuning the <em>Filters</em></h1>
+  <p>Web filter / app control / ISDB configuration & FortiGuard dependencies · Study Guide 06 pp. 171–176</p>
+</header>
+
+<main>
+
+<!-- ═══════ OVERVIEW ═══════ -->
+<section class="section-block">
+  <div class="section-label">Session Overview</div>
+  <h2>What this session <em>actually</em> taught</h2>
+  <p>Session 22 answered <strong>what each of the three tools sees and where it lives.</strong> Session 23 answered <strong>what each one depends on to keep seeing.</strong> The answer to that second question is a subscription — and when a subscription lapses, the three tools fail in <em>asymmetric</em> ways that tell you exactly which one is which.</p>
+  <p>The core insight, in one line: <strong>web filter is a live conversation; app control and ISDB are stored knowledge.</strong> Conversations die instantly when the line goes down. Stored knowledge goes stale slowly. This asymmetry is your diagnostic key when a FortiGuard-related outage strikes.</p>
+  <div class="mental-note">
+    <div class="mental-note-label">Session mental model</div>
+    <p>Web filter dies fast (cache decay). App control and ISDB degrade slowly (frozen signatures). A silent, gradual browsing outage with app control still working = FortiGuard connectivity or licence.</p>
+  </div>
+</section>
+
+<!-- ═══════ STORY RECAP ═══════ -->
+<section class="section-block">
+  <div class="section-label">Story Recap</div>
+  <h2>Monday morning at <em>LoFinance</em></h2>
+  <p>Weekend queue: <strong>zero tickets</strong> for 48 hours — Riley screenshotted it as historical evidence. At <strong>9:02 AM Monday</strong>, every trading-floor browser began hanging. Not blocked. Not denied. Just spinning. Queue went 0 → 31 in eleven minutes.</p>
+  <p>The strange part: <strong>the Facebook app was still being blocked</strong> on phones. Slack worked. The trading platform worked. Only browsing hung. Junior loudly confirmed <em>"nothing changed — I diffed the config"</em>, and for once was correct.</p>
+  <p>Señor arrived at 9:14, went directly to his own desk, lifted an unopened envelope postmarked eleven days ago — <strong>FortiGuard Services Renewal</strong> — and set it on the whiteboard ledge next to the cacti.</p>
+  <div class="callout">
+    <strong>Señor:</strong> "Junior is correct. The configuration did not change. Ask yourself what else our firewall depends on that is not written in its configuration."
+  </div>
+</section>
+
+<!-- ═══════ LEARNING OBJECTIVES ═══════ -->
+<section class="section-block">
+  <div class="section-label">Learning Objectives</div>
+  <h2>By the end you should be able to <em>explain</em>...</h2>
+  <ul>
+    <li>Why web filter has no local database and app control / ISDB do — and what that means during a FortiGuard outage</li>
+    <li>How the FortiGate <strong>rating cache</strong> masks the outage temporarily, and why the cache is a decaying asset</li>
+    <li>The difference between <strong>fail-open</strong> and <strong>fail-closed</strong> as security philosophies — and why fail-open still causes user hangs</li>
+    <li>How <strong>FortiManager as local FDS</strong> decouples LoFinance from public-FortiGuard availability</li>
+    <li>The senior diagnostic order: paperwork → live conversation → current belief → then, and only then, configuration</li>
+    <li>Which CLI command answers which layer of the failure model</li>
+  </ul>
+</section>
+
+<!-- ═══════ CONCEPT 1: WHERE THE KNOWLEDGE LIVES ═══════ -->
+<section class="section-block">
+  <div class="section-label">Concept 1 — Where the knowledge lives</div>
+  <h2>Local database vs live lookup</h2>
+  <p>The three tools have <strong>fundamentally different consumption models</strong> for the FortiGuard subscription they share.</p>
+
+  <table class="data-table">
+    <thead><tr><th>Feature</th><th>Where the data lives</th><th>How it consumes FortiGuard</th><th>Failure mode when FDS is down</th></tr></thead>
+    <tbody>
+      <tr><td>Web filter</td><td>Not local — FortiGuard servers</td><td>Live rating lookup per unrated URL, over HTTPS/443 (anycast)</td><td>Cache-miss hang; degrades <strong>fast</strong> as cache ages out</td></tr>
+      <tr><td>Application control</td><td>Local database</td><td>Periodic signature-DB update</td><td>Feature keeps working; signatures go <strong>stale</strong> slowly</td></tr>
+      <tr><td>ISDB</td><td>Local database</td><td>Periodic vendor-IP DB update</td><td>Feature keeps working; vendor IPs go <strong>stale</strong> slowly</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-label">Why this asymmetry exists</div>
+    App-signature and vendor-IP databases are <strong>finite</strong> — thousands of entries, structured, fits in flash. The web is <strong>billions of URLs that change by the minute</strong> — no firewall on Earth stores that locally. So web filter ships the question out.
+  </div>
+
+  <div class="mental-note">
+    <div class="mental-note-label">Mental model</div>
+    <p><strong>Local = survives the outage. On-demand = dies with it.</strong></p>
+  </div>
+</section>
+
+<!-- ═══════ CONCEPT 2: THE CACHE ═══════ -->
+<section class="section-block">
+  <div class="section-label">Concept 2 — Why the weekend looked healthy</div>
+  <h2>The rating <em>cache</em> and its decay curve</h2>
+  <p>If every web-filter decision required a live round-trip to FortiGuard, browsing would feel dial-up-slow on a good day. So FortiGate keeps a <strong>cache of recent verdicts</strong> — sites already rated in this session or the last few days. Cache hits are instant; cache misses trigger a live lookup.</p>
+
+  <p>The cache masks a FortiGuard outage <em>for a while</em>. That's why the LoFinance weekend was quiet — traders were hitting sites they'd already visited that week. Every lookup was a cache hit. No question ever left the box.</p>
+
+  <p>But the cache is a <strong>decaying asset</strong>. Entries have a TTL. New sites are visited every minute. If FortiGuard is unreachable:</p>
+  <ul>
+    <li>Aged-out entries can <strong>never be replaced</strong> — the source that would refill them is down</li>
+    <li>New sites <strong>always miss</strong> — nothing populates the cache for unfamiliar destinations</li>
+    <li>Hit rate <strong>slopes down monotonically</strong> — the situation only gets worse</li>
+  </ul>
+
+  <div class="callout callout-amber">
+    <div class="callout-label">Senior insight</div>
+    Silent, gradual degradation is the failure mode senior engineers hate most. No alert fires. No config changes. No log says <em>"FortiGuard subscription lapsed."</em> The system just quietly stops being able to answer new questions and rides on its memory until the memory runs out.
+  </div>
+</section>
+
+<!-- ═══════ CONCEPT 3: FAIL-OPEN VS FAIL-CLOSED ═══════ -->
+<section class="section-block">
+  <div class="section-label">Concept 3 — What FortiGate does while waiting</div>
+  <h2>Fail-open vs fail-closed <em>vs</em> the timeout</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <span class="tag tag-green">Fail-open (default)</span>
+      <h4>Availability wins</h4>
+      <p><em>"If FortiGuard can't answer, let it through and log it."</em></p>
+      <p>Business continues; no spinners. But uncategorised destinations pass unfiltered for the whole outage. Sensible for a retail branch, where a broken branch is worse than an hour of relaxed filtering.</p>
+    </div>
+    <div class="card">
+      <span class="tag tag-red">Fail-closed</span>
+      <h4>Security wins</h4>
+      <p><em>"If FortiGuard can't answer, deny it."</em></p>
+      <p>Policy holds. Nothing uncategorised gets through. Users see instant failure. Sensible for classified networks or pharma research, where a permitted piece of malware is worse than an angry user.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-red">
+    <div class="callout-label">The trap most engineers hit</div>
+    <strong>Fail-open ≠ instant permit.</strong> It means <em>"permit AFTER giving up waiting."</em> FortiGate holds the packet, sends a rating request, waits for the timeout to expire, then applies fail-open. But the browser and the user run out of patience first. To them, "waiting forever" and "blocked" look identical.
+  </div>
+
+  <div class="mental-note">
+    <div class="mental-note-label">The distinction that matters</div>
+    <p><strong>Fail-open governs the verdict. Timeouts govern the experience.</strong> A cache miss with FortiGuard unreachable ≈ a 20-second hang even under fail-open.</p>
+  </div>
+</section>
+
+<!-- ═══════ CONCEPT 4: LICENCE EXPIRED ≠ FEATURE BROKEN ═══════ -->
+<section class="section-block">
+  <div class="section-label">Concept 4 — Reading the output</div>
+  <h2>"License Expired" does <em>not</em> mean broken</h2>
+  <p>When you run <code>diagnose autoupdate versions</code> during a subscription lapse, you'll see "License Expired" against multiple databases at once. Junior's read: <em>"Three things are broken!"</em> Senior read: <em>"Three databases have stopped updating; two features are still fully operational, one is not."</em></p>
+
+  <div class="code-block">
+    <div class="code-label">diagnose autoupdate versions — during a subscription lapse</div>
+<pre><code>Virus Definitions
+---------
+Version: 92.05678
+Contract Expiry Date: 2026-07-11
+Last Update Attempt: Mon Jul 20 09:14:22 2026
+Result: Update failed. (License Expired)
+
+Application Definitions
+---------
+Version: 27.00842
+Contract Expiry Date: 2026-07-11
+Last Update Attempt: Mon Jul 20 09:14:22 2026
+Result: Update failed. (License Expired)
+
+Internet-service Full Database
+---------
+Version: 7.02214
+Contract Expiry Date: 2026-07-11
+Last Update Attempt: Mon Jul 20 09:14:22 2026
+Result: Update failed. (License Expired)</code></pre>
+  </div>
+
+  <div class="callout">
+    Notice what's <strong>not</strong> in that output — <strong>web filter has no line at all.</strong> Because it was never a locally-stored database. Its state is proven by <em>absence</em> from this command's output, plus the shared-subscription expiry visible on its siblings.
+  </div>
+
+  <div class="mental-note">
+    <div class="mental-note-label">The distinction</div>
+    <p><strong>License expired ≠ feature broken.</strong> App control / ISDB → degrade <em>slowly</em> (stale signatures). Web filter → degrades <em>fast</em> (cache decay), then hangs.</p>
+  </div>
+</section>
+
+<!-- ═══════ CONCEPT 5: THE LIVE CONVERSATION ═══════ -->
+<section class="section-block">
+  <div class="section-label">Concept 5 — Behavioural evidence</div>
+  <h2>Reading <em>diagnose debug rating</em></h2>
+  <p>Where <code>autoupdate versions</code> shows paperwork, <code>diagnose debug rating</code> shows <strong>the live conversation</strong> with the FortiGuard rating servers. This is where you catch the actual failure.</p>
+
+  <div class="code-block">
+    <div class="code-label">diagnose debug rating — the money shot</div>
+<pre><code>Locale       : english
+License      : Expired
+Service      : Web-filter
+Status       : Disable                    ← FortiGate has stopped trying
+
+Num. of servers : 3
+Protocol        : https
+Port            : 443
+Anycast         : Enable
+
+  Server IP       Weight   RTT   Flags   TZ   Curr Lost   Total Lost
+  173.243.138.194   10     -1    DI      -8      156         156
+  208.184.237.68    10     -1    DI      -8       89          89
+  96.45.33.68       10     -1    DI      -8       41          41</code></pre>
+  </div>
+
+  <p>Read the tells: every server shows <code>RTT = -1</code> (no round-trip), <code>Flags = DI</code> (<strong>D</strong>own, <strong>I</strong>nvalid), and <code>Curr Lost = Total Lost</code> — meaning every recent request has been lost with none recovered. At the top: <code>License: Expired</code> and <code>Status: Disable</code>.</p>
+
+  <div class="callout callout-red">
+    <div class="callout-label">The killer line</div>
+    <strong>Status: Disable</strong> — FortiGate isn't even trying to talk to FortiGuard for web ratings anymore. It disabled the service internally the moment the licence expired. Every cache miss now walks into a wall.
+  </div>
+</section>
+
+<!-- ═══════ CONFIGURATION ═══════ -->
+<section class="section-block">
+  <div class="section-label">Configuration</div>
+  <h2>The three profiles, side by <em>side</em></h2>
+
+  <h3>Web filter profile — the container of category verdicts</h3>
+  <div class="code-block">
+    <div class="code-label">config webfilter profile</div>
+<pre><code>config webfilter profile
+    edit "TF-Web"
+        set inspection-mode flow
+        set feature-set flow
+        config ftgd-wf
+            config filters
+                edit 1
+                    set category 26      # Social Networking
+                    set action block
+                next
+                edit 2
+                    set category 62      # Gambling
+                    set action block
+                next
+            end
+        end
+        set log-all-url enable
+    next
+end</code></pre>
+  </div>
+  <p><strong>Notice:</strong> the profile is a container of category verdicts. FortiGuard tells the firewall which category the site is in; the profile decides what to do with that category. If FortiGuard can't answer, the whole apparatus above has nothing to act on.</p>
+
+  <h3>Application list — flow-only, runs on the IPS engine</h3>
+  <div class="code-block">
+    <div class="code-label">config application list</div>
+<pre><code>config application list
+    edit "TF-Apps"
+        config entries
+            edit 1
+                set category 5           # Social.Media
+                set action block
+            next
+            edit 2
+                set application 15832    # Facebook_App
+                set action block
+            next
+        end
+    next
+end</code></pre>
+  </div>
+  <p><strong>Notice:</strong> <em>no FortiGuard live-lookup dependency here.</em> The signatures are already on the box. Freeze the world on July 11th and this profile keeps working with July 11th's signature list — which is why Facebook was still blocked on phones during the outage.</p>
+
+  <h3>ISDB — not a profile at all</h3>
+  <div class="code-block">
+    <div class="code-label">config firewall internet-service-name (used ON the policy)</div>
+<pre><code>config firewall internet-service-name
+    edit "Facebook-Web"
+        set internet-service-id 65646
+    next
+end
+
+config firewall policy
+    edit 42
+        set name "Block-FB-For-Traders"
+        set srcintf "port3"
+        set dstintf "port1"
+        set srcaddr "TradingFloor_LAN"
+        set dstaddr "all"
+        set internet-service enable
+        set internet-service-name "Facebook-Web"
+        set action deny
+        set schedule "always"
+    next
+end</code></pre>
+  </div>
+  <p><strong>Notice the structural difference:</strong> ISDB is referenced <em>on the policy itself</em>, replacing or narrowing the destination address. No <code>set utm-status enable</code>, no profile attached. <strong>The policy IS the filter.</strong></p>
+
+  <h3>FortiManager as local FDS — the resilience posture</h3>
+  <div class="code-block">
+    <div class="code-label">config system central-management</div>
+<pre><code>config system central-management
+    set type fortimanager
+    set fmg "10.0.100.10"
+    set include-default-servers disable      ← purist enterprise posture
+    config server-list
+        edit 1
+            set server-type rating
+            set server-address "10.0.100.10"
+            set addr-type ipv4
+        next
+    end
+end
+
+config webfilter fortiguard
+    set cache-mode ttl
+end</code></pre>
+  </div>
+  <p><code>set include-default-servers disable</code> tells FortiGate <em>do not fall back to the public FortiGuard anycast pool</em> — only ask the local FortiManager-as-FDS. Purist enterprise choice. In hybrid designs, leave it enabled as a safety net. Both are defensible; knowing why you'd pick each is a senior conversation.</p>
+</section>
+
+<!-- ═══════ VERIFICATION ═══════ -->
+<section class="section-block">
+  <div class="section-label">Verification</div>
+  <h2>Diagnostic order <em>under fire</em></h2>
+  <p>The order is deliberate — each command reads a different layer of the failure model, and none of them <em>change state</em>.</p>
+
+  <table class="data-table">
+    <thead><tr><th>Order</th><th>Command</th><th>What it proves</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>diagnose autoupdate versions</code></td><td>Paperwork state — versions, contract expiry, last update result for every locally-stored DB</td></tr>
+      <tr><td>2</td><td><code>diagnose debug rating</code></td><td>Live conversation state — is FortiGate reaching FortiGuard, at what RTT, with what result?</td></tr>
+      <tr><td>3</td><td><code>diagnose webfilter fortiguard cache dump</code></td><td>Current belief — what verdicts does the box hold right now, and how fresh are they?</td></tr>
+      <tr><td>4</td><td><code>get webfilter status</code></td><td>Profile-side view — is web filter enabled, licensed, configured</td></tr>
+      <tr><td>5</td><td><code>get system fortiguard</code></td><td>Configuration state — which servers, which ports, override configured?</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-amber">
+    <div class="callout-label">Junior's anti-pattern</div>
+    <code>execute update-now</code> is an <strong>action</strong>, not a diagnostic. Running it before you've read state <em>destroys evidence</em>. Never a diagnostic step. Never.
+  </div>
+</section>
+
+<!-- ═══════ TROUBLESHOOTING WORKFLOW ═══════ -->
+<section class="section-block">
+  <div class="section-label">Troubleshooting Workflow</div>
+  <h2>The <em>silent-degradation</em> pattern</h2>
+  <ol>
+    <li><strong>Read the symptom carefully.</strong> What is the scope of failure? One user? One app? All browsing? Everything? Scope narrows the answer set faster than any other single technique.</li>
+    <li><strong>Read the paperwork.</strong> <code>diagnose autoupdate versions</code> — is anything expired, stale, or failing to update?</li>
+    <li><strong>Read the live conversation.</strong> <code>diagnose debug rating</code> — is FortiGate actually reaching FortiGuard? What's the RTT? What flags?</li>
+    <li><strong>Read the current belief.</strong> Cache dump — what does the box think about the specific site the user reported?</li>
+    <li><strong>Form a hypothesis and prove it before you change anything.</strong> Two independent lines of evidence, minimum.</li>
+    <li><strong>Fix — and design out the recurrence.</strong> Renewal handles today. FortiManager-as-FDS handles the next envelope-on-a-desk.</li>
+  </ol>
+</section>
+
+<!-- ═══════ COMMON MISTAKES ═══════ -->
+<section class="section-block">
+  <div class="section-label">Common Mistakes</div>
+  <h2>What Junior gets <em>wrong</em>, and why</h2>
+
+  <div class="callout callout-red">
+    <div class="callout-label">Mistake 1 — Panicking at three "License Expired" lines</div>
+    Junior sees three expiry warnings and concludes three broken features. Senior sees three expiry warnings and separates <strong>paperwork state</strong> from <strong>behavioural state</strong>. App control and ISDB run on their most recent database. Web filter doesn't have one to run on.
+  </div>
+
+  <div class="callout callout-red">
+    <div class="callout-label">Mistake 2 — <code>execute update-now</code> as a diagnostic</div>
+    Junior's reflex is to "try refreshing." That's a state change. It destroys the evidence you needed to prove root cause. Senior engineers never refresh, restart, or reboot as a diagnostic step.
+  </div>
+
+  <div class="callout callout-red">
+    <div class="callout-label">Mistake 3 — Assuming fail-open means users won't feel it</div>
+    Fail-open is the default. Users still felt this morning's outage. Why? Because fail-open kicks in <em>after the request timeout</em>, and the user's browser (and patience) run out well before that. Fail-open governs the verdict; the timeout governs the experience.
+  </div>
+
+  <div class="callout callout-red">
+    <div class="callout-label">Mistake 4 — Trusting FortiGuard's uptime as your resilience posture</div>
+    Any FortiGate that queries the public FortiGuard anycast pool live is one internet-side incident away from a browsing outage. Enterprise-grade design points web filter and app-control rating lookups at a <strong>FortiManager licensed as local FDS</strong> instead.
+  </div>
+</section>
+
+<!-- ═══════ SENIOR INSIGHTS ═══════ -->
+<section class="section-block">
+  <div class="section-label">Senior Engineering Insights</div>
+  <h2>What separates the mid-level from the <em>senior</em></h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>1. Symptom scope first, mechanism second</h4>
+      <p>Before naming the failure mechanism, name its <strong>scope</strong>. "No logs for Zoom specifically" is surgical — points at signature DB, not engine. "No logs for anything" is engine-wide. Scope kills wrong answers.</p>
+    </div>
+    <div class="card">
+      <h4>2. Paperwork <em>and</em> behaviour</h4>
+      <p>The licence-expiry evidence alone doesn't prove the hang. The RTT=-1 evidence alone doesn't prove the licence. You need <strong>both</strong> before you touch config. Two independent lines of evidence.</p>
+    </div>
+    <div class="card">
+      <h4>3. Design against unmonitored dependencies</h4>
+      <p>Every subscription is a piece of paper on someone's desk. Design the <strong>system</strong> so a piece of paper can't take you down. FortiManager-as-FDS + expiry alerts + calendar reminders. Belt, braces, calendar.</p>
+    </div>
+    <div class="card">
+      <h4>4. Explain the invoice, not the technology</h4>
+      <p>Executives pay for value, not for the absence of failure. Frame the subscription as <em>"Fortinet's research team keeping our firewall's picture of the world current"</em> — not as a database update.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ EXAM TIPS ═══════ -->
+<section class="section-block">
+  <div class="section-label">Exam Tips</div>
+  <h2>Traps you will see on the <em>NSE 7</em></h2>
+
+  <ul>
+    <li><strong>The absolute-qualifier trap.</strong> "Immediately," "always," "cannot," "sufficient." Absolutes are almost always wrong in networking. Reality is timeouts, thresholds, and asymmetries.</li>
+    <li><strong>The familiar-fact distractor.</strong> Fortinet loves to offer, as a wrong answer, a true fact you're proud of knowing. If a distractor quotes recently-retained material, be <em>more</em> suspicious, not less.</li>
+    <li><strong>The compound True/False.</strong> Two true premises + a "therefore" clause with a subtly false qualifier in the conclusion. Read every qualifier in the conclusion clause before committing. "Correctly" and "sufficient" are common false qualifiers.</li>
+    <li><strong>The command that changes state.</strong> If a diagnostic-order question includes <code>execute update-now</code> as an option, it's a trap. Actions are never diagnostics.</li>
+    <li><strong>The scope test.</strong> When a symptom is described in the stem, state its scope out loud: one app? one category? everything? one user? Scope kills two wrong answers immediately.</li>
+    <li><strong>ISDB is not a profile.</strong> If an answer says "attach the ISDB as a security profile" — it's wrong. ISDB is referenced <em>on</em> the policy as <code>internet-service-name</code>. This is a classic distractor.</li>
+  </ul>
+</section>
+
+<!-- ═══════ KEY TAKEAWAYS ═══════ -->
+<section class="section-block">
+  <div class="section-label">Key Takeaways</div>
+  <h2>The five sentences you must <em>own</em></h2>
+  <ol>
+    <li>Web filter is a <strong>live conversation</strong>; app control and ISDB are <strong>stored knowledge</strong>.</li>
+    <li>The web filter cache masks a FortiGuard outage temporarily; it is a <strong>decaying asset</strong> when the source is unreachable.</li>
+    <li><strong>License expired ≠ feature broken.</strong> Two of the three keep working on frozen data.</li>
+    <li><strong>Fail-open governs the verdict. Timeouts govern the experience.</strong> A cache miss with FDS down still hangs the user.</li>
+    <li>Enterprise-grade resilience = <strong>FortiManager as local FDS</strong>, plus fail-open, plus expiry warnings, plus someone reading the mail.</li>
+  </ol>
+</section>
+
+<footer>LoFinance · Session 23 of Season 2 · Study Guide 06 Security Profiles · pp. 171–176</footer>
+
+</main>
+</body>
+</html>

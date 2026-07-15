@@ -1,0 +1,200 @@
+================================================================
+SESSION 24 REVISION PACK — "The Tripwire"
+Integrating IPS into enterprise networks | SG06 pp. 175–186
+================================================================
+
+----------------------------------------------------------------
+QUICK SUMMARY (one page)
+----------------------------------------------------------------
+Sunday's exploit hit the trading API from INSIDE the guest VLAN and was
+stopped only because the attacker's packet was malformed — our security
+depended on the attacker being clumsy. The firewall permitted it because it
+inspected the ENVELOPE (where/what/which-IP), not the LETTER (payload).
+
+IPS is the first control that reads the LETTER: it matches traffic CONTENT
+against a local catalogue of known-attack patterns. That catalogue is stored
+LOCALLY (IPS Attack Definitions appears in `diagnose autoupdate versions`);
+FortiGuard keeps it fresh via periodic updates. Match locally, update
+periodically. An expired box runs stale signatures — blind to new attacks,
+but looks healthy.
+
+An IPS sensor is an ordered list of entries. FILTER = broad brush (selects
+many signatures by severity/protocol/OS/target). SIGNATURE = scalpel (one
+named signature, its own action). "All severities, all protocols, all OS,
+Block" resolves to 10,320 signatures and is a WRECKING BALL — it produces
+false positives that block legitimate business traffic. The guide's headline:
+know your network protocols and workflows.
+
+Fix a false positive by carving an exception: TYPE Signature, ACTION Monitor
+(+packet logging), placed ABOVE the broad Filter. Top-down, first-match-wins;
+below the Filter = dead config. Never fix a false positive by lowering a
+Filter's severity — that unblocks every real attack at that level.
+
+RATE-BASED signatures COUNT cadence (event + window + threshold) instead of
+matching content. They catch brute-force and DoS/resource-exhaustion, where
+every packet is valid and the hostility is only in the volume. "Fired like a
+machine gun, not a handgun."
+
+PLACEMENT: Sunday's attack was internal (guest VLAN -> trading segment) and
+never touched the internet, so the edge NGFW never saw it. IPS must sit on the
+ISFW — the box between the two internal zones — acting in NGFW dual-role.
+Perimeter assumes threat-outside; segmentation assumes threat-inside.
+
+HTTPS payloads need DEEP SSL inspection; certificate-inspection sees only the
+handshake. Deploy in MONITOR mode first, learn "normal," then flip to Block.
+
+----------------------------------------------------------------
+CHEAT SHEET
+----------------------------------------------------------------
+COMMANDS
+  diagnose autoupdate versions           # proves IPS DB is LOCAL (version/expiry)
+  diagnose test application ipsmonitor 1 # IPS engine health
+  Log & Report > Security Events > Intrusion Prevention  # what matched + action
+
+CLI — SENSOR WITH SCOPED FILTER
+  config ips sensor
+    edit "protect-trading-api"
+      config entries
+        edit 1
+          set filter enable
+          set severity high critical     # NOT all severities
+          set protocol HTTP HTTPS         # scope to what hits the API
+          set location server             # target = protected servers
+          set status enable
+          set action block
+          set log-packet enable
+        next
+      end
+    next
+  end
+
+CLI — FALSE-POSITIVE EXCEPTION (scalpel on top)
+  config entries
+    edit 0                               # lower number = evaluated first
+      set rule <signature-id>
+      set status enable
+      set action monitor                  # pass but log
+      set log-packet enable
+    next
+  end
+
+CLI — ATTACH TO POLICY (on the ISFW)
+  config firewall policy
+    edit <guest-to-trading-policy>
+      set ips-sensor "protect-trading-api"
+      set ssl-ssh-profile "certificate-inspection"   # deep needed for HTTPS payload
+    next
+  end
+
+GUI PATHS
+  Security Profiles > Intrusion Prevention        # build the sensor
+  Firewall & Objects > Firewall Policy            # attach sensor + SSL profile
+  Log & Report > Security Events > Intrusion Prevention  # read matches
+
+DEFAULTS / BEHAVIOURS
+  - IPS entries evaluated TOP-DOWN, first match wins.
+  - Filter = many sigs by criteria; Signature = one named sig.
+  - "All sev/proto/OS + Block" = 10,320 sigs (guide example) = false-positive risk.
+  - IPS DB stored LOCALLY; updated periodically by FortiGuard.
+  - Expired contract = stale DB = blind (NOT "protected").
+  - certificate-inspection = SNI/handshake only; deep = decrypt payload.
+  - Rate-based = count over window vs threshold (not content).
+
+DESIGN RULES
+  - Scope the Filter narrow on purpose BEFORE deploying.
+  - Exception (Signature/Monitor) ABOVE the Filter.
+  - Internal-to-internal attack -> IPS on ISFW, not edge NGFW.
+  - Monitor first, learn normal, THEN Block.
+  - HTTPS payload attack -> deep SSL inspection.
+
+----------------------------------------------------------------
+FLASHCARDS (Q -> A)
+----------------------------------------------------------------
+Q: What question does IPS answer that web/App/ISDB don't?
+A: Does the CONTENT (payload) match a known attack pattern? IPS reads the letter, not the envelope.
+
+Q: Where does the IPS signature database live?
+A: Locally on the FortiGate. Proof: it appears in `diagnose autoupdate versions`. Updated periodically by FortiGuard.
+
+Q: Filter vs Signature — the difference?
+A: Filter = broad brush, selects many sigs by criteria. Signature = scalpel, one named sig with its own action.
+
+Q: Why is "all severities, all protocols, all OS, Block" risky?
+A: ~10,320 sigs; produces false positives that block legitimate business traffic. Know your workflows.
+
+Q: How do you fix a false positive without disabling the Filter?
+A: Signature type + Monitor action + packet logging, placed ABOVE the Filter.
+
+Q: What happens if the exception sits below the Filter?
+A: The Filter matches first and blocks it — the exception is dead config. Top-down, first match wins.
+
+Q: What does a rate-based signature evaluate?
+A: Frequency — a count of events over a time window against a threshold. Not content.
+
+Q: Name an attack a content signature is blind to, and why.
+A: Brute-force (or DoS/resource-exhaustion). Every packet is valid content; the attack exists only in the rate.
+
+Q: Internal attack, guest VLAN -> trading segment. Which firewall gets the IPS profile?
+A: The ISFW (NGFW dual-role). The edge NGFW never sees internal traffic.
+
+Q: Why won't IPS catch an attack payload inside HTTPS under certificate-inspection?
+A: Cert-inspection only sees the SNI/handshake. You need deep/full inspection to decrypt and read the payload.
+
+Q: Is an expired-contract box "fully protected" because the DB is local?
+A: No. Local != current. Stale signatures are blind to new attacks.
+
+Q: What's the safe way to deploy a new IPS profile on a production policy?
+A: Monitor mode first; watch logs; carve exceptions; then flip to Block.
+
+Q: The one-line episode thesis?
+A: Perimeter assumes the threat is outside; segmentation assumes it's already inside.
+
+----------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path" (paste into an AI audio generator)
+----------------------------------------------------------------
+Produce a ~9-minute episode of "The Packet Path," a warm, slightly noir
+tech-storytelling podcast about a scrappy fintech called LoFinance and its
+eccentric senior network engineer, Se~nor (who wears a sombrero), his
+overconfident junior "Junior," the calm security lead Cipher, the operations
+boss Penny, and the help-desk lead Riley. Two hosts: a curious host who asks
+the questions a learner would, and an engineer host who explains with vivid
+analogies. Keep it accurate to Fortinet FortiGate concepts.
+
+Tell this episode's story: On a quiet Tuesday, Cipher walks in with a
+threat-intel report — Sunday at 2:14 AM, someone tried to exploit LoFinance's
+trading API, and the attack came from INSIDE, on the guest Wi-Fi in the lobby.
+It reached the API. It only failed because the attacker sent a malformed
+packet and it fell over on its own. Se~nor's chilling line: "We did not stop
+that attack. The attacker stopped it, by being clumsy."
+
+Explain the core lesson with the ENVELOPE vs LETTER analogy: the firewall was
+checking the envelope and the sender — where the traffic was going and which
+port — but never opening it to read the letter inside. IPS is the machinery
+that reads the letter, matching the payload against a catalogue of known
+attacks. Explain that the catalogue lives locally on the box and FortiGuard
+keeps it fresh — "match locally, update periodically."
+
+Cover the danger: Junior wants to turn EVERYTHING on and block everything.
+Explain why that's a wrecking ball, not a firewall — it creates false
+positives that would halt the trading floor harder than any attacker. Use the
+idea that a false positive doesn't look like a fault; it looks like correct
+behaviour, which makes it the hardest outage to diagnose. Then explain the
+elegant fix: a scalpel on top of the wall — one specific signature set to
+Monitor, placed ABOVE the broad blocking Filter, because first match wins.
+
+Introduce rate-based signatures with the memorable line the apprentice coined:
+legitimate traffic "fired like a machine gun, not a handgun" — brute-force and
+floods, where no single packet is guilty and the danger is the rate.
+
+End with the placement insight: the attack was internal, so the perimeter
+firewall never even saw it. The tripwire has to sit on the internal
+segmentation firewall, between the guest zone and the trading zone. "The call
+is coming from inside the house." Include Junior's mistake (wanting to block
+everything) and what it taught. Close with Cipher insisting they run it in
+Monitor mode for a week first — "watch before block" — and a teaser: next week
+the logs come back screaming at innocent traffic. Episode title on-screen:
+"The Tripwire." Next-episode teaser title: "Crying Wolf."
+
+----------------------------------------------------------------
+END OF REVISION PACK
+----------------------------------------------------------------

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 23 Troubleshooting — FortiGuard-Dependent Filters</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#a12b28;--red-light:#fbe5e3;--red-border:#e7a8a5;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);line-height:1.5;}
+header{padding:44px 60px 32px;background:var(--ink-dark);}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;text-transform:uppercase;}
+header h1{font-family:'Playfair Display',serif;font-size:40px;font-weight:700;line-height:1.05;color:#fbf7ec;margin-bottom:8px;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+main{max-width:1000px;margin:0 auto;padding:36px 60px 60px;}
+.block{margin-bottom:40px;}
+h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text);margin-bottom:14px;padding-left:14px;border-left:3px solid var(--blue);}
+h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+h3{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--text);margin:14px 0 8px;}
+p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.65;color:var(--text-soft);margin-bottom:10px;}
+p strong{color:var(--text);font-weight:600;}
+ul,ol{padding-left:22px;margin-bottom:12px;}
+li{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);margin-bottom:4px;}
+li strong{color:var(--text);font-weight:600;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:14px;}
+.card-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+.card h4{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);margin-bottom:6px;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:15px;color:var(--text-soft);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.code-block{background:var(--ink-dark);border-radius:8px;margin:12px 0;overflow:hidden;}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:6px 14px;background:rgba(255,255,255,0.05);}
+.code-block pre{padding:12px 14px;overflow-x:auto;margin:0;}
+.code-block code{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.55;color:#e8efff;white-space:pre;}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:16px 0;font-family:'Cormorant Garamond',serif;}
+.tree-node{padding:8px 0 8px 24px;position:relative;font-size:16px;color:var(--text-soft);border-left:2px solid var(--border);margin-left:8px;}
+.tree-node::before{content:'';position:absolute;left:-2px;top:16px;width:14px;height:2px;background:var(--border);}
+.tree-q{font-weight:600;color:var(--text);margin-bottom:4px;}
+.tree-a{color:var(--text-soft);font-style:italic;font-size:15px;}
+.tree-yes{color:var(--green);font-weight:600;}
+.tree-no{color:var(--red);font-weight:600;}
+code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:3px;color:var(--text);}
+footer{padding:20px 60px;border-top:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-align:center;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Session 23 · Troubleshooting Guide</div>
+  <h1>When the <em>filters</em> stop filtering</h1>
+  <p>Symptoms, questions, evidence, decision tree — for FortiGuard-dependent features</p>
+</header>
+
+<main>
+
+<section class="block">
+  <h2>The <em>senior</em> mindset</h2>
+  <p>The failure modes in this chapter are <strong>silent and gradual</strong>. Nothing alerts. Nothing logs "your subscription lapsed." The system just quietly stops answering new questions and rides on its memory until the memory runs out. Your job is to notice <em>which layer</em> is failing before Junior does the wrong thing.</p>
+  <div class="callout">
+    <strong>The one rule:</strong> read state before you change state. Every diagnostic command below reads. None of them change anything. That's on purpose.
+  </div>
+</section>
+
+<section class="block">
+  <h2>Symptoms you'll <em>see</em></h2>
+
+  <div class="card">
+    <div class="card-label">Symptom A</div>
+    <h4>Browsing hangs, no block page, apps still work</h4>
+    <p>The classic FortiGuard-connectivity or licence-lapse pattern. Browsers spin; Facebook APP is still being blocked; Slack/trading platform fine. Ticket wording: <em>"Internet broken."</em> The scope is <strong>browser-shaped</strong>, not machine-shaped.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Symptom B</div>
+    <h4>App control block for one specific app has no effect and produces no logs</h4>
+    <p>Surgical scope — one application. Suggests <strong>signature-database problem</strong>, not engine problem. If the engine were down, everything would fail, not one app.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Symptom C</div>
+    <h4>Web-filter block for a specific site not firing</h4>
+    <p>Two candidates: (1) FortiGuard has that site categorised differently than you think — cache dump will confirm; (2) SSL inspection isn't set to full and the URL isn't visible to the profile — check the profile.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Symptom D</div>
+    <h4>SD-WAN rule matching Salesforce not steering as expected</h4>
+    <p>If using ISDB — check ISDB DB freshness (<code>diagnose autoupdate versions</code>). If using app control — check Application Detection-Based SD-WAN is enabled under System &gt; Feature Visibility, and remember app-control-based steering is <em>learning-based</em> (first packets take default path).</p>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Questions to ask <em>first</em></h2>
+  <ol>
+    <li><strong>What is the scope of the failure?</strong> One user, one app, one category, all browsing, everything? Scope kills wrong answers.</li>
+    <li><strong>Did the configuration change recently?</strong> If Junior says "nothing changed" and you can verify — trust it. That's a signal to look at the <em>environment</em>, not the config.</li>
+    <li><strong>When did the symptom start?</strong> Sudden = network/connectivity/licence flip. Gradual = cache decay, signature staleness, DB drift.</li>
+    <li><strong>What still works?</strong> The intersection of "what fails" and "what works" points directly at the affected layer.</li>
+    <li><strong>Is there any subscription paperwork nearby?</strong> Literally. Check for expiry warnings in the GUI, unopened emails, unread notification banners. The physical envelope-on-the-shelf is a real failure mode.</li>
+  </ol>
+</section>
+
+<section class="block">
+  <h2>Verification commands & expected <em>outputs</em></h2>
+
+  <h3>Paperwork state</h3>
+  <div class="code-block">
+    <div class="code-label">diagnose autoupdate versions</div>
+<pre><code>Virus Definitions / Application Definitions / Internet-service Full Database
+  Version, Contract Expiry Date, Last Update Attempt, Result
+
+Healthy:   Result: OK
+Lapsed:    Result: Update failed. (License Expired)
+Blocked:   Result: Update failed. (Connection error)  ← firewall/routing/DNS issue</code></pre>
+  </div>
+  <p>Web filter is <strong>not in this output</strong>. That's expected — its "database" isn't local. Absence of a webfilter line is proof-by-absence, not a bug.</p>
+
+  <h3>Live conversation state</h3>
+  <div class="code-block">
+    <div class="code-label">diagnose debug rating</div>
+<pre><code>License      : Valid / Expired
+Service      : Web-filter
+Status       : Enable / Disable            ← Disable = FortiGate has stopped trying
+
+  Server IP       RTT   Flags
+  x.x.x.x         5     F                  ← healthy: F = Functional
+  x.x.x.x         -1    DI                 ← Down + Invalid: server unreachable</code></pre>
+  </div>
+
+  <h3>Current belief state</h3>
+  <div class="code-block">
+    <div class="code-label">diagnose webfilter fortiguard cache dump</div>
+<pre><code>Cache entries with category IDs and TTLs.
+Look for:
+  · Is the specific site the user reported in the cache?
+  · What category is it rated as?
+  · How fresh is the entry?</code></pre>
+  </div>
+
+  <h3>Profile-side view</h3>
+  <div class="code-block">
+    <div class="code-label">get webfilter status / get system fortiguard</div>
+<pre><code>Confirms profile is enabled, licensed, configured.
+Confirms which FortiGuard servers and ports are configured.</code></pre>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Decision <em>tree</em></h2>
+  <p>"Trading floor browsers hang; apps still block correctly."</p>
+
+  <div class="tree">
+    <div class="tree-node">
+      <div class="tree-q">1. Is the failure browser-shaped, or does it also hit non-HTTP traffic?</div>
+      <div class="tree-a">Browser-shaped only → suspect web-filter FortiGuard dependency. Continue.</div>
+      <div class="tree-a">All outbound broken → not this chapter. Check routing, WAN link, policy chain.</div>
+    </div>
+    <div class="tree-node">
+      <div class="tree-q">2. Run <code>diagnose autoupdate versions</code>. Any "License Expired" or "Update failed"?</div>
+      <div class="tree-a"><span class="tree-yes">Yes</span> → subscription lapse or FortiGuard connectivity. Continue to 3.</div>
+      <div class="tree-a"><span class="tree-no">No</span> → databases healthy. Skip to 5.</div>
+    </div>
+    <div class="tree-node">
+      <div class="tree-q">3. Run <code>diagnose debug rating</code>. Status: Disable, RTT: -1, Flags: DI on all servers?</div>
+      <div class="tree-a"><span class="tree-yes">Yes</span> → confirmed. It's a subscription or FDS-reachability problem.</div>
+      <div class="tree-a"><span class="tree-no">No — servers reachable but License: Expired</span> → licence problem specifically.</div>
+      <div class="tree-a"><span class="tree-no">No — License: Valid but RTT: -1</span> → connectivity problem (firewall, DNS, routing).</div>
+    </div>
+    <div class="tree-node">
+      <div class="tree-q">4. Fix path:</div>
+      <div class="tree-a">Licence lapsed → renew subscription. Verify <code>diagnose debug rating</code> shows Status: Enable within a few minutes.</div>
+      <div class="tree-a">Connectivity blocked → check outbound policy to FortiGuard IPs/HTTPS/443, DNS for fortiguard.net domains, upstream firewall rules.</div>
+    </div>
+    <div class="tree-node">
+      <div class="tree-q">5. If DBs healthy but user still reports a specific site not being blocked:</div>
+      <div class="tree-a">Check <code>diagnose webfilter fortiguard cache dump</code> for that site — likely miscategorised. Submit a rating request to Fortinet.</div>
+      <div class="tree-a">Check SSL inspection — if profile is certificate-inspection only, URL path isn't visible; try full inspection.</div>
+    </div>
+    <div class="tree-node">
+      <div class="tree-q">6. Design step (root cause vs restoration):</div>
+      <div class="tree-a">Restore = renew. <strong>Root cause fix</strong> = FortiManager-as-FDS + expiry warnings + calendar reminder.</div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Common <em>dead ends</em></h2>
+  <div class="callout callout-red">
+    <strong>Running <code>execute update-now</code> as a diagnostic.</strong> It's an action, not a read. It destroys the "Last Update Attempt" evidence and may temporarily change the "Result" field before you've read what it was. If you need to force an update <em>after</em> fixing the root cause, sure. Not before.
+  </div>
+  <div class="callout callout-red">
+    <strong>Renewing the licence without designing out the recurrence.</strong> The next envelope will sit on a desk too. Design a system where a piece of paper cannot take down the trading floor. That's the senior part.
+  </div>
+  <div class="callout callout-red">
+    <strong>Assuming fail-open covers you.</strong> Fail-open is default. It didn't help LoFinance's trading floor because <em>the timeout is measured in seconds</em>, and browsers give up first. Fail-open is a verdict philosophy, not a latency solution.
+  </div>
+  <div class="callout callout-amber">
+    <strong>Confusing "database expired" with "feature broken."</strong> App control and ISDB run on their most recently downloaded database. Licence expiry stops the <em>updates</em>, not the feature. Old signatures still fire.
+  </div>
+</section>
+
+<section class="block">
+  <h2>Likely root <em>causes</em>, ranked</h2>
+  <ol>
+    <li><strong>FortiGuard subscription lapsed</strong> (paperwork). Renew.</li>
+    <li><strong>Outbound policy blocking access to FortiGuard.</strong> Check WAN egress policy — HTTPS/443 to the anycast pool must be allowed. Corporate proxies sometimes intercept.</li>
+    <li><strong>DNS resolution failure for fortiguard.net domains.</strong> Rare but real. Check <code>execute traceroute fortiguard.net</code>.</li>
+    <li><strong>Certificate issue on the anycast path.</strong> Rare; usually shows as certificate errors in the debug rating output.</li>
+    <li><strong>Misconfigured override server.</strong> If a manual override server was set for testing and never removed, FortiGate might be pointing at nowhere. Check <code>get system fortiguard</code>.</li>
+  </ol>
+</section>
+
+<section class="block">
+  <h2>Exam <em>traps</em> in this space</h2>
+  <ul>
+    <li><strong>Which command shows Application Definitions expiry?</strong> Answer is <code>diagnose autoupdate versions</code>. Distractors include <code>execute update-now</code> (action, not read) and <code>get system fortiguard</code> (config, not database state).</li>
+    <li><strong>During a FortiGuard outage, which features continue to work?</strong> App control and ISDB (local DBs). Web filter fails first (cache decay). Any answer suggesting all three fail together, or that ISDB fails first, is wrong.</li>
+    <li><strong>Application control not matching a specific application — first place to look?</strong> Signature database freshness. NOT the IPS engine (surgical scope rules out engine-wide failure).</li>
+    <li><strong>ISDB in SD-WAN rules — how is it referenced?</strong> As the <em>destination</em>. Not source. Not a profile. And it does <em>not</em> require Application Detection-Based SD-WAN — that's for app control.</li>
+    <li><strong>Fail-open under FortiGuard outage — what does the user experience?</strong> Not "instant permit." A <em>hang until the request timeout expires</em>. Fail-open governs the verdict, timeout governs the experience.</li>
+  </ul>
+</section>
+
+<footer>Session 23 · LoFinance · Study Guide 06 pp. 171–176</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 24 — Troubleshooting IPS (Senior Engineer Thinking)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;--blue-glow:rgba(30,64,175,0.07);--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+html{scroll-behavior:smooth;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{padding:48px 60px 36px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.02;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:10px;line-height:1.6;max-width:760px;}
+.motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+.motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+.motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+.motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+main{max-width:1100px;margin:0 auto;}
+.main-content{padding:36px 60px 60px;}
+.section-block{margin-bottom:44px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.section-block h2{font-family:'Playfair Display',serif;font-size:29px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+.section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+.section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text-soft);margin:20px 0 10px;}
+.section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+.section-block p strong{color:var(--text);font-weight:700;}
+.section-block p em{color:var(--blue);font-style:italic;}
+.section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+.section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:5px;}
+.section-block li strong{color:var(--text);font-weight:700;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+.callout strong{color:var(--text);font-weight:700;}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+.data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+.data-table tr:hover td{background:var(--blue-glow);}
+.data-table td:first-child{color:var(--text);font-weight:700;}
+.code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+.code-block pre{padding:16px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;white-space:pre;}
+.mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+.mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+.mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+.analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+.analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:6px;text-transform:uppercase;}
+.analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+.socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;border-top:3px solid var(--blue);}
+.socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;}
+.socratic-questions{list-style:none;padding:0;margin:0;}
+.socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 24px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+.socratic-questions li:last-child{border-bottom:none;}
+.socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+.image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:22px 24px;margin:18px 0;}
+.ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+.ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;font-family:'Cormorant Garamond',serif;}
+.ip-prompt{margin-top:10px;padding:12px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);line-height:1.65;}
+.ip-meta{font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.7;}
+.ip-meta strong{color:var(--text-soft);}
+footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+footer span{color:var(--blue);}
+.pill{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+.big-idea{background:var(--ink-dark);border-radius:14px;padding:24px 28px;margin:20px 0;}
+.big-idea .k{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-accent);margin-bottom:8px;}
+.big-idea .v{font-family:'Playfair Display',serif;font-size:22px;font-weight:600;color:#fbf7ec;line-height:1.35;}
+.big-idea .v em{font-style:italic;color:var(--ink-accent);}
+@media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:32px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:16px 0;}
+.tree-node{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;padding:8px 0 8px 20px;border-left:2px solid var(--blue-border);margin-left:8px;color:var(--text-soft);}
+.tree-node strong{color:var(--text);}
+.tree-q{font-family:'Playfair Display',serif;font-weight:600;color:var(--blue);font-size:17px;margin:14px 0 4px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> SESSION 24 · TROUBLESHOOTING GUIDE</div>
+  <h1>Troubleshooting <em>IPS</em></h1>
+  <p>How a senior engineer thinks through IPS behaviour — the emphasis is on reasoning, not memorising commands. The hardest IPS problem isn't the attack you missed; it's the legitimate traffic you blocked.</p>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A false positive doesn't look like a fault. It looks like <em>correct behaviour.</em></div>
+  <div class="motivation-sub">That's what makes it the most expensive hour in the incident. Everything shows healthy — except the IPS log.</div>
+</div>
+
+<main>
+<div class="main-content">
+
+  <div class="section-block">
+    <div class="section-label">Symptoms</div>
+    <h2>What you'll see</h2>
+    <ul>
+      <li>An application <strong>hangs</strong> — no error, no block page, just a spinner or a "connection reset."</li>
+      <li>Server is healthy, network is up, the app is running — yet traffic isn't getting through.</li>
+      <li>Symptom appeared right after an IPS profile was attached or a signature update landed.</li>
+      <li>Or the reverse: an attack got through and you need to know <em>why IPS didn't catch it.</em></li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Questions to Ask First</div>
+    <h2>Define the problem before touching config</h2>
+    <ul>
+      <li><strong>Scope:</strong> one app? one user? one protocol? everything? Surgical scope points at one signature; broad scope points at the engine or the policy.</li>
+      <li><strong>Encryption:</strong> is the traffic HTTPS? If so, is the SSL profile deep or certificate-inspection? Cert-inspection can't see the payload.</li>
+      <li><strong>Direction/target:</strong> is the affected traffic client-side or server-side? Does the Filter's <code>location</code> match?</li>
+      <li><strong>Content or count:</strong> is a single request being blocked (content signature), or bursts (rate-based)?</li>
+      <li><strong>Timing:</strong> did it start with a config change or a signature push? A push can introduce a new signature that flags native traffic.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Verification Commands</div>
+    <h2>Read state before you change it</h2>
+    <table class="data-table">
+      <tr><th>Command / Path</th><th>What it tells you</th><th>Expected / read for</th></tr>
+      <tr><td>Log &amp; Report &gt; Security Events &gt; Intrusion Prevention</td><td>What the sensor actually matched and what action fired</td><td>The signature name + action (Block/Monitor). This is where the false positive confesses.</td></tr>
+      <tr><td>diagnose autoupdate versions</td><td>IPS Attack Definitions version + contract expiry</td><td>Present = local DB. Expired contract = stale signatures = blind to new attacks.</td></tr>
+      <tr><td>diagnose test application ipsmonitor 1</td><td>IPS engine health/status</td><td>Engine running. Broad, engine-wide failure ≠ single-signature misfire.</td></tr>
+      <tr><td>get / show on the ips sensor + policy</td><td>Entry order, actions, and whether the sensor is attached to the right policy</td><td>Exception entries ABOVE the broad Filter; sensor bound to the correct policy.</td></tr>
+    </table>
+    <div class="callout"><strong>Golden rule:</strong> the IPS log is your first stop, not your last. It names the exact signature. Every other check (server, network, app) will say "healthy" during a false positive.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Decision Tree</div>
+    <h2>From symptom to root cause</h2>
+    <div class="tree">
+      <div class="tree-q">Is legitimate traffic being blocked, or did an attack get through?</div>
+      <div class="tree-node"><strong>Legitimate blocked →</strong> Check the IPS log for the matched signature.
+        <div class="tree-node">Signature named &amp; it's a real app → carve an exception: <strong>Signature type, Monitor action, placed ABOVE the Filter.</strong> Do NOT lower the Filter's severity.</div>
+        <div class="tree-node">No IPS log entry but still blocked → it's not IPS. Look at policy, routing, or another profile.</div>
+      </div>
+      <div class="tree-q">Attack got through — why?</div>
+      <div class="tree-node">Was it HTTPS? → certificate-inspection can't read the payload. Need <strong>deep inspection.</strong></div>
+      <div class="tree-node">Was the signature present but stale/expired? → <code>diagnose autoupdate versions</code>. Expired = blind. Renew + update.</div>
+      <div class="tree-node">Novel attack, no signature yet? → IPS only catches known shapes. Nothing to match. This is a coverage limit, not a fault.</div>
+      <div class="tree-node">Was it a volume attack (brute-force/DoS)? → content signatures are blind to it. Need a <strong>rate-based signature.</strong></div>
+      <div class="tree-node">Did the sensor even see the traffic? → internal-to-internal attack won't cross the edge NGFW. Must be on the <strong>ISFW.</strong></div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Common Dead Ends</div>
+    <h2>Where engineers waste the hour</h2>
+    <ul>
+      <li><strong>Rebooting the server / restarting the app.</strong> It's healthy. The firewall is dropping the traffic silently.</li>
+      <li><strong>Disabling the whole IPS profile "to test."</strong> Fixes the symptom, removes all protection, and teaches you nothing. Read the log instead.</li>
+      <li><strong>Lowering a Filter's severity to fix one false positive.</strong> Opens the door to every real attack at that severity. Use a Signature exception.</li>
+      <li><strong>Placing the exception below the Filter.</strong> It never runs. First match wins, top-down.</li>
+      <li><strong>Expecting IPS to catch an HTTPS payload under certificate-inspection.</strong> It can only see the handshake.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Likely Root Causes</div>
+    <h2>Ranked by frequency</h2>
+    <ol>
+      <li><strong>Over-broad Filter</strong> (all severities/protocols/OS + Block) catching legitimate unusual traffic.</li>
+      <li><strong>Exception mis-ordered</strong> — placed below the Filter, so it's dead config.</li>
+      <li><strong>Wrong SSL profile</strong> — certificate-inspection where deep inspection is needed for an HTTPS payload.</li>
+      <li><strong>Stale/expired signature DB</strong> — box is blind to current attacks but looks healthy.</li>
+      <li><strong>Wrong placement</strong> — IPS on the edge NGFW when the attack is internal (should be ISFW).</li>
+      <li><strong>Content signature vs volume attack</strong> — needs rate-based coverage.</li>
+    </ol>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Exam Traps</div>
+    <h2>What the blueprint hides in the stem</h2>
+    <ul>
+      <li><strong>"Regardless of placement…"</strong> — false. Placement always matters in an ordered list.</li>
+      <li><strong>"Because the DB is local, an expired box is fully protected."</strong> — false. Local ≠ current.</li>
+      <li><strong>Scenario names "DDoS" but describes one source hammering one service</strong> — that's brute-force; match on mechanism (count), not the label.</li>
+      <li><strong>Internal attack + "put IPS on the perimeter firewall"</strong> — the perimeter never sees it. ISFW.</li>
+      <li><strong>"Set the Filter to Monitor to fix the false positive"</strong> — that removes blocking for <em>everything</em>. Use a Signature exception on top.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">The Senior Habit</div>
+    <h2>Watch before you block</h2>
+    <p>Deploy every new IPS profile on a production-critical policy in <strong>Monitor mode first</strong>. Watch the logs for a week. Learn what "normal" looks like — which legitimate apps trip which signatures — and carve your exceptions <em>before</em> you flip to Block. The alternative is discovering your false positives live, during market hours, with your name on the change.</p>
+    <div class="mental-note-block"><span class="mental-note-block-icon">📌</span><div><div class="mental-note-block-label">Root cause vs restore service</div><div class="mental-note-block-text">Disabling IPS restores service. Finding the misfiring signature and carving a scoped exception fixes the root cause AND keeps you protected. Only the second one is engineering.</div></div></div>
+  </div>
+
+</div>
+</main>
+<footer>LoFinance NSE7 · Session 24 — <span>The Tripwire</span> · Troubleshooting Guide</footer>
+</body>
+</html>

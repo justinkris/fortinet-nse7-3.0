@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 23 Bite — Tuning the Filters</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#a12b28;--red-light:#fbe5e3;--red-border:#e7a8a5;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);line-height:1.5;}
+header{padding:36px 40px 28px;background:var(--ink-dark);}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+header h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;line-height:1.05;color:#fbf7ec;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:6px;}
+main{max-width:820px;margin:0 auto;padding:32px 40px 60px;}
+.block{margin-bottom:28px;}
+h2{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:12px;padding-left:14px;border-left:3px solid var(--blue);}
+h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.65;color:var(--text-soft);margin-bottom:10px;}
+p strong{color:var(--text);font-weight:600;}
+p em{color:var(--blue);font-style:italic;}
+ul{padding-left:20px;margin-bottom:10px;}
+li{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.6;color:var(--text-soft);margin-bottom:4px;}
+li strong{color:var(--text);font-weight:600;}
+.mental-note{border:2px solid var(--blue);border-radius:10px;padding:12px 16px;margin:14px 0;background:var(--blue-light);}
+.mental-note-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:4px;}
+.mental-note p{margin:0;font-size:15px;font-weight:500;color:var(--text);}
+.data-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:8px 12px;text-align:left;}
+.data-table td{font-family:'Cormorant Garamond',serif;font-size:14px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+.data-table td:first-child{color:var(--text);font-weight:600;}
+.callout{border-left:3px solid var(--amber-border);background:var(--amber-light);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:15px;color:var(--text-soft);}
+code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--text);}
+footer{padding:16px 40px;border-top:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-align:center;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Session 23 · Study Bite · 5 min</div>
+  <h1>Tuning the <em>Filters</em></h1>
+  <p>Web filter · App control · ISDB · FortiGuard dependencies</p>
+</header>
+
+<main>
+
+<section class="block">
+  <h2>The <em>one</em> insight</h2>
+  <p>Web filter is a <strong>live conversation</strong> with FortiGuard. App control and ISDB are <strong>stored knowledge</strong> that lives on the FortiGate. When the FortiGuard link (or the licence) goes down, they fail in different directions — and that asymmetry is your diagnostic key.</p>
+</section>
+
+<section class="block">
+  <h2>Asymmetric <em>failure</em></h2>
+  <table class="data-table">
+    <thead><tr><th>Feature</th><th>Data lives</th><th>When FDS down</th></tr></thead>
+    <tbody>
+      <tr><td>Web filter</td><td>FortiGuard servers (cache local)</td><td>Cache-miss hangs. Degrades <strong>fast</strong>.</td></tr>
+      <tr><td>App control</td><td>Local database</td><td>Runs on stale signatures. Degrades <strong>slowly</strong>.</td></tr>
+      <tr><td>ISDB</td><td>Local database</td><td>Runs on stale vendor IPs. Degrades <strong>slowly</strong>.</td></tr>
+    </tbody>
+  </table>
+  <div class="mental-note">
+    <div class="mental-note-label">Remember</div>
+    <p>Local = survives the outage. On-demand = dies with it. License expired ≠ feature broken.</p>
+  </div>
+</section>
+
+<section class="block">
+  <h2>The <em>cache</em></h2>
+  <p>FortiGate caches recent web-filter verdicts. This masks a FortiGuard outage <em>temporarily</em>. But the cache is a <strong>decaying asset</strong> — entries age out, new sites always miss, hit rate slopes down monotonically. A silent, gradual outage is what you see.</p>
+</section>
+
+<section class="block">
+  <h2>Fail-open ≠ instant <em>permit</em></h2>
+  <p><strong>Fail-open governs the verdict. Timeouts govern the experience.</strong> Fail-open (the default) means "permit AFTER giving up waiting." The user's browser runs out of patience before FortiGate's request timeout expires. Result: hang, even under fail-open.</p>
+</section>
+
+<section class="block">
+  <h2>Three commands you <em>must</em> know</h2>
+  <ul>
+    <li><code>diagnose autoupdate versions</code> — paperwork (Version, Contract Expiry, Last Update, Result). Web filter absent from this output.</li>
+    <li><code>diagnose debug rating</code> — live conversation with FortiGuard rating servers. Watch for <code>Status: Disable</code>, <code>RTT: -1</code>, <code>Flags: DI</code>.</li>
+    <li><code>diagnose webfilter fortiguard cache dump</code> — current belief. What verdicts does the box hold right now?</li>
+  </ul>
+  <div class="callout">
+    <strong>Never</strong> use <code>execute update-now</code> as a diagnostic. It's an action, not a read. It destroys the evidence.
+  </div>
+</section>
+
+<section class="block">
+  <h2>Where each thing <em>lives</em> in config</h2>
+  <ul>
+    <li><strong>Web filter:</strong> <code>config webfilter profile</code> → <code>config ftgd-wf</code> → <code>config filters</code></li>
+    <li><strong>App control:</strong> <code>config application list</code> → <code>config entries</code></li>
+    <li><strong>ISDB:</strong> <code>config firewall internet-service-name</code> — then referenced ON the policy as <code>internet-service-name</code>, not as a profile</li>
+    <li><strong>FMG-as-FDS:</strong> <code>config system central-management</code> → <code>set include-default-servers disable</code> + rating server entry</li>
+  </ul>
+</section>
+
+<section class="block">
+  <h2>The Penny <em>translation</em></h2>
+  <p><em>"The service we pay Fortinet for stopped answering our calls. The other two things on the invoice kept working because they live on our firewall, not on Fortinet's servers. The renewal is the licence. The FortiManager work is the insurance."</em></p>
+</section>
+
+</main>
+<footer>Session 23 · LoFinance · Study Guide 06 pp. 171–176</footer>
+</body>
+</html>
