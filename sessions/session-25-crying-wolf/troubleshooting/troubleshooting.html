@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 25 Troubleshooting — Crying Wolf</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--coral:#c2410c;--coral-light:#fdece2;--coral-border:#f4c3a3;--red:#b91c1c;--red-light:#fde8e8;}
+  html{scroll-behavior:smooth;}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:40px 56px 30px;background:var(--ink-dark);}
+  .eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:40px;font-weight:700;color:#fbf7ec;line-height:1.05;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:8px;max-width:680px;}
+  .main{max-width:940px;margin:0 auto;padding:40px 56px 56px;}
+  .sec{margin-bottom:40px;}
+  .sec-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .sec h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text);margin-bottom:14px;padding-left:14px;border-left:3px solid var(--blue);}
+  .sec p{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);margin-bottom:12px;}
+  .sec p strong{color:var(--text);font-weight:600;} .sec p em{color:var(--blue);font-style:italic;}
+  code{font-family:'SF Mono','Consolas',monospace;font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--ink-dark);}
+  .symptoms{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0;}
+  .symptom{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--coral);border-radius:0 10px 10px 0;padding:13px 16px;}
+  .symptom .sh{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;color:var(--coral);margin-bottom:4px;}
+  .symptom p{font-size:14.5px;line-height:1.45;margin:0;}
+  .qlist{background:var(--blue-light);border:1px solid var(--blue-border);border-radius:12px;padding:18px 22px;margin:14px 0;}
+  .qlist .ql-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;}
+  .qlist ol{padding-left:20px;} .qlist li{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.6;color:var(--text-soft);margin-bottom:6px;}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:14px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:14px 16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Consolas',monospace;font-size:12.5px;line-height:1.7;color:#e8efff;background:none;padding:0;white-space:pre;}
+  .code-block .cm{color:#7d93c4;} .code-block .hl{color:#ffd479;}
+  /* decision tree */
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin:16px 0;}
+  .node{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;}
+  .node .q{font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:var(--text);}
+  .node .branch{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);line-height:1.55;margin-top:3px;}
+  .node .branch b{color:var(--blue);font-weight:600;}
+  .step-badge{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;background:var(--blue);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .deadend{background:var(--red-light);border:1px solid #f0b5b5;border-left:3px solid var(--red);border-radius:0 10px 10px 0;padding:13px 18px;margin:10px 0;}
+  .deadend .dl{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px;}
+  .deadend p{font-size:15px;line-height:1.5;margin:0;}
+  .rootcause{background:var(--green-light);border:1px solid var(--green-border);border-left:3px solid var(--green);border-radius:0 10px 10px 0;padding:14px 18px;margin:10px 0;}
+  .rootcause .rl{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px;}
+  .rootcause p{font-size:15px;line-height:1.5;margin:0;} .rootcause p strong{color:var(--text);}
+  .trap{background:var(--amber-light);border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:13px 18px;margin:10px 0;}
+  .trap .tl{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);margin-bottom:4px;}
+  .trap p{font-size:15px;line-height:1.5;margin:0;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:18px 56px;border-top:1px solid var(--border);background:var(--surface);}
+  @media(max-width:680px){header{padding:26px 24px;}header h1{font-size:30px;}.main{padding:26px 24px;}.symptoms{grid-template-columns:1fr;}footer{padding:14px 24px;}}
+</style>
+</head>
+<body>
+<header>
+  <span class="eyebrow">Session 25 · Troubleshooting Guide</span>
+  <h1>When the IPS <em>cries wolf</em></h1>
+  <p>How a senior engineer diagnoses a false positive — the outage that passes every health check — and the encrypted blind spot that lets the real wolf through. Emphasis on thinking, not memorising commands.</p>
+</header>
+<div class="main">
+
+  <div class="sec">
+    <div class="sec-label">Symptoms</div>
+    <h2>What it looks like on the bridge</h2>
+    <div class="symptoms">
+      <div class="symptom"><div class="sh">The tell</div><p>Business-critical traffic dies suddenly — often right after an IPS change or a Monitor→Block flip.</p></div>
+      <div class="symptom"><div class="sh">The lie</div><p>Server up. Network path clean. Vendor sending. Application running. <strong>Every dashboard green.</strong></p></div>
+      <div class="symptom"><div class="sh">The timing</div><p>Correlates with enforcement, not with a fault. Nothing "broke" — the firewall is doing exactly what it was told.</p></div>
+      <div class="symptom"><div class="sh">The encrypted variant</div><p>The opposite: IPS logs are <em>suspiciously clean</em> on HTTPS sessions — because it can't see inside them at all.</p></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Questions to ask first</div>
+    <h2>Before you touch anything</h2>
+    <div class="qlist">
+      <div class="ql-label">Frame the problem — evidence before narrative</div>
+      <ol>
+        <li>What changed, and when? A Monitor→Block flip is the prime suspect for a sudden false positive.</li>
+        <li>Get the capture and the <strong>IPS security event log</strong> — the only witness that isn't lying to you. (TAC's rule: "I want the packets," before hello.)</li>
+        <li>Is the blocked traffic <em>legitimate and expected</em>? If yes, you're looking at a false positive, not an attack.</li>
+        <li>For the encrypted variant: is this session HTTPS? What SSL inspection depth is on the policy — certificate or full?</li>
+        <li>Is an IPS sensor even attached? (Decryption without a sensor detects nothing.)</li>
+      </ol>
+    </div>
+    <div class="trap">
+      <div class="tl">Why not just reason from the dashboards</div>
+      <p>A false positive makes every normal health check report health, so a hypothesis built on those checks is built on a lie. Reason from the one record that actually saw the drop — the IPS log — not from the four that didn't.</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Verification commands</div>
+    <h2>What to run, and what you expect to see</h2>
+    <div class="code-block">
+      <div class="code-label">Confirm the false positive from the log</div>
+<pre><code><span class="cm"># GUI: Log &amp; Report &gt; Security Events &gt; Intrusion Prevention</span>
+<span class="cm"># Expect: action=dropped, a signature name, and src/dst = your legit feed</span>
+diagnose ips ... <span class="cm"># inspect engine state if needed</span>
+<span class="cm"># Prove the IPS DB is local &amp; current (not a feed outage):</span>
+diagnose autoupdate versions   <span class="cm"># IPS Attack Definitions listed = stored locally</span></code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">Confirm the encrypted blind spot</div>
+<pre><code><span class="cm"># Under certificate inspection: attack over HTTPS shows in FORWARD TRAFFIC log</span>
+<span class="cm"># but generates NO IPS log — FortiGate saw the access, not the attack.</span>
+<span class="cm"># After swapping to the deep profile, the same injection now DROPS with an IPS log.</span>
+get firewall ssl-ssh-profile   <span class="cm"># check depth: certificate-inspection vs deep</span></code></pre>
+    </div>
+    <div class="rootcause">
+      <div class="rl">Expected output = your diagnosis</div>
+      <p><strong>IPS log shows a drop on legit traffic</strong> → false positive. <strong>Forward-traffic log but no IPS log on an HTTPS attack</strong> → the payload was never decrypted; you're on certificate inspection when you need full.</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Decision tree</div>
+    <h2>From symptom to root cause</h2>
+    <div class="tree">
+      <div class="node"><div class="step-badge">1</div><div><div class="q">Did traffic die right after an IPS/enforcement change?</div><div class="branch"><b>Yes →</b> suspect false positive, go to 2. &nbsp; <b>No →</b> don't assume IPS; check routing/policy/link first.</div></div></div>
+      <div class="node"><div class="step-badge">2</div><div><div class="q">Does the IPS security event log show a drop on this traffic?</div><div class="branch"><b>Yes, and traffic is legit →</b> false positive, go to 3. &nbsp; <b>No drop logged →</b> not the IPS; look elsewhere.</div></div></div>
+      <div class="node"><div class="step-badge">3</div><div><div class="q">Fix: scoped Signature exception, Monitor, above the Filter.</div><div class="branch">Read the signature ID from the log → add exception → verify traffic flows <b>and</b> still logs. Do <b>not</b> disable the sensor.</div></div></div>
+      <div class="node"><div class="step-badge">4</div><div><div class="q">Separate problem: is a known attack getting through on HTTPS?</div><div class="branch"><b>IPS log clean but attack suspected →</b> check SSL depth. Certificate inspection can't see the payload → switch to <b>full (deep) inspection</b>.</div></div></div>
+      <div class="node"><div class="step-badge">5</div><div><div class="q">Latency-sensitive path (e.g. market feed)?</div><div class="branch">Use <b>flow</b> mode full inspection — payload visibility without buffering the whole object. Reserve proxy for tasks that need the reassembled file (AV).</div></div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Common dead ends</div>
+    <h2>Where time gets wasted</h2>
+    <div class="deadend"><div class="dl">Dead end · chasing the network</div><p>Pinging the server, checking interface counters, calling the vendor — all green, all wasted, because nothing in the path broke. The drop is in the security profile.</p></div>
+    <div class="deadend"><div class="dl">Dead end · trusting the clean Monitor week</div><p>Monitor never blocks, so an empty Monitor log proves nothing about what Block will break. You never tested the enforced state.</p></div>
+    <div class="deadend"><div class="dl">Dead end · disabling IPS to stop the alert</div><p>Kills the false positive and reintroduces the blindness that let the original attacker in. Fix with a scoped exception instead.</p></div>
+    <div class="deadend"><div class="dl">Dead end · adding full inspection on plain HTTP</div><p>A MITM to open an envelope that was never sealed — cost and latency for zero benefit. Match depth to the threat surface.</p></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Likely root causes</div>
+    <h2>What it usually is</h2>
+    <p><strong>False positive:</strong> a broad Filter (severity/protocol) is catching legitimate traffic whose content resembles an attack — an oversized packet, an unusual but benign application behaviour, a vendor feed that trips a high-severity signature.</p>
+    <p><strong>False negative on HTTPS:</strong> the policy is on certificate inspection (or none), so the IPS never sees the decrypted payload. The exploit — PHP injection, DNS exfiltration over DoT/DoH — rides inside encryption undetected.</p>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Exam traps</div>
+    <h2>What the questions are built to catch</h2>
+    <div class="trap"><div class="tl">Trap · "any" / "only" / "regardless"</div><p>"Full inspection catches attacks in <em>any</em> encrypted session" — false (exemptions, certificate pinning). "Full inspection runs <em>only</em> in proxy mode" — false (flow does it too). Hunt the exception behind the absolute.</p></div>
+    <div class="trap"><div class="tl">Trap · decryption = detection</div><p>Full inspection only exposes the payload. Without an IPS sensor attached, nothing is caught. Depth enables; the sensor detects.</p></div>
+    <div class="trap"><div class="tl">Trap · encrypted therefore proxy</div><p>Encryption forces <em>depth</em> (full), not <em>mode</em>. Flow-based full inspection decrypts fine. Only reassembly (AV) forces proxy.</p></div>
+    <div class="trap"><div class="tl">Trap · fix the FP by widening/disabling</div><p>The correct fix is a narrow Signature/Monitor exception <em>above</em> the Filter — not disabling IPS or loosening the whole Filter.</p></div>
+  </div>
+
+</div>
+<footer>LoFinance · NSE7 EF 7.6 · Session 25 — Crying Wolf · Troubleshooting</footer>
+</body>
+</html>

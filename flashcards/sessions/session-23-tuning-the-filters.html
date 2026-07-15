@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session 23 Flashcards — Tuning the Filters</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --plum:#7c1a5f; --plum-light:#f7e5f0; --plum-border:#d8a7c5;
+}
+*,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { min-height: 100vh; }
+body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 80px; }
+.crumb {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+.crumb a { color: var(--text-muted); text-decoration: none; border-bottom: 1px solid transparent; }
+.crumb a:hover { border-bottom-color: var(--text-muted); }
+header { margin-bottom: 36px; }
+.eyebrow {
+  display: inline-block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-light);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  border: 1px solid var(--blue-border);
+}
+h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.lede {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 19px;
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 640px;
+}
+
+.deck-meta {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.stage {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.progress {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-scene {
+  perspective: 1600px;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 3 / 2;
+}
+.card-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.card-flip.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  padding: 48px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px -18px rgba(10, 24, 56, 0.28);
+  overflow-y: auto;
+}
+.face-front {
+  background: var(--surface);
+  color: var(--text);
+}
+.face-back {
+  background: linear-gradient(135deg, var(--blue-light) 0%, var(--surface) 100%);
+  color: var(--text);
+  transform: rotateY(180deg);
+  border-color: var(--blue-border);
+}
+.face-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+.face-back .face-label { color: var(--green); }
+.face-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: 560px;
+}
+.face-back .face-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--text-soft);
+}
+.hint {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 24px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: var(--blue);
+  color: #fbf7ec;
+  border-color: var(--blue);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-vivid);
+  color: #fbf7ec;
+  border-color: var(--blue-vivid);
+}
+.empty {
+  margin-top: 40px;
+  padding: 40px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  h1 { font-size: 32px; }
+  .face { padding: 32px 24px; }
+  .face-text { font-size: 20px; }
+  .face-back .face-text { font-size: 18px; }
+  .card-scene { aspect-ratio: 4 / 5; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><a href="../../../">Home</a> › <a href="../../">Flashcards</a> › <a href="../">Sessions</a> › Session 23</div>
+    <header>
+      <span class="eyebrow">Session 23 · 19 cards</span>
+      <h1>Tuning the Filters</h1>
+      <p class="lede">Click the card to flip. Use the buttons or ← / → keys to navigate.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="progress" id="progress">Card 1 of 19</div>
+
+      <div class="card-scene">
+        <div class="card-flip" id="cardFlip" tabindex="0" role="button" aria-label="Flip card">
+          <div class="face face-front">
+            <div class="face-label">Question</div>
+            <div class="face-text" id="qText"></div>
+            <div class="hint">Click to reveal answer</div>
+          </div>
+          <div class="face face-back">
+            <div class="face-label">Answer</div>
+            <div class="face-text" id="aText"></div>
+            <div class="hint">Click to hide</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="prevBtn">← Prev</button>
+        <button class="btn" id="flipBtn">Flip</button>
+        <button class="btn" id="shuffleBtn">Shuffle</button>
+        <button class="btn btn-primary" id="nextBtn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CARDS = [{"q": "Where is the web filter database stored?", "a": "On FortiGuard servers. FortiGate holds only a cache of recent verdicts and queries FortiGuard live for uncached URLs."}, {"q": "Where is the Application Definitions database stored?", "a": "Locally on the FortiGate flash. Updated periodically from FortiGuard."}, {"q": "Where is the ISDB stored?", "a": "Locally on the FortiGate flash. Updated periodically from FortiGuard."}, {"q": "If FortiGuard is unreachable for 3 days, which features continue to work?", "a": "App control and ISDB continue on their most-recent local databases (degrading slowly as signatures/IPs go stale). Web filter fails fast as its cache decays with no source to refill it."}, {"q": "What does \"License Expired\" in `diagnose autoupdate versions` mean for app control?", "a": "The database will not receive further updates. The feature continues to work using the last-downloaded signatures. Licence expired ≠ feature broken."}, {"q": "What is FortiGate's default behaviour when a web-filter rating lookup does not receive a response?", "a": "Fail-open — permit the traffic AFTER the request timeout expires."}, {"q": "Why does fail-open still cause user hangs during a FortiGuard outage?", "a": "Fail-open kicks in only after the request timeout. The user's browser (and patience) run out first. Fail-open governs the verdict; the timeout governs the experience."}, {"q": "What command shows the version, contract expiry, and last update result for locally-stored FortiGuard databases?", "a": "`diagnose autoupdate versions`"}, {"q": "What command shows the live conversation with FortiGuard rating servers?", "a": "`diagnose debug rating`"}, {"q": "In `diagnose debug rating`, what do the flags \"DI\" mean?", "a": "Down / Invalid — the server is unreachable."}, {"q": "Why does web filter not appear in `diagnose autoupdate versions`?", "a": "Because the web filter database is not stored locally. There is no version to report. This is proof-by-absence of the on-demand model."}, {"q": "How is ISDB referenced in an SD-WAN rule?", "a": "As the destination match on the SD-WAN rule (via internet-service- name). ISDB is not a security profile."}, {"q": "What must be enabled before application-based SD-WAN steering can be used?", "a": "Application Detection-Based SD-WAN, under System > Feature Visibility. Does NOT apply to ISDB — only to app-control-based steering."}, {"q": "How do you decouple LoFinance's web-filter operation from public FortiGuard availability?", "a": "License FortiManager as a local FDS. Under `config system central-management`, set `include-default-servers disable` and add a rating-type server entry pointing at the FortiManager IP."}, {"q": "Facebook is blocked by the trading floor's web-filter profile, but the Facebook app on trader phones still works. Why?", "a": "Web filter matches domains/URLs (HTTPS SNI/SAN/CN). The Facebook app scatters traffic across API endpoints, MQTT brokers, and CDNs — the \"www.facebook.com\" hostname is never used. Add app control (Social. Media category or the Facebook_App signature) to close the gap."}, {"q": "Marketing needs Facebook, trading floor must not. Same FortiGate. What's the design?", "a": "Two web-filter profiles (one blocks Facebook, one permits it), two policies (each with the appropriate profile attached to the correct source). Not one shared profile with an exception."}, {"q": "What is Junior's move that a senior would never do during diagnosis?", "a": "`execute update-now` as a diagnostic step. It's an action, not a read. It changes state and destroys evidence."}, {"q": "What is the difference between \"the database is expired\" and \"the feature is broken\"?", "a": "Expiry stops updates. The feature continues to run on its last downloaded database. App control and ISDB stay functional; web filter does not, because it has no local database to fall back on."}, {"q": "How would you explain the FortiGuard subscription value to Penny?", "a": "\"It buys Fortinet's daily research team keeping our firewall's picture of the world current. Without it, the firewall would still enforce your rules, but against a picture of the internet that's a week old, then a month, then a year.\" (Value framing, not cost- avoidance framing.) ────────────────────────────────────────────────────────── PODCAST PROMPT (paste into an AI audio generator) ────────────────────────────────────────────────────────── Generate a 12-minute podcast episode for \"The Packet Path\" — a character-driven networking podcast set inside LoFinance, a fictional trading firm that runs FortiGate firewalls. Episode title: \"The Envelope on the Shelf\" Season: 2 · Episode: 23 Story arc: The weekend was suspiciously perfect at LoFinance. Riley's ticket queue sat at zero for 48 hours — a company record. She screenshotted the empty dashboard \"as evidence.\" Then, at 9:02 AM Monday, every browser on the trading floor began hanging — not blocked, not denied, just spinning. Within eleven minutes, Riley's queue went from 0 to 31. But the failure had a strange shape: the Facebook app was still being blocked on phones. Slack worked. The trading execution platform worked. Only browsing hung. And Junior — for the first time all season — was right: \"The configuration hasn't changed. I diffed it.\" Señor arrived at 9:14 AM. He did not go to the FortiGate. He walked to his own desk, moved a coffee mug, and lifted out an unopened envelope, postmarked eleven days ago: Fortinet — FortiGuard Services Renewal. Technical concepts to reinforce: 1. Web filter runs on a LIVE conversation with FortiGuard. There is no local web-filter database — only a cache of recent verdicts. 2. App control and ISDB are LOCAL databases. They keep working during a FortiGuard outage, running on frozen signatures — degrading slowly rather than dying fast. 3. The rating cache is a DECAYING ASSET when its source is unreachable: entries age out, new sites always miss, hit rate slopes down. 4. Fail-open is FortiGate's default when FortiGuard is unreachable — but fail-open governs the verdict, not the latency. The user's browser times out before FortiGate's request timeout expires. 5. The senior diagnostic order is: paperwork (`diagnose autoupdate versions`) → live conversation (`diagnose debug rating`) → current belief (cache dump). Only then do you touch configuration. 6. Junior's anti-pattern: `execute update-now` as a diagnostic. It's an action, not a read. It destroys the evidence you need. 7. The design fix beyond renewal: FortiManager licensed as local FDS, with `set include-default-servers disable`. Decouples LoFinance from public FortiGuard availability. Junior's mistake: When `diagnose autoupdate versions` showed \"License Expired\" three times, Junior panicked and concluded three features were broken. The Intermediate Engineer stopped him and separated paperwork from behaviour: databases expired, but two of the three features were still running on their most recent snapshots. This is the licence-expired- does-not-equal-feature-broken lesson. Memorable analogies to use: · \"The envelope on the shelf\" — the physical avatar of unmonitored dependencies. · \"The service we pay Fortinet for stopped answering our calls.\" · \"Fail-open governs the verdict. Timeouts govern the experience.\" · \"The cache is a decaying asset when the source is unreachable.\" · \"The renewal is the licence. The FortiManager work is the insurance.\" Teaser for the next episode: The next morning at 7:41 AM, Cipher — who has spoken twice all season — walks into the office without knocking, carrying a printed security incident report. Someone tried something on LoFinance Sunday night. It didn't work. But it didn't work because they were sloppy, not because LoFinance caught them. Señor picks up the phone before saying anything to anyone. He dials Penny. Four words: \"You should come down.\" Next episode: \"The Tripwire\" — Integrating IPS into enterprise networks. Tone: Reflective, dry, slightly wry. Señor is patient and observant. Junior is enthusiastic and wrong. Riley is calm under pressure and occasionally droll (\"Root cause: an envelope.\"). Penny is decisive and translates business into engineering constraints. The Intermediate Engineer (the protagonist) reasons out loud; the audience should be able to follow. ────────────────────────────────────────────────────────── END OF PACK ──────────────────────────────────────────────────────────"}];
+const originalOrder = CARDS.slice();
+let deck = CARDS.slice();
+let idx = 0;
+
+const flipEl = document.getElementById('cardFlip');
+const qEl = document.getElementById('qText');
+const aEl = document.getElementById('aText');
+const progress = document.getElementById('progress');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const flipBtn = document.getElementById('flipBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+function render() {
+  const c = deck[idx];
+  qEl.textContent = c.q;
+  aEl.textContent = c.a;
+  flipEl.classList.remove('flipped');
+  progress.textContent = `Card ${idx + 1} of ${deck.length}`;
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === deck.length - 1;
+}
+
+function flip() { flipEl.classList.toggle('flipped'); }
+function next() { if (idx < deck.length - 1) { idx++; render(); } }
+function prev() { if (idx > 0) { idx--; render(); } }
+function shuffle() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0;
+  render();
+}
+
+flipEl.addEventListener('click', flip);
+flipEl.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
+});
+flipBtn.addEventListener('click', flip);
+nextBtn.addEventListener('click', next);
+prevBtn.addEventListener('click', prev);
+shuffleBtn.addEventListener('click', shuffle);
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'BUTTON') return;
+  if (e.key === 'ArrowRight') next();
+  else if (e.key === 'ArrowLeft') prev();
+  else if (e.key === ' ') { e.preventDefault(); flip(); }
+});
+
+render();
+</script>
+</body>
+</html>

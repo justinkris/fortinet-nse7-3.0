@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session 03 Flashcards — Life of a Packet</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --plum:#7c1a5f; --plum-light:#f7e5f0; --plum-border:#d8a7c5;
+}
+*,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { min-height: 100vh; }
+body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 80px; }
+.crumb {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+.crumb a { color: var(--text-muted); text-decoration: none; border-bottom: 1px solid transparent; }
+.crumb a:hover { border-bottom-color: var(--text-muted); }
+header { margin-bottom: 36px; }
+.eyebrow {
+  display: inline-block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-light);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  border: 1px solid var(--blue-border);
+}
+h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.lede {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 19px;
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 640px;
+}
+
+.deck-meta {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.stage {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.progress {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-scene {
+  perspective: 1600px;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 3 / 2;
+}
+.card-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.card-flip.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  padding: 48px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px -18px rgba(10, 24, 56, 0.28);
+  overflow-y: auto;
+}
+.face-front {
+  background: var(--surface);
+  color: var(--text);
+}
+.face-back {
+  background: linear-gradient(135deg, var(--blue-light) 0%, var(--surface) 100%);
+  color: var(--text);
+  transform: rotateY(180deg);
+  border-color: var(--blue-border);
+}
+.face-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+.face-back .face-label { color: var(--green); }
+.face-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: 560px;
+}
+.face-back .face-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--text-soft);
+}
+.hint {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 24px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: var(--blue);
+  color: #fbf7ec;
+  border-color: var(--blue);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-vivid);
+  color: #fbf7ec;
+  border-color: var(--blue-vivid);
+}
+.empty {
+  margin-top: 40px;
+  padding: 40px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  h1 { font-size: 32px; }
+  .face { padding: 32px 24px; }
+  .face-text { font-size: 20px; }
+  .face-back .face-text { font-size: 18px; }
+  .card-scene { aspect-ratio: 4 / 5; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><a href="../../../">Home</a> › <a href="../../">Flashcards</a> › <a href="../">Sessions</a> › Session 03</div>
+    <header>
+      <span class="eyebrow">Session 03 · 14 cards</span>
+      <h1>Life of a Packet</h1>
+      <p class="lede">Click the card to flip. Use the buttons or ← / → keys to navigate.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="progress" id="progress">Card 1 of 14</div>
+
+      <div class="card-scene">
+        <div class="card-flip" id="cardFlip" tabindex="0" role="button" aria-label="Flip card">
+          <div class="face face-front">
+            <div class="face-label">Question</div>
+            <div class="face-text" id="qText"></div>
+            <div class="hint">Click to reveal answer</div>
+          </div>
+          <div class="face face-back">
+            <div class="face-label">Answer</div>
+            <div class="face-text" id="aText"></div>
+            <div class="hint">Click to hide</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="prevBtn">← Prev</button>
+        <button class="btn" id="flipBtn">Flip</button>
+        <button class="btn" id="shuffleBtn">Shuffle</button>
+        <button class="btn btn-primary" id="nextBtn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CARDS = [{"q": "Why do cheap checks (ACL/HPE/header) run before expensive checks (IPS/AV)?", "a": "Triage — don't spend costly engines on traffic that hasn't earned scrutiny."}, {"q": "What does the NP handle vs the CP?", "a": "NP = network-level (forwarding, header checks, IPsec crypto). CP = content- level (IPS pattern matching, SSL/TLS decrypt, AV)."}, {"q": "What must ALWAYS pass through the CPU for a TCP session?", "a": "The entire three-way handshake (SYN, SYN/ACK, ACK) — plus any FIN/RST later."}, {"q": "What must pass through the CPU for a UDP session?", "a": "Just the first packet."}, {"q": "Why do FIN/RST packets go to the CPU even on a long-established, offloaded session?", "a": "Session teardown is a state-table change; the NP only forwards for sessions whose state it already recognizes — it has no authority to modify state."}, {"q": "What is the correct kernel pipeline order: SNAT, DNAT, Routing, Policy lookup?", "a": "DNAT -> Routing -> Policy lookup -> SNAT."}, {"q": "Why must DNAT happen before routing?", "a": "Routing needs to know the REAL destination to pick the correct egress interface; if the packet was addressed to a VIP, that hasn't been resolved yet."}, {"q": "Why must policy lookup happen after routing, not before?", "a": "Policy match requires the resolved destination interface, not the raw unrouted packet."}, {"q": "Why does SNAT happen last?", "a": "Policy has already made its allow/deny decision by then, so hiding the real source address on the way out doesn't interfere with anything upstream."}, {"q": "Does internal (east-west) traffic skip any pipeline stages that external (north-south) traffic goes through?", "a": "DNAT can be a no-op (no VIP internally), but policy lookup is NEVER a no-op — implicit deny applies everywhere. This is what makes segmentation enforceable."}, {"q": "What's the difference between general NP offload across two chips and NP Direct Architecture?", "a": "General offload works across different NP chips via the internal switch fabric (ISF). NP Direct requires same-chip interfaces for the eliminated-ISF, lowest-latency path — it is not a requirement for offload in general."}, {"q": "Why is `diagnose hardware lspci | grep 1a29` needed when `get hardware status` already shows the ASIC version?", "a": "The ASIC-version line is one summary for the whole box. On a multi-NP device, it doesn't show which physical interfaces map to which specific chip — needed for NP Direct topology planning and even session distribution."}, {"q": "What device ID corresponds to NP6? What about NP7?", "a": "4e36 = NP6. 4e37 = NP7 (both under Fortinet vendor ID 1a29)."}, {"q": "Exam trap — \"For an established session already offloaded to the NP, which packets still hit the CPU?\" What's the trap and the correct answer?", "a": "Trap: assuming the answer includes the handshake. But the handshake happens BEFORE establishment, so it can't be \"still\" happening on an already- established session. Correct answer: FIN/RST packets only. ========================================================================= PODCAST PROMPT — \"The Packet Path\" — Episode 3: \"Life of a Packet\" ========================================================================= Generate a single-episode podcast script (~8-10 minutes spoken) for a technical learning podcast called \"The Packet Path.\" Two co-hosts, warm and conversational, occasionally bantering, teaching a mid-level network security concept through story and analogy — never dry, never a lecture read aloud. EPISODE CONTEXT: A trader named Marcus corners our protagonist at the coffee machine and asks a question nobody in IT has ever actually answered him: \"where does my order actually go?\" This kicks off an exploration of what happens inside a FortiGate firewall between the moment a packet arrives and the moment it leaves. MUST COVER, IN NATURAL SPOKEN LANGUAGE (no bullet-point reading): 1. The triage principle — why cheap checks (ACL, Host Protection Engine, IP header integrity) happen before expensive checks (IPS, antivirus, SSL decrypt). Use an analogy like airport security's fast bag-scanner before a full manual search — cheap filter first, expensive scrutiny only for what's earned it. 2. The two specialist chips: NP (network processor) as the \"traffic cop\" that only moves things at wire speed and never makes judgment calls about content, and CP (content processor) as the \"detective\" that actually reads what's inside a packet — pattern matching, decrypting, scanning. 3. Session establishment: the ENTIRE TCP three-way handshake goes through the CPU, not just the first packet (a subtlety worth calling out explicitly, since it trips people up); UDP only needs its first packet. Once a session key is installed in the NP, later packets get a free pass on the fast lane — but closing a session (FIN/RST) always has to check back in with the CPU, because ending something is a decision the traffic cop isn't allowed to make on his own. 4. The kernel pipeline order — Destination NAT, then routing, then policy lookup, then Source NAT — and WHY that specific order isn't arbitrary: you can't route to an address you haven't resolved yet, you can't check policy against an unrouted packet, and hiding your source address early would be pointless since the decision to allow the traffic hasn't even been made yet. 5. The punchline that ties it to the business: internal, floor-to-floor traffic and traffic headed out to an exchange run through the EXACT SAME pipeline. Destination NAT might do nothing if there's no virtual address involved internally — but the policy check NEVER gets skipped, ever, for anyone. Tie this explicitly back to a segmentation lesson from a previous episode: a VLAN without a firewall gateway forcing inspection isn't real segmentation — this pipeline is what makes segmentation real. 6. INCLUDE A MISTAKE: Our protagonist, when first asked whether internal traffic skips pipeline stages, jumps straight to talking about chip throughput and speed instead of answering the actual structural question — a relatable, good-faith mistake (confusing \"how fast\" with \"does it happen at all\") that the hosts should gently correct and explain why it's an easy trap to fall into. 7. Close with a natural, curiosity-driving teaser for next episode: the trading floor is about to double in size, and four hundred new desks need to be kept from being able to see each other's screens — setting up a conversation about VLANs and network segmentation design, without giving away the technical answer. TONE: Warm, curious, occasionally funny, respects the listener's intelligence. Avoid corporate-training voice. Should feel like two smart friends explaining something they find genuinely interesting to someone they like."}];
+const originalOrder = CARDS.slice();
+let deck = CARDS.slice();
+let idx = 0;
+
+const flipEl = document.getElementById('cardFlip');
+const qEl = document.getElementById('qText');
+const aEl = document.getElementById('aText');
+const progress = document.getElementById('progress');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const flipBtn = document.getElementById('flipBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+function render() {
+  const c = deck[idx];
+  qEl.textContent = c.q;
+  aEl.textContent = c.a;
+  flipEl.classList.remove('flipped');
+  progress.textContent = `Card ${idx + 1} of ${deck.length}`;
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === deck.length - 1;
+}
+
+function flip() { flipEl.classList.toggle('flipped'); }
+function next() { if (idx < deck.length - 1) { idx++; render(); } }
+function prev() { if (idx > 0) { idx--; render(); } }
+function shuffle() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0;
+  render();
+}
+
+flipEl.addEventListener('click', flip);
+flipEl.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
+});
+flipBtn.addEventListener('click', flip);
+nextBtn.addEventListener('click', next);
+prevBtn.addEventListener('click', prev);
+shuffleBtn.addEventListener('click', shuffle);
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'BUTTON') return;
+  if (e.key === 'ArrowRight') next();
+  else if (e.key === 'ArrowLeft') prev();
+  else if (e.key === ' ') { e.preventDefault(); flip(); }
+});
+
+render();
+</script>
+</body>
+</html>

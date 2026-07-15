@@ -1,0 +1,258 @@
+=====================================================================
+SESSION 25 — "CRYING WOLF" · COMBINED REVISION PACK
+IPS tuning: false positives + unencrypted/encrypted attacks
+Study Guide 06 Security Profiles, pp. 176–186 (use cases 2–5) · Lab 6
+=====================================================================
+
+
+---------------------------------------------------------------------
+1. QUICK SUMMARY (one page)
+---------------------------------------------------------------------
+The Session 24 IPS sensor was flipped Monitor→Block over the weekend.
+At market open it dropped the live market-data feed — a legitimate,
+licensed, business-critical connection. Every health check was green
+(server up, network clean, vendor sending, app running) because
+NOTHING BROKE: the firewall was doing exactly what it was told. This
+is a FALSE POSITIVE, and it's the hardest outage to diagnose because
+the only witness is the IPS security event log.
+
+Fix (surgical, not a sledgehammer): add a SIGNATURE-type exception,
+Action MONITOR, packet-logging on, ranked ABOVE the broad Filter.
+First match wins, so the exception must sit above the Filter or the
+Filter drops the packet first. Do NOT disable the sensor — that
+reintroduces the blindness that let the original attacker in.
+
+Second half: half the inbound trading sessions are now HTTPS, and the
+IPS is BLIND inside them — it pattern-matches ciphertext and finds
+nothing. To catch an exploit hidden in encryption (PHP injection over
+HTTPS, DNS exfiltration over DoT/DoH), you need FULL (deep) SSL
+inspection so the payload is decrypted for the IPS to read.
+
+Two independent axes: DEPTH (certificate vs full) = can the IPS read
+the payload; MODE (flow vs proxy) = does the engine buffer the whole
+object. Full inspection runs in BOTH modes. Flow is chosen for
+latency (matches a pattern mid-stream, never assembles the file);
+proxy is forced only when a task — usually AV — needs the whole
+reassembled file. ENCRYPTION decides depth; REASSEMBLY decides mode.
+
+The episode's thesis: the IPS fails in two opposite directions —
+CRYING WOLF about traffic it can read (false positive) and going
+DEAF to traffic it can't (false negative). Tuning means managing
+both edges of that blade at once.
+
+
+---------------------------------------------------------------------
+2. CHEAT SHEET (commands · GUI paths · defaults · rules)
+---------------------------------------------------------------------
+
+FALSE-POSITIVE EXCEPTION (CLI)
+  config ips sensor
+    edit "protect-trading-api"
+      config entries
+        edit 1                      # low number = evaluated FIRST
+          set rule <signature-id>   # read from the IPS event log
+          set status enable
+          set action monitor        # pass BUT log
+          set log-packet enable     # FP handling / sig creation ONLY
+        next
+      end
+    next
+  end
+
+ENCRYPTED-ATTACK FIX (CLI) — the one line that restores sight
+  config firewall ssl-ssh-profile
+    edit "deep-inspect-trading"     # uses "Protecting SSL Server"
+  ...                                # FortiGate holds server cert + key
+  config firewall policy
+    edit <feed-to-trading-server>
+      set ips-sensor "protect-trading-api"
+      set ssl-ssh-profile "deep-inspect-trading"   # NOT certificate-inspection
+    next
+  end
+
+VERIFY
+  diagnose autoupdate versions      # IPS Attack Definitions = stored LOCALLY
+  Log & Report > Security Events > Intrusion Prevention   # the FP witness
+  Log & Report > Forward Traffic    # HTTPS attack shows here but NO IPS log
+                                    # under cert inspection = the blind spot
+
+GUI PATHS
+  Security Profiles > Intrusion Prevention          (sensor + exceptions)
+  Security Profiles > SSL/SSH Inspection            (depth: cert vs full)
+  System > Certificates > Create Certificate        (self-signed for lab)
+  Firewall & Objects > Firewall Policy              (attach sensor + profile)
+
+DEPTH-BY-TRANSPORT RULE
+  PHP injection over HTTP   -> certificate / none  (payload already cleartext)
+  PHP injection over HTTPS  -> FULL (deep)         (payload sealed)
+  DNS exfiltration (DoT/DoH)-> FULL (deep)         (hostile DNS hidden in encryption)
+  Signature: DNSExfiltrator.Data.Exfiltration      (requires full inspection)
+
+KEY BEHAVIOURS / DESIGN RULES
+  - False positive fix = Signature + Monitor + ABOVE the Filter (first match wins).
+  - Monitor = pass but keep logging (not a silent allow — you stay watching).
+  - A Monitor exception is a deliberate hole; keep it scoped, watch what fits through.
+  - Decryption != detection. Full inspection exposes payload; the SENSOR detects.
+  - Full inspection works in flow AND proxy. Flow decrypts in-stream (1 connection);
+    proxy terminates 2 TLS sessions and reassembles.
+  - Flow = sliding buffer, match the pattern as it streams; never the whole file.
+  - AV forces proxy (hash/unpack needs the whole reassembled file). Cause is
+    reassembly, not encryption.
+  - Match the DEPTH to the threat surface — no full inspection on plain HTTP.
+  - log-packet: FP handling / sig creation only; expensive, size before prod use.
+
+
+---------------------------------------------------------------------
+3. FLASHCARDS (Q -> A)
+---------------------------------------------------------------------
+
+Q: Legit traffic is blocked by IPS; every other check is green. What is it,
+   and why is it the hardest outage to find?
+A: A false positive. Nothing in the path actually broke, so server/network/
+   vendor/app all report healthy. Only the IPS security event log records it.
+
+Q: How do you fix an IPS false positive without disarming the sensor?
+A: Add a Signature-type exception, Action Monitor, packet-logging on, ranked
+   ABOVE the broad Filter (first match wins).
+
+Q: Why must the exception rank above the Filter?
+A: First match wins. Below the Filter, the Filter drops the packet before the
+   exception is evaluated.
+
+Q: What does Monitor action do?
+A: Passes the traffic but keeps logging it — you're not blinding yourself.
+
+Q: An exploit is sent over HTTPS. The signature exists and the sensor is armed.
+   Does the IPS catch it? Why/why not?
+A: No. The IPS pattern-matches ciphertext and finds nothing. It reads the letter,
+   and the letter is sealed. Needs full inspection to decrypt.
+
+Q: Certificate vs full inspection — one line each.
+A: Certificate = reads the envelope (SNI, cert CN/SAN, issuer), no decryption.
+   Full = MITM, decrypts the payload so the IPS can read the letter.
+
+Q: PHP injection over plain HTTP — what SSL depth is needed?
+A: None / certificate. The payload is already cleartext; nothing to decrypt.
+
+Q: Why does DNS exfiltration need full inspection when classic DNS is plaintext?
+A: The hostile DNS is the one hidden inside DNS-over-TLS/HTTPS to evade you.
+   Full inspection opens that tunnel. Signature: DNSExfiltrator.Data.Exfiltration.
+
+Q: What's the common thread between PHP-in-HTTPS and DNS-exfil-in-DoT?
+A: Both are payloads an attacker deliberately put inside encryption to blind the
+   IPS. Same cure: full inspection.
+
+Q: True or false: full inspection can only run in proxy mode.
+A: FALSE. It runs in both. Flow decrypts in-stream (one connection); proxy
+   terminates two TLS sessions and reassembles.
+
+Q: Why can flow-based IPS see inside traffic without buffering the whole file?
+A: A signature is a pattern, visible mid-stream. Flow keeps a small sliding
+   buffer and matches as bytes pass. It never assembles the whole object.
+
+Q: What forces proxy mode, and why?
+A: AV — hashing or unpacking a file needs the whole reassembled object. You can't
+   hash half a file streaming past. Cause is reassembly, not encryption.
+
+Q: For a latency-sensitive market feed needing IPS payload inspection, which
+   depth and mode?
+A: Full inspection (to see the payload) + flow mode (to keep latency low — no
+   whole-file buffer).
+
+Q: True or false: enabling full inspection catches attacks in ANY encrypted session.
+A: FALSE. Exempted sessions (e.g. banking/healthcare) and certificate-pinned
+   sessions are never decrypted. Also, without an IPS sensor, decryption catches
+   nothing.
+
+Q: The two opposite ways an IPS fails?
+A: False positive (cries wolf — blocks readable legit traffic) and false negative
+   (misses the real wolf hidden inside encryption). Fix: exception vs full inspection.
+
+Q: Why did a clean week of Monitor logs not prevent the outage?
+A: Monitor watches, Block acts. Monitor never drops anything, so it can't reveal
+   what Block will break. The enforced state was never tested.
+
+
+---------------------------------------------------------------------
+4. PODCAST PROMPT — "The Packet Path"
+---------------------------------------------------------------------
+Paste the following into your AI audio generator:
+
+  Produce a single episode of the tech-narrative podcast "The Packet Path,"
+  roughly 8–11 minutes, two warm and knowledgeable hosts trading the story
+  back and forth. Title: "Crying Wolf."
+
+  Tell the story of LoFinance, a financial firm whose brand is stacks of money
+  frozen inside an ice cube. Open at 9:29 on a Monday, sixty seconds before
+  the market bell. Over the weekend the team armed a brand-new intrusion
+  prevention sensor — flipped it from Monitor (watch only) to Block (act).
+  At market open, the IPS drops the live market-data feed: a completely
+  legitimate, licensed, business-critical connection. The trading floor
+  freezes. Panic.
+
+  Have the hosts walk through the twist: every dashboard is GREEN. The server
+  is up, the network is clean, the vendor is sending. So why is the feed dead?
+  Reveal the answer slowly — this is a FALSE POSITIVE. Nothing broke; the
+  firewall is doing exactly what it was told. Use the analogy: the sensor
+  "shot the sheepdog" — it was watching for a wolf that never came, and gunned
+  down the animal that was supposed to be there. Land the key line: the only
+  witness to a false positive is the IPS security event log, because every
+  other check is lying to you by showing health.
+
+  Include the vendor TAC engineer who joins the emergency bridge and, before
+  saying hello, demands a packet capture: "I don't want your theory. I want
+  the packets." Frame this as the senior-engineer reflex — evidence before
+  narrative.
+
+  Explain the fix in plain language: don't rip out the whole sensor (that
+  makes you blind again) — add one surgical exception for the feed, set to
+  "monitor" (let it through but keep logging), and rank it ABOVE the broad
+  block rule, because first match wins.
+
+  Then pivot to the second, opposite failure. Half the traffic is now
+  encrypted HTTPS, and the IPS is BLIND inside it — it's trying to read a
+  sealed envelope. Use the envelope-and-letter analogy: certificate
+  inspection reads the outside of the envelope (the address); full, deep
+  inspection opens it and reads the letter. The IPS is a letter-reader, so to
+  catch anything hidden in encryption — a code injection over HTTPS, a
+  password smuggled out inside encrypted DNS — you need full inspection.
+
+  Include Junior's mistake: Junior insisted they'd "watched it for a week and
+  the logs were empty," so it must be safe. Have a host gently explain why
+  that reasoning failed — Monitor never blocks, so a clean Monitor week proves
+  nothing about Block. Junior tested a ghost of the thing he deployed.
+
+  Weave in the one idea that ties the whole episode together: encryption
+  decides DEPTH (how deep you inspect), reassembly decides MODE (whether you
+  buffer the whole file). They're separate. Flow mode reads a pattern as it
+  streams by — no whole file needed — which is why it's fast enough for a
+  price feed. Antivirus is the one that needs the whole file, so antivirus
+  means proxy mode.
+
+  End with the thesis and a teaser: tuning an IPS means managing two opposite
+  failures at once — crying wolf about what it can see, and going deaf to what
+  it can't. Tease the next episode, "Where to Stand Guard": now that the team
+  knows deep inspection is powerful but expensive, the fight becomes WHERE to
+  put it across the whole network — the security chief wants deep inspection
+  on every door, and the trading floor wants the doors to still open fast
+  enough to make money. Close on a line from the eccentric mentor Señor:
+  "Cipher wants to guard every door. The floor wants the doors to still open.
+  Your job is to decide which doors."
+
+
+---------------------------------------------------------------------
+5. EXAM RESULT & GROWTH NOTE
+---------------------------------------------------------------------
+Score: 10/10. Both compound true/false inversion traps (Q3 "any", Q7
+"only in proxy") defeated. One reward-drift pull (Q4: full inspection
+on plain HTTP) self-corrected in one nudge.
+
+Standing growth edge: BUSINESS-REGISTER TRANSLATION. Engineering is
+consistently correct; delivery still leads with the technical noun
+("latency-sensitive," "flow mode") where a stakeholder needs the
+consequence. Rehearse the reflex phrase: "delay on a price feed loses
+money." Lead with money/risk, then the mechanism.
+
+=====================================================================
+Session concluded: Wednesday, 15 July 2026.
+=====================================================================

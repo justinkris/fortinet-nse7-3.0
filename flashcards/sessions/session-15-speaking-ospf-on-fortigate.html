@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session 15 Flashcards — Speaking OSPF on FortiGate</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --plum:#7c1a5f; --plum-light:#f7e5f0; --plum-border:#d8a7c5;
+}
+*,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { min-height: 100vh; }
+body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 80px; }
+.crumb {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+.crumb a { color: var(--text-muted); text-decoration: none; border-bottom: 1px solid transparent; }
+.crumb a:hover { border-bottom-color: var(--text-muted); }
+header { margin-bottom: 36px; }
+.eyebrow {
+  display: inline-block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-light);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  border: 1px solid var(--blue-border);
+}
+h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.lede {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 19px;
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 640px;
+}
+
+.deck-meta {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.stage {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.progress {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-scene {
+  perspective: 1600px;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 3 / 2;
+}
+.card-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.card-flip.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  padding: 48px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px -18px rgba(10, 24, 56, 0.28);
+  overflow-y: auto;
+}
+.face-front {
+  background: var(--surface);
+  color: var(--text);
+}
+.face-back {
+  background: linear-gradient(135deg, var(--blue-light) 0%, var(--surface) 100%);
+  color: var(--text);
+  transform: rotateY(180deg);
+  border-color: var(--blue-border);
+}
+.face-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+.face-back .face-label { color: var(--green); }
+.face-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: 560px;
+}
+.face-back .face-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--text-soft);
+}
+.hint {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 24px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: var(--blue);
+  color: #fbf7ec;
+  border-color: var(--blue);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-vivid);
+  color: #fbf7ec;
+  border-color: var(--blue-vivid);
+}
+.empty {
+  margin-top: 40px;
+  padding: 40px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  h1 { font-size: 32px; }
+  .face { padding: 32px 24px; }
+  .face-text { font-size: 20px; }
+  .face-back .face-text { font-size: 18px; }
+  .card-scene { aspect-ratio: 4 / 5; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><a href="../../../">Home</a> › <a href="../../">Flashcards</a> › <a href="../">Sessions</a> › Session 15</div>
+    <header>
+      <span class="eyebrow">Session 15 · 16 cards</span>
+      <h1>Speaking OSPF on FortiGate</h1>
+      <p class="lede">Click the card to flip. Use the buttons or ← / → keys to navigate.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="progress" id="progress">Card 1 of 16</div>
+
+      <div class="card-scene">
+        <div class="card-flip" id="cardFlip" tabindex="0" role="button" aria-label="Flip card">
+          <div class="face face-front">
+            <div class="face-label">Question</div>
+            <div class="face-text" id="qText"></div>
+            <div class="hint">Click to reveal answer</div>
+          </div>
+          <div class="face face-back">
+            <div class="face-label">Answer</div>
+            <div class="face-text" id="aText"></div>
+            <div class="hint">Click to hide</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="prevBtn">← Prev</button>
+        <button class="btn" id="flipBtn">Flip</button>
+        <button class="btn" id="shuffleBtn">Shuffle</button>
+        <button class="btn btn-primary" id="nextBtn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CARDS = [{"q": "Dial-up hub, multiple spokes, net-device disabled — required OSPF network type on the hub interface?", "a": "Point-to-multipoint."}, {"q": "Default OSPF network type on FortiGate tunnel interfaces?", "a": "Point-to-point."}, {"q": "Why does broadcast mode produce an EMPTY neighbor table on a dial-up hub?", "a": "Its multicast hello relies on a shared medium for delivery; none exists, and broadcast mode doesn't replicate per tunnel — hellos are never delivered."}, {"q": "How does P2MP deliver hellos and updates?", "a": "Replicates and unicasts a copy down each spoke's tunnel."}, {"q": "Does P2MP elect a DR/BDR?", "a": "No — never. Each spoke has one adjacency (with the hub); nothing for a DR to optimise."}, {"q": "What does Full/ - in neighbor output tell you?", "a": "Adjacency complete (identical LSDBs) and no election ran → network type is P2P or P2MP."}, {"q": "What does DROther actually mean?", "a": "The router stood in a DR election and lost — implies a broadcast segment."}, {"q": "Name the adjacency states in order.", "a": "Init, 2-Way, ExStart, Exchange, Loading, Full."}, {"q": "What role does a router take on when it redistributes non-OSPF routes?", "a": "ASBR."}, {"q": "Default redistribution status for static/connected/BGP/RIP/ISIS in FortiGate OSPF?", "a": "Disabled for all of them."}, {"q": "Why does redistribution ship disabled?", "a": "OSPF propagates injected routes automatically, trusted, domain-wide — an open valve turns one careless local static into everyone's route."}, {"q": "Access list vs prefix list vs route map — one-line each.", "a": "Access list = simple prefix permit/deny. Prefix list = adds ge/le mask-length operators (distribute-list-in only). Route map = advanced, embeds the others, can modify route attributes."}, {"q": "Requirement: permit exactly one known prefix out via redistribution. Tool?", "a": "Access list (with exact-match) — least powerful tool that meets the requirement."}, {"q": "A router has interfaces in Area 0 and Area 2 and redistributes BGP. Roles?", "a": "ABR + backbone router + ASBR. Not Internal (that needs all interfaces in one area)."}, {"q": "224.0.0.5 vs 224.0.0.6?", "a": ".5 AllSPFRouters — hellos, and DR/BDR send updates there. .6 AllDRouters — other routers send updates TO the DR/BDR there."}, {"q": "Command showing the whole LSDB ordered by LSA type?", "a": "get router info ospf database brief. ================================================================ PODCAST PROMPT — \"The Packet Path\", Episode 15 ================================================================ Generate a 10–14 minute podcast episode of \"The Packet Path\", a narrative networking show that teaches Fortinet NSE7 Enterprise Firewall concepts through the ongoing story of LoFinance, a financial company whose logo is stacks of money frozen in an ice cube. Recurring cast: Señor (eccentric, brilliant senior engineer in a sombrero, teaches by waiting), Junior (overconfident junior engineer), Riley (help desk, headset, dry wit), Penny (operations lead, speaks business), and the Intermediate Engineer (the listener's proxy, increasingly trusted). EPISODE 15: \"Speaking OSPF on FortiGate.\" STORY BEATS TO DRAMATISE: 1. Junior arrives at 6:30 AM to surprise everyone: he cabled the new Chatswood FortiGate, brought its dial-up IPsec tunnel up to the hub's shared To-Spokes interface, enabled OSPF, and — following a blog post claiming \"the internet is basically a big Ethernet\" — set network-type broadcast. Tunnel up. Pings fine. OSPF neighbor table: empty. Twenty minutes of nothing. 2. Señor tapes a sticky note to the monitor: \"EXHIBIT A. DO NOT FIX.\" He preserves the broken config as a teaching object. 3. The diagnosis, taught step by step: broadcast mode assumes a shared medium where one multicast hello reaches everyone for free. Under To-Spokes there is no shared wire — three separate encrypted tunnels. Broadcast mode doesn't replicate per tunnel, so the hello dies at the interface. Empty table means hellos were never DELIVERED — different evidence from a flapping table. Señor writes one word above the interface on the whiteboard: \"Deaf.\" 4. Point-to-point is eliminated because it assumes exactly one far-side neighbor; the hub has three spokes. Point-to-multipoint wins: it treats the interface as a bundle of individual conversations, replicating and unicasting per spoke, one adjacency per spoke, and — crucially — NO DR election, ever. 5. The Intermediate Engineer's near-miss: proposing that P2MP would elect the hub as DR. Señor turns the engineer's own earlier explanation against it: a DR exists to optimise a segment where everyone hears everyone; on a star, spokes can't even hear each other's votes. There is no election to win. 6. Verification: get router info ospf neighbor shows \"Full/ -\". The engineer first guesses the role should read DROther — and learns that DROther is a CAMPAIGN RESULT, \"stood in an election and lost.\" The dash is the only honest output. The role column is a fingerprint of the network type. 7. Second act: routes to a legacy management subnet exist only as a static on the hub. Redistribution is introduced — injecting foreign routes makes the hub an ASBR. It ships DISABLED for every source, and the episode should retell WHY using the Parramatta precedent: emergency statics and an unencrypted default route would have been flooded fleet-wide automatically. OSPF's superpower is its blast radius. 8. Filtering ladder: access lists, prefix lists (ge/le, distribute-list-in only), route maps (modify attributes). Penny's one-sentence compliance requirement gets a one-line access list. Teach \"the least powerful tool that meets the requirement\" and \"complexity is a tax paid at 2 AM.\" 9. Closing beat: the hub now wears three hats at once — ABR, backbone router, ASBR. The engineer's exam stumble (selecting all four roles including Internal) becomes the lesson: run each definition as its own true/false test; never count, always check. MEMORABLE PHRASES TO USE: \"a network type is a set of assumptions about the medium\", \"the interface is deaf\", \"DROther is a campaign result, not a description\", \"the role column is a fingerprint\", \"complexity is a tax paid at 2 AM\", \"the hub wears three hats — count all of them.\" END WITH THIS TEASER: Thursday morning. Señor is waiting with a hand-drawn map of the entire LoFinance network — every router, every link, every cost. \"Every router in this building carries one of these in its head. Identical copies. They rebuild it from gossip and mathematics, and they never disagree. Tomorrow, you prove it. We open the database and read the map the machines drew.\" Next episode: The Map Room — LSDB, LSAs, cost, Dijkstra, and the OSPF tree. TONE: warm, cinematic, technically precise. Explain reasoning, not just facts. Let Junior's mistake be sympathetic, not mocked — the blog post's logic sounded plausible, and that's exactly why it's dangerous."}];
+const originalOrder = CARDS.slice();
+let deck = CARDS.slice();
+let idx = 0;
+
+const flipEl = document.getElementById('cardFlip');
+const qEl = document.getElementById('qText');
+const aEl = document.getElementById('aText');
+const progress = document.getElementById('progress');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const flipBtn = document.getElementById('flipBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+function render() {
+  const c = deck[idx];
+  qEl.textContent = c.q;
+  aEl.textContent = c.a;
+  flipEl.classList.remove('flipped');
+  progress.textContent = `Card ${idx + 1} of ${deck.length}`;
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === deck.length - 1;
+}
+
+function flip() { flipEl.classList.toggle('flipped'); }
+function next() { if (idx < deck.length - 1) { idx++; render(); } }
+function prev() { if (idx > 0) { idx--; render(); } }
+function shuffle() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0;
+  render();
+}
+
+flipEl.addEventListener('click', flip);
+flipEl.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
+});
+flipBtn.addEventListener('click', flip);
+nextBtn.addEventListener('click', next);
+prevBtn.addEventListener('click', prev);
+shuffleBtn.addEventListener('click', shuffle);
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'BUTTON') return;
+  if (e.key === 'ArrowRight') next();
+  else if (e.key === 'ArrowLeft') prev();
+  else if (e.key === ' ') { e.preventDefault(); flip(); }
+});
+
+render();
+</script>
+</body>
+</html>

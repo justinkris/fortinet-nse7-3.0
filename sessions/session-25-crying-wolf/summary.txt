@@ -1,0 +1,223 @@
+SESSION 25 SUMMARY — "Crying Wolf"
+(IPS tuning: false positives + unencrypted/encrypted attacks | Study Guide 06
+Security Profiles, pp. 176–186, use cases 2–5 | Lab 6 — IPS Use Cases)
+Written for Claude. Read before Session 26.
+
+NOTE ON SEQUENCE: S18/S19 (OSPF internals II & III) remain SKIPPED. FMG IPsec
+templates hands-on remains UNDONE (crying cactus endures). Cactus tally carried from
+S24: 2 half-happy, 1 crying, 2 happy. This session earned a NEW happy cactus (10/10;
+BOTH planted inversion traps defeated + fast self-correction on two reward-drift
+pulls). Updated tally: 2 half-happy, 1 crying, 3 happy.
+
+STORY EVENTS
+------------
+Monday, 9:29:47 AM — sixty seconds before market open. Over the weekend Cipher's
+"watch before block" week of Monitor logs ended and someone flipped the S24 sensor
+("protect-trading-api") from Monitor to BLOCK. At 9:30:00 the bell rings; at 9:30:11
+the live MARKET-DATA FEED — a legitimate, licensed, business-critical connection —
+goes DARK. Tickers freeze mid-quote. Penny is out of her office before the third
+phone rings ("The feed is down. On open. Tell me it's the vendor."). Cipher pulls
+logs: it's not the vendor — the IPS is dropping the feed. Junior protests: "But we
+WATCHED it for a week! The logs were empty!" Señor's line: "The logs were empty
+because the sensor was in Monitor. Monitor watches. Block acts. You tested a ghost of
+it... The wolf you were watching for never came. But you just shot the sheepdog."
+
+TAC joins the bridge (dialled in by Penny) and — before saying hello — says: "Before
+anyone tells me what you THINK is happening — get me a packet capture off the DCFW on
+the feed's session. I don't want your theory. I want the packets." Señor smiles for
+the first time all morning: "That is the correct first sentence. Remember it."
+
+Resolution (staged live): read the IPS security event log → benign feed is tripping a
+high-severity signature (textbook false positive) → add a SIGNATURE-type exception,
+Action MONITOR, packet-logging on, ranked ABOVE the Filter → feed flows again at 9:34.
+THEN Señor pivots to the second half: half the inbound trading sessions are now HTTPS,
+and the IPS log for those is "suspiciously clean" — not because nothing's bad, but
+because "we can't see inside them at all." That opens the encrypted-attack arc.
+
+SOCRATIC ARC (student reasoning — strong throughout, two clean self-corrections)
+--------------------------------------------------------------------------------
+1. False positive named instantly; reasoned WHY it's the hardest outage: nothing in
+   the path actually broke, so every normal health check (server/network/vendor/app)
+   returns green. Only witness = the IPS/security event log. (Refinement given: it's
+   the IPS security-event log specifically, not the traffic log, that names the
+   signature.)
+2. The fix: Signature-type exception + Monitor + ranked at TOP. Student's reason:
+   "priority order matters, granular at the top" = first-match-wins. Refined the
+   "new policy OR edit profile" instinct toward the SURGICAL move: stay in the
+   existing sensor, add one line, keep the fix's blast radius as small as the
+   problem's. Monitor = pass BUT keep logging (not blinding yourself).
+3. Encrypted attack (PHP-injection over HTTPS): student answered NO, IPS won't catch
+   it — "IPS reads the letter, encrypted = sealed envelope." Reached for the right
+   remediation AND its precondition unprompted: SSL inspection with the KEYS on the
+   FortiGate to decrypt/re-encrypt. THEN owned the deep-vs-certificate distinction
+   (only SEEDED in S24): certificate inspection = envelope/SNI/cert-CN only; FULL
+   (deep) inspection = MITM, decrypts payload. PHP-in-HTTPS REQUIRES full inspection.
+4. DNS exfiltration: student's first instinct — "DNS isn't encrypted, no certs" — is
+   GOOD reasoning that hits the guide's wall (the DNSExfiltrator.Data.Exfiltration
+   sig REQUIRES full inspection). Claude handed the thread; student SELF-REPAIRED to
+   "it can hide in encrypted traffic" (DoT/DoH). Landed the common thread himself:
+   both PHP-in-HTTPS and DNS-exfil-in-DoT are payloads an attacker HID INSIDE
+   ENCRYPTION to blind the IPS — same disease, same cure (full inspection).
+5. STUDENT-INITIATED deep-dive (his own question): "How does flow-based IPS work — 
+   wouldn't we need the full file buffered?" He answered it himself mid-question:
+   "IPS is just matching a signature / seeing behaviour, doesn't need the whole file.
+   AV would." Claude confirmed + drew a visual. Mechanism locked: flow = sliding
+   buffer, match the pattern as bytes stream past, never assemble the whole object;
+   SSL full inspection decrypts IN-STREAM in flow mode (one connection); proxy
+   terminates two TLS sessions and reassembles. AV forces proxy because hashing/
+   unpacking needs the WHOLE reassembled file.
+6. DEPTH vs MODE are INDEPENDENT AXES — the session's spine, and the thing the
+   student explicitly untangled and then TAUGHT BACK: "encryption decides DEPTH
+   (cert vs full); reassembly decides MODE (flow vs proxy); they never collapse."
+   Full inspection works in BOTH flow and proxy. Flow chosen for latency; proxy
+   forced only when something (usually AV) must reassemble.
+
+CLI / CONFIG TAUGHT (real syntax, built live)
+---------------------------------------------
+IPS false-positive exception (inside the sensor, ranked ABOVE the Filter):
+  config ips sensor / edit "protect-trading-api"
+    config entries / edit <low-number-so-it-evaluates-first>
+      set rule <signature-id>            # from the IPS security event log
+      set status enable
+      set action monitor                 # pass but log
+      set log-packet enable              # ONLY for FP handling / sig creation;
+                                         # avoid long-term prod use (sizing cost)
+Encrypted-attack fix (the ONE line that turns IPS from blind→seeing on HTTPS):
+  config firewall ssl-ssh-profile / edit "deep-inspect-trading"
+      # inbound protection: FortiGate holds the SERVER cert + key
+      # ("Protecting SSL Server" option, per Use Case 4)
+  config firewall policy / edit <feed-to-trading-server>
+      set ips-sensor "protect-trading-api"
+      set ssl-ssh-profile "deep-inspect-trading"   # swap OUT certificate-inspection
+Signature to know: DNSExfiltrator.Data.Exfiltration (requires FULL inspection to fire).
+
+MENTAL MODELS / ANALOGIES (KEEPERS)
+-----------------------------------
+- "Cry wolf vs miss the real wolf": FP = over-blocking traffic it CAN read; FN =
+  deaf to traffic it CAN'T read. "Too loud on what it sees, deaf to what it can't."
+  The blade has two edges; tuning IPS = managing both at once. (Episode thesis.)
+- "Shot the sheepdog" (Señor — blocking the benign feed while watching for a wolf
+  that never came). Keeper.
+- "Monitor watches, Block acts — you tested a ghost of it" (why the clean Monitor
+  week meant nothing; you never tested the thing you deployed).
+- "Certificate inspection reads the ENVELOPE; full inspection reads the LETTER" —
+  extended from S20/S24 into the tuning context. The IPS is a letter-reader → any
+  attack inside encryption ALWAYS needs FULL inspection.
+- "Encryption decides DEPTH; reassembly decides MODE; they never collapse." The
+  anti-confusion keeper the student now owns and can teach back.
+- "A Monitor exception is a deliberate hole in the wall — watch that only the
+  intended traffic keeps fitting through it." (Q9 refinement.)
+- "Delay on a price feed loses money" (the business-translation target phrase for
+  the register weakness — leads with money, not latency).
+- "Match the depth to the threat surface, not to the most powerful tool" (the
+  anti-reward-drift rule from Q4: plain HTTP needs no decryption).
+- TAC's cold-open: "I don't want your theory. I want the packets." (Evidence before
+  narrative — the senior troubleshooting reflex, endorsed by Señor.)
+
+TROUBLESHOOTING APPROACH TAUGHT
+-------------------------------
+The false-positive is "the outage that passes every health check." Method:
+(1) Recognise the signature: business-critical traffic dies, but server/network/
+    vendor/app all show GREEN → suspect the security profile, not a fault.
+(2) Go straight to the IPS SECURITY EVENT LOG — the only witness. Read the attack
+    name + signature ID + src/dst/service.
+(3) Confirm it's benign (legitimate feed, expected service) → false positive.
+(4) SURGICAL fix: Signature exception, Monitor, packet-log, ranked above the Filter.
+    Do NOT delete the sensor / disable IPS (that reintroduces the S24 blindness).
+(5) Keep the exception SCOPED (specific sig, ideally specific src/dst) so the hole
+    is exactly feed-shaped; keep watching the log for anything else matching it.
+Evidence-before-narrative endorsed via TAC ("packet capture before hello").
+
+BUSINESS PROBLEM
+----------------
+Newly-armed IPS (S24 tripwire flipped Monitor→Block over the weekend) dropped the
+live market-data feed at market open — a self-inflicted trading-floor outage worse
+than the original Sunday attack. RESOLVED: signature exception restores the feed
+without disarming the sensor; DCFW inbound trading policy upgraded from certificate-
+to FULL (deep) inspection in FLOW mode so the IPS can finally see attacks inside
+HTTPS (PHP injection, DNS exfil) WITHOUT adding latency to the feed. Penny's sign-off
+gated on the exam (passed 10/10).
+
+CHARACTERS
+----------
+Penny (arrived before the third phone rang; "tell me it's the vendor"; sign-off
+gated on the exam; the boardroom-translation foil for Q8). Junior ("but the logs were
+EMPTY!" — used to teach Monitor-watches/Block-acts and that you never tested what you
+deployed). Cipher (owned the Monitor-week; flagged the "suspiciously clean" HTTPS
+logs that opened the encrypted-attack arc; asked the Q9 "Monitor forever?" question;
+smallest possible nod at the right answer). Señor (did NOT touch the box first;
+"shot the sheepdog"; "Monitor watches, Block acts"; endorsed TAC's packets-before-
+hello; "you stopped confusing decrypting with reassembling — most engineers never
+do"; drew the happy cactus, said nothing). TAC (cameo: cold-open "I want the packets,"
+never said hello — the evidence-first archetype).
+
+CONFIGURATION DECISIONS
+-----------------------
+S24 sensor promoted Monitor→BLOCK, now TUNED: scoped Signature/Monitor exception
+protects the market-data feed. DCFW inbound trading policy: certificate-inspection →
+FULL (deep) inspection, in FLOW mode (payload visibility for IPS + low latency for
+the feed; proxy rejected precisely because buffering would delay the feed). Exception
+deliberately narrow; log-packet used only for FP handling, not left on in prod.
+
+TOPOLOGY UPDATE
+---------------
+The S24 tripwire is now ARMED AND TUNED. protect-trading-api sensor on the ISFW moves
+Monitor→Block with a scoped feed exception. DCFW inbound trading policy upgraded to
+full (deep) inspection in flow mode — IPS gains eyes inside HTTPS without adding feed
+latency. "The sensor no longer cries wolf — and it can finally see the wolves that
+hide." No new hardware. The network grew smarter, not bigger (recurring line).
+
+EXAM QUESTIONS: 10 asked, 10/10.
+Q1 ✓ False positive + "network looks healthy, truth in the firewall log" (refined:
+   IPS security-event log specifically). Q2 ✓ Signature/Monitor/top + first-match-
+   wins reason; led with reading the log for the sig ID. Q3 ✓ FALSE — compound T/F,
+   INVERSION TRAP #1: "catch attacks in ANY encrypted session." Student verdict
+   correct; surfaced a VALID flaw himself (decryption ≠ detection without an IPS
+   sensor); Claude added the intended flaw ("any" excludes exemptions + cert-pinned
+   sessions). Q4 ✗→✓ reward-drift: reached for FULL inspection on PLAIN HTTP;
+   self-corrected to "none/cert — nothing to decrypt" after one nudge. Q5 ✓ DNS
+   exfil needs full inspection (hides in encrypted DNS). Q6 ✓ flow vs proxy buffering
+   + AV forces proxy (needs whole file). Q7 ✓ FALSE — compound T/F, INVERSION TRAP
+   #2: "full inspection only in proxy mode"; separated depth from mode cleanly.
+   Q8 ✓(engineering)/growth(register): correct latency answer but still led with
+   "latency-sensitive" not "stale prices lose money" — REGISTER GAP, the season's
+   last standing weakness. Q9 ✓ Monitor exception safe because it keeps logging;
+   refinement added — it's a deliberate hole, watch that only intended traffic fits.
+   Q10 ✓ both failure modes (FP/FN), which traffic causes each, fix for each.
+
+CARRIED-FORWARD OBLIGATIONS (updated)
+-------------------------------------
+- S18/S19 OSPF internals II & III: STILL SKIPPED (2 half-happy cacti).
+- FMG IPsec templates hands-on: STILL UNDONE (crying cactus endures).
+- Inversion-under-questioning: SPOT-CHECK clean session #2 of 3 (S24 was #1). Both
+  compound T/F traps defeated again. One more clean session (plant ≥1 compound T/F
+  in S26) → then RETIRE this weakness.
+- Reward-drift toward the most-recently-discussed / most-powerful tool: RE-OBSERVED
+  (Q4). Self-corrected in one nudge (faster than S24). Keep a "match tool to problem"
+  bait live in S26 (e.g. tempt deep inspection or a heavy profile where a light one
+  fits).
+- REGISTER-OF-LANGUAGE (business translation): NOT yet retired — this is now the
+  SINGLE STANDING GROWTH EDGE. Q8 showed correct engineering but latency-first
+  framing. S26 MUST include a Penny/stakeholder translation; target phrasing that
+  leads with money/risk, not the technical noun. This is the end-of-season-1 growth
+  priority candidate.
+- Scope-of-a-Monitor-exception (it's a deliberate hole): newly seeded (Q9) — retest
+  lightly in a later session.
+
+TEASER DELIVERED FOR SESSION 26 — "Where to Stand Guard"
+--------------------------------------------------------
+UTM profile PLACEMENT across the enterprise fabric: NGFW / ISFW / DCFW / DEFW
+(Study Guide 06, pp. 187–191 — "Implement UTM Profiles in Enterprise Networks").
+The hook: Cipher wants deep inspection EVERYWHERE ("if it's good on the DCFW, put it
+everywhere"); the trading floor wants PHYSICS (latency, throughput, CP offload
+limits). Redundancy between NGFW and DCFW (the guide's own note) becomes the design
+tension. Where does each UTM profile actually BELONG — and why is "everywhere" the
+wrong answer? This directly baits the reward-drift weakness (more-is-safer) AND the
+register weakness (explain placement trade-offs to Penny in business terms). It also
+pays off today's depth/mode/latency reasoning: full inspection is expensive, so WHERE
+you pay that cost is an architecture decision, not a default. Señor's likely line:
+"Cipher wants to guard every door. The floor wants the doors to still open. Your job
+is to decide which doors."
+
+Date and Time completed: Monday (in-story) / real session concluded Wednesday,
+15 July 2026.

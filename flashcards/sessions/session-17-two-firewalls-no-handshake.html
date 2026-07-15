@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session 17 Flashcards — Two Firewalls, No Handshake</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+  --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --plum:#7c1a5f; --plum-light:#f7e5f0; --plum-border:#d8a7c5;
+}
+*,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { min-height: 100vh; }
+body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 80px; }
+.crumb {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+.crumb a { color: var(--text-muted); text-decoration: none; border-bottom: 1px solid transparent; }
+.crumb a:hover { border-bottom-color: var(--text-muted); }
+header { margin-bottom: 36px; }
+.eyebrow {
+  display: inline-block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-light);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  border: 1px solid var(--blue-border);
+}
+h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.lede {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 19px;
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 640px;
+}
+
+.deck-meta {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.stage {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.progress {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-scene {
+  perspective: 1600px;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 3 / 2;
+}
+.card-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.card-flip.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  padding: 48px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px -18px rgba(10, 24, 56, 0.28);
+  overflow-y: auto;
+}
+.face-front {
+  background: var(--surface);
+  color: var(--text);
+}
+.face-back {
+  background: linear-gradient(135deg, var(--blue-light) 0%, var(--surface) 100%);
+  color: var(--text);
+  transform: rotateY(180deg);
+  border-color: var(--blue-border);
+}
+.face-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+.face-back .face-label { color: var(--green); }
+.face-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: 560px;
+}
+.face-back .face-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--text-soft);
+}
+.hint {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 24px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: var(--blue);
+  color: #fbf7ec;
+  border-color: var(--blue);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-vivid);
+  color: #fbf7ec;
+  border-color: var(--blue-vivid);
+}
+.empty {
+  margin-top: 40px;
+  padding: 40px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  h1 { font-size: 32px; }
+  .face { padding: 32px 24px; }
+  .face-text { font-size: 20px; }
+  .face-back .face-text { font-size: 18px; }
+  .card-scene { aspect-ratio: 4 / 5; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><a href="../../../">Home</a> › <a href="../../">Flashcards</a> › <a href="../">Sessions</a> › Session 17</div>
+    <header>
+      <span class="eyebrow">Session 17 · 14 cards</span>
+      <h1>Two Firewalls, No Handshake</h1>
+      <p class="lede">Click the card to flip. Use the buttons or ← / → keys to navigate.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="progress" id="progress">Card 1 of 14</div>
+
+      <div class="card-scene">
+        <div class="card-flip" id="cardFlip" tabindex="0" role="button" aria-label="Flip card">
+          <div class="face face-front">
+            <div class="face-label">Question</div>
+            <div class="face-text" id="qText"></div>
+            <div class="hint">Click to reveal answer</div>
+          </div>
+          <div class="face face-back">
+            <div class="face-label">Answer</div>
+            <div class="face-text" id="aText"></div>
+            <div class="hint">Click to hide</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="prevBtn">← Prev</button>
+        <button class="btn" id="flipBtn">Flip</button>
+        <button class="btn" id="shuffleBtn">Shuffle</button>
+        <button class="btn btn-primary" id="nextBtn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CARDS = [{"q": "diagnose vpn tunnel list shows sa=0, proxyid_num=1, child_num=0. What does this mean?", "a": "Phase 1 is healthy; Phase 2 (child SA) never established."}, {"q": "What IKE notify type indicates a Phase 2 proposal mismatch?", "a": "NO_PROPOSAL_CHOSEN (also possible at Phase 1 — check which exchange it came from)."}, {"q": "Where is the PFS/DH group set for Phase 2?", "a": "Under config vpn ipsec phase2-interface, set dhgrp <N> — must match both ends."}, {"q": "Given a DH group mismatch with no legacy-peer constraint, which end should you change?", "a": "Raise the weaker end to match the stronger one; don't downgrade the strong end."}, {"q": "Two OSPF interfaces are up, POINTOPOINT, matching cost, sending hellos — but the neighbor table is completely empty on both ends. What's the likely cause?", "a": "An area mismatch on the interface — the header's area stamp is checked before any other OSPF processing, and a mismatch causes silent discard at the receiver."}, {"q": "How does area-mismatch hello-death differ from broadcast-network-type-on-tunnel hello-death, given both produce an empty neighbor table?", "a": "Area mismatch kills the hello at the RECEIVER (header check fails). Broadcast type on a tunnel kills it at the SENDER (no medium to deliver a multicast frame)."}, {"q": "A backup link connects two Area-0 sites. What area must it be in, and why?", "a": "Area 0 (backbone) — inter-area traffic must transit the backbone; a non-backbone area cannot relay between two disconnected Area-0 fragments. Putting it elsewhere risks a backbone partition if the primary path fails."}, {"q": "What is a backbone partition?", "a": "Area 0 split into two or more disconnected fragments — one of OSPF's forbidden states, since all inter-area traffic depends on backbone continuity."}, {"q": "Adjacency is Full, LSDB is confirmed correct on both ends, but the expected route is missing from `get router info routing-table ospf`. What's your next command?", "a": "get router info routing-table all — check whether a different, lower-AD source is winning the same prefix."}, {"q": "Default administrative distances: connected, static, OSPF?", "a": "Connected 0, static 10, OSPF 110."}, {"q": "Does redistributing a static route into OSPF remove the static route from the originating router's own table?", "a": "No. Redistribution only advertises the route to OSPF; the original static route remains unchanged and still governs the local routing table."}, {"q": "If a forgotten static route (AD 10) is silently beating a valid OSPF route (AD 110) to the same prefix, what's the correct fix?", "a": "Disable or remove the static route directly — redistributing it into OSPF would not remove its local precedence."}, {"q": "In the 7.4+ FortiOS CLI, what is the corrected syntax for filtering IKE debug logs by remote address (vs the older syntax)?", "a": "diagnose vpn ike log filter rem-addr4 <ip>  (space, not hyphen — older syntax was log-filter)."}, {"q": "In a FortiManager IPsec template, which phase1/phase2/OSPF settings are typically SHARED across site pairs, and which are per-site VARIABLES?", "a": "Shared: proposal/DH group/PSK method/DPD (phase1); proposal/PFS group/ encapsulation (phase2); network-type/cost/timers (OSPF). Variable: peer IP, tunnel name (phase1); selectors, tunnel-interface IPs (phase2); interface name, area, network statement (OSPF). ========================================================================= PODCAST PROMPT — \"The Packet Path\" — Episode: Two Firewalls, No Handshake ========================================================================= Generate a ~12-15 minute narrated podcast episode for a show called \"The Packet Path.\" Tone: warm, dry-witted, technically precise, aimed at a network/security engineer studying for the Fortinet NSE7 Enterprise Firewall exam. Use a single narrator voice with light dramatization (quoted dialogue for characters, but no need for multiple voice actors — describe tone shifts in the narration). STORY TO TELL: Open with the drill: 07:00 Monday, an office, a firewall engineer named Señor who has literally put on a cowboy hat — a running gag in this fictional company (LoFinance) meaning \"boss battle troubleshooting mode, minimal hints.\" He shuts down the primary link between headquarters and a branch called Parramatta to force a failover drill onto a brand-new backup tunnel connecting Parramatta directly to a disaster-recovery site — a tunnel he has secretly sabotaged at both ends. A colleague, Riley, is fielding a rising tide of support tickets (mention the counter climbing past 60) while a trader named Marcus gets so frustrated he leaves his office and shows up in person by taxi. Walk through the three faults IN ORDER, explaining each one the way a patient senior engineer would explain it to a colleague — not a dry command listing, but the REASONING: what looked healthy, what didn't add up, and the \"aha\" moment: 1. The tunnel showed \"up\" but nothing was flowing — explain the difference between Phase 1 (the secure channel two firewalls set up to negotiate) and Phase 2 (the actual data-carrying tunnel), and how a single mismatched cryptographic setting (a Diffie-Hellman group — describe it simply as \"how hard the math problem is that keeps the encryption keys secret\") on each end silently killed the second phase. Use the analogy: two people agreeing to speak in code, but one insists on an easy cipher and the other insists on a much harder one — neither will budge, so no message ever gets sent. 2. Once the tunnel finally worked, a routing protocol called OSPF still refused to see the two ends as neighbors, even though everything looked fine on the surface. Reveal the cause: a mismatched \"area\" label — explain OSPF areas simply as filing an office memo under the wrong department stamp: if the department stamp doesn't match, the memo gets silently binned at the front desk, never even logged as received. Explain why this ALMOST caused a much bigger problem — a \"partitioned backbone\" — using the analogy of one company accidentally splitting into two islands with no bridge between them, because someone tried to save money on a smaller bridge instead of using the one that actually connects both mainlands. 3. Everything is finally fixed and the drill succeeds — and then, when the original path comes back online, traffic between two sites just silently stops, even though every dashboard shows green. Reveal the twist: a forgotten, deliberately \"temporary\" backup route someone left behind months ago was silently and quietly outranking the perfectly healthy new route the whole time, the instant it got the chance — because in routing, some sources are trusted more than others by default, regardless of which path is actually better. Use the analogy of an old standing order at a restaurant that nobody cancelled, quietly overriding a customer's new, better order every time, because \"the standing order always wins unless someone actually cancels it.\" INCLUDE JUNIOR'S MOMENT: a junior colleague named Junior, usually the one who makes mistakes, this time quietly helps by pointing out that a diagnostic command's syntax had changed in a recent software version — a small, humble, correct contribution, worth one warm beat in the narration. END WITH: the drill succeeding late, past its deadline, and Señor's dry verdict that being right eventually, without being told the answer, is what matters. Then tease next episode: \"Neighbors and Strangers\" — going deep on how routers on a network decide who's really a neighbor, who gets elected to run the show on a shared network segment, and why. Keep technical accuracy high throughout — do not oversimplify to the point of being wrong, and do not use exact quoted dialogue longer than a short phrase. End the script ready to paste directly into an AI audio generator."}];
+const originalOrder = CARDS.slice();
+let deck = CARDS.slice();
+let idx = 0;
+
+const flipEl = document.getElementById('cardFlip');
+const qEl = document.getElementById('qText');
+const aEl = document.getElementById('aText');
+const progress = document.getElementById('progress');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const flipBtn = document.getElementById('flipBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+function render() {
+  const c = deck[idx];
+  qEl.textContent = c.q;
+  aEl.textContent = c.a;
+  flipEl.classList.remove('flipped');
+  progress.textContent = `Card ${idx + 1} of ${deck.length}`;
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === deck.length - 1;
+}
+
+function flip() { flipEl.classList.toggle('flipped'); }
+function next() { if (idx < deck.length - 1) { idx++; render(); } }
+function prev() { if (idx > 0) { idx--; render(); } }
+function shuffle() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0;
+  render();
+}
+
+flipEl.addEventListener('click', flip);
+flipEl.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
+});
+flipBtn.addEventListener('click', flip);
+nextBtn.addEventListener('click', next);
+prevBtn.addEventListener('click', prev);
+shuffleBtn.addEventListener('click', shuffle);
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'BUTTON') return;
+  if (e.key === 'ArrowRight') next();
+  else if (e.key === 'ArrowLeft') prev();
+  else if (e.key === ' ') { e.preventDefault(); flip(); }
+});
+
+render();
+</script>
+</body>
+</html>
