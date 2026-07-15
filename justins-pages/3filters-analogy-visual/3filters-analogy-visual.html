@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Three Mail Sorters — Web Filter · App Control · ISDB</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:44px 60px 34px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;color:#fbf7ec;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:17px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:12px;line-height:1.6;max-width:720px;}
+
+  .board{padding:18px 60px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;gap:40px;justify-content:center;flex-wrap:wrap;}
+  .board span{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.22em;color:var(--text-soft);}
+  .board span b{color:var(--blue);}
+
+  main{max-width:1180px;margin:0 auto;padding:44px 32px 60px;}
+
+  .sorters{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  @media(max-width:920px){.sorters{grid-template-columns:1fr;}}
+
+  .sorter{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 10px rgba(13,26,58,0.05);}
+  .sorter-head{padding:18px 22px 14px;border-bottom:1px solid var(--border-dim);}
+  .sorter-kicker{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.2em;font-weight:600;margin-bottom:4px;}
+  .sorter h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1.1;}
+  .sorter-tag{font-style:italic;font-size:17px;color:var(--text-soft);margin-top:6px;line-height:1.35;}
+
+  .s-blue .sorter-kicker{color:var(--blue);}
+  .s-amber .sorter-kicker{color:var(--amber);}
+  .s-green .sorter-kicker{color:var(--green);}
+  .s-blue{border-top:4px solid var(--blue);}
+  .s-amber{border-top:4px solid var(--amber);}
+  .s-green{border-top:4px solid var(--green);}
+
+  .envelope{padding:20px 22px 6px;display:flex;justify-content:center;background:linear-gradient(180deg,transparent, var(--blue-glow));}
+  .envelope svg{width:100%;max-width:270px;height:auto;}
+
+  .axis{padding:14px 22px;}
+  .axis + .axis{border-top:1px dashed var(--border-dim);}
+  .axis-label{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.22em;font-weight:600;color:var(--text-muted);margin-bottom:6px;}
+  .axis-main{font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:var(--text);line-height:1.4;}
+  .axis-sub{font-size:15px;color:var(--text-soft);line-height:1.5;margin-top:3px;font-style:italic;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .chip{font-family:'Outfit',sans-serif;font-size:10.5px;font-weight:500;padding:3px 10px;border-radius:12px;letter-spacing:0.04em;}
+  .chip-blue{background:var(--blue-light);border:1px solid var(--blue-border);color:var(--blue);}
+  .chip-amber{background:var(--amber-light);border:1px solid var(--amber-border);color:var(--amber);}
+  .chip-green{background:var(--green-light);border:1px solid var(--green-border);color:var(--green);}
+
+  .db{margin:14px 18px 18px;padding:12px 14px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border-dim);}
+  .db-label{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.18em;font-weight:600;color:var(--text-muted);margin-bottom:5px;}
+  .db-main{font-size:15px;color:var(--text-soft);line-height:1.45;}
+  .db code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--ink-dark);color:#cfe0f7;padding:2px 7px;border-radius:5px;white-space:nowrap;}
+
+  .oneline{margin:40px auto 0;max-width:900px;background:var(--ink-dark);border-radius:14px;padding:26px 34px;color:#fbf7ec;}
+  .oneline h3{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.24em;color:var(--ink-accent);font-weight:600;margin-bottom:14px;}
+  .oneline p{font-family:'Playfair Display',serif;font-size:21px;font-style:italic;line-height:1.65;}
+  .oneline b{color:var(--ink-accent);font-style:normal;font-weight:700;}
+
+  .ticket{margin:34px auto 0;max-width:900px;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:14px;padding:22px 30px;}
+  .ticket h3{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.22em;color:var(--amber);font-weight:600;margin-bottom:10px;}
+  .ticket p{font-size:17px;line-height:1.6;color:var(--text-soft);}
+  .ticket p em{font-weight:600;}
+
+  .ticket .image-placeholder{margin-top:20px;border:2px dashed var(--amber-border);border-radius:12px;background:rgba(255,253,246,0.55);padding:22px 22px 18px;}
+  .ticket .ip-image{display:block;width:100%;max-width:100%;height:auto;border-radius:10px;margin:0 auto 12px;background:var(--surface);cursor:zoom-out;box-shadow:0 2px 8px rgba(13,26,58,0.10);transition:max-width 0.25s ease, box-shadow 0.25s ease;}
+  .ticket .ip-image:not(.expanded){max-width:340px;cursor:zoom-in;}
+  .ticket .ip-image:hover{box-shadow:0 6px 16px rgba(13,26,58,0.16);}
+  .ticket .ip-filename{font-family:'JetBrains Mono','SF Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:8px;}
+  .ticket .ip-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
+  .ticket .ip-caption{font-size:15px;font-style:italic;color:var(--text-soft);line-height:1.55;}
+
+  footer{padding:26px 60px;background:var(--surface-2);border-top:1px solid var(--border);text-align:center;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.12em;color:var(--text-muted);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">SESSION 22 · SECURITY PROFILES · THREE FILTERS, ONE JOB?</div>
+  <h1>The LoFinance <em>Mail Room</em></h1>
+  <p>Three sorters stand at the same conveyor belt. Every envelope is a connection. Each sorter decides what to do with it — but each one looks at something completely different, and each one works in a different room.</p>
+</header>
+
+<div class="board">
+  <span>WHAT EACH ONE <b>SEES</b></span>
+  <span>WHERE EACH ONE <b>LIVES</b></span>
+</div>
+
+<main>
+  <div class="sorters">
+
+    <!-- ══════════ WEB FILTER ══════════ -->
+    <div class="sorter s-blue">
+      <div class="sorter-head">
+        <div class="sorter-kicker">SORTER № 1</div>
+        <h2>Web Filter</h2>
+        <div class="sorter-tag">“Read by the address on the front.”</div>
+      </div>
+
+      <div class="envelope">
+        <svg viewBox="0 0 270 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Envelope with the address lines highlighted under a magnifying glass">
+          <!-- envelope body -->
+          <rect x="20" y="30" width="200" height="120" rx="6" fill="#fffdf5" stroke="#7a6a3a" stroke-width="2.5"/>
+          <!-- stamp -->
+          <rect x="180" y="42" width="28" height="34" rx="3" fill="#eff4fc" stroke="#b8cce8" stroke-width="2"/>
+          <text x="194" y="63" font-family="Outfit" font-size="9" fill="#1e40af" text-anchor="middle">443</text>
+          <!-- address lines (the thing it reads) -->
+          <text x="38" y="86" font-family="JetBrains Mono, monospace" font-size="12" fill="#1e40af" font-weight="600">facebook.com</text>
+          <rect x="38" y="96" width="110" height="6" rx="3" fill="#a8c0e8"/>
+          <rect x="38" y="108" width="80" height="6" rx="3" fill="#a8c0e8"/>
+          <!-- magnifying glass over address -->
+          <circle cx="96" cy="86" r="34" fill="rgba(37,99,235,0.06)" stroke="#2563eb" stroke-width="3.5"/>
+          <line x1="121" y1="111" x2="146" y2="136" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="axis">
+        <div class="axis-label">WHAT IT SEES</div>
+        <div class="axis-main">Domains, URLs, SNI / SAN — the address written on the front</div>
+        <div class="axis-sub">It reads where the envelope claims to be going.</div>
+        <div class="chips">
+          <span class="chip chip-blue">Layer 7 — web</span>
+          <span class="chip chip-blue">Flow OR proxy</span>
+        </div>
+      </div>
+
+      <div class="axis">
+        <div class="axis-label">WHERE IT LIVES</div>
+        <div class="axis-main">Security Profiles</div>
+        <div class="axis-sub">Attached to a firewall policy like the other profiles.</div>
+        <div class="chips"><span class="chip chip-blue">config webfilter profile</span></div>
+      </div>
+
+      <div class="db">
+        <div class="db-label">WHERE ITS KNOWLEDGE LIVES</div>
+        <div class="db-main">Not on the FortiGate. It <b>phones FortiGuard / FDS on-demand</b> for rating lookups, then remembers recent answers in a <b>cache</b>.</div>
+      </div>
+    </div>
+
+    <!-- ══════════ APPLICATION CONTROL ══════════ -->
+    <div class="sorter s-amber">
+      <div class="sorter-head">
+        <div class="sorter-kicker">SORTER № 2</div>
+        <h2>Application Control</h2>
+        <div class="sorter-tag">“Recognised by the sender's handwriting.”</div>
+      </div>
+
+      <div class="envelope">
+        <svg viewBox="0 0 270 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Envelope covered in distinctive cursive handwriting being matched against a signature card">
+          <!-- envelope body -->
+          <rect x="20" y="30" width="200" height="120" rx="6" fill="#fffdf5" stroke="#7a6a3a" stroke-width="2.5"/>
+          <!-- distinctive cursive handwriting strokes -->
+          <path d="M38 78 q10 -16 20 0 t20 0 t20 0 t20 0" fill="none" stroke="#b45309" stroke-width="3" stroke-linecap="round"/>
+          <path d="M38 98 q8 -12 16 0 t16 0 t16 0 t16 0 t16 0" fill="none" stroke="#b45309" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+          <path d="M38 118 q12 -14 24 0 t24 0 t24 0" fill="none" stroke="#b45309" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+          <!-- signature reference card -->
+          <g transform="rotate(-8 215 120)">
+            <rect x="178" y="98" width="76" height="48" rx="5" fill="#fcf2c3" stroke="#f3d68a" stroke-width="2"/>
+            <text x="216" y="113" font-family="Outfit" font-size="8" fill="#b45309" text-anchor="middle" letter-spacing="1">SIGNATURE</text>
+            <path d="M188 128 q8 -12 16 0 t16 0 t16 0" fill="none" stroke="#b45309" stroke-width="2.5" stroke-linecap="round"/>
+            <text x="216" y="141" font-family="Outfit" font-size="8" fill="#1a7c4a" text-anchor="middle">✓ MATCH</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="axis">
+        <div class="axis-label">WHAT IT SEES</div>
+        <div class="axis-main">Transmission patterns — app signatures &amp; protocol decoders</div>
+        <div class="axis-sub">Not where it's going — <em>who wrote it</em>. The app betrays itself by how it behaves on the wire.</div>
+        <div class="chips">
+          <span class="chip chip-amber">Layer 7 — OSI</span>
+          <span class="chip chip-amber">Flow-based ONLY</span>
+          <span class="chip chip-amber">Rate-based IPS sigs</span>
+        </div>
+      </div>
+
+      <div class="axis">
+        <div class="axis-label">WHERE IT LIVES</div>
+        <div class="axis-main">Security Profiles</div>
+        <div class="axis-sub">Also usable in traffic shaping — and SD-WAN app steering if enabled.</div>
+        <div class="chips"><span class="chip chip-amber">config application list</span></div>
+      </div>
+
+      <div class="db">
+        <div class="db-label">WHERE ITS KNOWLEDGE LIVES</div>
+        <div class="db-main">Locally, as the <b>Application Definitions</b> database. Check it with <code>diagnose autoupdate versions</code>.</div>
+      </div>
+    </div>
+
+    <!-- ══════════ ISDB ══════════ -->
+    <div class="sorter s-green">
+      <div class="sorter-head">
+        <div class="sorter-kicker">SORTER № 3</div>
+        <h2>ISDB</h2>
+        <div class="sorter-tag">“Sorted by postal district. Never opened.”</div>
+      </div>
+
+      <div class="envelope">
+        <svg viewBox="0 0 270 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sealed envelope with an intact wax seal, sorted by a district postmark stamp">
+          <!-- envelope body, flap CLOSED -->
+          <rect x="20" y="40" width="200" height="110" rx="6" fill="#fffdf5" stroke="#7a6a3a" stroke-width="2.5"/>
+          <path d="M20 46 L120 105 L220 46" fill="none" stroke="#7a6a3a" stroke-width="2.5"/>
+          <!-- intact wax seal -->
+          <circle cx="120" cy="105" r="14" fill="#1a7c4a"/>
+          <circle cx="120" cy="105" r="14" fill="none" stroke="#0f5c34" stroke-width="2"/>
+          <text x="120" y="110" font-family="Playfair Display" font-size="12" fill="#dff0e1" text-anchor="middle" font-style="italic">S</text>
+          <!-- district postmark -->
+          <g transform="rotate(-10 200 62)">
+            <circle cx="200" cy="62" r="26" fill="none" stroke="#1a7c4a" stroke-width="2.5" stroke-dasharray="4 3"/>
+            <text x="200" y="57" font-family="Outfit" font-size="8" fill="#1a7c4a" text-anchor="middle" letter-spacing="1">DISTRICT</text>
+            <text x="200" y="70" font-family="JetBrains Mono" font-size="9" fill="#1a7c4a" text-anchor="middle">IP : PORT</text>
+          </g>
+          <!-- "never opened" banner -->
+          <rect x="46" y="126" width="148" height="18" rx="9" fill="#dff0e1" stroke="#a7d8b0" stroke-width="1.5"/>
+          <text x="120" y="139" font-family="Outfit" font-size="9.5" fill="#1a7c4a" text-anchor="middle" letter-spacing="2">SEAL INTACT — NO INSPECTION</text>
+        </svg>
+      </div>
+
+      <div class="axis">
+        <div class="axis-label">WHAT IT SEES</div>
+        <div class="axis-main">IP addresses (L3) + TCP/UDP ports (L4) — the postal district</div>
+        <div class="axis-sub">A lookup against a list of known destinations. The envelope is <em>never opened</em>.</div>
+        <div class="chips">
+          <span class="chip chip-green">Layer 3 &amp; 4</span>
+          <span class="chip chip-green">NO inspection</span>
+        </div>
+      </div>
+
+      <div class="axis">
+        <div class="axis-label">WHERE IT LIVES</div>
+        <div class="axis-main">Policy &amp; Objects — it's an address object, not a profile</div>
+        <div class="axis-sub">Used as a destination in firewall policies and SD-WAN rules.</div>
+        <div class="chips"><span class="chip chip-green">config firewall internet-service-name</span></div>
+      </div>
+
+      <div class="db">
+        <div class="db-label">WHERE ITS KNOWLEDGE LIVES</div>
+        <div class="db-main">Locally, as the <b>Internet-service Full Database</b>. Same check: <code>diagnose autoupdate versions</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── The one-line lock-in ── -->
+  <div class="oneline">
+    <h3>SEÑOR'S WHITEBOARD — SAY IT IN ONE BREATH</h3>
+    <p>Web filter reads the <b>address</b>. Application control recognises the <b>handwriting</b>. ISDB sorts by <b>district</b> and never breaks the seal. Two are <b>profiles</b>; the third is an <b>object</b>. Two keep their knowledge <b>on the box</b>; the address-reader <b>phones FortiGuard</b> and keeps a cache.</p>
+  </div>
+
+  <!-- ── The trap ticket ── -->
+  <div class="ticket">
+    <h3>⚠ RILEY'S TICKET — THE SEAM BETWEEN SORTERS</h3>
+    <p><em>“Facebook is blocked but the Facebook APP still works?? — Trading Floor.”</em> The web filter read the address on browser traffic and stopped it. But the app doesn't write an address the web filter recognises the same way — it has to be caught by its <em>handwriting</em>. One symptom, two sorters: knowing which one sees what is the whole ticket.</p>
+
+    <div class="image-placeholder">
+      <img class="ip-image expanded" src="images/riley-ticket-seam.png" alt="A LoFinance help-desk ticket labelled 'Facebook blocked but the app still works' sits on the desk between the Web Filter clerk and the App Control handwriting expert; a browser envelope is turned back at the address station while an app-shaped envelope slips past unread toward the handwriting expert who is still magnifying-glass-inspecting it." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+      <div class="ip-filename">images/riley-ticket-seam.png</div>
+      <div class="ip-title">Riley's Ticket — The Seam Between Sorters</div>
+      <div class="ip-caption">Purpose: encode the exact failure Riley reports — a browser envelope is stopped by the address-reader (Web Filter), but the app-shaped envelope carries no address for that sorter and passes through untouched, only catchable one station later by the handwriting expert (App Control).</div>
+    </div>
+  </div>
+</main>
+
+<footer>LOFINANCE · NSE7 EF 7.6 · SESSION 22 — THREE FILTERS, ONE JOB? · STUDY GUIDE 06, pp. 171–173</footer>
+</body>
+</html>

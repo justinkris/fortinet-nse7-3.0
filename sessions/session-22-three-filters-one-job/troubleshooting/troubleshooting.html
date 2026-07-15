@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 22 Troubleshooting — Blocked But Still Works</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:36px 48px 28px;background:var(--ink-dark);}
+  .eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:#fbf7ec;}
+  header h1 em{font-style:italic;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+  main{max-width:980px;margin:0 auto;padding:32px 48px 56px;}
+  h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;padding-left:14px;border-left:3px solid var(--blue);margin:30px 0 12px;}
+  p,li{font-size:17px;line-height:1.7;color:var(--text-soft);}
+  strong{color:var(--text);}
+  ul,ol{padding-left:22px;margin-bottom:12px;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 18px;margin:14px 0;font-size:16px;line-height:1.65;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .code{background:var(--ink-dark);border-radius:10px;padding:14px 16px;margin:14px 0;font-family:'SF Mono','Consolas',monospace;font-size:12.5px;line-height:1.6;color:#e8efff;overflow-x:auto;white-space:pre;}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:16px 0;font-family:'SF Mono','Consolas',monospace;font-size:13px;line-height:1.9;color:var(--text-soft);white-space:pre;overflow-x:auto;}
+  .data-table{width:100%;border-collapse:collapse;margin:14px 0;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+  .data-table td{font-size:15px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+  .data-table td:first-child{font-weight:600;color:var(--text);}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:16px 48px;border-top:1px solid var(--border);background:var(--surface);}
+  @media(max-width:720px){header{padding:24px 20px;}main{padding:24px 20px 40px;}header h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 22 · TROUBLESHOOTING · SENIOR THINKING</div>
+  <h1>"It's Blocked <em>But Still Works</em>"</h1>
+  <p>Diagnosing filter coverage: which question does the deployed tool actually answer?</p>
+</header>
+<main>
+
+<h2>The Symptom Family</h2>
+<ul>
+  <li>"Facebook is blocked but the Facebook <strong>app</strong> still works." (Ticket #41)</li>
+  <li>"We block streaming, but users still stream."</li>
+  <li>"SD-WAN isn't steering Office 365 down the right link."</li>
+  <li>"Filtering broke and nobody changed the config." (FortiGuard dependency — S23 preview)</li>
+</ul>
+<div class="callout"><strong>The senior reflex:</strong> before touching anything, ask <em>which question does the deployed tool answer, and which question is the symptom asking?</em> A working tool with the wrong coverage looks identical to a broken tool — until you check the wire.</div>
+
+<h2>Questions to Ask First</h2>
+<ol>
+  <li><strong>Scope:</strong> Who is affected — one user, one group, one policy? Browser, app, or both?</li>
+  <li><strong>What exactly is blocked:</strong> Is the block page appearing (web filter verdict delivered) or is traffic silently passing?</li>
+  <li><strong>Which profiles are on the matching policy</strong> — and is the traffic even matching the policy you think it is?</li>
+  <li><strong>What does the traffic look like on the wire</strong> — which SNIs/destinations is the "blocked" application actually contacting?</li>
+</ol>
+
+<h2>Verification Commands &amp; Expected Outputs</h2>
+<div class="code"># Which policy is the session actually hitting?
+diagnose sys session list | grep -A 10 &lt;client-ip&gt;
+# → check policy_id against your intended policy
+
+# What is the app really connecting to? (SNI evidence)
+diagnose sniffer packet any "host &lt;client-ip&gt; and port 443" 4
+# → collect ClientHello destinations: graph.facebook.com, *.fbcdn.net ...
+
+# Are the local databases present and current?
+diagnose autoupdate versions
+# → Application Definitions: version + "Updates Installed"
+# → Internet-service Full Database: version + contract valid
+# → NOTE: no web filter database will appear — that is normal
+
+# Web filter rating path (on-demand to FortiGuard/FDS)
+diagnose debug rating
+# → shows FortiGuard rating servers, weights, round-trip times</div>
+
+<h2>Decision Tree</h2>
+<div class="tree">"X is blocked but still works"
+        │
+        ▼
+Is the BROWSER blocked (block page shown)?
+   ├─ NO  → web filter not applying at all
+   │        → wrong policy match? profile attached? SSL inspection
+   │          giving visibility (cert vs full)? FortiGuard reachable?
+   │
+   └─ YES → web filter is WORKING. Coverage question:
+              │
+              ▼
+        Is the surviving traffic an APP (non-browser)?
+           ├─ YES → sniff SNIs. Scattered API/CDN hostnames,
+           │        no rated URL → web filter cannot see it.
+           │        FIX: add app control (category or signature)
+           │        to the SAME policy. Verify block in app logs.
+           │
+           └─ NO (browser survives on some sites)
+                    → category rating of that domain? Check the
+                      rating cache / FortiGuard lookup. Override?
+                      Exemption? Different policy matched?</div>
+
+<h2>Common Dead Ends</h2>
+<table class="data-table">
+  <tr><th>Dead End</th><th>Why It Wastes Your Morning</th></tr>
+  <tr><td>"The web filter profile is corrupted"</td><td>The profile is fine — it answers a different question. Evidence (SNI capture) beats re-creating profiles.</td></tr>
+  <tr><td>Blocking fbcdn.net wholesale</td><td>Shared CDN infrastructure — you'll break unrelated services. Identify the <em>application</em>, not its hostnames.</td></tr>
+  <tr><td>Punching an exception into the shared profile</td><td>The hole applies to everyone the profile touches. Exceptions live in policy structure (who), not profile edits (what).</td></tr>
+  <tr><td>One tool per user group</td><td>Either/or thinking recreates the gap. Full coverage = both profiles per policy; only verdicts differ.</td></tr>
+  <tr><td>Expecting app-based SD-WAN steering by default</td><td>Requires Application Detection-Based SD-WAN (System &gt; Feature Visibility) and it learns — first sessions take the default path. ISDB steers at packet one.</td></tr>
+</table>
+
+<h2>Likely Root Causes (Ranked)</h2>
+<ol>
+  <li><strong>Coverage gap:</strong> web filter deployed alone; app traffic invisible to URL matching.</li>
+  <li><strong>Policy mis-match:</strong> traffic hitting a different policy (order, source group, interface) than the one carrying the profiles.</li>
+  <li><strong>FortiGuard dependency:</strong> app-control/ISDB DB stale or contract expired (<code>diagnose autoupdate versions</code>); web filter rating service unreachable and cache cold.</li>
+  <li><strong>Visibility gap:</strong> certificate-only inspection where content matching needed full inspection.</li>
+</ol>
+
+<h2>Exam Traps</h2>
+<div class="callout callout-amber">
+  <strong>1.</strong> A scenario where "the web filter is malfunctioning" is a distractor — the correct answer identifies the coverage gap and adds app control.<br>
+  <strong>2.</strong> <code>diagnose autoupdate versions</code> offered as a way to check the <em>web filter</em> database — invalid; that DB is remote.<br>
+  <strong>3.</strong> "Enable app control in proxy mode for deeper detection" — impossible; flow-only (IPS engine).<br>
+  <strong>4.</strong> ISDB presented as a security profile in an answer option — it's an object used as a policy destination.
+</div>
+
+<div class="callout callout-green"><strong>Close the loop like a senior:</strong> after adding app control, verify with the application-control logs that the app signature is matching and the verdict is Block — then confirm the marketing policy still permits Facebook. Recovery is not verified until <em>both</em> the block and the exception are proven.</div>
+
+</main>
+<footer>LoFinance · Session 22 Troubleshooting · The tool wasn't broken — it was answering a different question</footer>
+</body>
+</html>

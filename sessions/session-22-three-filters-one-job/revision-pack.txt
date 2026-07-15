@@ -1,0 +1,175 @@
+================================================================================
+SESSION 22 REVISION PACK — "Three Filters, One Job?"
+Web filter vs Application Control vs ISDB (Study Guide 06, pp. 171–175)
+================================================================================
+
+--------------------------------------------------------------------------------
+QUICK SUMMARY (one page)
+--------------------------------------------------------------------------------
+Penny challenged three FortiGuard invoices; Ticket #41 ("Facebook blocked but the
+app works") proved they are three different tools answering three different
+questions.
+
+WEB FILTER — reads "the address on the front": domains, URLs, SNI/SAN, content.
+Flow OR proxy inspection. A security profile. Blocks BROWSING. Cannot see apps,
+because apps are machine-to-machine traffic scattered across API endpoints and
+CDNs (graph.facebook.com, edge-mqtt.facebook.com, *.fbcdn.net) with no rated URL.
+
+APP CONTROL — recognises "the handwriting": L7 application signatures, protocol
+decoders, rate-based IPS signatures. FLOW-BASED ONLY, because it runs ON the IPS
+engine; proxy buffering (needed by AV to judge whole files) buys identification
+nothing. A security profile. Has its own FortiGuard categories (Social.Media).
+Also: traffic shaping; SD-WAN steering only after enabling Application
+Detection-Based SD-WAN (System > Feature Visibility) — which LEARNS (first
+sessions take the default path).
+
+ISDB — "postal district lookup": FortiGuard database of vendor IP ranges (L3) +
+TCP/UDP ports (L4). NO INSPECTION. Not a profile — a Policy & Object, selected AS
+THE DESTINATION of a policy, and the native match for SD-WAN rules because the
+answer exists at PACKET ONE (lookup vs verdict).
+
+FORTIGUARD: app control + ISDB databases are LOCAL (diagnose autoupdate
+versions → Application Definitions / Internet-service Full Database). The web
+filter database is NOT on the box: FortiGate queries FortiGuard (or FortiManager
+as a local FDS) on-demand per rating, keeping only a cache.
+
+POLICY DESIGN: Profiles decide WHAT; policies decide WHO. "No social media but
+marketing needs Facebook" = marketing policy on top (Facebook allowed via
+app-control override), general policy below carrying BOTH web filter (Social
+Networking → block) AND app control (Social.Media → block). Never one tool per
+group; never a hole in a shared profile.
+
+--------------------------------------------------------------------------------
+CHEAT SHEET
+--------------------------------------------------------------------------------
+CLI NAMESPACES (tell you where each lives):
+  config webfilter profile                      <- profile
+  config application list                       <- profile
+  config firewall internet-service-name         <- firewall OBJECT
+
+DATABASE / DEPENDENCY CHECKS:
+  diagnose autoupdate versions
+      -> "Application Definitions"              (app control, local)
+      -> "Internet-service Full Database"       (ISDB, local)
+      -> web filter section DOES NOT EXIST      (remote, on-demand + cache)
+  diagnose debug rating                          (web filter FortiGuard servers)
+
+GUI PATHS:
+  Security Profiles > Web Filter / Application Control
+  Policy & Objects > Internet Service Database (used as policy destination)
+  System > Feature Visibility > Application Detection-Based SD-WAN
+
+KEY BEHAVIOURS / DESIGN RULES:
+  - App control inspection mode: flow only (IPS engine). Never proxy.
+  - Web filter inspection mode: flow or proxy.
+  - ISDB: no inspection; L3/L4 lookup; matches at first packet.
+  - App-based SD-WAN steering: opt-in feature; learning-based.
+  - Full coverage policy carries BOTH web filter and app control.
+  - Exceptions live in policy structure (source/group), not profile holes.
+  - webfilter profile has subcommand urlfilter-table for extended config.
+
+hping3 (p.175, IPS validation tool):
+  hping3 -S -p 80 -c 5 host      five TCP SYNs to port 80
+  hping3 --traceroute -V -1 -p 33434 host    UDP traceroute
+  hping3 -S -p 22 -c 1 host      port test: SYN/ACK=open, RST=closed
+
+--------------------------------------------------------------------------------
+FLASHCARDS
+--------------------------------------------------------------------------------
+Q: Which layers does each tool operate at?
+A: Web filter = URLs/domains (L7 web); App control = L7 signatures; ISDB = L3 IP + L4 port.
+
+Q: Which inspection modes does the web filter support?
+A: Flow-based AND proxy-based.
+
+Q: Why is application control flow-based only?
+A: It runs on the flow-based IPS engine (signatures, protocol decoders,
+   rate-based IPS signatures); buffering whole sessions adds nothing to
+   pattern identification.
+
+Q: Which profile genuinely needs proxy buffering, and why?
+A: Antivirus — a file verdict requires the whole reassembled object.
+
+Q: Is ISDB a security profile?
+A: No — a Policy & Object, used as the DESTINATION in policies/SD-WAN rules.
+
+Q: Why is ISDB the natural SD-WAN match tool?
+A: The IP+port lookup resolves at packet one, before the egress decision;
+   app control needs several packets for a verdict.
+
+Q: How do you steer SD-WAN by application instead?
+A: Enable Application Detection-Based SD-WAN under System > Feature Visibility;
+   steering is learning-based (early sessions take the default path).
+
+Q: Where do you check the app control and ISDB database versions?
+A: diagnose autoupdate versions (Application Definitions / Internet-service
+   Full Database).
+
+Q: Why can't you check the web filter database version there?
+A: It isn't stored locally — FortiGate queries FortiGuard (or FMG-as-FDS)
+   on-demand and caches recent ratings.
+
+Q: Website blocked but the app works — malfunction?
+A: No. Coverage gap: apps use scattered API/CDN hostnames with no rated URL.
+   Add app control to the same policy.
+
+Q: Marketing needs Facebook, everyone else doesn't — where does the split live?
+A: In firewall POLICIES matching user groups (marketing policy above), not in
+   holes punched into a shared profile.
+
+Q: hping3 command for five TCP SYN packets to port 80?
+A: hping3 -S -p 80 -c 5 <host>
+
+--------------------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 22
+--------------------------------------------------------------------------------
+Generate a 10–14 minute podcast episode of "The Packet Path", a narrative
+networking show following an intermediate engineer at LoFinance, a Sydney quant
+trading firm. Tone: warm, wry, technically precise. Two hosts trading narration
+and explanation.
+
+STORY: Penny, the operations chief, storms the server room with a printed
+invoice: three FortiGuard line items — web filtering, application control, ISDB
+— "Why am I paying three times for one job?" Junior proposes blocking the entire
+internet; it dies instantly because marketing runs the company Facebook page.
+Riley reads Ticket #41: "Facebook is blocked but the Facebook APP still works —
+Trading Floor." Señor, the eccentric senior engineer in a sombrero, draws three
+envelopes on the whiteboard: one read by the ADDRESS on the front, one
+recognised by the sender's HANDWRITING, one sorted by POSTAL DISTRICT and never
+opened.
+
+TEACH, through the story:
+1) Web filter matches domains/URLs (the address). Show the packet capture
+   reveal: the Facebook app never touches www.facebook.com — it scatters across
+   graph.facebook.com, edge-mqtt.facebook.com, scontent.xx.fbcdn.net. The web
+   filter wasn't broken; it answers "where are you going?", and app traffic
+   answers "no website at all — I'm software."
+2) Application control recognises the handwriting: L7 signatures on the IPS
+   engine — which is exactly why it's flow-based ONLY. Use the shoebox analogy:
+   proxy mode buffers the whole letter (what antivirus needs); handwriting is
+   visible in the first few lines.
+3) ISDB is a lookup, not an inspection: IP + port per vendor, known at packet
+   one — the native SD-WAN steering tool. App-based steering exists but must be
+   enabled under Feature Visibility and works by learning.
+4) FortiGuard asymmetry: app control and ISDB databases live ON the box
+   (diagnose autoupdate versions); the web filter's database never does —
+   live rating queries plus a cache. Plant this as ominous foreshadowing.
+
+JUNIOR'S MISTAKES: blocking the whole internet (business needs define filters),
+and proposing to punch a Facebook hole in the shared profile — teaching the
+episode's law: PROFILES DECIDE WHAT, POLICIES DECIDE WHO. The hero's own stumble:
+assigning one tool per user group (either/or thinking) before realising full
+coverage means both profiles per policy with different verdicts.
+
+CLIMAX: the hero reasons the SD-WAN question purely from TIMING — when does each
+tool know what it knows — and Señor sits down, his highest compliment. Ten exam
+questions, ten correct; Señor draws a happy cactus next to the two sad ones.
+
+END WITH THE TEASER: Friday morning, every browser on the trading floor hangs —
+not blocked, just spinning. "Nothing changed!" cries Junior. On Señor's desk: an
+unopened FortiGuard contract renewal notice. Next episode: what the web filter
+phones home for, and what happens when nobody picks up.
+
+--------------------------------------------------------------------------------
+END OF PACK
+--------------------------------------------------------------------------------

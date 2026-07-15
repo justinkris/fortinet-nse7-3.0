@@ -1,0 +1,159 @@
+SESSION 22 SUMMARY — "Three Filters, One Job?"
+(Web filter vs application control vs ISDB — what each sees and where each lives |
+Study Guide 06 Security Profiles pp. 171–175, incl. hping3 preview p. 175 used in Q9)
+Written for Claude. Read before Session 23.
+
+NOTE ON SEQUENCE: S18/S19 (OSPF internals II & III) remain SKIPPED and outstanding.
+FMG IPsec templates hands-on remains UNDONE. The whiteboard now has THREE cacti: two
+sad (one crying) for the debt, plus ONE HAPPY CACTUS drawn by Señor after the 10/10
+exam result. Keep surfacing the debt; the happy cactus is a new visual gag.
+
+STORY EVENTS
+------------
+Thursday, 8:52 AM. Penny arrived with a PRINTED invoice, three items highlighted:
+FortiGuard Web Filtering, Application Control, ISDB. Accusation: "I am paying three
+times for one job." Junior proposed blocking the entire internet ("one rule, free");
+Penny shot it down — marketing runs the company Facebook page and must keep access.
+Riley read out Ticket #41: "Facebook is blocked but the Facebook APP still works?? —
+Trading Floor" (42 quants discovered it). Señor drew THREE ENVELOPES on the
+whiteboard: (1) read by the address on the front = web filter, (2) recognised by the
+sender's handwriting = app control, (3) sorted by postal district, never opened =
+ISDB. Board headline: WHAT EACH ONE SEES. WHERE EACH ONE LIVES. Señor patted the sad
+cacti "like pets." He opened by PRAISING the student's pre-reading ISDB answer
+("right for the right reason") and deferred the app-control/proxy pre-reading
+mystery to mid-session. Señor demonstrated app traffic with a cooking app on his
+phone ("the man cannot be predicted"). Packet capture of one quant's phone showed
+the Facebook app's SNIs: graph.facebook.com, edge-mqtt.facebook.com,
+scontent.xx.fbcdn.net, b-api.facebook.com, static.xx.fbcdn.net — never
+www.facebook.com. Señor SAT DOWN (his "lesson landed" signal) when the student
+reasoned the SD-WAN question from TIMING (when each tool knows what it knows).
+Penny withdrew the accusation ("Mostly.") and PHOTOGRAPHED the comparison table —
+framed in-story as practically a bonus payment. Her parting question ("what am I
+actually renting from FortiGuard?") became the final teaching beat and directly
+set up S23. Session ended with Señor drawing the happy cactus after 10/10.
+
+CHARACTERS: Penny (invoice-driven, withdrew accusation, photographed the board),
+Junior (block-the-internet proposal; also proposed punching a Facebook hole in the
+shared profile — used to teach that exceptions live in POLICY not profile), Riley
+(Ticket #41, dangerous calm), Señor (envelopes analogy, cooking app demo, sat down
+once, happy cactus), Marcus/Cipher not on-screen. REMINDER: Cipher is MALE (he/him).
+
+BUSINESS PROBLEM
+----------------
+"No social media, but marketing needs Facebook" + justify three FortiGuard line
+items. RESOLVED: trading-floor policy carries BOTH web filter (Social Networking →
+block) AND app control (Social.Media → block); marketing policy above it permits
+Facebook via app-control signature override. Ticket #41 answered. Invoice justified:
+three tools answer three different questions.
+
+TECHNICAL CONCEPTS COVERED
+--------------------------
+1. WEB FILTER: matches domains/URLs (SNI/SAN/CN, URL, content). Flow OR proxy.
+   Security profile. CLI: config webfilter profile. Answers "WHERE are you going?"
+2. APP CONTROL: L7 signatures, protocol decoders, rate-based IPS signatures. FLOW
+   ONLY — because it RUNS ON THE IPS ENGINE (this resolved the student's pre-reading
+   question; his hypothesis was inverted but reasoning sound). Security profile.
+   CLI: config application list. Answers "WHAT are you?" Has its own FortiGuard
+   categories (Social.Media etc.). Also used for traffic shaping.
+3. ISDB: database of IP+port per vendor/service. L3/L4 lookup, NO inspection.
+   NOT a profile — a Policy & Object; used AS THE DESTINATION in policies and as
+   the native match in SD-WAN rules. CLI: config firewall internet-service-name.
+   Knows the answer at PACKET ONE (lookup vs verdict).
+4. Why apps evade web filters: apps are machine-to-machine, scattering across API
+   endpoints, MQTT brokers, CDNs (fbcdn.net) — the "address on the front" is
+   fragmented/absent. Web filter isn't broken; it answers a different question.
+5. App-based SD-WAN steering exists but requires Application Detection-Based SD-WAN
+   under System > Feature Visibility, and works by learning (early sessions take the
+   default path until identified). ISDB needs no such trick.
+6. Proxy vs flow framing: proxy = shoebox (buffer + reassemble the whole letter →
+   AV's home); flow = watch lines being written (app control, IPS). Buffering buys
+   app control nothing — handwriting is visible in the first few lines.
+7. FortiGuard consumption models: app control + ISDB databases stored LOCALLY
+   (diagnose autoupdate versions → "Application Definitions" / "Internet-service
+   Full Database"); web filter DB is NOT local — live on-demand rating queries to
+   FortiGuard or FortiManager-as-FDS, with only a cache of recent verdicts.
+8. hping3 introduced via exam Q9 only (p. 175): -S SYN, -p port, -c count.
+
+MENTAL MODELS / ANALOGIES (KEEPERS)
+-----------------------------------
+- THREE ENVELOPES: address on front / sender's handwriting / postal district never
+  opened. Student used it fluently by mid-session. Add to Effective Analogies.
+- "Profiles decide WHAT gets caught. Policies decide WHO it applies to."
+- "Locked the front door, left the loading dock open" (web filter alone vs apps).
+- LOOKUP vs VERDICT: ISDB knows at packet one; app control after several packets.
+  Student derived this HIMSELF from timing — the senior moment of the session.
+- Shoebox (proxy/AV) vs handwriting-in-transit (flow/app-control/IPS).
+
+KEY CLI
+-------
+config webfilter profile / config application list /
+config firewall internet-service-name ; diagnose autoupdate versions
+(Application Definitions, Internet-service Full Database sections; web filter absent).
+
+TROUBLESHOOTING APPROACH TAUGHT
+-------------------------------
+Ticket #41 pattern: "blocked but still works" → identify WHICH question the deployed
+tool answers vs which question the symptom is asking. Web filter functioning
+correctly while apps pass = coverage gap, not malfunction. Evidence step: packet
+capture / SNI list of the app's real destinations.
+
+CONFIGURATION DECISIONS
+-----------------------
+Trading-floor outbound policy: + web filter (Social Networking block) + app control
+(Social.Media block). New Marketing policy ABOVE it: Facebook allowed via app-control
+override. ISDB objects staged in Policy & Objects for future SD-WAN. No new hardware:
+"topology grew smarter, not bigger."
+
+EXAM QUESTIONS: 10 asked, 10/10 — best exam phase of the season.
+Q1 app control/flow ✓; Q2 web filter ✓; Q3 Application Detection-Based SD-WAN ✓ but
+did NOT give the menu path (System > Feature Visibility) — minor, coached; Q4 False
+(ISDB not a profile) ✓; Q5 web filter DB not local ✓; Q6 True/False polarity CORRECT
+with reasoning ✓; Q7 SNI/SAN RETEST PASSED CLEAN (third ask, first clean under exam
+phrasing — flashcard worked); Q8 backbone partition retrieved WITH mnemonic assist
+(hard-drive "partition" hook) — student said "discontiguous backbone area" +
+"partitioned into islands"; canonical name now hooked; schedule ONE COLD retrieval
+next season to confirm; Q9 hping3 B ✓ — dodged swapped-flag AND count distractors
+(S16 numeric-unit retest: PASSED); Q10 Penny-language justification ✓ with coaching:
+never make a line item sound optional ("if we ever implement SD-WAN") to the payer.
+
+INVERSION-UNDER-QUESTIONING WATCH (from S21): ZERO inversions this session across
+two True/False, one label-pair, one flag-order trap. Pattern appears RESOLVED via
+"read stem twice / decide what YES means" coaching. Downgrade from active watch to
+periodic spot-check.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+1. "Block the entire internet" — availability vs security absurdity; business needs
+   define the filter, not vice versa.
+2. "Punch a Facebook hole in the profile" — taught that exceptions live in policy
+   structure (who) not profile edits (what); a profile hole applies to everyone the
+   profile touches.
+Student's OWN instructive error mid-session: proposed app control for marketing and
+web filter for everyone else (either/or thinking) — corrected to BOTH-profiles-per-
+policy, verdicts differ. This either/or trap is a likely exam distractor; worth one
+retrieval question later.
+
+CARRIED-FORWARD OBLIGATIONS
+---------------------------
+- S18/S19 skipped + FMG IPsec templates hands-on: STILL OWED. Two sad cacti (+1 happy).
+- Backbone partition: one COLD retrieval owed (no mnemonic prompt) to confirm.
+- Either/or profile-assignment trap: retest once in S23+ ("which profile for which
+  group" phrasing).
+- Q3 menu-path gap: System > Feature Visibility — fold into an S23 exam question
+  (S23 covers Feature Visibility naturally).
+- Inversion watch: downgraded to spot-check.
+
+TEASER DELIVERED FOR SESSION 23 — "Tuning the Filters"
+------------------------------------------------------
+Friday 7:58 AM, queue suspiciously quiet. 8:03: every trading-floor browser HANGS —
+not blocked, not allowed, spinning. Junior: "Nothing changed! Config is identical!"
+Señor: "Ask what our web filter needs to phone home for, and what happens when
+nobody picks up." On his desk: an UNOPENED FortiGuard contract renewal notice dated
+last week. Topics: web filter / app control / ISDB configuration + FortiGuard
+dependencies (Study Guide 06, continuing from p. 173's rating-lookup material).
+The pre-loaded fault: FortiGuard rating service unreachable (contract/connectivity)
+→ web filter lookups hang while locally-stored app control + ISDB keep working —
+the asymmetry taught this session becomes the diagnostic key.
+
+Date and Time completed: Thursday (in-story) / real session concluded Tuesday,
+14 July 2026.
