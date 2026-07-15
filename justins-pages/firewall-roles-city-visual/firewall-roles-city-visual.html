@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firewall Roles — The City Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* CITY MAP */
+  .city{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:24px 0;}
+  .city-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;transition:transform .15s ease, box-shadow .15s ease;}
+  .city-card:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(13,26,58,0.10);}
+  .city-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:4px;}
+  .city-card.gate::before{background:#b45309;}
+  .city-card.police::before{background:#1e40af;}
+  .city-card.vault::before{background:#1a7c4a;}
+  .city-card.border::before{background:#7c3aed;}
+  .city-emoji{font-size:34px;line-height:1;margin-bottom:10px;display:block;}
+  .city-role{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;}
+  .city-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;}
+  .city-title em{font-style:italic;font-weight:500;color:var(--blue);}
+  .city-question{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--text-soft);line-height:1.6;}
+  .city-tag{display:inline-block;margin-top:12px;font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:4px 10px;border-radius:12px;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
+
+  .city-card .image-placeholder{margin-top:16px;border:2px dashed var(--border);border-radius:12px;background:var(--surface-2);padding:14px 14px 12px;}
+  .city-card .ip-image{display:block;width:100%;max-width:100%;height:auto;border-radius:8px;margin:0 auto 10px;background:var(--surface);cursor:zoom-in;box-shadow:0 2px 8px rgba(13,26,58,0.10);transition:max-width 0.25s ease, box-shadow 0.25s ease;}
+  .city-card .ip-image.expanded{max-width:100%;cursor:zoom-out;}
+  .city-card .ip-image:not(.expanded){max-width:180px;}
+  .city-card .ip-image:hover{box-shadow:0 6px 16px rgba(13,26,58,0.16);}
+  .city-card .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:10px;font-weight:700;letter-spacing:0.05em;color:var(--blue);margin-bottom:6px;}
+  .city-card .ip-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.25;}
+  .city-card .ip-caption{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-soft);line-height:1.5;}
+
+  /* EXAM QUESTIONS */
+  .exam-q{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:18px 0;border-top:3px solid var(--blue);}
+  .exam-q-num{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .exam-q-scenario{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text);margin-bottom:12px;}
+  .exam-q-scenario strong{color:var(--text);font-weight:700;}
+  .exam-hint{border-left:3px solid var(--amber-border);background:var(--amber-light);border-radius:0 8px 8px 0;padding:10px 16px;margin:12px 0;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:#5c3d09;line-height:1.6;}
+  .exam-hint strong{font-style:normal;color:var(--amber);font-weight:700;}
+  .exam-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .btn-reveal{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:9px 18px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;transition:opacity .15s;}
+  .btn-reveal:hover{opacity:0.85;}
+  .exam-answer{display:none;margin-top:14px;background:var(--green-light);border:1px solid var(--green-border);border-left:3px solid var(--green);border-radius:0 10px 10px 0;padding:14px 18px;}
+  .exam-answer.show{display:block;}
+  .exam-answer-pick{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--green);margin-bottom:6px;}
+  .exam-answer-why{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.7;color:#124a2e;}
+  .exam-answer-why strong{color:#0d3a22;font-weight:700;}
+
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  @media(max-width:720px){
+    header{padding:28px 24px 24px;}header h1{font-size:34px;}
+    .motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}
+    .city{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-eyebrow"><span class="dot-live"></span> Mental Model · NSE7 EF 7.6</div>
+    <h1>Four Firewalls, <em>One City</em></h1>
+    <p>NGFW, DCFW, ISFW, DEFW — the role is decided by where it sits, not what box it is.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Stop memorising acronyms. <em>Start thinking in responsibilities.</em></div>
+  <p class="motivation-sub">Once you can answer "what am I protecting?" and "what traffic flows through here?", the role names them for you.</p>
+</div>
+
+<main>
+  <div class="main-content">
+
+    <!-- CITY MODEL -->
+    <div class="section-block">
+      <div class="section-label">The Memory Trick</div>
+      <h2>Imagine a <em>city</em></h2>
+      <p>Every firewall role is just a guard standing at a different point in the same city. Same uniform, same training — different post, different question they're asking of everyone who approaches.</p>
+
+      <div class="city">
+        <div class="city-card gate">
+          <span class="city-emoji">🏰</span>
+          <div class="city-role">NGFW</div>
+          <div class="city-title">The <em>City Gate</em></div>
+          <div class="city-question">"Who is allowed <strong>into</strong> the city?"</div>
+          <span class="city-tag">Enterprise Edge · North–South</span>
+
+          <div class="image-placeholder">
+            <img class="ip-image expanded" src="images/firewall-roles-city__ngfw-gate.png" alt="A tall city gate in a warm cream cityscape with a stern uniformed guard checking arrivals at the boom barrier — traffic flows north–south between the outside world and the city inside." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+            <div class="ip-title">The City Gate — NGFW</div>
+            <div class="ip-caption">A single fortified gate deciding who enters the whole city. North–South traffic in and out of the enterprise edge.</div>
+          </div>
+        </div>
+
+        <div class="city-card police">
+          <span class="city-emoji">🚓</span>
+          <div class="city-role">ISFW</div>
+          <div class="city-title">The <em>Police</em> Inside</div>
+          <div class="city-question">"Who is allowed to move <strong>between districts</strong>?"</div>
+          <span class="city-tag">Internal Segments · East–West</span>
+
+          <div class="image-placeholder">
+            <img class="ip-image expanded" src="images/firewall-roles-city__isfw-police.png" alt="Friendly police officers checking a resident crossing from one city district to another across a small internal bridge — quiet lateral street traffic inside the city, no gate to the outside world in view." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+            <div class="ip-title">The Police Inside — ISFW</div>
+            <div class="ip-caption">District-to-district checkpoints stopping lateral movement inside the city. East–West traffic between internal segments.</div>
+          </div>
+        </div>
+
+        <div class="city-card vault">
+          <span class="city-emoji">🏦</span>
+          <div class="city-role">DCFW</div>
+          <div class="city-title">The <em>Vault</em> Security</div>
+          <div class="city-question">"Who is allowed inside the <strong>bank vault</strong>?"</div>
+          <span class="city-tag">Data Centre · East–West (Server↔Server)</span>
+
+          <div class="image-placeholder">
+            <img class="ip-image expanded" src="images/firewall-roles-city__dcfw-vault.png" alt="Bank interior with two vault doors side by side, guards verifying an inter-vault transfer between staff on a short trolley track — dense high-value cargo, calm concentrated tier-to-tier control." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+            <div class="ip-title">The Vault Security — DCFW</div>
+            <div class="ip-caption">Tight tier-to-tier guards inside the bank, controlling who talks to which vault. East–West server-to-server, high throughput.</div>
+          </div>
+        </div>
+
+        <div class="city-card border">
+          <span class="city-emoji">🛣️</span>
+          <div class="city-role">DEFW</div>
+          <div class="city-title">The <em>Border</em> Checkpoints</div>
+          <div class="city-question">"How do all our remote towns connect <strong>back safely</strong>?"</div>
+          <span class="city-tag">Distributed Branches · Branch↔HQ/Cloud</span>
+
+          <div class="image-placeholder">
+            <img class="ip-image expanded" src="images/firewall-roles-city__defw-border.png" alt="A map-like scene with several small remote towns each having an identical checkpoint tower, all connected by soft glowing roads back to a central city and a cloud on the horizon — same uniform policy at every distant post." onclick="this.classList.toggle('expanded');" onerror="this.style.display='none';">
+            <div class="ip-title">The Border Checkpoints — DEFW</div>
+            <div class="ip-caption">Identical checkpoints at every remote town connecting back to HQ and cloud. Consistency and scale across distributed branches.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">📌</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Anchor</div>
+          <div class="mental-note-block-text">Gate keeps outsiders out. Police stop lateral movement. Vault guards the crown jewels. Border ties the whole region together.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROLE TABLE -->
+    <div class="section-block">
+      <div class="section-label">Side by Side</div>
+      <h2>Role, <em>purpose, and the traffic it sees</em></h2>
+      <p>The traffic direction is the giveaway. <em>North–South</em> means in-and-out of the enterprise; <em>East–West</em> means lateral, inside movement.</p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Primary Purpose</th>
+            <th>Typical Traffic</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>NGFW</td>
+            <td>Protect the enterprise edge</td>
+            <td>North–South (Internet ↔ Enterprise)</td>
+          </tr>
+          <tr>
+            <td>DCFW</td>
+            <td>Protect applications and servers</td>
+            <td>East–West (Server ↔ Server)</td>
+          </tr>
+          <tr>
+            <td>ISFW</td>
+            <td>Prevent lateral movement between internal segments</td>
+            <td>East–West (User ↔ User / Department)</td>
+          </tr>
+          <tr>
+            <td>DEFW</td>
+            <td>Enforce policy consistently across distributed branches</td>
+            <td>Branch ↔ HQ / Cloud / Internet</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- THE REAL LESSON -->
+    <div class="section-block">
+      <div class="section-label">The Real Lesson</div>
+      <h2>The role isn't the <em>hardware</em></h2>
+      <p>Here's the part that unlocks the exam: <strong>the firewall role isn't determined by the box.</strong> It's determined by <em>where it sits in the topology</em>, <em>what traffic it sees</em>, and <em>what business outcome it protects</em>.</p>
+      <p>A single FortiGate can technically perform <strong>any</strong> of these roles. We give them names like NGFW, DCFW, ISFW, and DEFW to communicate their <em>architectural purpose</em> — not their model number. Once that clicks, NSE7 design questions get much easier, because you stop thinking in features and start thinking in <strong>responsibilities</strong>.</p>
+
+      <div class="callout callout-green">
+        <strong>Two questions solve almost every design question:</strong><br>
+        1. What assets am I protecting?<br>
+        2. What kind of traffic flows through this firewall?
+      </div>
+
+      <p>Answer those two, and the correct role almost always names itself. That architectural way of thinking is far more valuable than memorising the acronyms.</p>
+    </div>
+
+    <!-- EXAM QUESTIONS -->
+    <div class="section-block">
+      <div class="section-label">Test Yourself</div>
+      <h2>Which firewall would you <em>choose?</em></h2>
+      <p>Read each scenario. Ask the two questions. Commit to an answer <em>before</em> you reveal it — the reasoning matters more than the label.</p>
+
+      <!-- Q1 -->
+      <div class="exam-q">
+        <div class="exam-q-num">Question 1</div>
+        <div class="exam-q-scenario">LoFinance is worried that if <strong>one desktop in the sales department</strong> gets infected with malware, it will spread sideways to the finance department's workstations on the same internal network. Which firewall role addresses this?</div>
+        <div class="exam-hint"><strong>Hint:</strong> The threat is already inside the city walls. Which guard stops movement <em>between districts</em>?</div>
+        <div class="exam-buttons">
+          <button class="btn-reveal" onclick="revealAnswer(this)">Click to see answer</button>
+        </div>
+        <div class="exam-answer">
+          <div class="exam-answer-pick">→ ISFW (Internal Segmentation Firewall)</div>
+          <div class="exam-answer-why">The asset is <strong>internal user segments</strong>, and the traffic is <strong>East–West (user↔user)</strong>. The whole point of an ISFW is to <strong>prevent lateral movement</strong> once a threat is already past the edge. The NGFW at the gate can't help — the malware never crossed it.</div>
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="exam-q">
+        <div class="exam-q-num">Question 2</div>
+        <div class="exam-q-scenario">LoFinance needs to inspect and control all traffic <strong>arriving from the Internet</strong> before it reaches anything inside the company — applying IPS, web filtering, and application control at the perimeter. Which role fits?</div>
+        <div class="exam-hint"><strong>Hint:</strong> Who decides who is allowed <em>into</em> the city in the first place?</div>
+        <div class="exam-buttons">
+          <button class="btn-reveal" onclick="revealAnswer(this)">Click to see answer</button>
+        </div>
+        <div class="exam-answer">
+          <div class="exam-answer-pick">→ NGFW (Next-Generation Firewall)</div>
+          <div class="exam-answer-why">The asset is <strong>the entire enterprise</strong>, and the traffic is <strong>North–South (Internet↔Enterprise)</strong>. The NGFW is the <strong>city gate</strong> — it protects the edge and is where the heavy security profiles typically live for inbound/outbound traffic.</div>
+        </div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="exam-q">
+        <div class="exam-q-num">Question 3</div>
+        <div class="exam-q-scenario">A LoFinance application server and its database server sit in the data centre and talk to each other constantly. Security wants to ensure the <strong>web tier can only reach the DB tier on approved ports</strong>, with no server able to freely reach another. Which role?</div>
+        <div class="exam-hint"><strong>Hint:</strong> The crown jewels are the servers themselves, and the chatter is server-to-server.</div>
+        <div class="exam-buttons">
+          <button class="btn-reveal" onclick="revealAnswer(this)">Click to see answer</button>
+        </div>
+        <div class="exam-answer">
+          <div class="exam-answer-pick">→ DCFW (Data Centre Firewall)</div>
+          <div class="exam-answer-why">The asset is <strong>applications and servers</strong>, and the traffic is <strong>East–West (server↔server)</strong>. A DCFW protects the vault — it segments the application tiers so a compromised web server can't roam freely toward the database. High throughput, low latency, tight tier-to-tier rules.</div>
+        </div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="exam-q">
+        <div class="exam-q-num">Question 4</div>
+        <div class="exam-q-scenario">LoFinance is opening <strong>twelve new branch offices</strong>. Leadership wants the same security policy enforced identically at every branch, with traffic tunnelling safely back to HQ and cloud. Which role describes these firewalls?</div>
+        <div class="exam-hint"><strong>Hint:</strong> Lots of remote towns, one region. How do they all connect back <em>consistently</em>?</div>
+        <div class="exam-buttons">
+          <button class="btn-reveal" onclick="revealAnswer(this)">Click to see answer</button>
+        </div>
+        <div class="exam-answer">
+          <div class="exam-answer-pick">→ DEFW (Distributed Enterprise Firewall)</div>
+          <div class="exam-answer-why">The asset is <strong>consistent policy across many sites</strong>, and the traffic is <strong>Branch↔HQ/Cloud/Internet</strong>. DEFWs are the border checkpoints — the emphasis is <strong>consistency and scale</strong> across distributed locations (often managed centrally, frequently with SD-WAN), not defending a single choke point.</div>
+        </div>
+      </div>
+
+      <!-- Q5 - stretch -->
+      <div class="exam-q">
+        <div class="exam-q-num">Question 5 · Stretch</div>
+        <div class="exam-q-scenario">An exam question shows a FortiGate model and asks you to identify its role. The candidate next to you says "that model is always an NGFW." <strong>Why is that reasoning flawed?</strong></div>
+        <div class="exam-hint"><strong>Hint:</strong> Go back to the real lesson. What actually determines the role?</div>
+        <div class="exam-buttons">
+          <button class="btn-reveal" onclick="revealAnswer(this)">Click to see answer</button>
+        </div>
+        <div class="exam-answer">
+          <div class="exam-answer-pick">→ The role isn't set by the hardware</div>
+          <div class="exam-answer-why">The <strong>same FortiGate can play any of the four roles</strong>. Role is decided by <strong>where it sits in the topology, what traffic it sees, and what it protects</strong> — not the model number. To answer correctly, look at the <strong>placement and traffic direction</strong> in the diagram, then ask the two questions: what am I protecting, and what traffic flows through here?</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  City model · NGFW <span>gate</span> · ISFW <span>police</span> · DCFW <span>vault</span> · DEFW <span>border</span>
+</footer>
+
+<script>
+function revealAnswer(btn){
+  const answer = btn.closest('.exam-q').querySelector('.exam-answer');
+  const shown = answer.classList.toggle('show');
+  btn.textContent = shown ? 'Hide answer' : 'Click to see answer';
+}
+</script>
+
+</body>
+</html>
