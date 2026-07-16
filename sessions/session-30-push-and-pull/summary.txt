@@ -1,0 +1,230 @@
+SESSION 30 SUMMARY — "Push and Pull"
+Season 3 (Central Management arc) · Blueprint 2.1 · Study Guide 02 Central Management, pp. 31-33
+Written for Claude, to continue the story in Session 31.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Tuesday 08:47, LoFinance NOC. Señor's whiteboard still carries last week's line:
+"Install and Retrieve are not the same prayer." Junior has overcorrected after his
+VL-BRANCH-2 humiliation and declared himself "a layer man now" — no more touching boxes.
+Ticket LF-4471: Vaultline finance needs access to a new reporting server. Junior did it
+RIGHT this time — edited the POLICY LAYER (Policy & Objects), three changes: one new
+address object, one new policy, one modified policy. Documented in the ticket. Clicked
+Install Wizard → Installation Preview → and the preview showed **214 CHANGES** when he
+authored THREE. Riley: "a kettle giving up." Cipher refused to let anyone click the green
+Install button — "that box carries Vaultline's payment traffic." Penny's parallel demand
+from her doorway: "the same six baseline rules on every firewall in BOTH companies by
+Friday. Author once. I don't care how." Señor arrived, delighted by the number: "The
+machine is not lying to you. The machine is CONFESSING."
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (the student) — solved the whole session Socratically.
+- Junior — over-trusting FMG now; authored 3 policy-layer changes correctly, panicked at 214.
+- Señor — mentor; "confession not catastrophe"; four-verb grammar; the two-hop model.
+- Cipher — security/audit; blocked the green button; later requests a clean revert to a
+  known-good revision from 3 revisions ago.
+- Penny — business owner; six baseline rules across both companies (LoFinance + Vaultline)
+  by Friday; "author once."
+- Riley — help desk, comic relief.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+1) A 214-line install preview on a live Vaultline payment-traffic box when only 3 changes
+   were authored — cause: suspected UNDOCUMENTED DIRECT-BOX EDITS (last week's ghost) plus
+   possible un-pushed device-DB changes. Clicking Install (a blind overwrite) would DESTROY
+   any undocumented box config. Must reconcile before pushing.
+2) Penny needs six identical baseline rules on EVERY firewall across two ADOMs (separate
+   for audit reasons) by Friday — must be author-once and certifiably consistent.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED
+==================================================================
+THE FOUR VERBS (as DIRECTIONS across three boxes: Policy Layer → Device DB → live FortiGate)
+
+  PUSH (down, DANGEROUS — overwrites):
+    INSTALL POLICY PACKAGE = policy pkg → Device DB AND → live FortiGate (two-hop).
+       Runs the full step-by-step WIZARD + installation preview (can cancel).
+    REINSTALL POLICY = device+package already selected, so it BYPASSES THE WIZARD but
+       STILL SHOWS the installation preview. Also applies package settings + any
+       modifications directly to FortiGate in the device DB.
+    INSTALL DEVICE SETTINGS (only) = device layer → box, WITH preview.
+    QUICK INSTALL = device layer → box, NO preview, immediate (ZTP / confident).
+    REVERT = select an earlier revision from history → rewrites the DEVICE DB ONLY.
+       NOT live on the box until an INSTALL. Policy layer NOT synced until an IMPORT.
+
+  PULL (up, SAFE — observes):
+    RETRIEVE = live FortiGate → Device DB, saves a new revision, does NOT touch policy pkg.
+    AUTO-RETRIEVE = fires when a device is first added; captures direct box changes into
+       revision history; still does NOT update the policy package.
+    IMPORT = Device DB revision → POLICY LAYER (policy package). The bridge that gets a
+       retrieved/box change INTO the policy package. RISK: object NAME CONFLICTS in the
+       policy layer (same-name objects).
+
+  KEY RULE: Install is a BLIND OVERWRITE. It does not merge, does not warn about unknown
+  box changes; anything on the target not in the source is DESTROYED.
+
+RECONCILE-A-DRIFTED-BOX SEQUENCE (the 214 fix):
+  1. RETRIEVE  box → Device DB (DB now matches box; new revision)
+  2. IMPORT    Device DB → Policy Layer, into a SEPARATE package (audit copy)
+  3. AUDIT     the phantom changes now have names — keep legitimate, remove drift
+  4. RE-APPLY  Junior's 3 documented changes on the reconciled package
+  5. INSTALL   with preview; diff now = the 3 intended changes
+  NOTE: after retrieve+import the diff to the box = 0 (all layers agree on box reality),
+  which means Junior's un-pushed policy-layer edits are FLATTENED by the pull → he must
+  re-apply them. (Student reasoned this correctly.)
+
+CIPHER'S ROLLBACK (revert is a trap that looks like a finish line):
+  1. REVERT   pick old revision → Device DB only
+  2. INSTALL  Device DB → box (NOW it's actually live)
+  3. IMPORT   Device DB → policy layer (if you want the policy package to agree)
+  "Revert stages. Install delivers. Import reconciles."
+
+GLOBAL POLICY PACKAGES (Penny's six rules):
+  Global ADOM sits ABOVE local ADOMs (LoFinance, Vaultline). Global objects prefixed 'g'
+  (reserved). Author the global policy package ONCE.
+  ASSIGN  = global ADOM → local ADOM policy layer; flags the local package MODIFIED (staged).
+  Then INSTALL/REINSTALL = local policy pkg → device DB → box.
+  SHORTCUT "Automatically install policies to ADOM devices" = global ADOM installs to THREE
+  targets in one move (local policy pkg + device DB + box) but BYPASSES the installation
+  preview. On a fleet with a known-drifted box, the shortcut = green button with the safety
+  removed.
+  Business value: consistency becomes a STRUCTURAL guarantee, not a hope. Cipher can CERTIFY
+  all firewalls are identical by design (authored once), not by eyeballing 40 packages.
+
+DELIVERY PLAN THAT SATISFIES BOTH PENNY AND CIPHER:
+  Assign to both ADOMs (fast) → reconcile the known-drifted box first (retrieve/import/audit)
+  → install WITH PREVIEW per package. Clean boxes preview clean and install in seconds; only
+  the drifted box is slow, and it SHOULD be. Full speed everywhere drift doesn't live.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT LANDED
+==================================================================
+- "The machine is CONFESSING, not lying" — a big diff is a desync report, not a fault.
+- "Push overwrites, pull observes. Pull first, look, then push." (session thesis)
+- "Revert stages. Install delivers. Import reconciles." (3 verbs, 1 intention)
+- "Auto-install is the green button with the safety removed."
+- "Spend caution only where drift lives" — preview is fast on non-drifted boxes.
+- Two-hop push mirrored by two-pull (retrieve then import).
+- "Read the four verbs, don't invent a fifth" (after student guessed 'refresh').
+
+==================================================================
+KEY CLI / OPERATIONS DISCUSSED
+==================================================================
+All GUI operations (Central Management is GUI-driven in FMG):
+  Install Wizard → Install Policy Package (wizard + preview)
+  Reinstall Policy (no wizard, still preview)
+  Install Device Settings (only) / Quick Install (no preview)
+  Retrieve / Auto-retrieve
+  Import (Device DB revision → policy package)
+  Revert (revision history → device DB)
+  Revision history: Device Manager > Device & Groups > Managed FortiGate > FortiGate >
+    Dashboard: Summary > Configuration and Installation > Revision
+  Global ADOM: author global policy package → Assign → Install; or "Automatically install
+    policies to ADOM devices."
+
+==================================================================
+TROUBLESHOOTING APPROACH TAUGHT ("install preview shows way more than I changed")
+==================================================================
+1) A large diff = a DESYNC (three copies of truth drifted), not a disaster.
+2) Name the source/target of the diff (Install Policy Package = policy → DB → box).
+3) Suspect UNDOCUMENTED DIRECT-BOX EDITS (invisible in revision history — S29 ghost) and/or
+   un-pushed device-DB changes.
+4) PULL BEFORE YOU PUSH: retrieve → import into a SEPARATE package → audit the phantoms.
+5) Only then install. Never click green on a mystery — install is a blind overwrite.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- Six baseline rules to be authored ONCE in the global ADOM, assigned to both ADOMs,
+  installed WITH preview per package.
+- Drifted Vaultline box to be reconciled (retrieve/import/audit) before any install.
+- Operating discipline reaffirmed: managed boxes are layer-edited only; direct edits = drift.
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+No physical topology change. Management-model addition: GLOBAL ADOM now documented as sitting
+above the LoFinance and Vaultline ADOMs, distributing a shared six-rule baseline via
+assign→install. Reconcile-before-install workflow documented for drifted managed boxes.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Nobody clicked Install on the 214. The number was a confession — a drifted payment-traffic
+box. Reconcile-then-install preserved the undocumented config AND hit Penny's Friday. Global
+baseline authored once, assigned to both ADOMs, installed with preview → certifiable
+consistency for Cipher's audit.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- Retrieve = box→DB, new revision, NOT policy package. (Q1)
+- Import = Device DB revision → POLICY LAYER; risk = same-name object conflicts. (Q2) *student
+  slipped: said "box→FMG"; import is the SECOND hop DB→policy, retrieve is box→DB.*
+- Install Policy Package → device DB AND box (two targets), wizard + preview. (Q3)
+- Undocumented direct box edit + unrelated Install = LOST (blind overwrite, no merge/flag). (Q4)
+  *student answered "lost" cleanly — the S29 Q6 flinch is now fixed under HIGHER stakes.*
+- Revert = old revision → device DB only; not live until Install; policy needs Import. (Q5)
+- Reinstall BYPASSES THE WIZARD but STILL SHOWS THE PREVIEW. (Q6) *student trap: don't say
+  "reinstall skips the preview" — it skips the WIZARD.*
+- Quick Install = no preview, immediate. (Q7)
+- Global: ASSIGN (global→local policy layer, flags Modified) then INSTALL. (Q8)
+- "Automatically install policies to ADOM devices" → 3 targets (local policy pkg + device DB
+  + box) in one move, BYPASSES the installation preview. (Q9)
+- Business value of global package = certifiable, structural consistency. (Q10) *student gave
+  mechanism ("one edit for all") not the business guarantee — money-first pattern again.*
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+1. Panicked at the 214 preview and treated it as a fault → taught "a diff is a confession,
+   not a catastrophe; a big number means drift, not danger."
+2. Was about to trust the environment enough to consider the fast path → set up the auto-
+   install-bypasses-preview lesson (the green button with the safety off).
+   (Junior did the AUTHORING right this session — real growth for him; the mistake was in
+   INTERPRETING the preview and nearly reaching for speed over safety.)
+
+==================================================================
+STUDENT PERFORMANCE
+==================================================================
+Strong Socratic run; built almost the entire lesson himself. Standouts:
+- Named the diff source (policy pkg) and the two-hop push unprompted.
+- Named BOTH origins of the phantom changes BY DIRECTION (device DB un-pushed; box un-
+  retrieved) — senior framing.
+- Q4-shape: committed to "install DESTROYS" without flinching — fixes last week's Q6 hard-
+  rule softening under higher stakes. HEADLINE IMPROVEMENT.
+- Instinctively imported into a SEPARATE audit package.
+- Closed the S28 "assign" gap in real time (one nudge from "install" → "assign").
+- Correctly reasoned that retrieve+import flattens un-pushed policy edits (diff→0, Junior
+  redoes his 3).
+Misses (all tracked shapes, not conceptual gaps):
+- Q2 direction slip: import = DB→policy, not box→FMG (retrieve is box→DB). Precision rep.
+- Q6 wizard-vs-preview: said "reinstall skips preview" (it skips WIZARD, keeps preview).
+- Q10 money-first: gave the plumbing ("one edit applies to all") not the business guarantee
+  (certifiable consistency / auditor scene). STANDING DRILL: consequence-as-scene.
+Also a mid-session word-invention: guessed "refresh" for revert, self-corrected once pointed
+to the board. Logged as a lookup habit to reinforce ("read the four verbs").
+Exam: 7 clean, 3 to tighten.
+
+==================================================================
+TEASER FOR SESSION 31 — "One Name to Rule Them"
+==================================================================
+Penny's global rules are pushing beautifully — until they hit reality: the six baseline rules
+reference an interface called "port3" on some boxes and "wan1" on others, "LAN" here and
+"internal" there. A rule authored ONCE cannot name an interface that is called something
+different on every box. Cipher: "You promised me one baseline. Now half the installs are
+failing on interface not found." Enter NORMALIZED INTERFACES — abstract interface names that
+map, PER-PLATFORM and PER-DEVICE, to the real interfaces underneath. Zones, VLANs, SSIDs as
+policy-layer normalized objects (recall from p.34: VPN/AP/FortiSwitch Manager set up
+normalized interfaces). Study Guide 02 Central Management, ~p.34 + normalized-interface pages.
+Blueprint 2.1. Señor's seeded line: "Yesterday you learned to author a rule once. Today you
+learn that a rule cannot point at a name that means something different on every machine —
+so we give it a name that means the same thing everywhere, and let the machine translate."
+STILL PENDING from earlier: FMG IPsec-templates hands-on (crying cactus); S18/S19 OSPF
+internals II/III (two half-happy cacti).
+
+Date and Time completed: Thursday, 16 July 2026.

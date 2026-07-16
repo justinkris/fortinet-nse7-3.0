@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 30 Troubleshooting — The Install Preview That Exploded</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;
+    --text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;
+    --blue-glow:rgba(30,64,175,0.07);--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;
+    --ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;
+    --amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;
+    --red:#b42318;--red-light:#fdecea;--red-border:#f0b4ae;
+  }
+  html{scroll-behavior:smooth;}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:44px 60px 34px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  main{max-width:1180px;margin:0 auto;}
+  .main-content{padding:36px 60px 60px;}
+  .main-narrow{max-width:920px;margin:0 auto;padding:36px 60px 60px;}
+  .section-block{margin-bottom:44px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:29px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text-soft);margin:18px 0 8px;}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:5px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;white-space:pre;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;border-top:3px solid var(--blue);}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;border-left:3px solid var(--border);padding-left:14px;font-style:italic;margin-bottom:6px;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .pill{display:inline-block;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;}
+  .pill-push{background:var(--red-light);color:var(--red);border:1px solid var(--red-border);}
+  .pill-pull{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .stars{color:var(--amber);letter-spacing:2px;font-size:15px;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  .flashcard{border:1px solid var(--border);border-radius:10px;margin:10px 0;overflow:hidden;background:var(--surface);}
+  .flashcard summary{cursor:pointer;padding:12px 16px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text);list-style:none;background:var(--surface-2);}
+  .flashcard summary::-webkit-details-marker{display:none;}
+  .flashcard summary::before{content:'Q  ';font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);letter-spacing:0.1em;}
+  .flashcard[open] summary{border-bottom:1px solid var(--border);}
+  .flashcard .fc-a{padding:12px 16px;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .img-ph{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:22px 24px;margin:20px 0;}
+  .img-ph-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--text);margin-bottom:4px;}
+  .img-ph-file{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;}
+  .img-ph-meta{font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);margin:6px 0;}
+  .img-ph-meta b{color:var(--text-soft);}
+  .img-ph-prompt{margin-top:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-soft);line-height:1.6;font-style:italic;}
+  @media(max-width:720px){header{padding:26px 22px 22px;}header h1{font-size:32px;}.main-content,.main-narrow{padding:24px 22px 40px;}.motivation-banner{padding:16px 22px;}footer{padding:16px 22px;}}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> SESSION 30 · TROUBLESHOOTING · THINKING NOT MEMORISING</div>
+  <h1>When the preview <em>explodes</em></h1>
+  <p>How a senior engineer reasons about a FortiManager install that reports far more changes than were authored.</p>
+</header>
+<div class="motivation-banner">
+  <div class="motivation-text">The goal is not to find a command. <em>It is to know which direction the truth is moving.</em></div>
+</div>
+<main><div class="main-content">
+
+<div class="section-block">
+  <div class="section-label">Symptom</div>
+  <h2>What you're looking at</h2>
+  <p>You (or Junior) authored a small, documented change in the policy layer. You open the Install Wizard, reach the <strong>installation preview</strong>, and it reports <strong>many more changes than you made</strong> — policies being deleted, objects renamed, routes you don't recognise. Someone's finger is hovering over the green Install button.</p>
+  <div class="callout callout-red"><strong>Do not click Install yet.</strong> The preview is the last safe moment. Past this point, an unknown change on the box is gone.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Questions to Ask (in order)</div>
+  <h2>Reason before you touch anything</h2>
+  <ol>
+    <li><strong>What two things is this diff comparing?</strong> Install Policy Package compares the policy package (source) against the device DB + box (target).</li>
+    <li><strong>How many changes did I actually author?</strong> Establish the honest baseline — the delta between "what I did" and "what the preview shows" is the mystery to explain.</li>
+    <li><strong>Who else can touch this box?</strong> Two origins for phantom changes: un-pushed edits in the device DB, and <em>undocumented direct edits on the live box that were never retrieved</em>.</li>
+    <li><strong>Is this a payment / production / regulated box?</strong> Raises the cost of a blind overwrite from "annoying" to "career-ending."</li>
+    <li><strong>Which direction resolves this safely?</strong> Pull (observe), never push (overwrite), until you know what's on the box.</li>
+  </ol>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Verification</div>
+  <h2>Where to look</h2>
+  <table class="data-table">
+    <tr><th>Check</th><th>Path / Action</th><th>What it tells you</th></tr>
+    <tr><td>Revision history</td><td>Device Manager → … → Dashboard: Summary → Configuration and Installation → Revision</td><td>What FMG did to the device DB. <strong>Blind spot:</strong> direct box edits write zero revisions.</td></tr>
+    <tr><td>Retrieve into DB</td><td>Retrieve on the managed FortiGate</td><td>Captures the box's real config into the device DB (new revision). Safe — observes only.</td></tr>
+    <tr><td>Import to a new package</td><td>Import → save as a SEPARATE package</td><td>Lets you read the box's real policy set without overwriting anything.</td></tr>
+    <tr><td>Config status</td><td>Device DB / policy package status flags</td><td>"Modified" = staged changes waiting to be installed.</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Decision Tree</div>
+  <h2>Which way is the truth moving?</h2>
+  <div class="code-block"><div class="code-label">Reason the direction</div><pre><code>Preview shows >> what I authored
+        │
+        ├─ Did I author these extra changes anywhere? ── yes ─→ un-pushed device-DB
+        │                                                       edits. Review, then install.
+        │
+        └─ no ─→ Phantom changes. Someone touched the BOX directly.
+                 │
+                 ├─ Is it production / payment / regulated?
+                 │        │
+                 │        └─ YES → STOP. Pull first.
+                 │             RETRIEVE box→DB → IMPORT to SEPARATE pkg → AUDIT
+                 │             → keep legit / remove drift → re-apply my change
+                 │             → INSTALL with preview (diff now = my change only)
+                 │
+                 └─ Rollback requested instead? ("known-good, 3 revisions ago")
+                          → REVERT (DB only) → INSTALL (to box) → IMPORT (to policy)</code></pre></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Common Dead Ends</div>
+  <h2>Where people waste hours (or break prod)</h2>
+  <ul>
+    <li><strong>Clicking Install to "just push it clean."</strong> Blind overwrite — destroys the undocumented box config you were about to investigate.</li>
+    <li><strong>Retrieving mid-incident onto a broken box.</strong> Captures the fault into the DB and overwrites last-known-good. (S29 lesson.)</li>
+    <li><strong>Importing over the existing policy package.</strong> Same-name object conflicts; import into a <em>separate</em> package to audit safely.</li>
+    <li><strong>Trusting revision history to show direct edits.</strong> It only records device-DB changes. Direct box edits are invisible.</li>
+    <li><strong>Reverting and walking away.</strong> Revert stages to the DB; nothing reaches the box until you install.</li>
+  </ul>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Likely Root Causes</div>
+  <h2>What it usually is</h2>
+  <ul>
+    <li><strong>Undocumented direct-CLI/GUI edits on the managed box</strong> (emergency fixes never retrieved) — the classic cause of a huge diff.</li>
+    <li><strong>Un-pushed device-DB changes</strong> from another admin — real, documented, but never installed.</li>
+    <li><strong>A stale policy package</strong> that never imported the box's actual config after onboarding.</li>
+  </ul>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Exam Traps</div>
+  <h2>What the NSE7 will dress up</h2>
+  <ul>
+    <li>"Install prompts you to resolve the conflict" — <strong>false.</strong> Install is a blind overwrite; the unknown change is lost.</li>
+    <li>"Retrieve updates the policy package" — <strong>false.</strong> Retrieve stops at the device DB; import is the bridge.</li>
+    <li>"Reinstall skips the preview" — <strong>false.</strong> It skips the wizard; the preview stays.</li>
+    <li>"Revert puts the config back on the FortiGate" — <strong>false.</strong> Revert touches only the device DB.</li>
+    <li>"Global auto-install shows a preview" — <strong>false.</strong> It bypasses the preview.</li>
+  </ul>
+</div>
+
+<div class="section-block">
+  <div class="section-label">The Personalised Framework</div>
+  <h2>Your reconcile checklist</h2>
+  <div class="mental-note-block"><div class="mental-note-block-icon">🧭</div><div><div class="mental-note-block-label">Carry this into every big-diff incident</div><div class="mental-note-block-text">1. A big diff = desync, not a fault. 2. Name the source and target of the diff. 3. Suspect undocumented box edits. 4. Pull before you push (retrieve → import to a separate package → audit). 5. Never click green on a mystery.</div></div></div>
+</div>
+
+</div></main>
+<footer>NSE7 EF 7.6 · Session 30 Troubleshooting — <span>Push and Pull</span></footer>
+</body></html>

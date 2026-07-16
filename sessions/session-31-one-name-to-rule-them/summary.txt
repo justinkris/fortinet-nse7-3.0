@@ -1,0 +1,226 @@
+SESSION 31 SUMMARY — "One Name to Rule Them"
+Season 3 (Central Management arc) · Blueprint 2.1 · Study Guide 02 Central Management, pp. 35-39
+Written for Claude, to continue the story in Session 32.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Friday — Penny's deadline day. The whiteboard was wiped overnight and re-seeded with Señor's
+line: "Yesterday you learned to author a rule once. Today you learn that a rule cannot point
+at a name that means something different on every machine."
+
+Junior had recovered well from Season-3 humiliations: he correctly reconciled the S30 drifted
+Vaultline box (retrieve -> import into audit package -> review -> reapply his 3 changes ->
+install with preview -> diff of 3 -> Install), and pinned the clean preview screenshot above
+his monitor like a trophy. At 07:30 he began rolling out Penny's SIX baseline rules to the
+rest of the fleet. Three installs went green. Then VL-BRANCH-1, VL-BRANCH-2 and the Parramatta
+60E all FAILED with the identical error:
+
+    Interface(s) not found on device: port3
+    Policy package installation aborted.
+
+Riley: "Is port3 on holiday?" Cipher arrived angry (not joking): "You promised me ONE baseline.
+Penny promised the AUDITORS one baseline. It's Friday, half the installs are failing, and the
+error says the box doesn't have the interface I can SEE with the internet cable in it."
+
+The truth: every box HAS a WAN, but it's named differently on each model. Vaultline 100Fs use
+port1. LoFinance HQ 200F uses port3. Parramatta 60E uses wan1. The six baseline rules had been
+authored naming the LITERAL string "port3" — so they installed only on the box that happened
+to call its WAN port3 (the 200F). Señor's diagnosis: "The package is not broken. The package
+is MONOLINGUAL." He handed the student a mandarin segment and said: "Fix Penny's Friday."
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (the student) — solved the whole session Socratically; essentially
+  re-invented normalized interfaces from first principles before being given the feature name.
+- Junior — much improved this season on process; authored correctly, then proposed CLONING the
+  package into three per-model copies ("three packages by lunch") — the un-structuring instinct
+  Cipher hates. His mistake carried the lesson: cloning defeats last week's structural-
+  consistency guarantee.
+- Señor — mentor; "monolingual package," "confession not catastrophe" callback; specificity-
+  beats-generality framing.
+- Cipher — security/audit; furious the certified baseline was fracturing; her structural-
+  consistency demand is the anchor for why cloning is wrong.
+- Penny — business owner; six identical baseline rules, both companies, author once; asked the
+  killer forward-looking question about onboarding a THIRD company next quarter.
+- Riley — help desk / comic relief ("Is port3 on holiday?").
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+One policy package (Penny's six audited baseline rules) must install across a heterogeneous
+fleet whose WAN interface has a DIFFERENT physical name on every model (port1 / port3 / wan1),
+WITHOUT cloning the package (which would re-introduce drift and destroy Cipher's certifiable
+single-baseline guarantee). Deadline: Friday.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (pp. 35-39)
+==================================================================
+- NORMALIZED INTERFACES: abstract interface objects that live in the POLICY layer and are
+  referenced by rules INSTEAD of literal device-interface names. A rule that names a normalized
+  interface is cabling-agnostic.
+- FMG validates every interface name in a package against each TARGET's DEVICE DB before
+  install; a name with no match aborts the install ("interface not found"). This is a NAME-
+  RESOLUTION failure, not a hardware failure.
+- Normalized interface != device interface even when they share a name (e.g. policy-layer
+  "port1" is an abstraction; device-DB "port1" is the metal). Defining a normalized interface
+  does NOT rename anything on the FortiGate — FMG only substitutes the mapped name at install.
+- TWO MAPPING TYPES:
+    * PER-PLATFORM ("consistency"): binds normalized name -> real interface for a whole DEVICE
+      MODEL. Define once, every box of that model inherits; new identical boxes are auto-covered.
+      CASE-SENSITIVE.
+    * PER-DEVICE ("individual needs"): binds normalized name -> real interface for one SPECIFIC
+      box. The exception handler.
+- PRECEDENCE: PER-DEVICE WINS over per-platform when both exist for the same box. General
+  principle: SPECIFIC OVERRIDES GENERAL (same shape as longest-prefix-match in routing;
+  per-device is the /32 of interface mapping).
+- CASE SENSITIVITY: WAN != wan. A rule referencing "WAN" with mappings defined against "wan"
+  yields the SAME "interface not found" error even though everything LOOKS correct. The guide
+  flags this specifically for per-platform (case-sensitive matching).
+- Guide guidance: keep interface names CONSISTENT between device layer and policy layer to avoid
+  confusion at scale (a normalized name colliding with a literal device name confuses the human,
+  not the machine).
+- Onboarding payoff: a new differently-cabled company/box requires ZERO rule changes — you only
+  ADD one mapping per new interface layout. The audited rules stay frozen; only the translation
+  table grows. Distinguish: GLOBAL ADOM distributes WHICH rules exist everywhere (assign/install
+  from S30); NORMALIZED INTERFACES resolve HOW each rule finds its interface on each box. Both
+  work together but are different machinery — an exam distractor swaps them.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT LANDED
+==================================================================
+- "The package is MONOLINGUAL" — it stored a literal string, not a role; only boxes speaking
+  that dialect can receive it.
+- "One name, many ports" (this session) foreshadowing "one object, many truths" (S32 teaser).
+- Specificity beats generality — per-device over per-platform is the SAME shape as longest-
+  prefix routing. Student reasoned precedence from FUNCTION: "if general won, per-device could
+  never override anything, which would make it pointless — so it MUST win."
+- The abstraction is the constant; the mapping is the only moving part. Rules frozen, translation
+  table grows.
+- "The name is not the intelligence; the per-box translation is."
+
+==================================================================
+KEY CLI / OPERATIONS DISCUSSED
+==================================================================
+GUI-driven (Central Management):
+  Policy & Objects > Normalized Interfaces > (create abstract iface, e.g. WAN)
+    -> per-platform mapping (bind to a device model)
+    -> per-device mapping (bind to one specific managed FortiGate)
+  Device Manager > Device & Groups > Managed FortiGate > FortiGate > Network > Interfaces
+    (the DEVICE-layer real interfaces the normalized names map to)
+  Install preview shows the SUBSTITUTED (real) interface name; approve at preview.
+Error to recognise on install: "Interface(s) not found on device: <name>" = normalized name has
+  no mapping for this box, OR a case mismatch (WAN vs wan), OR a literal name that doesn't exist
+  on this model.
+
+==================================================================
+TROUBLESHOOTING APPROACH TAUGHT ("interface not found on install")
+==================================================================
+1) It's NAME RESOLUTION, not hardware. Cable-plugged-in is irrelevant.
+2) Literal or normalized? Literal -> only installs where that exact name exists.
+3) Normalized -> is there a mapping for THIS box? Check PER-DEVICE first (it wins), then
+   per-platform.
+4) CASE-CHECK the string. WAN != wan. Per-platform matching is case-sensitive — the silent
+   killer that makes everything "look" right.
+5) Confirm the mapped target interface actually exists in that box's device DB.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- Replace the literal "port3" in the six baseline rules with a normalized interface named WAN.
+- Minimum mapping set for the 8-box fleet: THREE per-platform mappings — 100F->port1,
+  200F->port3, 60E->wan1 — covers all eight (six 100Fs inherit from one). Per-device reserved
+  ONLY for a box that breaks ranks with its own model (e.g. an emergency-recabled 100F).
+- Case discipline enforced: rule string and mapping string must match exactly, capitals included.
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+No physical change. Management-model addition: the six global-baseline rules now reference a
+NORMALIZED INTERFACE (WAN) instead of literal port names. Three per-platform mappings
+(100F->port1, 200F->port3, 60E->wan1) resolve the single audited package across all eight boxes
+in both ADOMs. Per-device override reserved for any box that contradicts its platform. (Update
+lofinance-topology-as-built.html management-model section accordingly.)
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Penny's Friday saved. Six baseline rules install across all eight boxes from ONE audited
+package via three per-platform mappings. Cipher's structural-consistency guarantee preserved
+(single package, cabling differences absorbed by translation, not by cloning). Junior's three-
+package plan retired before it could drift. Onboarding a third company next quarter now costs
+"one mapping per new layout, an afternoon, not a rewrite."
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- Install validates package interface names against each target's DEVICE DB; no match = abort
+  ("interface not found"). It's name resolution, not hardware. (Q1)
+- Defining a normalized interface does NOT rename the FortiGate interface; FMG substitutes the
+  mapped name at install only. (Q2)
+- Per-platform = consistency across a device MODEL; per-device = individual box override. (Q3, Q8)
+- PER-DEVICE OVERRIDES PER-PLATFORM. Specific beats general. (Q4)
+- Normalized interfaces are CASE-SENSITIVE; WAN != wan; per-platform matching case-sensitive. (Q5, Q9)
+- Normalized interface lives in POLICY layer; the real port lives in the DEVICE layer. (Q6)
+- Onboarding differently-cabled boxes = rules unchanged, ADD mappings only. (Q7)
+- Not all objects support per-device mapping (web filter profiles do NOT — foreshadows S32/
+  dynamic objects). Keep this handy: if a config that doesn't support per-device is imported
+  with per-box differences, FMG is forced to choose between values.
+
+==================================================================
+STUDENT PERFORMANCE THIS SESSION
+==================================================================
+Very strong Socratic run — built essentially the ENTIRE feature himself before being handed
+the name. Standouts:
+- Re-invented normalized interfaces unprompted: named BOTH halves (abstract reference in the
+  rule + per-box translation that "lives somewhere") — senior-grade first-principles derivation.
+- Reasoned per-device precedence from FUNCTION, not memory ("if general won, per-device would be
+  pointless"). Second consecutive function-first derivation in one session.
+- Q10 (business framing) — MONEY-FIRST, UNPROMPTED, TWICE (exam Q10 and the onboarding answer to
+  Penny). This is the season-long standing growth edge (money arrives SECOND after the noun) and
+  it landed FIRST today in exam format. HEADLINE IMPROVEMENT — the framing habit is converting.
+- 10/10 on the exam set, clean.
+Misses / redirects (all minor, none conceptual):
+- Q1 phrasing: said interface "may not exist" (hardware framing) rather than "the literal NAME
+  isn't in the device DB" (resolution framing). Concept correct, sentence loose. Precision rep.
+- The "minimum mapping set" question: answered "1 per-platform, 2 per-device" — correct that one
+  per-platform covers the six identical 100Fs, but missed that the 200F and 60E are each a
+  DIFFERENT PLATFORM and can ALSO be covered per-platform (fleet-of-one). True minimum = 3
+  per-platform, 0 per-device. Redirected cleanly; understood that per-device is specifically for
+  a box that CONTRADICTS its own platform, not merely for an odd box.
+- Case-sensitivity trap: first framed "wan refers to an actual interface" (slightly wrong — a
+  normalized name can BE 'wan' and still be an abstraction). Redirected to the real hazard: WAN
+  vs wan are two DIFFERENT case-sensitive objects. Also used a term of endearment mid-session
+  ("babe") — gently redirected to professional register; not a learning issue, logged only for
+  tone continuity.
+
+==================================================================
+JUNIOR'S MISTAKE AND WHAT IT TAUGHT
+==================================================================
+Proposed CLONING the policy package into three per-model copies to dodge the interface-name
+problem. Taught: cloning "solves" the symptom by DESTROYING the structural-consistency guarantee
+built in S30 — the three copies drift the first time someone edits only two. The correct move is
+to keep ONE package and make the NAME itself translate per box (normalized interfaces). One name,
+many ports; not many packages, one headache.
+
+==================================================================
+TEASER DELIVERED FOR SESSION 32 — "Objects with Secrets"
+==================================================================
+Monday. The normalized-interface win emboldens Penny: "Every branch needs the SAME policy —
+same rule, same profile — pointing at a DIFFERENT internal subnet. Branch 1 = 172.16.0.0/24,
+Branch 2 = 192.168.0.0/24, and there'll be THIRTY of them." Junior, having learned nothing about
+the cost of copies: "Easy — thirty address objects, thirty policies—". Cipher's coffee freezes.
+Because the student just proved one NAME can mean thirty different ports underneath — so what if
+an ADDRESS, or a whole rule, could carry a SECRET that changes per box? Señor writes a symbol the
+student doesn't recognise yet: $(...). "Yesterday, one name, many ports. Tomorrow — one object,
+many truths." Topic: DYNAMIC OBJECTS + METADATA VARIABLES (per-device object mapping; $(variable)
+substitution). Study Guide 02 Central Management, pp. 40-43. Blueprint 2.1. Natural bridge already
+laid this session: per-device mapping applies to OBJECTS too (addresses differentiated per box
+under one name), and NOT all objects support it (web filter profiles don't).
+
+STILL PENDING (carried debt): FMG IPsec-templates hands-on (crying cactus); S18/S19 OSPF
+internals II/III (two half-happy cacti). S28 was flagged as the natural FMG payoff for the IPsec
+cactus — still outstanding.
+
+Date and Time completed: Thursday, 16 July 2026.

@@ -1,0 +1,195 @@
+======================================================================
+SESSION 30 — "PUSH AND PULL" · COMBINED REVISION PACK
+NSE7 EF 7.6 · Central Management · Blueprint 2.1 · SG 02 pp. 31-33
+======================================================================
+
+----------------------------------------------------------------------
+QUICK SUMMARY (one page)
+----------------------------------------------------------------------
+FortiManager central management is a matter of DIRECTION across three
+copies of the truth:
+
+   [ POLICY LAYER ] -> [ DEVICE DB ] -> [ LIVE FORTIGATE ]
+      intent            FMG's copy       the real box
+
+PUSH moves down and OVERWRITES (dangerous). PULL moves up and OBSERVES
+(safe). When you don't know what's on the box, PULL FIRST, LOOK, THEN
+PUSH.
+
+Junior authored 3 policy-layer changes; the install preview showed 214.
+That gap = DESYNC (drift), not a fault. 211 phantom changes came from
+un-pushed device-DB edits and/or UNDOCUMENTED DIRECT-BOX EDITS never
+retrieved (invisible in revision history). Install is a BLIND OVERWRITE:
+clicking it would DESTROY the undocumented box config, no merge, no
+prompt. Fix = reconcile before push: RETRIEVE -> IMPORT to a separate
+audit package -> AUDIT the phantoms -> re-apply the real change ->
+INSTALL with preview.
+
+Penny wants 6 identical baseline rules on every box in both companies
+(separate ADOMs). Answer = GLOBAL POLICY PACKAGE: author once in the
+global ADOM -> ASSIGN (flags local package Modified) -> INSTALL. The
+"Automatically install to ADOM devices" shortcut hits 3 targets in one
+move but BYPASSES THE PREVIEW = the green button with the safety off.
+
+Delivery plan that satisfies both: assign to both ADOMs (fast) ->
+reconcile the one known-drifted box -> install WITH PREVIEW per package.
+Preview is fast on clean boxes; spend caution only where drift lives.
+
+----------------------------------------------------------------------
+CHEAT SHEET
+----------------------------------------------------------------------
+VERB TABLE (direction | preview | touches policy pkg?)
+  RETRIEVE ............ box -> device DB ...... no preview .. NO (needs import)
+  AUTO-RETRIEVE ....... box -> device DB ...... (onboard) ... NO (needs import)
+  IMPORT .............. device DB -> policy .... - .......... YES (the bridge)
+  INSTALL POLICY PKG .. policy -> DB -> box .... WIZARD+PREVIEW
+  REINSTALL POLICY .... policy -> DB -> box .... NO WIZARD, STILL PREVIEW
+  INSTALL DEVICE SET .. device layer -> box .... preview
+  QUICK INSTALL ....... device layer -> box .... NO PREVIEW (ZTP/confident)
+  REVERT .............. revision -> device DB .. - (DB ONLY; not live till install)
+
+GLOBAL POLICY PACKAGE
+  ASSIGN .............. global ADOM -> local policy layer (flags MODIFIED)
+  then INSTALL/REINSTALL local policy pkg -> device DB -> box
+  "Auto-install to ADOM devices" = local policy pkg + device DB + box in
+     ONE move, NO PREVIEW
+  Global objects prefixed 'g' (reserved — cannot create local g- objects)
+
+HARD RULES
+  - Install = BLIND OVERWRITE. No merge, no conflict prompt. Unknown box
+    change is LOST.
+  - Retrieve stops at the device DB. Import is the ONLY bridge to policy.
+  - Revert stages (DB only). INSTALL delivers. IMPORT reconciles policy.
+  - Reinstall skips the WIZARD, not the PREVIEW.
+  - Quick install and global auto-install have NO PREVIEW.
+
+GUI PATHS
+  Install/Reinstall ... Install Wizard (Device Manager or Policy & Objects)
+  Retrieve/Import/Revert  Device Manager > Device & Groups > Managed FortiGate
+  Revision history .... Device Manager > Device & Groups > Managed FortiGate
+                        > FortiGate > Dashboard: Summary > Configuration and
+                        Installation > Revision
+  Global package ...... Global ADOM > Policy & Objects > author > Assign
+
+SEQUENCES
+  Reconcile a drifted box:
+     RETRIEVE -> IMPORT (separate pkg) -> AUDIT -> re-apply change -> INSTALL
+  Clean rollback (Cipher's "known-good, 3 revisions ago"):
+     REVERT -> INSTALL -> IMPORT
+
+MANTRAS
+  "Push overwrites, pull observes."
+  "A diff is a confession, not a catastrophe."
+  "Revert stages, install delivers, import reconciles."
+  "Auto-install is the green button with the safety removed."
+  "Spend caution only where drift lives."
+
+----------------------------------------------------------------------
+FLASHCARDS (Q -> A)
+----------------------------------------------------------------------
+Q: What direction is Retrieve, and does it update the policy package?
+A: Box -> device DB, saves a new revision. NO, it does not touch the
+   policy package.
+
+Q: What is the ONLY operation that gets config into the policy package?
+A: Import (device DB revision -> policy layer). Retrieve stops at the DB.
+
+Q: An admin edits a managed box directly and never retrieves. Another
+   admin runs Install Policy Package for an unrelated change. What
+   happens to the direct edit?
+A: LOST. Install is a blind overwrite — no merge, no prompt.
+
+Q: What are the two targets of Install Policy Package?
+A: The device DB and the live FortiGate (two-hop).
+
+Q: Difference between Install Policy Package and Reinstall Policy?
+A: Install runs the full step-by-step wizard + preview. Reinstall
+   bypasses the WIZARD (device + package already selected) but STILL
+   shows the preview.
+
+Q: What does Revert do, and is the change live on the box afterward?
+A: Selects an earlier revision into the DEVICE DB only. NOT live until an
+   Install. Policy layer needs an Import to sync.
+
+Q: What's the one critical difference of Quick Install?
+A: No preview — immediate. For ZTP or when confident.
+
+Q: For a global policy package, name the two steps in order and the flag.
+A: ASSIGN (global ADOM -> local policy layer; flags the local package
+   MODIFIED), then INSTALL (-> device DB -> box).
+
+Q: "Automatically install policies to ADOM devices" installs to which
+   three targets, and what does it bypass?
+A: Local policy package + device DB + box, in one move. Bypasses the
+   installation preview.
+
+Q: Why does a global policy package let you CERTIFY consistency where
+   hand-editing 40 packages cannot?
+A: Consistency becomes structural, not hoped-for. Authored once and
+   distributed = every box identical by design; no "did someone
+   fat-finger box 27?" question exists. Cipher can prove it to a
+   regulator without opening 40 packages.
+
+Q: A preview shows 214 changes when you authored 3. First move?
+A: Do NOT install. Treat it as desync. Pull first: retrieve -> import to
+   a separate package -> audit the phantom changes.
+
+Q: Why is retrieving mid-incident dangerous?
+A: It captures the broken config into the DB and overwrites
+   last-known-good.
+
+----------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path" (paste into an audio generator)
+----------------------------------------------------------------------
+Generate a warm, ~8-minute episode of "The Packet Path," a two-host
+networking-story podcast (one senior engineer narrator with a dry wit,
+one curious co-host who asks the questions the listener is thinking).
+
+EPISODE: "Push and Pull" — Season 3, Episode 30 of the LoFinance saga.
+
+Tell it as a story. Open in the LoFinance NOC on a Tuesday morning.
+Junior — reformed after last week's "haunted firewall" humiliation — has
+become a FortiManager zealot: "no more touching boxes, I'm a layer man
+now." He does a small change the RIGHT way: edits the policy layer, three
+documented changes, opens the install wizard... and the preview reports
+TWO HUNDRED AND FOURTEEN changes. Riley says it sounds like "a kettle
+giving up." Cipher forbids anyone from clicking the green button — the box
+carries Vaultline's payment traffic. Penny, from her doorway, drops a
+second demand: six identical baseline rules on every firewall in both
+companies by Friday, "author once, I don't care how." Señor arrives,
+delighted: "The machine is not lying to you. The machine is confessing."
+
+Then TEACH through the story. Key ideas to land, with the analogies:
+  - Three copies of truth: policy layer -> device DB -> live box.
+  - PUSH overwrites (dangerous); PULL observes (safe). "Pull first,
+    look, then push."
+  - Install is a BLIND OVERWRITE — an undocumented box edit is destroyed,
+    not merged. A big diff is a confession of drift, not a fault.
+  - The two pulls: retrieve (box -> DB), then IMPORT (DB -> policy) is
+    the bridge people always forget.
+  - "Revert stages, install delivers, import reconciles" — reverting and
+    walking away leaves good config sitting in the DB that never reaches
+    the box.
+  - Global policy packages: author once above the ADOMs, ASSIGN (flags
+    Modified), then install. The auto-install shortcut is "the green
+    button with the safety removed."
+
+JUNIOR'S MISTAKE: he did the authoring right, but panicked at the 214 and
+nearly reached for the fast one-click auto-install to hit Penny's Friday
+deadline — the exact path that would have erased undocumented payment
+config. The lesson: being safe is cheap, because the preview is fast on
+boxes nobody touched. Spend caution only where drift lives.
+
+END with the reconcile-then-install win (Penny gets Friday, Cipher gets
+his audit trail) and a teaser: next week the six global rules start
+FAILING on install — because they name an interface called "port3" on
+one box and "wan1" on another. "One Name to Rule Them." Close on Senor:
+"A rule cannot point at a name that means something different on every
+machine."
+
+Keep it conversational, vivid, and technically correct. No reading of
+config verbatim; explain by analogy and reasoning.
+
+======================================================================
+END REVISION PACK — Session 30
+======================================================================

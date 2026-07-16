@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 31 Troubleshooting — Interface Not Found</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#b42318;--red-light:#fbe6e4;--red-border:#f0b4ae;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;}
+  header{padding:40px 56px 28px;background:var(--ink-dark);}
+  .eyebrow{display:inline-flex;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:40px;font-weight:700;color:#fbf7ec;line-height:1.05;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;}
+  main{max-width:960px;margin:0 auto;padding:36px 56px 60px;}
+  h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin:30px 0 14px;padding-left:15px;border-left:3px solid var(--blue);}
+  h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  p{font-size:16.5px;color:var(--text-soft);margin-bottom:12px;}
+  strong{color:var(--text);font-weight:600;} em{color:var(--blue);font-style:italic;}
+  code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--ink-dark);}
+  .symptom{background:var(--red-light);border:1px solid var(--red-border);border-left:3px solid var(--red);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:16px;}
+  .symptom strong{color:var(--red);}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:12px 0;display:flex;gap:14px;}
+  .step-num{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#fff;background:var(--blue);min-width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .step-body{flex:1;}
+  .step-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;margin-bottom:5px;}
+  .step-body p{font-size:15.5px;margin-bottom:6px;}
+  .ask{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;margin-top:8px;}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:12px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:14px 16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;background:none;padding:0;white-space:pre;}
+  .tree{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;font-family:'SF Mono','Fira Code',monospace;font-size:13px;line-height:1.9;color:var(--text-soft);white-space:pre-wrap;}
+  .deadend{background:var(--amber-light);border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:12px 0;font-size:15.5px;}
+  .deadend strong{color:var(--amber);}
+  .trap{background:var(--red-light);border:1px solid var(--red-border);border-left:3px solid var(--red);border-radius:0 10px 10px 0;padding:14px 18px;margin:12px 0;font-size:15.5px;}
+  .trap strong{color:var(--red);}
+  footer{background:var(--ink-dark);color:rgba(251,247,236,0.5);padding:22px 56px;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.05em;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">🔧 TROUBLESHOOTING GUIDE · SESSION 31</div>
+  <h1>"Interface Not Found" <em>on Install</em></h1>
+  <p>How a senior engineer isolates a policy-install interface-resolution failure</p>
+</header>
+<main>
+
+  <h2>The <em>Symptom</em></h2>
+  <div class="symptom">
+    <strong>Installation aborted:</strong> <code>Interface(s) not found on device: port3</code> — on one or more boxes, while other boxes in the same push install cleanly. The interface "obviously" exists (the internet works on that box).
+  </div>
+  <p>The junior reflex is to go stare at the box's cabling. Don't. The box working means nothing here — the failure is upstream of the wire.</p>
+
+  <h2>Questions to Ask <em>First</em></h2>
+  <p>Before touching anything, answer these three in order:</p>
+  <ul>
+    <li><strong>Which boxes fail and which succeed?</strong> A model-shaped pattern (all 100Fs fail, the 200F passes) points straight at name-per-model.</li>
+    <li><strong>Does the rule name a literal or a normalized interface?</strong> This decides whether you're missing a rule change or a mapping.</li>
+    <li><strong>What does the failing box's device DB actually call its interfaces?</strong> That's the ground truth the install validated against.</li>
+  </ul>
+
+  <h2>The <em>Workflow</em></h2>
+  <div class="step"><div class="step-num">1</div><div class="step-body">
+    <div class="step-title">Reframe: it's name resolution, not hardware</div>
+    <p>Install validates every interface name in the package against the target's <strong>device database</strong>. No match → abort. The physical link state is irrelevant.</p>
+    <div class="ask">Ask: is the name in the rule present in this box's device-DB interface list?</div>
+  </div></div>
+
+  <div class="step"><div class="step-num">2</div><div class="step-body">
+    <div class="step-title">Literal or normalized?</div>
+    <p>If the rule names a <strong>literal</strong> (<code>port3</code>), it will only ever install on boxes that happen to use that exact name. Fix = replace with a <strong>normalized interface</strong>.</p>
+    <p>If it's already normalized, the abstraction is fine — the mapping is where the fault lives. Go to step 3.</p>
+  </div></div>
+
+  <div class="step"><div class="step-num">3</div><div class="step-body">
+    <div class="step-title">Is there a mapping for THIS box?</div>
+    <p>Check <strong>per-device first</strong> (it wins), then per-platform. A normalized name with no applicable mapping resolves to nothing → same error.</p>
+    <div class="code-block"><div class="code-label">Where to look</div><pre><code>Policy & Objects > Normalized Interfaces > WAN
+  Per-Device   → is THIS box listed?  (wins if present)
+  Per-Platform → is THIS model listed?</code></pre></div>
+  </div></div>
+
+  <div class="step"><div class="step-num">4</div><div class="step-body">
+    <div class="step-title">Case-check the string — the silent killer</div>
+    <p><code>WAN</code> and <code>wan</code> are two <strong>different objects</strong>. If the rule says <code>WAN</code> and the mapping was built against <code>wan</code>, you get the exact same "not found" while everything <em>looks</em> correct.</p>
+    <div class="ask">Ask: does the string in the rule match the mapping string byte-for-byte, capitals included?</div>
+  </div></div>
+
+  <div class="step"><div class="step-num">5</div><div class="step-body">
+    <div class="step-title">Confirm the mapped target exists</div>
+    <p>The mapping points <code>WAN</code> → <code>port1</code>. Does <code>port1</code> actually exist in that box's device DB? A mapping to a non-existent target fails just as hard.</p>
+  </div></div>
+
+  <h2>Decision <em>Tree</em></h2>
+  <div class="tree">install fails: "interface not found"
+│
+├─ do OTHER boxes install clean?
+│   ├─ yes, and failures are model-shaped ──▶ name-per-model. Normalize it.
+│   └─ no, ALL boxes fail ────────────────▶ suspect the rule OR a global mapping typo
+│
+├─ rule names a LITERAL? ───────────────────▶ replace with normalized interface
+│
+├─ rule names a NORMALIZED interface?
+│   ├─ mapping for this box exists?
+│   │   ├─ no  ──▶ add per-device (this box) or per-platform (its model)
+│   │   └─ yes ──▶ CASE-CHECK: WAN vs wan  (two different objects!)
+│   │             └─ still failing ──▶ does the mapped target (port1) exist in device DB?
+│   └─ both per-device & per-platform set?
+│       └─ per-DEVICE wins. Verify you edited the one that governs.</div>
+
+  <h2>Common <em>Dead Ends</em></h2>
+  <div class="deadend"><strong>Staring at the cabling.</strong> The link is up; that's not the question. You're debugging a name, not a wire.</div>
+  <div class="deadend"><strong>Re-pushing unchanged.</strong> The install is deterministic — it will fail identically until the name or mapping changes. Re-clicking green is not a diagnostic.</div>
+  <div class="deadend"><strong>Cloning the package per model.</strong> "Works," but destroys single-baseline consistency and drifts the moment someone edits only some copies. Treat as an anti-fix.</div>
+
+  <h2>Likely Root <em>Causes</em> (ranked)</h2>
+  <ul>
+    <li><strong>Literal interface name in the rule</strong> that doesn't exist on all target models. (Most common.)</li>
+    <li><strong>Missing mapping</strong> for a specific box or model.</li>
+    <li><strong>Case mismatch</strong> between rule string and mapping string.</li>
+    <li><strong>Mapping target</strong> points at an interface not present in that box's device DB.</li>
+  </ul>
+
+  <h2>Exam <em>Traps</em></h2>
+  <div class="trap"><strong>"The interface is physically down / missing."</strong> Tempting hardware-framed distractor. The correct framing is name resolution against the device DB.</div>
+  <div class="trap"><strong>"Per-platform overrides per-device."</strong> Backwards. Per-<em>device</em> wins — specific beats general.</div>
+  <div class="trap"><strong>"WAN and wan resolve to the same interface."</strong> False — case-sensitive, two different objects.</div>
+  <div class="trap"><strong>"Defining a normalized interface renames the FortiGate port."</strong> False — substitution happens only at install; the box keeps its own name.</div>
+  <div class="trap"><strong>"Global ADOM handles the interface translation."</strong> No — global ADOM distributes <em>which rules exist</em>; normalized interfaces handle <em>how each rule resolves</em>. Different machinery.</div>
+
+</main>
+<footer><strong>LoFinance NSE7 EF 7.6</strong> · Session 31 Troubleshooting · Blueprint 2.1 · 16 July 2026</footer>
+</body>
+</html>
