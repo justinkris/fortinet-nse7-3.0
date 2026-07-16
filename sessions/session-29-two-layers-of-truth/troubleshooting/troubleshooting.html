@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 29 Troubleshooting — The Haunted Firewall</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--coral:#c2410c;--coral-light:#fbe6da;--coral-border:#f0b892;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;}
+  header{padding:40px 48px 30px;background:var(--ink-dark);}
+  .eyebrow{display:inline-flex;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:700;color:#fbf7ec;}
+  header h1 em{font-style:italic;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:rgba(251,247,236,0.6);margin-top:8px;}
+  main{max-width:860px;margin:0 auto;padding:38px 32px 70px;}
+  h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin:32px 0 6px;}
+  h2 .n{display:block;font-family:'Outfit',sans-serif;font-size:12px;color:var(--coral);letter-spacing:0.12em;font-weight:700;}
+  .rule{height:2px;background:linear-gradient(90deg,var(--border),transparent);margin-bottom:16px;}
+  p{font-size:16.5px;color:var(--text-soft);margin-bottom:12px;}
+  strong{color:var(--text);}
+  code{font-family:'Outfit',monospace;background:var(--surface-2);border:1px solid var(--border-dim);border-radius:4px;padding:1px 6px;font-size:13px;color:var(--coral);}
+  pre{background:var(--ink-dark);color:#e8eefc;font-family:'Outfit',monospace;font-size:13px;line-height:1.7;padding:14px 18px;border-radius:10px;overflow-x:auto;margin:8px 0 14px;}
+  pre .c{color:#7f93bd;}
+  ul,ol{margin:0 0 14px 22px;}li{font-size:16.5px;color:var(--text-soft);margin-bottom:7px;}
+  .callout{border-radius:12px;padding:15px 20px;margin:14px 0;border:1px solid;}
+  .callout .lbl{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;}
+  .c-blue{background:var(--blue-light);border-color:var(--blue-border);}.c-blue .lbl{color:var(--blue);}
+  .c-green{background:var(--green-light);border-color:var(--green-border);}.c-green .lbl{color:var(--green);}
+  .c-amber{background:var(--amber-light);border-color:var(--amber-border);}.c-amber .lbl{color:var(--amber);}
+  .c-coral{background:var(--coral-light);border-color:var(--coral-border);}.c-coral .lbl{color:var(--coral);}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;font-family:'Outfit',sans-serif;font-size:14.5px;line-height:1.9;}
+  .tree .q{font-weight:700;color:var(--text);}
+  .tree .a{color:var(--text-soft);padding-left:18px;}
+  .tree .yes{color:var(--green);font-weight:700;} .tree .no{color:var(--coral);font-weight:700;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:15px;}
+  th{background:var(--ink-dark);color:#fbf7ec;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+  td{padding:9px 12px;border-bottom:1px solid var(--border-dim);color:var(--text-soft);}
+  tr:nth-child(even) td{background:var(--surface);}
+  footer{text-align:center;padding:26px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <span class="eyebrow">● TROUBLESHOOTING · SESSION 29</span>
+  <h1>The <em>Haunted</em> Firewall</h1>
+  <p>How a senior engineer diagnoses "the config keeps un-fixing itself" on a managed FortiGate.</p>
+</header>
+<main>
+
+  <h2><span class="n">SYMPTOMS</span>What it looks like</h2>
+  <div class="rule"></div>
+  <ul>
+    <li>A change made on a managed FortiGate reverts, sometimes minutes later.</li>
+    <li>It reverts <strong>with nobody at the keyboard</strong> — the tell that an automatic FMG reconciliation is running.</li>
+    <li>Help desk logs repeat tickets for the same setting "changing itself back."</li>
+    <li>Revision history looks <em>clean</em> — no entries matching the chaos.</li>
+  </ul>
+
+  <h2><span class="n">QUESTIONS TO ASK FIRST</span>Before you touch anything</h2>
+  <div class="rule"></div>
+  <ul>
+    <li>Is this FortiGate <strong>managed by FortiManager</strong>? (If yes, the source of truth may not be the box.)</li>
+    <li>Which <strong>setting</strong> is reverting? Interface/route/VPN/system → device layer. Policy/object → policy layer.</li>
+    <li>Was the change made <strong>directly on the box</strong> (SSH or box-GUI) or in the <strong>FMG layer</strong>?</li>
+    <li>Does the box keep <em>losing</em> (FMG pushing) or keep <em>winning</em> (something retrieved it)?</li>
+    <li>Has any <strong>install</strong> or <strong>auto-retrieve</strong> run recently?</li>
+  </ul>
+
+  <h2><span class="n">VERIFICATION</span>Commands &amp; where to look</h2>
+  <div class="rule"></div>
+  <p><strong>On the box</strong> — confirm the live value and how it drifts:</p>
+  <pre><span class="c"># what is the box actually running right now?</span>
+show system interface port3
+<span class="c"># is this FGT centrally managed, and by whom?</span>
+get system central-management</pre>
+  <p><strong>In FortiManager</strong> — compare against the stored truth:</p>
+  <ul>
+    <li>Device Manager &gt; Device &amp; Groups &gt; Managed FortiGate → check <strong>Config Status</strong> (Synchronized / Modified / Out-of-sync).</li>
+    <li>… &gt; FortiGate &gt; Dashboard: Summary &gt; Configuration and Installation &gt; <strong>Revision</strong> → read the timeline of device-DB snapshots.</li>
+    <li>Objects in the Device Layer → confirm what the device DB believes <code>port3</code> should be.</li>
+  </ul>
+
+  <h2><span class="n">EXPECTED OUTPUTS</span>Reading the evidence</h2>
+  <div class="rule"></div>
+  <table>
+    <tr><th>What you see</th><th>What it means</th></tr>
+    <tr><td>Box shows <code>.30</code> minutes after you set <code>.31</code></td><td>FMG device DB (<code>.30</code>) is being pushed down. FMG wins.</td></tr>
+    <tr><td>Config Status = <strong>Modified / Out-of-sync</strong></td><td>Device DB and live box disagree. A sync/install will resolve it — in FMG's favour.</td></tr>
+    <tr><td>Revision history has <strong>no entries</strong> for the reverting change</td><td>The change was made <em>directly on the box</em> — invisible to revision history. Confirms a direct-CLI/box-GUI edit.</td></tr>
+    <tr><td>A recent <strong>install</strong> event in the timeline just before a revert</td><td>That install pushed the DB down and overwrote the box change.</td></tr>
+  </table>
+
+  <h2><span class="n">DECISION TREE</span>Which fix, and which way</h2>
+  <div class="rule"></div>
+  <div class="tree">
+    <div class="q">Is the reverting setting a device setting (interface/route/VPN/system)?</div>
+    <div class="a"><span class="no">No</span> → it's a policy/object → it lives in the policy layer; policy edits only apply on install. (See S30.)</div>
+    <div class="a"><span class="yes">Yes</span> → it's the device layer / device DB. Continue ↓</div>
+    <div class="q" style="margin-top:8px;">Is FMG's stored value (device DB) the one you WANT?</div>
+    <div class="a"><span class="yes">Yes</span> → the box is wrong. <strong>Install device settings</strong> (or restore the good revision) to push the correct value down. Done.</div>
+    <div class="a"><span class="no">No — the box's current value is correct</span> → decide by situation ↓</div>
+    <div class="q" style="margin-top:8px;">Are you in a live incident / do you distrust the box's current state?</div>
+    <div class="a"><span class="no">No, calm, deliberate box change</span> → <strong>Retrieve</strong> to adopt the box value into the device DB (then import if it must reach the policy package).</div>
+    <div class="a"><span class="yes">Yes, incident</span> → <strong>DO NOT retrieve.</strong> Push a known-good down (install / restore revision). Retrieve later, once stable.</div>
+  </div>
+
+  <h2><span class="n">COMMON DEAD ENDS</span>Where people waste an afternoon</h2>
+  <div class="rule"></div>
+  <ul>
+    <li><strong>Re-editing the box again and again.</strong> You're arguing with a copy. The box will keep losing until you move the layer.</li>
+    <li><strong>Blaming the box GUI vs SSH.</strong> Same mistake — both leave the device DB stale.</li>
+    <li><strong>Trusting a clean revision history to mean nobody touched the box.</strong> Direct edits are invisible.</li>
+    <li><strong>Hitting Retrieve to "sync it."</strong> Mid-incident this captures the fault and destroys last-known-good.</li>
+    <li><strong>Expecting install to prompt about conflicts.</strong> A managed install is a blind overwrite.</li>
+  </ul>
+
+  <h2><span class="n">LIKELY ROOT CAUSES</span></h2>
+  <div class="rule"></div>
+  <ol>
+    <li><strong>Direct-CLI change on a managed box</strong> creating a device DB ↔ live-box disagreement, reconciled by an install-direction sync (the classic haunting).</li>
+    <li><strong>Stale device DB</strong> holding an old value that a routine install pushes down.</li>
+    <li><strong>Undocumented drift</strong> that ages for days, then vanishes on the next unrelated install.</li>
+  </ol>
+
+  <h2><span class="n">EXAM TRAPS</span></h2>
+  <div class="rule"></div>
+  <div class="callout c-amber"><div class="lbl">Trap 1 — "install prompts a conflict"</div>No. Install is a blind DB→box overwrite. An unknown box change is <strong>overwritten and lost</strong>, not negotiated. Pick the harsh answer.</div>
+  <div class="callout c-amber"><div class="lbl">Trap 2 — "auto-retrieve syncs the policy package"</div>No. Auto-retrieve/retrieve write to the device DB / revision history. Reaching the policy package needs an <strong>import</strong>.</div>
+  <div class="callout c-amber"><div class="lbl">Trap 3 — "direct edits appear in revision history"</div>No. Revision history records the <strong>device DB</strong> only. Direct-CLI/box-GUI edits write zero revisions.</div>
+  <div class="callout c-coral"><div class="lbl">Trap 4 — "retrieve first to be safe"</div>Mid-incident, retrieve is the <em>wrong</em> first move — it captures the broken config as truth and overwrites your last-known-good.</div>
+
+  <div class="callout c-blue"><div class="lbl">Senior takeaway</div>The fault is almost never the firewall. It's a disagreement between two copies and an operator who didn't decide which copy should win. <strong>Read the direction. Choose the truth on purpose. Change the layer, not the box.</strong></div>
+
+</main>
+<footer>LOFINANCE · THE PACKET PATH · SESSION 29 TROUBLESHOOTING · NSE7 EFW 7.6 · BLUEPRINT 2.1</footer>
+</body>
+</html>

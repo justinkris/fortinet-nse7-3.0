@@ -1,0 +1,180 @@
+LOFINANCE — SESSION 29 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "Two Layers of Truth"
+Format: STANDARD EPISODE (Socratic).
+Study guide coverage: 02 Central Management, pp. 29–31 — Device layer vs policy layer;
+device database; revision history; retrieve/auto-retrieve; install device settings; quick
+install (context also touched revert/import/reinstall as the S30 hook). Blueprint 2.1.
+Status: COMPLETE. Exam debrief 10 questions. Result: 8 clean, 2 missed (Q6 hard-rule
+softening — "conflict prompt" instead of "overwritten and lost"; Q9 policy-side plumbing —
+missed that auto-retrieve does NOT update the policy package / import still required).
+Q10 money-framing: led with the right CATEGORY (audit) — real improvement — but (a) drifted
+into the S28 ADOM/admin-boundary topic instead of THIS session's drift/silent-loss, and
+(b) stayed abstract ("fines apply") rather than making the auditor a SCENE. Coached to the
+scene version; not re-tested this session (leave as the standing drill into S30).
+
+STORY EVENTS
+------------
+2:15pm Wednesday, day after the pallet. The seven Vaultline FortiGates are onboarded into
+FMG with the two ADOMs drawn in S28. VL-BRANCH-2 has port3 mis-set to 10.20.30.1/24;
+correct value is 10.20.31.1/24 (off-by-one subnet). Junior SSHes into the live box and
+fixes it (set ip 10.20.31.1). It reverts to .30. He fixes it again. Reverts. A THIRD time.
+At 2:58pm it flips back to .30 with NOBODY at a keyboard — the tell that an automatic
+FMG reconciliation (install-direction sync) is pushing the device DB's stale .30 down.
+Riley logs four escalating tickets ending "is the firewall haunted (serious)". A ghost is
+drawn on the whiteboard; nobody claims it. Señor (sombrero) delivers the seeded S28 line:
+"You edited the firewall, but you did not edit the layer that was about to edit the
+firewall. You were arguing with a copy." He hands the diagnosis to the STUDENT, not Junior.
+
+CHARACTERS INVOLVED
+-------------------
+Student (protagonist — diagnosed the entire haunting Socratically: source of truth in FMG;
+eliminated pull via counterfactual to prove it was PUSH; derived device-layer-holds-.30;
+self-generated the identity-vs-intent rationale for the two-layer split; named retrieve and
+traced .31-survives; proved direct edits write ZERO revisions; reasoned the week-old-landmine
+overwrite; explained why retrieve-mid-incident captures the fault). Señor (sombrero; Socratic
+driver; "arguing with a copy"; whiteboard line seeded for S30). Junior (comic engine — the
+SSH-fix-four-times haunting; the "GUI-on-box behaves differently from SSH" trap the student
+had to kill). Riley (four haunted tickets; headset). Penny (offscreen; referenced in the S28
+curiosity recall). Cipher (offscreen; seeded into S30 teaser as wanting a clean revision
+restore).
+
+BUSINESS PROBLEM
+----------------
+A managed FortiGate's config "keeps un-fixing itself." Root cause: device DB (FMG's stored
+copy, .30) disagrees with the live box (.31 via SSH); FMG reconciles by pushing DB→box, so
+the box always loses. Business risk generalised: direct-CLI changes on managed boxes are
+silent, undated, and destroyed by the next unrelated install → drift between the box and the
+"source of truth" → cannot prove config matches records at audit → finding → cost. (Financial
+firm; ties to the season's audit spine.)
+
+TECHNICAL CONCEPTS COVERED (and the mental models built)
+--------------------------------------------------------
+1. SOURCE OF TRUTH lives in FMG, not on the box, for a managed FortiGate.
+2. TWO LAYERS inside one ADOM per box:
+   - DEVICE LAYER → device settings (Network/Interfaces, VPN, System, Log & Report). PER-BOX
+     IDENTITY. Student's own framing: "unique to the firewall / what it is."
+   - POLICY LAYER → firewall policies + objects, organised as POLICY PACKAGES. SHAREABLE
+     INTENT. Student's framing: "how the firewall behaves with traffic."
+   Mental model the student SELF-DERIVED: identity is per-box (device), intent is author-once
+   -install-many (policy) — that's WHY the split exists.
+3. DEVICE DATABASE (device DB) = FMG's own held copy of a box's device settings. Does NOT
+   update when the live box is edited — and does NOT care whether the edit was SSH or the
+   box's own local GUI (killed the student's "GUI behaves differently" gut instinct: channel
+   is irrelevant, LAYER is everything).
+4. DIRECTION PAIR (the session's spine):
+   - INSTALL DEVICE SETTINGS: device DB → box. FMG's stored truth wins. Has a preview.
+   - QUICK INSTALL: same direction, NO preview, applies immediately (ZTP / high-confidence).
+   - RETRIEVE: box → device DB. The box's current reality wins; saved as a NEW REVISION;
+     does NOT update the policy package (import required for that).
+   - AUTO-RETRIEVE: fires when a device is first added to the device layer; captures direct
+     box changes into revision history; still does NOT update policy package.
+5. REVISION HISTORY = numbered, timestamped snapshots of the DEVICE DB over time. It is a
+   history of DEVICE-DB changes, NOT of the live box. THEREFORE direct-CLI/GUI-on-box edits
+   write ZERO revisions and are forensically INVISIBLE. Revision history is great for "what
+   FMG did," blind for "what someone did to the box." (This is the S30-import bridge: policy
+   layer sync is a separate story.)
+
+MENTAL MODELS / ANALOGIES THAT LANDED
+-------------------------------------
+- "You were arguing with a copy" (Señor) — the box edit vs the layer that owns the box.
+- "A landmine with an install-shaped trigger" — a direct-CLI change on a managed box: not IF
+  it reverts, but WHEN an unrelated install steps on it.
+- "Reaching for the mop while the tap is still running" — retrieve mid-incident.
+- Install/Retrieve = "not the same prayer" (whiteboard, seeds S30 revert-vs-retrieve).
+- Identity (device) vs Intent (policy) — the student's own two-word crystallisation.
+
+KEY CLI / OPERATIONS DISCUSSED
+------------------------------
+On the box (the MISTAKE): config system interface / edit port3 / set ip 10.20.31.1
+255.255.255.0 / end — leaves device DB stale.
+FMG operations (GUI): Install Device Settings (DB→box, preview); Quick Install (DB→box, no
+preview); Retrieve (box→DB, new revision); Revision history at Device Manager > Device &
+Groups > Managed FortiGate > FortiGate > Dashboard: Summary > Configuration and Installation
+> Revision. Device-layer objects at Device Manager > Device & Groups > Managed FortiGate >
+Objects in the Device Layer. Policy layer at Policy & Objects (policy packages).
+
+TROUBLESHOOTING APPROACH TAUGHT ("config keeps reverting on a managed box")
+--------------------------------------------------------------------------
+1) Symptom→hypothesis: reverts "on its own" on a managed FGT → suspect device DB↔box
+   disagreement being reconciled by install-direction sync.
+2) Which layer owns the setting? interface/route/VPN/system=device; policy/object=policy.
+3) Which direction is winning? box loses→FMG pushing; box wins→a retrieve captured it.
+4) Read revision history BUT know its blind spot (device-DB only; direct edits invisible).
+5) Resolve DELIBERATELY: decide which copy is truth — push down (install / restore revision)
+   or pull up (retrieve). Never retrieve mid-incident (captures fault, kills last-known-good).
+
+STUDENT PERFORMANCE THIS SESSION
+--------------------------------
+Excellent Socratic run. Standout moves: (a) proved PUSH not PULL by running a counterfactual
+("if pull, .31 would survive; .31 keeps dying → not pull") — evidence-driven elimination,
+explicitly praised as a senior 3am move; (b) self-derived the identity/intent rationale for
+the two-layer split without being told; (c) surfaced and then KILLED his own "GUI-on-box ≠
+SSH" trap when guided; (d) reasoned the invisible-revision forensic blind spot cleanly.
+Non-defensive, one-nudge correction pattern held throughout.
+Exam: 8 clean. The 2 misses are BOTH season-tracked shapes, not gaps:
+  - Q6 = HARD-RULE SOFTENING (chose "conflict prompt" over "overwritten and lost") — same
+    family as S28 reserved-g softening. Coached: trust the harsh mechanism you can derive.
+  - Q9 = POLICY-SIDE PLUMBING gap (auto-retrieve does NOT update policy package; IMPORT
+    still required) — same family as S28 omitted "assign" verb. This is the exact edge S30
+    ("Push and Pull" — retrieve/import/install/revert + global policy packages) will drill.
+  - Q10 = money-framing: right category (audit) is now front-of-mind (improvement!), but
+    drifted into the S28 ADOM topic and stayed abstract. Standing drill: consequence-as-SCENE
+    ("the auditor asks me to prove the config matches our records and I can't").
+
+DEVICE-SIDE MODEL is now SOLID (device DB / device layer / install / retrieve / revision
+history). POLICY-SIDE PLUMBING (import / assign / install policy / global packages) is the
+open edge — deliberately the whole subject of S30.
+
+TOPOLOGY CHANGE
+---------------
+No physical topology change. Operational discipline added: managed Vaultline boxes are
+"layer-edited only"; direct-CLI on a managed FortiGate is flagged as DRIFT requiring
+immediate retrieve. Two-layer model (device DB / policy package) + per-device revision
+history now documented as the managed-device operating model.
+
+BUSINESS OUTCOME
+----------------
+VL-BRANCH-2 flip-flop resolved; four tickets closed; haunting explained as a device-DB↔box
+disagreement, not a fault. Team policy: no direct-CLI config on managed boxes; if a box must
+be touched, retrieve immediately so the DB adopts it and drift never ages.
+
+EXAM-RELEVANT NOTES
+-------------------
+- Direct box edit → device DB UNCHANGED until an FMG op (retrieve) runs. (Q1)
+- Retrieve = box→DB, new revision, does NOT touch policy package. (Q2, Q9)
+- Direct edits write ZERO revisions (revision history = device-DB history). (Q3)
+- Policy-layer edits take effect ONLY on install/deploy. (Q4)
+- Device layer = Network/VPN/System/Log&Report. (Q5)
+- Install is a blind overwrite DB→box; stale/undocumented box change is LOST, not merged,
+  no conflict prompt. (Q6 — the trap)
+- Retrieve mid-incident captures the broken config and overwrites last-known-good. (Q7)
+- Quick Install = no preview, immediate (ZTP/confident). (Q8)
+- Auto-retrieve saves a revision but still needs IMPORT to reach the policy package. (Q9)
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+1. Edited the live box repeatedly instead of the device layer → the whole haunting; taught
+   "change the layer that owns the box, not the box."
+2. Believed the box GUI would behave differently from SSH → taught channel is irrelevant;
+   both are "editing the live box" and both leave the device DB stale.
+3. (Implied) trusting the box to "win" → taught the direction pair and that you must DECIDE
+   which copy is truth, or FMG decides for you.
+
+TEASER DELIVERED FOR SESSION 30 — "Push and Pull"
+-------------------------------------------------
+9am: Junior, now over-trusting FMG, edits a policy-layer rule and nothing reaches the box —
+because policy edits only take effect on INSTALL (learned this session but now made the
+plot). Cipher wants a proven-good config from 3 revisions ago restored cleanly without
+nuking today's policy work (→ REVERT, and revert-vs-retrieve are "not the same prayer").
+Penny's new bomb: "the same six baseline rules on every firewall in both companies —
+author once, I don't care how" (→ GLOBAL POLICY PACKAGES; assign + install). Four verbs
+become the job: RETRIEVE, IMPORT, INSTALL, REVERT. IMPORT is explicitly flagged as the
+bridge the student's Q9 miss was pointing at. Study Guide 02 Central Management, pp. 31–33
+(retrieve/import/install/revert; reinstall) + global policy package pages. Blueprint 2.1.
+Señor's whiteboard line (seeded): "Yesterday you learned the box has two truths. Today you
+learn how the truth travels — and that pulling it and pushing it are not the same prayer."
+Also STILL PENDING from earlier: FMG IPsec-templates hands-on (crying cactus); S18/S19 OSPF
+internals II/III (two half-happy cacti).
+
+Date and Time completed: real session concluded Thursday, 16 July 2026.

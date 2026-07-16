@@ -1,0 +1,188 @@
+LOFINANCE — SESSION 28 SUMMARY (PERSISTENT MEMORY — written for Claude, not the student)
+=========================================================================================
+Session title: "Seven Firewalls, One Junior"
+Format: STANDARD EPISODE (Socratic). SEASON 3 OPENER.
+Study guide coverage: 02 Central Management, pp. 24–28 — FortiManager architecture
+(operating with/without ADOMs), ADOMs, the global database. Blueprint 2.1.
+Status: COMPLETE. Exam debrief 10 questions. Result: 8 clean, 2 sharpened (device DB
+= WHAT not WHO; "assign" is the global→ADOM verb the student omitted), 1 hard-rule
+downgrade caught (student softened "reserved g- prefix" to "would work but confusing"
+— corrected to hard-block/cannot). Money-first framing (Q10) moved up a full gear
+across two nudges — see growth notes.
+
+STORY EVENTS
+------------
+8:40am. Vaultline's seven inherited FortiGates arrive shrink-wrapped on a pallet
+(1 old HQ, 3 branch, 3 spares still boxed). LoFinance now owns Vaultline Financial
+outright (Penny closed it "Friday, behind the glass," i.e. the S27 finale beat).
+Junior racks the first box and begins hand-configuring each firewall from a Notepad
+file "vaultline-config-MASTER.txt," copy-pasting a golden config seven times, humming.
+Señor (sombrero on) watches in silence, then asks the framing question: "How many
+times will you type the syslog server address today? And in April when it moves
+subnets? And when Penny buys the next firm?" Junior's smile fades on cue (as the S27
+teaser predicted). Señor refuses the keyboard and instead drives the student to reason
+toward central management. Penny arrives mid-session with the hard constraint that
+becomes the episode's spine: LoFinance and Vaultline must stay administratively
+ISOLATED (separate ongoing audits) but on ONE FortiManager ("I'm not buying you two").
+Some Vaultline spares run 7.4; LoFinance runs 7.6. Junior proposes a "VL-"/"LF-" naming
+prefix as the separation mechanism; Señor demolishes it ("The prefix is a hope. Penny
+did not ask for a hope."). Session closes with the three-layer FortiManager architecture
+derived entirely Socratically, and the topology updated to add FMG + two ADOMs + global DB.
+
+CHARACTERS INVOLVED
+-------------------
+Student (protagonist — reasoned the entire architecture from Penny's constraints with
+minimal scaffolding: defined the N×M cost, derived device database, retrieve/install
+direction, ADOM as admin boundary, the policy-unit axis for drawing ADOMs, global DB,
+and the "when NOT to go global" limit). Señor (sombrero; Socratic driver; refused to
+touch the keyboard; "you were arguing with a copy" line seeded for S29). Junior (comic
+engine — hand-config plan, the naming-prefix fallacy, the "just put EVERYTHING global"
+over-correction). Penny (delivered the acquisition constraint: isolation + one box +
+mixed firmware; the stakeholder for the money-first framing drill). Riley (headset gag,
+signed for the pallet). Cipher (offscreen this episode).
+
+BUSINESS PROBLEM
+----------------
+LoFinance absorbed Vaultline (HQ + 3 branches + 3 spares = 7 FortiGates). Managing
+them by hand does not scale and — the real point — destroys CONSISTENCY, which in a
+regulated financial firm under audit is a COMPLIANCE failure, not merely a labour cost.
+Constraint from Penny: LoFinance and Vaultline management must be hard-walled from each
+other (separate audits) yet share ONE FortiManager, across mixed firmware (7.4 + 7.6).
+
+TECHNICAL CONCEPTS COVERED (all reasoned Socratically, then named)
+-----------------------------------------------------------------
+1. The real cost of manual management = N devices × M changes (student computed 7×20=140).
+   The casualty is CONSISTENCY → in a regulated firm = an audit finding. This is the
+   business framing of why central management exists.
+2. FortiManager = the central box that collapses N×M back to M (or to 1 for shared items).
+   Change the standard once; it installs to the firewalls.
+3. DEVICE DATABASE (per firewall): FMG's own authoritative stored COPY of each managed
+   firewall's actual configuration. One device DB per managed box (7 firewalls → 7 DBs).
+   NOTE the student's slip: called it the "WHO" of the firewall — corrected to the WHAT
+   (the config itself); WHO = the ADOM/admin boundary.
+4. SOURCE OF TRUTH + SYNC: once managed, FMG's device DB is the master; you stop editing
+   the box directly. But FMG can only be master of a firewall it has first LEARNED.
+5. DIRECTION VOCAB (exam-critical):
+   - RETRIEVE / IMPORT = FortiGate → FMG (onboarding; pull reality into the device DB FIRST).
+   - INSTALL = FMG → FortiGate (day-2; push the master down).
+   Student sequenced onboarding correctly unprompted: import first, then all changes on
+   the FMG copy. "Retrieve before you rule."
+6. ADOM (Administrative Domain): a partition inside ONE FortiManager isolating a group of
+   devices — own admins, own policies, own objects, OWN FIRMWARE VERSION. Satisfies
+   Penny's three constraints (separation + mixed firmware + one box) via two ADOMs:
+   LoFinance (7.6) and Vaultline (mixed 7.4/7.6). A naming prefix is NOT an admin boundary.
+7. WHERE TO DRAW THE ADOM BOUNDARY: around ADMINISTRATIVE + POLICY units (who owns/audits/
+   shares a policy package) — NOT the org chart (site). Student self-generated the deeper
+   principle: "if firewalls behave similarly they can share a policy package → same ADOM."
+   Firmware is a CONSTRAINT that can FORCE a split, not the primary reason to choose one.
+   Site may coincide with a boundary but never causes it.
+8. FIRMWARE COMPATIBILITY WINDOW (exam numbers): a global ADOM / source at version X is
+   compatible with local ADOMs at X and the TWO versions before it. 7.6 → supports 7.6,
+   7.4, 7.2. Reserved global-object prefix = "g" (HARD-BLOCKED; cannot create local g-
+   objects — student initially softened this to "would work but confusing," corrected).
+9. GLOBAL DATABASE / GLOBAL ADOM: sits ABOVE the local ADOMs. Define a truly universal
+   object/policy ONCE, then ASSIGN it DOWN into multiple ADOMs simultaneously. Collapses
+   the "two ADOMs × M changes" re-creation of Junior's problem back to 1. The verb is
+   ASSIGN (student named the layer but omitted the operation — reinforced).
+10. WHEN NOT TO GO GLOBAL: global DB = ONLY genuinely company-wide things (syslog, NTP,
+    DNS). Tenant-specific policy/objects stay in the tenant ADOM. Test: "true for
+    EVERYONE, or just this tenant?" Everyone→global; just them→their ADOM. Student nailed
+    the kill-shot: "push everything global = no admin boundary, may as well have one ADOM."
+
+MENTAL MODELS DEVELOPED
+-----------------------
+- THREE LAYERS: Global DB (company-wide) > local ADOM (tenant/policy-unit boundary) >
+  device database (the individual box's config). Company-wide / tenant-wide / device-specific.
+- "The prefix is a hope" — naming ≠ enforcement; an admin boundary must be structural.
+- N×M as the true cost metric of manual management; consistency as the regulated-firm casualty.
+- "Retrieve before you rule" — onboarding direction runs before FMG can be source of truth.
+- The global/local tension: one big ADOM = sharing but no walls; separate ADOMs = walls
+  but no sharing; global-over-local = BOTH. That's why the architecture has the shape it does.
+
+KEY CLI / GUI PATHS DISCUSSED (conceptual this session; hands-on deferred)
+-------------------------------------------------------------------------
+- Device Manager > Device & Groups > Managed FortiGate > (Device layer objects)
+- Device Manager ... > Dashboard: Configuration and Installation > Revision (seeds S29)
+- Retrieve / Auto-Retrieve / Install Device Settings / Quick Install (named, detailed S29/S30)
+- Global object prefix "g" reserved. (Full install/assign mechanics land S29–S30.)
+
+TROUBLESHOOTING / DESIGN APPROACH
+---------------------------------
+Design-reasoning episode rather than a fault hunt. The student practised requirement-
+driven design: take Penny's three constraints, derive the construct that satisfies all
+three, and identify the anti-pattern (everything-global) that quietly violates one. This
+is the S3 register goal: multi-device, central-management reasoning with less concept
+scaffolding.
+
+CONFIGURATION DECISIONS
+-----------------------
+- One FortiManager for the whole estate.
+- Two local ADOMs: LoFinance (7.6), Vaultline (mixed 7.4/7.6 within the 2-version window).
+- Global database above both, holding company-wide objects (syslog, NTP, DNS), assigned down.
+- Vaultline HQ + 3 branches + 3 spares imported (Retrieve) under management before any Install.
+
+TOPOLOGY CHANGES
+----------------
+ADDED: FortiManager in the LoFinance management network (now source of truth). Two local
+ADOMs (LoFinance 7.6 / Vaultline mixed). Global database above both. Vaultline's 7 boxes
+imported under central management. (Matches the Master Plan S3 changelog: FMG + FortiAnalyzer
+in mgmt network; Vaultline ADOM; Security Fabric + NP7 arcs still ahead.)
+
+BUSINESS OUTCOME
+----------------
+Vaultline's estate is centrally managed on one FMG. LoFinance/Vaultline stay hard-walled
+for the separate audits. Company-wide changes (e.g. syslog move) become ONE edit, not 14.
+Penny gets provable consistency — the audit-defensible answer she demanded.
+
+EXAM-RELEVANT NOTES
+-------------------
+- Default ADOM when ADOMs disabled = "root", containing device layer + policy layer.
+- Firmware window rule: X, X-1, X-2 (7.6 → 7.4, 7.2). Common distractor: "one version"
+  or "any version."
+- Reserved prefix = "g" and it is ENFORCED (cannot create local g- objects) — distractor
+  frames it as a mere convention.
+- Retrieve = FGT→FMG; Install = FMG→FGT. Reversing these is a classic trap.
+- ADOM boundary primary axis = administrative/policy unit; firmware = forcing constraint;
+  site = never the cause.
+- Global DB verb = ASSIGN (define once, assign down). Device DB = per-device config copy.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+--------------------------------------
+1. Hand-configuring seven boxes from Notepad → taught N×M cost + consistency/audit risk.
+2. "VL-"/"LF-" naming prefix as separation → taught that an admin boundary must be
+   structural (ADOM), not a naming hope.
+3. "ADOM per site" instinct → taught the boundary axis is policy/administration unit, not
+   the org chart.
+4. "Just put EVERYTHING in the global database" over-correction → taught the global/local
+   division of labour and that all-global dissolves the very isolation Penny bought.
+
+STUDENT PERFORMANCE THIS SESSION
+--------------------------------
+Strong Season-3 opener on brand-new material with reduced scaffolding (per register plan).
+Self-generated the policy-unit ADOM axis and the "all-global = one ADOM" kill-shot. Misses
+were the tracked shapes, NOT concept gaps: (a) softened a hard rule (reserved g-),
+(b) noun slip (device DB WHO→WHAT), (c) omitted the operation verb (assign). Q10 money-
+framing: led with "money is at risk" (abstract) then buried it under mechanism — coached
+to consequence-first ("when the auditor asks me to prove all seven enforce the same
+standard, hand-config means I can't — that's a finding"); student re-ordered correctly
+in one pass, then to "Manual configuration creates audit risk; FMG proves every firewall
+enforces the same standard from one source." Structurally senior now; next gear is making
+the consequence a SCENE ("the auditor asks and I can't answer") rather than a category
+("audit risk"). Non-defensive one-nudge correction pattern held throughout.
+
+TEASER DELIVERED FOR SESSION 29 — "Two Layers of Truth"
+-------------------------------------------------------
+Junior half-trusts FMG: SSHes into a Vaultline firewall and hand-fixes an interface;
+FMG pushes and eats the change; he redoes it; the config flip-flops all afternoon "like
+a haunted house" and Riley logs tickets for a firewall that "keeps un-fixing itself."
+Topic: DEVICE LAYER vs POLICY LAYER (two different truths inside one ADOM), and the
+DEVICE DATABASE + REVISION HISTORY underneath (every version the box has ever been —
+safety net or the rope). Study Guide 02 Central Management, pp. 29–31; Blueprint 2.1.
+Señor's seeded line: "You edited the firewall, but you did not edit the layer that was
+about to edit the firewall. You were arguing with a copy." Natural S29 open: use Junior's
+flip-flop as the cold open; Socratically separate device layer (device settings; changes
+hit FGT directly) from policy layer (policy objects; applied only on policy install), and
+introduce revision history as the rollback mechanism. Also still pending: the FMG IPsec-
+templates hands-on (crying cactus) and S18/S19 OSPF internals II/III (two half-happy cacti).
+
+Date and Time completed: real session concluded Thursday, 16 July 2026.

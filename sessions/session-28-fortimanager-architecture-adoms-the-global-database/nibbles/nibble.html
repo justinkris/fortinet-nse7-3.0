@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 28 Nibble — FortiManager Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;
+    --text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-glow:rgba(30,64,175,0.07);
+    --blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;
+    --green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:34px 40px 26px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+  main{max-width:820px;margin:0 auto;padding:30px 40px 50px;}
+  .mental-note-block{border-radius:10px;padding:16px 20px;margin:14px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;line-height:1.55;color:var(--text);}
+  .mental-note-block-text strong{color:var(--blue);}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  h2{font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin:24px 0 6px;padding-left:12px;border-left:3px solid var(--blue);}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:18px 40px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span>◆</span> SESSION 28 · NIBBLE · 1 MINUTE</div>
+  <h1>Seven Firewalls, <em>One Junior</em></h1>
+  <p>FortiManager in one breath: three layers, two arrows, one reserved letter.</p>
+</header>
+<main>
+
+  <h2>The three layers</h2>
+  <div class="mental-note-block">
+    <span class="mental-note-block-icon">🏛️</span>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Top to bottom</div>
+      <div class="mental-note-block-text"><strong>Global DB</strong> (company-wide) sits above <strong>local ADOMs</strong> (per-tenant walls) which each hold <strong>device databases</strong> (one config copy per firewall).</div>
+    </div>
+  </div>
+
+  <h2>The two arrows</h2>
+  <div class="mental-note-block">
+    <span class="mental-note-block-icon">↔️</span>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Direction is everything</div>
+      <div class="mental-note-block-text"><strong>Retrieve/Import</strong> = firewall → FMG (onboarding, do it first). <strong>Install</strong> = FMG → firewall (day-2). <strong>Assign</strong> = global → down into ADOMs.</div>
+    </div>
+  </div>
+
+  <div class="callout"><strong>Retrieve before you rule.</strong> FMG can't be master of a box it hasn't learned. Import the real config into the device database first — then all future edits happen on the FMG copy.</div>
+
+  <h2>The three numbers</h2>
+  <div class="callout"><strong>Firmware window:</strong> version X supports X, X-1, X-2. A <strong>7.6</strong> global ADOM covers <strong>7.6, 7.4, 7.2</strong>. Reserved global prefix = <strong>g</strong> (hard-blocked — you <em>cannot</em> create a local <code>g-</code> object, not "shouldn't").</div>
+
+  <h2>Where to draw an ADOM</h2>
+  <div class="mental-note-block">
+    <span class="mental-note-block-icon">🧱</span>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">The axis</div>
+      <div class="mental-note-block-text">Around the <strong>administrative + policy unit</strong> (who owns/audits/shares a policy package) — <em>not</em> the site. Firmware is a <em>constraint that can force</em> a split, never the reason you choose one. A naming prefix is a hope, not a wall.</div>
+    </div>
+  </div>
+
+  <div class="callout callout-amber"><strong>Global vs local test:</strong> "True for <em>everyone</em>?" → global DB. "Just this tenant?" → their ADOM. Push everything global and you dissolve the wall — you may as well have one ADOM.</div>
+
+  <div class="callout"><strong>Say it to Penny (money first):</strong> "When the auditor asks me to prove all seven firewalls enforce the same standard, hand-config means I can't — that's a finding. FortiManager proves it from one source."</div>
+
+</main>
+<footer>LoFinance · NSE7 EF 7.6 · Session <span>28</span> Nibble · Blueprint 2.1</footer>
+</body>
+</html>

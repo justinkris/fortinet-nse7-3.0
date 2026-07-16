@@ -1,0 +1,209 @@
+=====================================================================
+LOFINANCE · SESSION 28 REVISION PACK
+"Seven Firewalls, One Junior" — FortiManager architecture · ADOMs · global database
+Study Guide 02 Central Management, pp. 24–28 · Blueprint 2.1
+=====================================================================
+
+
+---------------------------------------------------------------------
+1. QUICK SUMMARY (one page)
+---------------------------------------------------------------------
+LoFinance acquired Vaultline Financial; seven inherited FortiGates arrive on a
+pallet. Junior tries to hand-configure them one at a time from a golden Notepad file.
+
+The real cost of manual management is not the number of firewalls — it is
+N devices x M changes. Seven boxes x twenty standard changes a year = 140 hand-edits,
+each a chance to introduce drift. The casualty is CONSISTENCY, and in a regulated
+financial firm, being unable to PROVE all firewalls enforce the same standard is an
+AUDIT FINDING, not an inconvenience.
+
+FortiManager solves this by holding config centrally in a THREE-LAYER architecture:
+  - GLOBAL DATABASE (top): company-wide objects/policies (syslog, NTP, DNS). Define
+    once, ASSIGN down into many ADOMs. Objects use the reserved 'g' prefix.
+  - LOCAL ADOM (middle): a partition inside ONE FortiManager isolating a group of
+    devices with its own admins, policies, objects, and FIRMWARE VERSION. This is the
+    real administrative wall. Here: a LoFinance ADOM (7.6) and a Vaultline ADOM
+    (mixed 7.4/7.6), hard-walled for the separate audits Penny requires.
+  - DEVICE DATABASE (bottom): FMG's authoritative COPY of one firewall's actual config.
+    Seven managed firewalls = seven device databases.
+
+Direction vocabulary (exam-critical):
+  - RETRIEVE / IMPORT = FortiGate -> FMG. Onboarding. Do this FIRST.
+  - INSTALL          = FMG -> FortiGate. Day-2 push of the master.
+  - ASSIGN           = Global DB -> local ADOM. Share universal objects down.
+
+Design rules:
+  - Draw ADOM boundaries around the ADMINISTRATIVE + POLICY unit (who owns/audits/
+    shares a policy package). Firmware is a CONSTRAINT that can FORCE a split, not the
+    primary reason. Site (org chart) may coincide, never causes.
+  - Global vs local test: "true for EVERYONE?" -> global DB. "just this tenant?" ->
+    their ADOM. All-global dissolves isolation -> may as well have one ADOM.
+
+Junior's arc: hand-config (taught N x M) -> naming prefix as "separation" (taught that
+a wall must be structural, not a hope) -> "ADOM per site" (taught the policy-unit axis)
+-> "put EVERYTHING global" (taught the global/local division of labour).
+
+
+---------------------------------------------------------------------
+2. CHEAT SHEET
+---------------------------------------------------------------------
+THREE LAYERS (top -> bottom)
+  Global database   company-wide   define once, assign down   prefix: g-
+  Local ADOM        per tenant     admins/policies/objects/firmware; the wall
+  Device database   per firewall   FMG's copy of that box's config (N boxes = N DBs)
+
+DIRECTIONS
+  Retrieve / Import   FGT -> FMG    onboarding (FIRST)
+  Install             FMG -> FGT    day-2 push
+  Assign              Global -> ADOM  share universal down
+  (Revert -> S29: roll back to a prior revision)
+
+NUMBERS / DEFAULTS
+  Firmware window        X, X-1, X-2   (7.6 global supports 7.6 / 7.4 / 7.2)
+  Reserved global prefix g   (HARD-BLOCKED — cannot create local g- objects)
+  Default ADOM (ADOMs off)   root   (contains device layer + policy layer)
+  FortiGuard database        serves all ADOMs (root, 7.6, 7.4, 7.2, global)
+
+GUI PATHS
+  System Settings > All ADOMs                                   create/list ADOMs, set version
+  Device Manager > Device & Groups > Managed FortiGate          device-layer objects
+  ...Managed FortiGate > Dashboard > Configuration and Installation > Revision   (S29)
+
+DESIGN RULES
+  ADOM boundary = administrative/policy unit (primary). Firmware = forcing constraint.
+                  Site = coincides sometimes, never causes.
+  Global DB     = only genuinely company-wide items. Tenant-specific stays in the ADOM.
+  Change chain  = define (global) -> assign (into ADOM) -> install (to device).
+                  Break a link, the change stops there.
+
+KEY BEHAVIOURS
+  "Retrieve before you rule."  FMG can't master a box it hasn't learned.
+  A naming prefix is a hope, not a wall.  Only an ADOM isolates.
+  Reserved 'g' = CANNOT, not "shouldn't".
+  Money-first to stakeholders: consequence (audit finding) leads, mechanism follows.
+
+
+---------------------------------------------------------------------
+3. FLASHCARDS  (Q -> A)
+---------------------------------------------------------------------
+Q: What is the true cost metric of managing firewalls by hand?
+A: N devices x M changes — and the casualty is consistency (an audit finding in a
+   regulated firm).
+
+Q: Name FortiManager's three layers, top to bottom.
+A: Global database (company-wide) > local ADOM (tenant/policy wall) > device database
+   (per firewall).
+
+Q: What does a device database hold, and how many for 7 managed firewalls?
+A: FMG's authoritative copy of that firewall's actual config (the WHAT). Seven — one
+   per device.
+
+Q: Retrieve/Import direction?  Install direction?  Assign?
+A: Retrieve = FGT->FMG (onboard first). Install = FMG->FGT (day-2). Assign = global->ADOM.
+
+Q: You've never managed a firewall before. Which operation runs first and why?
+A: Retrieve/Import (FGT->FMG). FMG can't be the source of truth for a box it hasn't
+   learned; populate the device DB first. "Retrieve before you rule."
+
+Q: What is an ADOM?
+A: An Administrative Domain — a partition inside ONE FortiManager isolating a device
+   group with its own admins, policies, objects, and firmware version.
+
+Q: Why isn't a VL-/LF- naming prefix acceptable separation?
+A: A prefix separates visually but enforces nothing; any admin can still touch a
+   differently-prefixed device. Only ADOM membership + admin scoping is a real boundary.
+
+Q: What is the PRIMARY axis for drawing an ADOM boundary?
+A: The administrative/policy unit (who owns/audits it, what policy package it shares).
+   NOT the site. Firmware only FORCES splits; it isn't the primary reason.
+
+Q: Firmware compatibility window?
+A: X, X-1, X-2. A 7.6 global ADOM supports local ADOMs at 7.6, 7.4, 7.2.
+
+Q: Can one ADOM hold both 7.4 and 7.6 FortiGates? What breaks it?
+A: Yes, if both fit the ADOM's version window (7.6 ADOM accepts 7.6/7.4). A device
+   outside the window (e.g. 7.0) breaks it.
+
+Q: You create address object 'g-DMZ' in a local ADOM. Result?
+A: Rejected — hard-blocked. 'g' is reserved for global objects. Not "discouraged",
+   disallowed.
+
+Q: Where do you define an object that must be identical across both ADOMs, changeable
+   in one place — and what's the one-word operation to push it in?
+A: Global database; the operation is ASSIGN (define once, assign down).
+
+Q: Why NOT put everything in the global database?
+A: The global DB is shared by design; tenant-specific data there dissolves isolation —
+   you may as well run one big ADOM.
+
+Q: When ADOMs are disabled, what ADOM are you in and what does it contain?
+A: root, containing a device layer and a policy layer.
+
+Q: The change chain from a global object to a live firewall?
+A: define (global) -> assign (into ADOM) -> install (to device). Break a link, the
+   change stops there.
+
+Q: Stakeholder one-liner (money-first) for "why not configure by hand?"
+A: "When the auditor asks me to prove all seven firewalls enforce the same standard,
+   hand-config means I can't — that's a finding. FortiManager proves it from one source."
+
+
+---------------------------------------------------------------------
+4. PODCAST PROMPT — "The Packet Path" (paste into an AI audio generator)
+---------------------------------------------------------------------
+Produce a warm, conversational two-host tech-storytelling podcast episode, about 8-10
+minutes, for a show called "The Packet Path." The hosts are an experienced network
+engineer (host A, patient, Socratic, fond of analogies) and a curious co-host (host B,
+asks the questions a smart learner would ask). House style: tell a story, teach the
+concept through it, never lecture. No jingles beyond a short spoken intro/outro.
+
+Episode title: "Seven Firewalls, One Junior."
+
+Story beats to cover, in order:
+1. Cold open: a pallet of seven inherited firewalls arrives at LoFinance after they
+   acquire a smaller firm, Vaultline Financial. Junior, the eager junior engineer,
+   starts configuring them one at a time by hand from a "golden config" text file,
+   humming, convinced "seven isn't that many."
+2. Senor, the mentor, refuses to touch the keyboard and instead asks: "How many times
+   will you type the syslog server address today? And in April when it moves subnets?
+   And when we buy the next firm?" Use this to reveal the real cost: it isn't seven
+   firewalls, it's N devices times M changes — seven boxes and twenty changes a year is
+   140 hand-edits. And the real casualty isn't effort, it's CONSISTENCY. In a regulated
+   financial firm, not being able to prove every firewall matches is an AUDIT FINDING.
+   Analogy: seven cooks each copying the recipe by hand versus one central recipe card.
+3. Introduce FortiManager as the central box. Explain the device database: FortiManager
+   keeps its own copy of each firewall's config, and becomes the source of truth. Stress
+   the golden rule "Retrieve before you rule" — you must import a firewall's real config
+   into FortiManager FIRST before it can be the master; get the direction backwards and
+   you either wipe a box or fail to push a change. Retrieve = firewall to FortiManager;
+   Install = FortiManager to firewall.
+4. Penny, the operations boss, adds the twist: LoFinance and Vaultline must stay totally
+   separated for their separate audits, but share ONE FortiManager, across mixed firmware
+   (some boxes are older). Junior suggests just labelling them with a naming prefix.
+   Senor's line: "The prefix is a hope. Penny did not ask for a hope." Introduce the ADOM
+   (Administrative Domain) as the REAL wall — its own admins, policies, and firmware
+   version, inside one box. Mention the firmware window: a version supports itself and the
+   two before it (7.6 covers 7.6, 7.4, 7.2).
+5. The key design insight: you draw ADOM boundaries around who ADMINISTERS and audits and
+   shares a policy — not around the site/org chart. Firmware can FORCE a split but isn't
+   the reason you choose one.
+6. The final twist: the shared syslog server. If it lives inside one ADOM, the other can't
+   see it, and you're back to editing twice. Introduce the GLOBAL DATABASE that sits above
+   all ADOMs — define a universal object once, ASSIGN it down to many ADOMs. Then Junior's
+   MISTAKE of the episode: he over-corrects and wants to put EVERYTHING in the global
+   database. Explain why that's wrong — it dissolves the very isolation Penny demanded; you
+   may as well have one big ADOM. The rule: "true for everyone -> global; just this tenant
+   -> their ADOM."
+7. Close with the senior lesson: enforcement beats convention; share the universal, wall
+   the specific; and when you brief the business, lead with the money — the audit
+   consequence — and let the mechanism follow.
+8. Teaser for the next episode, "Two Layers of Truth": Junior half-trusts FortiManager,
+   edits a firewall by hand, and FortiManager pushes his change straight back out — the
+   config flip-flopping all afternoon "like a haunted house." Next time: the device layer
+   versus the policy layer, and the revision history that remembers every version the box
+   has ever been. End on Senor's line: "You edited the firewall, but you did not edit the
+   layer that was about to edit the firewall. You were arguing with a copy."
+
+Keep it playful but technically precise. Every analogy must be correct. End with a
+one-sentence recap the listener could repeat to a colleague.
+=====================================================================

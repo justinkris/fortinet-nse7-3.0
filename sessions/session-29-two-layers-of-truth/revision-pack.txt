@@ -1,0 +1,231 @@
+====================================================================
+LOFINANCE — SESSION 29 REVISION PACK: "TWO LAYERS OF TRUTH"
+Device layer vs policy layer · device database · revision history
+Study Guide 02 Central Management pp.29–31 · Blueprint 2.1 · NSE7 EFW 7.6
+====================================================================
+
+--------------------------------------------------------------------
+QUICK SUMMARY (one page)
+--------------------------------------------------------------------
+A managed FortiGate (VL-BRANCH-2) "kept un-fixing itself." Junior SSHed
+into the live box to fix port3 (.30 -> .31); it reverted repeatedly,
+including once with nobody at the keyboard. Not haunted: FortiManager's
+DEVICE DATABASE held .30 and kept pushing that stale value down over
+Junior's direct edit. The box always loses that argument.
+
+For every managed FortiGate, FMG keeps config split in TWO LAYERS inside
+the ADOM:
+  * DEVICE LAYER  = device settings (Network/Interfaces, Routing, VPN,
+    System, Log & Report). PER-BOX IDENTITY. Aimed at the FGT directly
+    once installed.
+  * POLICY LAYER  = firewall policies + objects, as POLICY PACKAGES.
+    SHAREABLE INTENT. Takes effect ONLY on install/deploy.
+Unlock: identity is per-box (device); intent is author-once-install-many
+(policy). port3 IP is a device setting -> device layer held .30.
+
+DEVICE DATABASE = FMG's own copy of a box's device settings. It does NOT
+update when you edit the live box, and does NOT care if you used SSH or
+the box's local GUI. Channel irrelevant; LAYER is everything.
+
+DIRECTION PAIR (the spine):
+  * INSTALL device settings : device DB -> box. FMG's truth wins. Preview.
+  * QUICK INSTALL           : device DB -> box. No preview, immediate (ZTP).
+  * RETRIEVE                : box -> device DB. Box reality wins; new
+    revision; does NOT update policy package (import needed).
+  * AUTO-RETRIEVE           : fires when device first added; captures box
+    changes to revision history; still no policy-package update.
+
+REVISION HISTORY = numbered/timestamped snapshots of the DEVICE DB.
+Rollback lives here. BUT direct-CLI/box-GUI edits write ZERO revisions ->
+forensically invisible. Great for "what FMG did," blind for "what someone
+did to the box directly."
+
+SENIOR RULES:
+  - Change the LAYER, not the box.
+  - Direct-CLI on a managed box = a landmine with an install-shaped
+    trigger: the next unrelated install overwrites it, silently, no
+    conflict prompt, no record it existed.
+  - Never RETRIEVE mid-incident: captures the fault as truth and kills
+    last-known-good ("mop while the tap is still running").
+  - Name the DIRECTION before you click.
+
+--------------------------------------------------------------------
+CHEAT SHEET
+--------------------------------------------------------------------
+LAYERS (per box, per ADOM)
+  Device layer  -> Network/Interfaces, Routing, VPN, System, Log&Report
+  Policy layer  -> policies + objects (policy packages); live on install
+
+OPERATIONS / DIRECTION
+  Install Device Settings   DB -> box    preview      FMG wins
+  Quick Install             DB -> box    NO preview   FMG wins (ZTP/confident)
+  Retrieve                  box -> DB    new revision box wins; policy pkg NOT updated
+  Auto-retrieve             box -> DB    on add       captures to rev history; import still needed
+  (S30 preview) Import      device/box -> policy package  (the bridge)
+  (S30 preview) Revert      pick earlier revision -> DB (then import to sync)
+  (S30 preview) Install Policy Package  policy layer -> device DB + box (wizard)
+  (S30 preview) Reinstall Policy        same, no wizard; also pushes DB modifications
+
+CONFIG STATUS (Device Manager > Device & Groups)
+  Synchronized  = device DB matches the box
+  Modified      = device DB changed, not yet installed
+  Out-of-sync   = box and device DB disagree
+
+GUI PATHS
+  Revision history:
+    Device Manager > Device & Groups > Managed FortiGate > FortiGate >
+    Dashboard: Summary > Configuration and Installation > Revision
+  Device layer objects:
+    Device Manager > Device & Groups > Managed FortiGate >
+    Objects in the Device Layer
+  Policy packages:
+    Policy & Objects
+
+USEFUL FGT CLI (on the box)
+  show system interface port3          # live value
+  get system central-management        # is it FMG-managed, and by whom
+
+KEY DEFAULTS / BEHAVIOURS
+  - Editing the live box never updates the device DB by itself.
+  - Install = blind overwrite (no conflict negotiation for unknown changes).
+  - Quick Install has no preview.
+  - Retrieve/auto-retrieve do not touch the policy package (import required).
+  - Direct edits = 0 revisions.
+
+--------------------------------------------------------------------
+FLASHCARDS (Q -> A)
+--------------------------------------------------------------------
+Q: Where is the source of truth for a managed FortiGate?
+A: In FortiManager (the device DB for device settings), not on the box.
+
+Q: What does the device layer hold?
+A: Device settings: Network/Interfaces, Routing, VPN, System, Log&Report.
+
+Q: What does the policy layer hold, and when does it take effect?
+A: Policies + objects (policy packages); only after install/deploy.
+
+Q: Why keep interfaces in device layer and rules in policy layer?
+A: Identity is per-box (device); intent is shareable/author-once (policy).
+
+Q: Does editing the live box update the device DB?
+A: No. It stays stale until an FMG op (retrieve) runs.
+
+Q: Does it matter whether you used SSH or the box's local GUI?
+A: No. Both edit the live box; both leave the device DB stale.
+
+Q: Direction of Install device settings?
+A: device DB -> box. FMG's stored truth wins.
+
+Q: Direction of Retrieve?
+A: box -> device DB. Box reality wins; saved as a new revision.
+
+Q: Does retrieve update the policy package?
+A: No. An import is required for that.
+
+Q: Quick Install vs Install device settings?
+A: Same direction; Quick Install has NO preview and applies immediately.
+
+Q: How many revisions did Junior's 4 SSH fixes write?
+A: Zero. Revision history records the device DB, not the live box.
+
+Q: A week-old direct-CLI change, then an unrelated Install fires. Result?
+A: Overwritten and lost. Not merged, no conflict prompt.
+
+Q: Why is retrieve almost never your first incident move?
+A: It captures the broken config into the DB and overwrites last-known-good.
+
+Q: How do you make a correct box change stick durably (two ways)?
+A: (1) Edit device layer in FMG then install (truth down); or
+   (2) Retrieve so the device DB adopts the box value (truth up).
+
+Q: Where does revision history stop being useful for blame?
+A: When the change was made directly on the box - it leaves no revision.
+
+--------------------------------------------------------------------
+EXAM QUESTIONS (from the session) + ANSWER KEY
+--------------------------------------------------------------------
+Q1 Direct SSH IP change on a managed FGT; state of the device DB before
+   any FMG op?                                                    -> B (unchanged)
+Q2 Captures current box config as a new revision, no policy-pkg update? -> C (Retrieve)
+Q3 Junior's four SSH fixes wrote how many revision entries?       -> C (Zero)
+Q4 Policy-layer edit takes effect...                              -> B (only after install/deploy)
+Q5 Which belongs in the device layer?                            -> B (Network/VPN/System/Log&Report)
+Q6 Week-old direct change; unrelated Install device settings runs -> C (overwritten and lost)
+Q7 Retrieve as first incident move; main risk?                   -> B (captures broken config; overwrites last-known-good)
+Q8 Quick Install differs in that it...                           -> B (applies immediately, no preview)
+Q9 Auto-retrieve saves a revision but does NOT...                -> B (update the policy package; import required)
+Q10 (framing) Why ban SSH config on managed boxes? Money/audit first:
+    "When we SSH a change onto a firewall, FortiManager doesn't know it
+    happened - no record, and the next routine push wipes it out. So if an
+    auditor asks me to prove the firewall's config matches our records, I
+    can't - the box and our source of truth have silently drifted. That's a
+    finding, and findings cost us. Editing through FortiManager means every
+    change is recorded and the box always matches what we can prove."
+
+TRACKED-MISS REMINDERS FOR NEXT TIME:
+  - Q6 family: when the mechanism is HARSH (overwrite/lost/cannot), answer
+    harsh. Don't downgrade to "conflict prompt"/"confusing".
+  - Q9 family: RETRIEVE/AUTO-RETRIEVE never touch the policy package -
+    IMPORT is the bridge (drilled in S30).
+  - Q10 family: lead with the consequence-as-SCENE (the auditor asks and I
+    can't answer), and keep to THIS session's topic (drift/silent loss),
+    not the S28 ADOM/admin-boundary answer.
+
+--------------------------------------------------------------------
+PODCAST PROMPT — "THE PACKET PATH" (paste into an AI audio generator)
+--------------------------------------------------------------------
+Generate a warm, slightly witty ~8-minute podcast episode of "The Packet
+Path," a storytelling show that teaches enterprise firewall engineering
+through the LoFinance saga. Two hosts: a curious host and a dry, wise
+engineer-narrator. Episode title: "Two Layers of Truth."
+
+Tell today's story: the day after LoFinance inherits seven Vaultline
+firewalls, a branch box called VL-BRANCH-2 has an interface, port3, set to
+the wrong subnet (.30 instead of .31). Junior, the overconfident junior
+engineer, SSHes straight into the live firewall and fixes it. It reverts.
+He fixes it again. It reverts. Then, at 2:58pm, with nobody at the
+keyboard, it flips back on its own. The help-desk tech, Riley, logs four
+increasingly panicked tickets, the last titled "is the firewall haunted
+(serious)." Señor - the wise mentor in a sombrero - delivers the key line:
+"You edited the firewall, but not the layer that was about to edit the
+firewall. You were arguing with a copy."
+
+Teach these ideas through the story, with reasoning, not just facts:
+ - A FortiManager-managed firewall's SOURCE OF TRUTH lives in FortiManager,
+   not on the box.
+ - FMG keeps a box's config in TWO LAYERS: the DEVICE LAYER (device
+   settings like interfaces - per-box IDENTITY) and the POLICY LAYER
+   (firewall rules as policy packages - shareable INTENT). Use the analogy:
+   identity is unique to each box; intent is something you author once and
+   install to many.
+ - The DEVICE DATABASE is FMG's own copy; it doesn't watch the live box, so
+   editing the box (by SSH or the box's own GUI - same mistake) leaves the
+   DB stale.
+ - The direction pair: INSTALL pushes the DB down onto the box (FMG wins);
+   RETRIEVE pulls the box up into the DB (box wins). Junior's box change
+   kept losing because FMG kept pushing .30 down.
+ - REVISION HISTORY records the device DB, so Junior's four direct fixes
+   wrote ZERO revisions - forensically invisible. Great for what FMG did,
+   blind for what someone did to the box.
+ - Two senior warnings, with memorable images: a direct-CLI change on a
+   managed box is "a landmine with an install-shaped trigger" (the next
+   unrelated install silently overwrites it); and hitting RETRIEVE during a
+   live incident is "reaching for the mop while the tap is still running"
+   (you capture the fault as truth and destroy your last-known-good).
+
+Include JUNIOR'S MISTAKE explicitly and warmly: he thought the box GUI
+would behave differently from SSH - it doesn't; the channel is irrelevant,
+the layer is everything. End with the lesson "change the layer, not the
+box," and a teaser for the next episode, "Push and Pull": four verbs become
+the job - retrieve, import, install, revert - plus global policy packages,
+when Penny demands "the same six baseline rules on every firewall, author
+once, I don't care how." Close on Señor's line: "Pulling it and pushing it
+are not the same prayer."
+
+Keep it conversational, use the analogies above, and make the listener feel
+the creeping horror of a config that won't stay fixed before revealing the
+tidy mechanism underneath.
+
+====================================================================
+END OF REVISION PACK — SESSION 29
+====================================================================

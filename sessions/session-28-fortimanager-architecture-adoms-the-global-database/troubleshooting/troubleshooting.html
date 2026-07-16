@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 28 Troubleshooting — FortiManager Onboarding &amp; ADOM Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;
+    --text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-glow:rgba(30,64,175,0.07);
+    --blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;
+    --green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;
+    --red:#b3261e;--red-light:#fbe4e2;--red-border:#e9a7a2;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:44px 56px 32px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:42px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;max-width:720px;}
+  main{max-width:1000px;margin:0 auto;padding:34px 56px 56px;}
+  .section-block{margin-bottom:40px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:14px;padding-left:16px;border-left:3px solid var(--blue);}
+  h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  h3{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--text);margin:20px 0 8px;}
+  p{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:12px;}
+  p strong{color:var(--text);font-weight:600;}
+  p em{color:var(--blue);font-style:italic;}
+  ul,ol{padding-left:22px;margin-bottom:12px;}
+  li{font-size:16px;line-height:1.65;color:var(--text-soft);margin-bottom:6px;}
+  li strong{color:var(--text);}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:14px 0;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+  .sym-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;border-top:3px solid var(--amber);}
+  .sym-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;}
+  .sym-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);margin-bottom:8px;}
+  .data-table{width:100%;border-collapse:collapse;margin:14px 0;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;margin:16px 0;font-family:'Outfit',sans-serif;}
+  .tree-node{font-size:14px;line-height:1.6;color:var(--text-soft);margin:4px 0;}
+  .tree-q{font-weight:700;color:var(--text);font-size:15px;margin-top:12px;}
+  .tree-y{color:var(--green);font-weight:600;}
+  .tree-n{color:var(--red);font-weight:600;}
+  .tree-arm{padding-left:20px;border-left:2px solid var(--border-dim);margin-left:6px;}
+  code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.86em;background:rgba(30,64,175,0.08);padding:1px 5px;border-radius:4px;color:var(--blue);}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 56px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span>🔧</span> SESSION 28 · TROUBLESHOOTING · SENIOR THINKING</div>
+  <h1>Onboarding &amp; ADOM Design — <em>Thinking It Through</em></h1>
+  <p>Session 28 is a design episode, not a fault hunt — so this guide teaches the <em>reasoning</em> a senior applies when standing up FortiManager for a new estate, and the traps waiting when they get it wrong.</p>
+</header>
+<main>
+
+  <div class="section-block">
+    <div class="section-label">The mindset</div>
+    <h2>Design faults are <em>quiet</em></h2>
+    <p>A misconfigured ADOM layout doesn't throw an error on day one. It works fine — until an auditor asks a question, or a Vaultline admin sees a LoFinance box, or a syslog change silently applies to five firewalls out of seven. The senior skill here is catching the fault <strong>before it becomes an incident</strong>, by asking the right questions during design.</p>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Symptom → diagnosis</div>
+    <h2>The four ways this breaks</h2>
+
+    <div class="sym-card">
+      <div class="sym-label">Symptom 1</div>
+      <div class="sym-title">"I onboarded a firewall and its whole config vanished."</div>
+      <p><strong>Likely root cause:</strong> the wrong direction was run. Someone did an <em>Install</em> (FMG → FGT) on a device whose device database was empty, overwriting the live box with nothing — instead of a <em>Retrieve/Import</em> (FGT → FMG) to learn it first.</p>
+      <p><strong>Questions to ask:</strong> Was the device database populated before the first push? Did onboarding start with Retrieve, or did someone jump straight to Install?</p>
+      <div class="callout callout-green"><strong>Rule that prevents it:</strong> Retrieve before you rule. FGT → FMG always runs first.</div>
+    </div>
+
+    <div class="sym-card">
+      <div class="sym-label">Symptom 2</div>
+      <div class="sym-title">"A Vaultline admin can see — and edited — a LoFinance firewall."</div>
+      <p><strong>Likely root cause:</strong> separation was implemented as a <em>naming convention</em> (prefixes) rather than an <em>ADOM boundary</em>. Prefixes don't scope visibility; only ADOM membership + admin-to-ADOM assignment does.</p>
+      <p><strong>Questions to ask:</strong> Are the two firms in separate ADOMs, or one ADOM with prefixes? Is each admin account scoped to a single ADOM?</p>
+      <div class="callout callout-red"><strong>Trap:</strong> "It's labelled clearly" is not isolation. The prefix is a hope.</div>
+    </div>
+
+    <div class="sym-card">
+      <div class="sym-label">Symptom 3</div>
+      <div class="sym-title">"I can't add a firewall to this ADOM — version error."</div>
+      <p><strong>Likely root cause:</strong> the device's firmware is outside the ADOM's compatibility window. A source at version X supports X, X-1, X-2 only.</p>
+      <p><strong>Questions to ask:</strong> What version is the ADOM? What version is the device? Is the gap ≤ 2 minor versions? (7.6 ADOM accepts 7.6/7.4/7.2; a 7.0 device does not fit.)</p>
+      <div class="callout"><strong>Resolution paths:</strong> upgrade the device into the window, or create a separate ADOM at a compatible version. This is firmware <em>forcing</em> a split — the legitimate case.</div>
+    </div>
+
+    <div class="sym-card">
+      <div class="sym-label">Symptom 4</div>
+      <div class="sym-title">"I changed the syslog server once but only some firewalls updated."</div>
+      <p><strong>Likely root cause A:</strong> the object was defined per-ADOM (local) instead of in the global database, so editing one ADOM's copy left the other untouched. <strong>Cause B:</strong> it <em>is</em> global, but was never <em>assigned</em> down to the ADOM that missed it, or assigned-but-not-installed to the devices.</p>
+      <p><strong>Questions to ask:</strong> Is this object global or local? If global, was it assigned to every relevant ADOM? After assign, was it installed to the devices?</p>
+      <div class="callout callout-amber"><strong>Chain to verify:</strong> define (global) → assign (into ADOM) → install (to device). Break any link and the change stops there.</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">The design decision tree</div>
+    <h2>"Where does this belong?"</h2>
+    <div class="tree">
+      <div class="tree-q">Q1 · Is this object/policy true for the WHOLE company?</div>
+      <div class="tree-arm">
+        <div class="tree-node"><span class="tree-y">YES</span> → put it in the <strong>global database</strong>; <em>assign</em> down to each ADOM.</div>
+        <div class="tree-node"><span class="tree-n">NO</span> → it's tenant-specific → go to Q2.</div>
+      </div>
+      <div class="tree-q">Q2 · Which administrative/audit unit owns it?</div>
+      <div class="tree-arm">
+        <div class="tree-node">→ Place it in <strong>that tenant's local ADOM</strong> (LoFinance or Vaultline). Never push tenant-specific data global — that dissolves isolation.</div>
+      </div>
+      <div class="tree-q">Q3 · Does every device in that ADOM fit the firmware window (X, X-1, X-2)?</div>
+      <div class="tree-arm">
+        <div class="tree-node"><span class="tree-y">YES</span> → one ADOM is fine.</div>
+        <div class="tree-node"><span class="tree-n">NO</span> → firmware <strong>forces</strong> a further split; create a second ADOM at a compatible version.</div>
+      </div>
+      <div class="tree-q">Q4 · Is a device already live and unmanaged?</div>
+      <div class="tree-arm">
+        <div class="tree-node">→ <strong>Retrieve/Import first</strong> (FGT→FMG) to populate the device database, THEN manage. Never Install into an empty device DB.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Common dead ends</div>
+    <h2>Where seniors <em>don't</em> waste time</h2>
+    <ul>
+      <li><strong>Blaming the device</strong> for a version-add error before checking the ADOM's own version. The fault is the <em>relationship</em>, not the box.</li>
+      <li><strong>Re-typing a "missing" object</strong> on the affected firewall instead of following the define→assign→install chain to find which link broke.</li>
+      <li><strong>Tightening prefixes</strong> to fix a visibility leak. No number of naming rules creates an admin boundary.</li>
+      <li><strong>Suspecting the global DB is "buggy"</strong> when a change didn't propagate — check whether <em>assign</em> and <em>install</em> actually ran first.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Exam traps</div>
+    <h2>What the question is <em>really</em> testing</h2>
+    <table class="data-table">
+      <tr><th>The trap</th><th>The correct read</th></tr>
+      <tr><td>"Separate ADOM because different firmware"</td><td>Firmware is a forcing constraint, not the <em>primary</em> reason. Admin/policy boundary is primary. (False, if stated as primary.)</td></tr>
+      <tr><td>"Firmware window is one version" / "any version"</td><td>It is <strong>X, X-1, X-2</strong>. 7.6 → 7.6/7.4/7.2.</td></tr>
+      <tr><td>"<code>g-</code> objects just shouldn't be used locally"</td><td>They <strong>cannot</strong> be created locally — hard-reserved.</td></tr>
+      <tr><td>"Install to onboard a new firewall"</td><td>Onboard with <strong>Retrieve/Import</strong> (FGT→FMG). Install is the day-2 push.</td></tr>
+      <tr><td>"Device database holds the policies"</td><td>Device DB = device settings/config (the WHAT). Policy work belongs in the policy layer (S29).</td></tr>
+      <tr><td>"Put shared objects in one big ADOM"</td><td>Shared-across-walls belongs in the <strong>global database</strong>; one big ADOM sacrifices isolation.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">The framework</div>
+    <h2>A senior's onboarding sequence</h2>
+    <ol>
+      <li><strong>State the business boundary first.</strong> Who must be isolated from whom, and who audits what? That defines your ADOMs.</li>
+      <li><strong>Check firmware fits.</strong> Every device in an ADOM within X, X-1, X-2 — or split.</li>
+      <li><strong>Retrieve before you rule.</strong> Import live devices into their device databases before any push.</li>
+      <li><strong>Lift the universal up.</strong> Company-wide objects → global database, assigned down.</li>
+      <li><strong>Verify the whole chain.</strong> define → assign → install. Confirm the change reached the actual box, not just the database.</li>
+    </ol>
+    <div class="callout"><strong>The recurring question that catches design faults:</strong> "If I change this in one place, does every device that should change actually change — and does nothing that shouldn't?"</div>
+  </div>
+
+</main>
+<footer>LoFinance · NSE7 EF 7.6 · Session <span>28</span> Troubleshooting · Central Management pp. 24–28</footer>
+</body>
+</html>

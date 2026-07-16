@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 28 — FortiManager Architecture, ADOMs & the Global Database</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;
+    --text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;--blue-glow:rgba(30,64,175,0.07);
+    --blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;
+    --green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;max-width:760px;}
+  .motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+  .motivation-text em{font-style:italic;color:var(--blue);}
+  .motivation-sub{font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1080px;margin:0 auto;}
+  .main-content{padding:36px 60px 60px;}
+  .section-block{margin-bottom:44px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);margin:22px 0 8px;}
+  .section-block p{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:5px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:18px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;}
+  .socratic-icon{font-size:17px;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-size:16px;color:var(--text-soft);line-height:1.7;margin:10px 0 12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:6px;text-transform:uppercase;}
+  .analogy-text{font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-text strong{font-style:normal;color:#7a4f0c;}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.7;color:#e8efff;}
+  code.inline{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.86em;background:rgba(30,64,175,0.08);padding:1px 5px;border-radius:4px;color:var(--blue);}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;margin:20px 0;}
+  .layer{border-radius:10px;padding:14px 18px;margin:10px 0;font-family:'Outfit',sans-serif;position:relative;}
+  .layer-title{font-size:13px;font-weight:700;letter-spacing:0.06em;margin-bottom:4px;}
+  .layer-desc{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;}
+  .layer-global{background:#e7edf9;border:1px solid var(--blue-border);color:var(--blue-deep);margin-left:0;margin-right:0;}
+  .layer-adom{background:var(--green-light);border:1px solid var(--green-border);color:#12482c;margin-left:26px;}
+  .layer-device{background:var(--surface-2);border:1px solid var(--border);color:var(--text);margin-left:52px;}
+  .layer-title span{color:var(--text-muted);font-weight:500;}
+  .exam-q{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0;}
+  .exam-q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;color:var(--blue);text-transform:uppercase;margin-bottom:6px;}
+  .exam-q-text{font-size:16px;color:var(--text);font-weight:600;margin-bottom:8px;line-height:1.5;}
+  .exam-q-ans{font-size:15px;color:var(--text-soft);line-height:1.65;border-top:1px dashed var(--border);padding-top:8px;}
+  .exam-q-ans strong{color:var(--green);}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.layer-adom{margin-left:14px;}.layer-device{margin-left:28px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> Complete Guide · NSE7 EF 7.6 · Session 28</div>
+  <h1>Seven Firewalls, <em>One Junior</em></h1>
+  <p>FortiManager architecture, ADOMs, and the global database — the day LoFinance stopped managing firewalls one keyboard at a time. Study Guide 02 Central Management, pp. 24–28. Blueprint 2.1.</p>
+</header>
+<div class="motivation-banner">
+  <div class="motivation-text">The real cost of manual management is <em>N devices × M changes</em> — and its casualty is consistency, which in a regulated firm is a compliance finding.</div>
+  <p class="motivation-sub">This session is about collapsing that number, without collapsing the walls between two firms that must stay separate.</p>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#story">Story</a>
+  <a class="nav-tab" href="#problem">The N×M Problem</a>
+  <a class="nav-tab" href="#device-db">Device DB &amp; Sync</a>
+  <a class="nav-tab" href="#adom">ADOMs</a>
+  <a class="nav-tab" href="#global">Global Database</a>
+  <a class="nav-tab" href="#exam">Exam</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- STORY -->
+    <div class="section-block" id="story">
+      <div class="section-label">Story Recap</div>
+      <h2>The pallet arrives at <em>8:40am</em></h2>
+      <p>LoFinance has swallowed Vaultline Financial whole — HQ, three branches, and three spares still in boxes. Seven FortiGates arrive shrink-wrapped on a hand-truck. Junior racks the first, opens a Notepad file called <code class="inline">vaultline-config-MASTER.txt</code>, and begins pasting a golden config into each firewall by hand, humming, certain that "seven's not that many."</p>
+      <p>Señor, sombrero on, watches without touching the keyboard. His question is the whole episode: <em>"How many times will you type the syslog server address today? And in April, when it moves to a new subnet? And when Penny buys the next firm?"</em> Junior's smile begins to fail.</p>
+      <p>Then Penny arrives with the constraint that shapes everything: LoFinance and Vaultline must stay <strong>administratively isolated</strong> — separate ongoing audits — but they must share <strong>one</strong> FortiManager, across <strong>mixed firmware</strong> (some Vaultline spares are 7.4; LoFinance is 7.6). Junior proposes a <code class="inline">VL-</code>/<code class="inline">LF-</code> naming prefix to keep them apart. Señor: <em>"The prefix is a hope, Junior. Penny did not ask for a hope."</em></p>
+    </div>
+
+    <!-- LEARNING OBJECTIVES -->
+    <div class="section-block">
+      <div class="section-label">Learning Objectives</div>
+      <h2>By the end you can…</h2>
+      <ul>
+        <li>Explain <strong>why</strong> central management exists in terms of cost and compliance, not just convenience.</li>
+        <li>Describe FortiManager's <strong>three-layer architecture</strong>: global database, local ADOM, device database.</li>
+        <li>Use the direction vocabulary correctly: <strong>Retrieve/Import</strong> vs <strong>Install</strong> vs <strong>Assign</strong>.</li>
+        <li>Decide <strong>where to draw an ADOM boundary</strong> — and why firmware and site are not the primary axis.</li>
+        <li>State the <strong>firmware compatibility window</strong> and the reserved <code class="inline">g</code> prefix rule.</li>
+        <li>Decide <strong>when to use the global database</strong> and when doing so would defeat isolation.</li>
+      </ul>
+    </div>
+
+    <!-- PROBLEM -->
+    <div class="socratic-block">
+      <div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">Think First · The N×M Problem</span></div>
+      <p class="socratic-insight">Junior is counting the wrong number. He sees seven boxes. Señor sees a number that grows over time and quietly destroys something an auditor will ask about.</p>
+      <ul class="socratic-questions">
+        <li>If Junior has 7 firewalls and the standard changes 20 times this year, how many hand-edits has he signed up for — and what's the formula?</li>
+        <li>Beyond the labour, what does every manual touch-point put at risk — and why does that word matter more in a financial firm than anywhere else?</li>
+      </ul>
+    </div>
+
+    <div class="section-block" id="problem">
+      <div class="section-label">Section 01 · Why Central Management Exists</div>
+      <h2>The number that <em>hurts</em></h2>
+      <p>The cost of managing firewalls by hand is not the number of firewalls. It is <strong>N devices × M changes</strong>. Seven firewalls and twenty standard changes a year is <strong>140 individual hand-edits</strong> — 140 chances to mistype a syslog IP, or forget a box because Riley called about a printer.</p>
+      <p>The casualty isn't the afternoon. It's <strong>consistency</strong>. After a year of hand-config, you can no longer <em>prove</em> that all seven firewalls enforce the same standard. And in a regulated financial firm, "I think they match" is not an inconvenience — it is an <strong>audit finding</strong>.</p>
+      <div class="analogy-box">
+        <div class="analogy-label">🏭 Analogy · The Franchise Recipe</div>
+        <div class="analogy-text"><strong>Junior's plan is seven cooks each copying the recipe by hand.</strong> Change the recipe and you must visit all seven kitchens. Miss one, and one branch serves the old dish — and the health inspector, arriving unannounced, finds a kitchen that isn't following the standard. FortiManager is the central recipe card that every kitchen reads from: change it once, every kitchen updates, and you can prove to the inspector that all seven are identical.</div>
+      </div>
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">💰</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Stakeholder framing — money leads</div>
+          <div class="mental-note-block-text">"When the auditor asks me to prove all seven firewalls enforce the same standard, hand-configuration means I can't — that's a finding. FortiManager lets me prove it from one source." Consequence first; mechanism second.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEVICE DB -->
+    <div class="socratic-block">
+      <div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">Think First · Two Copies of the Truth</span></div>
+      <p class="socratic-insight">Once a central box manages a firewall, there are suddenly two copies of that firewall's config in the world. That's not a bug — it's the whole mechanism. But it raises two questions.</p>
+      <ul class="socratic-questions">
+        <li>Which copy is the master and which gets overwritten — and why does a regulated firm need it that way round?</li>
+        <li>Before FortiManager can be the master of a firewall it has never seen, what must happen first, and in which direction does that flow?</li>
+      </ul>
+    </div>
+
+    <div class="section-block" id="device-db">
+      <div class="section-label">Section 02 · The Device Database, Source of Truth &amp; Sync</div>
+      <h2>Retrieve <em>before you rule</em></h2>
+      <p>Every FortiGate brought under management gets its own <strong>device database</strong> on FortiManager — FMG's local, authoritative copy of <em>that firewall's actual configuration</em> (interfaces, routing, system settings). Seven managed firewalls means seven device databases.</p>
+      <div class="callout callout-amber"><strong>Precision trap.</strong> The device database is the <em>WHAT</em> — the config itself. The <em>WHO</em> (who administers it, who's walled off from it) is the <strong>ADOM</strong>. Don't blur them.</div>
+      <p>Once a firewall is managed, FMG's device database is the <strong>source of truth</strong>. You stop editing the box directly and edit the database instead, letting it push. But FMG cannot be master of a firewall it has never learned — so the very first action is to pull the firewall's existing config <em>up</em> into the device database, so the two are <strong>in sync</strong>. From that moment, FMG leads.</p>
+
+      <h3>The direction vocabulary</h3>
+      <table class="data-table">
+        <tr><th>Operation</th><th>Direction</th><th>When</th></tr>
+        <tr><td>Retrieve / Import</td><td>FortiGate → FMG</td><td>Onboarding. Pull reality into the device database <strong>first</strong>.</td></tr>
+        <tr><td>Install</td><td>FMG → FortiGate</td><td>Day-2. Push the master down to the box.</td></tr>
+        <tr><td>Assign</td><td>Global DB → local ADOM</td><td>Share a global object/policy down into ADOMs.</td></tr>
+      </table>
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧭</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Muscle memory</div>
+          <div class="mental-note-block-text">Reverse Retrieve and Install and you either wipe a firewall you meant to learn, or fail to push a change you meant to deploy. Onboarding runs FGT → FMG first, always.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADOM -->
+    <div class="socratic-block">
+      <div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">Think First · Penny's Wall</span></div>
+      <p class="socratic-insight">Penny wants two firms isolated inside one FortiManager, across mixed firmware. Junior offers a naming prefix. Reason about what a real wall has to <em>do</em> before naming the construct.</p>
+      <ul class="socratic-questions">
+        <li>Why does a <code class="inline">VL-</code>/<code class="inline">LF-</code> prefix separate things visually but not administratively?</li>
+        <li>What must the real construct isolate — and what deciding factor should place its boundary: site, firmware, or something Penny actually said?</li>
+      </ul>
+    </div>
+
+    <div class="section-block" id="adom">
+      <div class="section-label">Section 03 · ADOMs — Administrative Domains</div>
+      <h2>The wall that <em>actually holds</em></h2>
+      <p>An <strong>ADOM (Administrative Domain)</strong> is a partition inside <em>one</em> FortiManager that isolates a group of devices: its own administrators, its own policies, its own objects, and — critically for this pallet — <strong>its own firmware version</strong>. A Vaultline admin scoped to the Vaultline ADOM cannot see an <code class="inline">LF-</code> box, because it is not in their ADOM — not because of a prefix and a prayer.</p>
+      <div class="callout"><strong>When ADOMs are disabled</strong>, you still work in a default ADOM named <code class="inline">root</code>, which contains the two databases you'll meet next session: a <strong>device layer</strong> and a <strong>policy layer</strong>. The FortiGuard database serves the root ADOM.</div>
+
+      <h3>Penny's three constraints, one construct</h3>
+      <table class="data-table">
+        <tr><th>Constraint</th><th>Satisfied by</th></tr>
+        <tr><td>Isolation (separate audits)</td><td>Two ADOMs: LoFinance and Vaultline, administratively walled off</td></tr>
+        <tr><td>Mixed firmware (7.4 + 7.6)</td><td>Each ADOM carries its own firmware version, within the compatibility window</td></tr>
+        <tr><td>One physical box</td><td>Both ADOMs live inside a single FortiManager</td></tr>
+      </table>
+
+      <h3>Where to draw the boundary</h3>
+      <p>The primary axis is <strong>the administrative + policy unit</strong>: who owns it, who audits it, and what policy package it shares. If firewalls behave similarly, they can share a policy package, and belong in the same ADOM. That is a <em>design decision</em>.</p>
+      <p><strong>Firmware</strong> is different — it's a <em>constraint that can force</em> a split. An ADOM has a firmware version and a compatibility window; a device too old for the ADOM's version forces your hand. And <strong>site</strong> (the org chart) sometimes <em>coincides</em> with a boundary, but never <em>causes</em> it.</p>
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧱</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Decision rule</div>
+          <div class="mental-note-block-text">1) Draw ADOMs around administrative/policy units (tenant, audit boundary, shared policy package). 2) Then check firmware fits the version window; if a device is too old, firmware forces a further split. Site is never the cause.</div>
+        </div>
+      </div>
+
+      <h3>The firmware compatibility window</h3>
+      <div class="callout callout-green"><strong>Rule:</strong> a source at version X supports local ADOMs at <strong>X, X-1, and X-2</strong>. A <strong>7.6</strong> global ADOM supports ADOMs at <strong>7.6, 7.4, and 7.2</strong>. Vaultline's 7.4 spares and 7.6 units fit comfortably under a 7.6 umbrella. A 7.0 box would fall outside the window and force a split.</div>
+    </div>
+
+    <!-- GLOBAL -->
+    <div class="socratic-block">
+      <div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">Think First · The Wall Re-creates the Problem</span></div>
+      <p class="socratic-insight">You built a wall between two ADOMs. But the syslog server is the same for both firms. Define it in the LoFinance ADOM and Vaultline can't see it — so you'd edit it twice. Junior's 140 problem is back, one level up.</p>
+      <ul class="socratic-questions">
+        <li>What construct lets you define a truly universal object once and share it into multiple ADOMs at once?</li>
+        <li>Junior says "put EVERYTHING there." What specifically breaks if you push tenant-specific policy up into it?</li>
+      </ul>
+    </div>
+
+    <div class="section-block" id="global">
+      <div class="section-label">Section 04 · The Global Database</div>
+      <h2>Define once, <em>assign down</em></h2>
+      <p>The <strong>global database</strong> (global ADOM) sits <em>above</em> the local ADOMs. You define a common object or policy <strong>once</strong> at the global layer, then <strong>assign</strong> it down into multiple local ADOMs simultaneously. Change the syslog server once at the top, and it propagates to every ADOM that inherited it. Junior's 140 finally collapses to <strong>1</strong> for anything company-wide.</p>
+      <div class="callout"><strong>Reserved prefix.</strong> Global objects carry the reserved letter <code class="inline">g</code>. This is <strong>hard-blocked</strong>, not advisory — you <em>cannot</em> create a local object whose name starts with <code class="inline">g-</code>. The reservation keeps "shared-from-above" visually distinct from "local-to-this-ADOM."</div>
+
+      <div class="diagram">
+        <div class="layer layer-global">
+          <div class="layer-title">GLOBAL DATABASE <span>· company-wide</span></div>
+          <div class="layer-desc">syslog, NTP, DNS — define once, <strong>assign ↓</strong> into every ADOM. Objects prefixed <code>g-</code>.</div>
+        </div>
+        <div class="layer layer-adom">
+          <div class="layer-title">LOCAL ADOM · LoFinance (7.6) &nbsp;|&nbsp; Vaultline (7.4/7.6) <span>· per tenant</span></div>
+          <div class="layer-desc">Hard-walled tenants: own admins, own policies, own objects, own firmware. Separate audits stay separate.</div>
+        </div>
+        <div class="layer layer-device">
+          <div class="layer-title">DEVICE DATABASE <span>· per firewall</span></div>
+          <div class="layer-desc">FMG's copy of one box's actual config. 7 firewalls → 7 device DBs. Retrieve ↑ to onboard, Install ↓ to push.</div>
+        </div>
+      </div>
+
+      <h3>When NOT to go global</h3>
+      <p>Push everything into the global database and you dissolve the very wall Penny bought the acquisition isolation for — you may as well run one big ADOM. The global database is <em>shared by design</em>; it cannot be an isolation boundary.</p>
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">⚖️</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">The test</div>
+          <div class="mental-note-block-text">"True for literally <em>everyone</em>, or just this tenant?" Everyone → global database. Just them → their ADOM. One big ADOM = sharing, no walls. Separate ADOMs = walls, no sharing. Global-over-local = both.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERIFICATION -->
+    <div class="section-block">
+      <div class="section-label">Verification &amp; GUI Paths</div>
+      <h2>Where to look on the box</h2>
+      <div class="code-block">
+        <div class="code-label">FortiManager — GUI navigation</div>
+        <pre><code>Device Manager > Device &amp; Groups > Managed FortiGate
+    -> objects in the DEVICE LAYER (device settings)
+
+Device Manager > Device &amp; Groups > Managed FortiGate
+    > Dashboard: Summary > Configuration and Installation > Revision
+    -> per-firewall revision history (S29 topic)
+
+System Settings > All ADOMs
+    -> create / list ADOMs, set firmware version per ADOM
+
+Global objects appear with the reserved  g-  prefix
+Onboarding:  Retrieve / Import  (FGT -> FMG)  BEFORE any Install
+Day-2 push:  Install Device Settings / Install Policy Package  (FMG -> FGT)
+Global share: Assign  (Global DB -> local ADOMs)</code></pre>
+      </div>
+    </div>
+
+    <!-- COMMON MISTAKES -->
+    <div class="section-block">
+      <div class="section-label">Common Mistakes</div>
+      <h2>Where this goes <em>wrong</em></h2>
+      <ul>
+        <li><strong>Treating a naming prefix as isolation.</strong> A prefix is a convention, not an admin boundary. Only an ADOM enforces separation.</li>
+        <li><strong>Reversing Retrieve and Install.</strong> Import onboards (FGT→FMG); Install deploys (FMG→FGT). Reverse them and you wipe or fail to push.</li>
+        <li><strong>Softening the <code class="inline">g</code> rule.</strong> "You shouldn't" is wrong — it's "you cannot." The prefix is hard-reserved.</li>
+        <li><strong>Drawing ADOMs by site.</strong> The org chart is not the axis. Administrative/policy units are. Site may coincide, never causes.</li>
+        <li><strong>Over-sharing to the global DB.</strong> Tenant-specific policy in the global database dissolves isolation.</li>
+        <li><strong>Guessing the firmware window.</strong> It's X, X-1, X-2 — a precise number, not "roughly compatible."</li>
+      </ul>
+    </div>
+
+    <!-- SENIOR INSIGHTS -->
+    <div class="section-block">
+      <div class="section-label">Senior Engineering Insights</div>
+      <h2>What the seniors carry from this</h2>
+      <ul>
+        <li><strong>Cost is N×M, casualty is consistency.</strong> When you brief a stakeholder, lead with the compliance consequence, not the tooling.</li>
+        <li><strong>Enforcement beats convention.</strong> If separation matters, it must be structural (ADOM), never a naming hope.</li>
+        <li><strong>Design first, constraints second.</strong> Choose ADOM boundaries by administration/policy; let firmware only <em>force</em> extra splits.</li>
+        <li><strong>Share the universal, wall the specific.</strong> The global/local split is what lets you have consistency <em>and</em> isolation at once.</li>
+      </ul>
+    </div>
+
+    <!-- EXAM -->
+    <div class="section-block" id="exam">
+      <div class="section-label">Exam Preparation</div>
+      <h2>Ten questions &amp; model answers</h2>
+
+      <div class="exam-q"><div class="exam-q-num">Q1</div><div class="exam-q-text">ADOMs are disabled. Which default ADOM are you in, and what two databases does it contain?</div><div class="exam-q-ans"><strong>root ADOM</strong>, containing a <strong>device layer</strong> and a <strong>policy layer</strong>. The FortiGuard database serves it.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q2</div><div class="exam-q-text">A 7.6 global ADOM can assign down to which firmware versions?</div><div class="exam-q-ans">Rule: X, X-1, X-2. So a 7.6 global ADOM supports local ADOMs at <strong>7.6, 7.4, and 7.2</strong>.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q3</div><div class="exam-q-text">You try to create an address object named <code class="inline">g-DMZ</code> in a local ADOM. What happens and why?</div><div class="exam-q-ans">It's <strong>rejected — hard-blocked</strong>. The <code class="inline">g</code> prefix is reserved for global objects so shared-from-above stays distinct from local. Not "discouraged" — <em>disallowed</em>.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q4</div><div class="exam-q-text">State the direction of Retrieve and of Install.</div><div class="exam-q-ans"><strong>Retrieve</strong> = FortiGate → FMG (onboarding). <strong>Install</strong> = FMG → FortiGate (day-2 push).</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q5</div><div class="exam-q-text">Penny needs LoFinance and Vaultline admins never to see each other's devices, on one FMG. Name the construct — and why doesn't a naming prefix work?</div><div class="exam-q-ans"><strong>ADOM.</strong> A prefix separates visually but enforces nothing — any admin can still touch a differently-prefixed device. Only an ADOM is a real administrative boundary.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q6</div><div class="exam-q-text">A Vaultline ADOM holds both 7.4 and 7.6 FortiGates. Permitted? Under what condition, and what breaks it?</div><div class="exam-q-ans"><strong>Yes</strong>, provided both sit within the ADOM's version window (X, X-1, X-2). Under a 7.6 ADOM, 7.6 and 7.4 both fit. A device outside the window (e.g. 7.0) breaks it.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q7</div><div class="exam-q-text">True/false: "The primary reason to create a separate ADOM is that devices run different firmware."</div><div class="exam-q-ans"><strong>False.</strong> The primary reason is an administrative/policy boundary. Firmware is a valid <em>constraint that can force</em> a split, not the primary reason.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q8</div><div class="exam-q-text">What lives in the device database, and how many does an FMG managing seven firewalls have?</div><div class="exam-q-ans">FMG's authoritative <strong>copy of each firewall's actual configuration</strong> (the WHAT, not the WHO). <strong>Seven</strong> — one per managed device.</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q9</div><div class="exam-q-text">The corporate syslog IP must be identical across both ADOMs and changeable in one place. Where do you define it, and what one-word operation pushes it into each ADOM?</div><div class="exam-q-ans">Define it in the <strong>global database</strong>; the operation is <strong>Assign</strong> (define once, assign down).</div></div>
+
+      <div class="exam-q"><div class="exam-q-num">Q10</div><div class="exam-q-text">Penny: "Why can't Junior just configure them by hand? It's only seven." One senior sentence — consequence first.</div><div class="exam-q-ans">"When the auditor asks me to prove all seven firewalls enforce the same standard, hand-config means I can't — that's a finding. FortiManager proves it from one source." Money/consequence leads; mechanism justifies.</div></div>
+    </div>
+
+    <!-- TAKEAWAYS -->
+    <div class="section-block">
+      <div class="section-label">Key Takeaways</div>
+      <h2>Carry these <em>forward</em></h2>
+      <ul>
+        <li>Manual management costs <strong>N×M</strong>; the casualty is <strong>consistency → audit findings</strong>.</li>
+        <li>Three layers: <strong>global DB</strong> (company-wide) &gt; <strong>local ADOM</strong> (tenant/policy wall) &gt; <strong>device DB</strong> (per box).</li>
+        <li><strong>Retrieve before you rule</strong>: FGT→FMG onboarding first, then FMG→FGT installs.</li>
+        <li>Draw ADOMs by <strong>administration/policy</strong>; firmware only <em>forces</em> splits; site never causes them.</li>
+        <li>Window: <strong>X, X-1, X-2</strong>. Prefix <code class="inline">g</code> is <strong>reserved / hard-blocked</strong>. Global verb is <strong>assign</strong>.</li>
+      </ul>
+      <div class="callout callout-amber"><strong>Next session — "Two Layers of Truth."</strong> Junior half-trusts FortiManager: he hand-edits a firewall, FMG pushes it back, and the config flip-flops all afternoon like a haunted house. The answer is that FMG holds config across <em>two layers</em> — device layer vs policy layer — that are not the same truth, with a revision history underneath that remembers every version the box has ever been.</div>
+    </div>
+
+  </div>
+</main>
+<footer>LoFinance · NSE7 EF 7.6 · Session <span>28</span> — Seven Firewalls, One Junior · Central Management pp. 24–28 · Blueprint 2.1</footer>
+
+<script>
+  const tabs=document.querySelectorAll('.nav-tab');
+  const secs=[...tabs].map(t=>document.querySelector(t.getAttribute('href')));
+  window.addEventListener('scroll',()=>{
+    let i=secs.length-1;
+    for(let k=0;k<secs.length;k++){if(secs[k]&&secs[k].getBoundingClientRect().top<160)i=k;}
+    tabs.forEach(t=>t.classList.remove('active'));
+    if(tabs[i])tabs[i].classList.add('active');
+  });
+</script>
+</body>
+</html>
