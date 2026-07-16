@@ -1,0 +1,238 @@
+================================================================================
+LOFINANCE — SESSION 26 REVISION PACK — "Where to Stand Guard"
+UTM profile placement across NGFW / ISFW / DCFW / DEFW
+Study Guide 06 Security Profiles, pp. 187–191
+================================================================================
+
+--------------------------------------------------------------------------------
+QUICK SUMMARY (one page)
+--------------------------------------------------------------------------------
+Cipher proposed a "Uniform Deep Inspection Standard" — full SSL inspection + IPS +
+web filter + app control + AV on EVERY FortiGate. The trading floor (new character
+George Kanellis, Head of Trading, "11µs = the spread") revolted on latency. Penny
+demanded a money-first answer. The resolution: reject "everywhere," place each UTM
+profile by the FLOW it protects, not by the name of the control.
+
+The map:
+  • Edge NGFW  — full inspection OUTBOUND (protect-CLIENT: FGT re-signs with its own
+                 CA) + the primary decrypt point for north-south internet traffic.
+  • DCFW       — full inspection INBOUND (protect-SERVER: FGT holds the real server
+                 key) + IPS, AND the SOLE guard of all east-west traffic the edge
+                 never sees.
+  • ISFW       — mostly bare; its job is low-latency segmentation against lateral
+                 movement. Add SCOPED IPS only for a specific lateral-movement threat.
+  • DEFW       — tunnel-only, NO UTM (HQ inspects the backhaul). Flip: local internet
+                 breakout → re-size to a 100–900 midrange FIRST, then enable UTM.
+
+The genuine redundancy the guide flags is identical profiles on the SHARED north-
+south path (NGFW + DCFW inspecting the same flow) — trim that to one primary point.
+Two boxes both running "full inspection" is NOT a double-dip when they're different
+flows (outbound-client vs inbound-server). Business outcome: DCFW stays armed
+(Cipher's real win), trading keeps its microseconds (George's win), Penny gets one
+board-ready sentence. No new hardware — the network grew smarter, not bigger.
+
+--------------------------------------------------------------------------------
+CHEAT SHEET
+--------------------------------------------------------------------------------
+PLACEMENT (memorise the table):
+  NGFW  → outbound full inspection (protect-client) + N-S primary decrypt
+  DCFW  → inbound full inspection (protect-server) + IPS + SOLE east-west guard
+  ISFW  → scoped IPS for lateral movement only; otherwise bare (keep latency low)
+  DEFW  → none until local breakout → then re-size 100–900 first
+
+CLIENT vs SERVER inspection (decided by KEY, not origin):
+  Protect-CLIENT  = outbound; FGT impersonates the site, presents its OWN re-signed
+                    cert (FGT CA must be trusted by endpoints); lives on edge NGFW.
+  Protect-SERVER  = inbound to YOUR server; FGT holds the REAL server cert+key
+                    ("Protecting SSL Server"); lives in front of the asset (DCFW).
+
+REDUNDANCY vs DEPTH:
+  Redundancy  = SAME control, SAME flow, two boxes (the flagged N-S overlap). Trim.
+  Depth       = DIFFERENT controls catching DIFFERENT things. Keep.
+  East-west   = no first dip (edge can't see it) → DCFW is sole guard, not a backup.
+
+DEFW UTM trigger:
+  Backhaul to HQ   → no branch UTM (HQ already inspects).
+  Local breakout   → branch traffic skips HQ → new door → re-size 100–900, then UTM.
+
+ISFW justified-UTM flows (pay the latency ONLY for these):
+  1. Known exploit signature moving LATERALLY between segments (e.g. compromised
+     endpoint → trading API, the S24 incident).
+  2. ISFW wearing an NGFW second hat: terminating VPNs / SD-WAN / secure internet.
+
+COMMANDS / GUI:
+  diagnose sys session list            # which box does this flow cross?
+  diagnose sniffer packet any '...' 4  # see the flow (TAC's "I want the packets")
+  get system performance status        # CP/CPU headroom before loading UTM
+  get firewall ssl-ssh-profile <name>  # cert-inspection vs deep? protecting-server?
+  Profiles attach at: config firewall policy → set ssl-ssh-profile / set ips-sensor
+                      / set av-profile / set webfilter-profile / set application-list
+  GUI: Policy & Objects > Firewall Policy > (per policy) Security Profiles column.
+
+DEFAULTS / RULES:
+  • "Everywhere / uniform / all firewalls" = almost always the wrong answer / distractor.
+  • Full inspection is expensive → WHERE you pay is an architecture decision.
+  • Same control name ≠ same job.
+  • The DCFW is the MOST capable inspector — allocation, not incapacity.
+  • Absolute qualifiers in T/F ("never/any/always/regardless") usually make it false.
+
+--------------------------------------------------------------------------------
+FLASHCARDS (Q → A)
+--------------------------------------------------------------------------------
+Q: Why doesn't "it worked on the DCFW" imply "put it everywhere"?
+A: The control was matched to the DCFW's threat surface. Copy the control without the
+   surface and you copy only the cost (latency + CP), not the protection.
+
+Q: What traffic does the DCFW inspect that the edge NGFW NEVER sees?
+A: East-west: server↔server, replication, backups, internal fan-out. Born and dying
+   inside the DC. The DCFW is its SOLE guard, not a backup for the edge.
+
+Q: Is the NGFW+DCFW overlap on north-south internet traffic a double-dip?
+A: Yes — same control, same flow, two boxes = the redundancy the guide flags. Pick
+   ONE primary decrypt point (usually the edge).
+
+Q: Both NGFW and DCFW run "full SSL inspection." Why is that NOT a double-dip?
+A: Different flows/directions/keys/assets. NGFW = outbound protect-client; DCFW =
+   inbound protect-server. Same words, different jobs.
+
+Q: What decides client-inspection vs server-inspection — direction, or something else?
+A: Whose KEY the FGT holds + which ASSET it protects. Protect-client = re-signed cert
+   (edge). Protect-server = real server key (in front of the server). NOT packet origin.
+
+Q: In outbound full inspection, whose certificate does the user's browser see?
+A: The FortiGate's OWN re-signed certificate (from the FGT's CA the endpoints trust) —
+   NOT the external server's cert.
+
+Q: The Parramatta branch DEFW runs no UTM. Is that a gap?
+A: No — it backhauls to HQ, which already inspects. It becomes a gap only if the branch
+   gets LOCAL INTERNET BREAKOUT (traffic skips HQ). Then re-size to 100–900 first.
+
+Q: Why does the ISFW's core job fight heavy UTM?
+A: Its value is LOW LATENCY segmentation. Heavy UTM taxes the constant east-west user
+   traffic it's meant to pass cleanly (George's microseconds).
+
+Q: Give a SPECIFIC flow that justifies IPS on the ISFW.
+A: A known exploit signature moving laterally from a compromised endpoint to another
+   VLAN (the S24 trading-API attack) — traffic the edge/DCFW never see.
+
+Q: One sentence for Penny justifying flow-scoped placement over "everywhere."
+A: "Inspecting everywhere would cost us money on every trade without catching a single
+   extra attack — so we guard only where the attacks actually travel."
+
+Q: T/F — "An ISFW is a low-latency segmentation device, therefore it can NEVER run
+   NGFW-grade UTM under ANY circumstance."
+A: FALSE. The absolute qualifier breaks it: an ISFW CAN wear an NGFW hat (VPN/SD-WAN)
+   or carry scoped IPS for lateral movement. (Watch: state FALSE, then tick FALSE.)
+
+--------------------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path" (paste into an AI audio generator)
+--------------------------------------------------------------------------------
+Generate a ~7-minute podcast episode of "The Packet Path," a warm, slightly witty
+two-host network-engineering show (one senior host, one curious co-host). Episode
+title: "Where to Stand Guard." Conversational, story-first, technically precise but
+never dry. No music beds needed.
+
+Tell today's LoFinance story: the morning after the trading feed was saved, the
+security lead Cipher sends a company-wide email — a "Uniform Deep Inspection
+Standard" — demanding full SSL inspection, IPS, web filtering, application control
+and antivirus on EVERY firewall in the company. "If it saved us on the data-centre
+firewall yesterday, put it everywhere. No blind spots." Introduce the new character
+George, the grizzled head of the trading floor who wears two watches and carries a
+laminated card reading "eleven microseconds equals the spread" — he threatens war if
+anyone adds inspection between two trading servers. The boss, Penny, cuts through:
+"Is 'everywhere' four times the safety, or four times the cost for the same safety?
+Answer me in money." And the mentor, Señor, asks just one question: "Which doors —
+and why not all of them?"
+
+Then teach the reasoning the way the hosts would banter through it:
+  • The core flip: don't reason about the NAME of a control, reason about the FLOW
+    underneath it. "Cipher counts controls; the network is made of flows."
+  • The placement map: edge firewall does outbound inspection protecting your PEOPLE;
+    the data-centre firewall does inbound inspection protecting your SERVERS and is
+    the ONLY guard of east-west traffic the edge never sees; the internal segmentation
+    firewall stays fast and only gets IPS for a specific lateral-movement threat; the
+    branch firewall does NOTHING until it gets its own internet door — then you buy a
+    bigger box first.
+  • The double-dip insight: two firewalls doing "full inspection" is only waste if
+    it's the SAME flow twice. Outbound-protect-the-user and inbound-protect-the-server
+    share a name and nothing else. Use the analogy: "no first dip, so no double dip."
+  • The memorable line: "You don't guard the server from the front gate — you guard
+    it from its own doorway."
+
+Include JUNIOR'S MISTAKE: Junior loved "one uniform standard, maximum security
+everywhere" — and had to learn that "is this double-dipping?" is never a yes/no; it's
+"which flow, which direction, protecting what." Have the hosts land that as the
+lesson.
+
+End with the money line the engineer finally gives Penny — "inspect everywhere and
+we lose money on every trade and catch nothing extra, so we guard where the attacks
+actually travel" — and George grudgingly admitting it's the first time security spoke
+his language.
+
+Close on a teaser: next episode is the season finale — the cowboy hat comes out. Every
+inspection profile is switched ON, yet a trade that should've been blocked slips
+through, a filtered site loads, and a signature that should've fired stays silent.
+"Everything is green. Everything is wrong." Sign off: "Show me you can inspect the
+inspector."
+
+--------------------------------------------------------------------------------
+EXAM QUESTIONS (from the session) + MODEL ANSWERS
+--------------------------------------------------------------------------------
+Q1. Core error in "full inspection saved us on the DCFW, so enable it everywhere"?
+    A: It reasons from the control's success in ONE place to universal placement,
+       ignoring that the control was matched to that box's threat surface. Copying
+       the control without the surface copies only cost.
+
+Q2. Identical full-inspection profiles on BOTH the edge NGFW and the DCFW for the
+    SAME inbound north-south flow is best described as ___?
+    A: (b) The redundancy the guide flags between NGFW and DCFW. NOT defence in depth
+       (which needs DIFFERENT controls catching DIFFERENT things).
+
+Q3. What does the DCFW inspect that the NGFW never will, and why isn't it a "backup"?
+    A: East-west/server workloads (replication, backup, service-to-service). They
+       never cross the edge, so the DCFW is the SOLE inspector — not a backup.
+
+Q4. T/F: "Because both boxes run full inspection and full inspection on any given flow
+    at two boxes is redundant, one should have it removed."
+    A: FALSE. It depends on direction/flow: the two boxes carry DIFFERENT flows
+       (outbound-client vs inbound-server), so it isn't the same-flow redundancy.
+
+Q5. Re-signed cert vs genuine server key — which is protect-client vs protect-server,
+    and which box does each at LoFinance?
+    A: Re-signed cert = protect-CLIENT = edge NGFW. Genuine server key = protect-SERVER
+       = DCFW.
+
+Q6. Trader's browser → external HTTPS site; you want to inspect. Box, direction, and
+    whose cert does the FGT present?
+    A: Edge NGFW, OUTBOUND, and the FGT presents its OWN re-signed certificate to the
+       user (from the FGT's CA the endpoints trust).
+
+Q7. Branch DEFW runs no UTM — why not a gap, and what change makes it one?
+    A: Not a gap because it backhauls to HQ, which inspects. It becomes a gap on LOCAL
+       INTERNET BREAKOUT — then re-size to 100–900 and enable UTM.
+
+Q8. T/F: "An ISFW is a segmentation device needing low latency, therefore it can NEVER
+    run NGFW-grade UTM under ANY circumstance."
+    A: FALSE. "Never…any" is the qualifier that breaks it — the ISFW CAN wear an NGFW
+       hat (VPN/SD-WAN/secure internet) or carry scoped IPS for lateral movement.
+
+Q9. A SPECIFIC flow justifying IPS on an ISFW at LoFinance?
+    A: User-VLAN → another VLAN in the same building carrying a known lateral-movement
+       exploit signature (the S24 compromised-endpoint → trading-API attack).
+
+Q10. One sentence to Penny (with Cipher and George present), money/risk first, no
+     technical noun in the first half.
+     A: "Inspecting everywhere would cost us money on every trade without catching a
+        single extra attack — so we guard only where the attacks actually travel."
+
+--------------------------------------------------------------------------------
+SELF-CHECK BEFORE THE FINALE
+--------------------------------------------------------------------------------
+[ ] I can recite the placement map (NGFW/DCFW/ISFW/DEFW) from memory.
+[ ] I decide client vs server inspection by WHOSE KEY, not by origin.
+[ ] I can say why east-west has "no first dip" → DCFW is sole guard.
+[ ] I know the DEFW UTM flip (breakout) and the re-size-first rule.
+[ ] I lead the Penny sentence with MONEY, not the mechanism.
+[ ] On any T/F: I state the verdict in words, THEN tick the box that matches. If they
+    disagree, the words win. (This is the finale's real test.)
+================================================================================
