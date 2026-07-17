@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCSS — Enterprise Firewall 7.6 | Mock Exam 05</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#b0322c; --red-light:#fbe4e2; --red-border:#eab0ab;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+code,pre{font-family:'JetBrains Mono',monospace;}
+
+header{padding:34px 48px 26px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+header h1{font-family:'Cormorant Garamond',serif;font-size:34px;color:#f5f0e0;font-weight:600;line-height:1.15;}
+header .sub{color:var(--ink-accent);font-size:13px;margin-top:6px;letter-spacing:0.04em;}
+
+.exam-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:2px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+.exam-bar .timer{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;}
+.exam-bar .timer.low{color:var(--red);background:var(--red-light);border-color:var(--red-border);animation:blink 1.2s infinite;}
+.exam-bar .progress-wrap{flex:1;min-width:180px;}
+.progress-track{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:var(--blue-vivid);border-radius:6px;transition:width .3s;}
+.exam-bar .meta{font-size:12px;color:var(--text-muted);letter-spacing:0.05em;}
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;padding:9px 20px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-light);color:var(--blue-deep);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--blue-vivid);color:#fff;}
+.btn.primary{background:var(--blue-vivid);color:#fff;border-color:var(--blue-deep);}
+.btn.primary:hover{background:var(--blue-deep);}
+.btn.ghost{background:transparent;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.layout{display:grid;grid-template-columns:1fr 220px;gap:28px;max-width:1180px;margin:0 auto;padding:32px 48px 90px;}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:24px 18px 90px;}.nav-panel{position:static !important;}}
+
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:22px;box-shadow:0 1px 3px rgba(13,26,58,0.05);}
+.q-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
+.q-num{font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;}
+.q-domain{font-size:10px;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;background:var(--border-dim);padding:3px 10px;border-radius:12px;}
+.flag-btn{font-size:11px;border:1px solid var(--border);background:none;border-radius:12px;padding:3px 12px;cursor:pointer;color:var(--text-muted);}
+.flag-btn.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);font-weight:600;}
+.q-text{font-size:16px;line-height:1.55;color:var(--text);margin-bottom:6px;font-weight:500;}
+.q-instr{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-bottom:14px;}
+.exhibit{background:var(--ink-dark);color:#dbe6f7;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.6;overflow-x:auto;margin:12px 0 16px;white-space:pre;}
+.exhibit .lbl{display:block;color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border-dim);border-radius:10px;padding:12px 16px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt:hover{border-color:var(--blue-border);background:var(--blue-light);}
+.opt input{margin-top:3px;accent-color:var(--blue-vivid);width:16px;height:16px;flex-shrink:0;}
+.opt .letter{font-weight:700;color:var(--blue-deep);font-size:13px;min-width:18px;margin-top:1px;}
+.opt .txt{font-size:14.5px;line-height:1.5;color:var(--text-soft);}
+.opt.selected{border-color:var(--blue-vivid);background:var(--blue-light);}
+.opt.correct-opt{border-color:var(--green-border);background:var(--green-light);}
+.opt.wrong-opt{border-color:var(--red-border);background:var(--red-light);}
+.opt.missed-opt{border-color:var(--green-border);background:#fff;outline:2px dashed var(--green-border);}
+
+.nav-panel{position:sticky;top:78px;align-self:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.nav-panel h3{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.nav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.nav-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--border-dim);border-radius:7px;cursor:pointer;background:#fff;color:var(--text-muted);}
+.nav-cell.answered{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue-deep);}
+.nav-cell.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+.nav-cell.rev-correct{background:var(--green-light);border-color:var(--green-border);color:var(--green);}
+.nav-cell.rev-wrong{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.legend{margin-top:14px;font-size:10.5px;color:var(--text-muted);line-height:1.9;}
+.legend span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border-dim);}
+
+/* results */
+#results{display:none;max-width:1180px;margin:0 auto;padding:36px 48px 40px;}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.score-head{padding:28px 34px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;border-bottom:1px solid var(--border-dim);}
+.verdict{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+.verdict.pass{color:var(--green);} .verdict.fail{color:var(--red);}
+.score-detail{font-size:13px;color:var(--text-muted);line-height:1.7;}
+.score-detail b{color:var(--text);}
+.big-pct{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;color:var(--blue-deep);margin-left:auto;}
+.section-perf{padding:24px 34px 30px;}
+.section-perf h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;}
+.section-perf .note{font-size:12px;color:var(--text-muted);margin-bottom:18px;}
+.perf-row{display:grid;grid-template-columns:250px 1fr 110px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border-dim);}
+.perf-row .name{font-size:13.5px;font-weight:500;color:var(--text-soft);}
+.perf-bar{height:14px;background:var(--border-dim);border-radius:8px;overflow:hidden;position:relative;}
+.perf-fill{height:100%;border-radius:8px;transition:width .8s ease;}
+.perf-score{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted);text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:16px;line-height:1.6;}
+.explain{margin-top:14px;border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;line-height:1.65;color:var(--text-soft);}
+.explain .verdict-line{font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+.explain.ok .verdict-line{color:var(--green);} .explain.bad .verdict-line{color:var(--red);}
+.explain code{background:rgba(13,26,58,0.08);padding:1px 6px;border-radius:4px;font-size:12px;}
+footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted);letter-spacing:0.05em;}
+
+/* intro modal */
+#intro{max-width:760px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 42px;box-shadow:0 3px 12px rgba(13,26,58,0.08);}
+#intro h2{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;}
+#intro p,#intro li{font-size:14.5px;line-height:1.7;color:var(--text-soft);}
+#intro ul{margin:12px 0 20px 20px;}
+.rule-table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;}
+.rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
+.rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
+#examArea,#barWrap{display:none;}
+
+/* socratic session */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> LoFinance Certification Lab</div>
+  <h1>FCSS — FortiOS 7.6 Enterprise Firewall Administrator</h1>
+  <div class="sub">Mock Exam 05 &nbsp;·&nbsp; 40 questions &nbsp;·&nbsp; 70 minutes &nbsp;·&nbsp; Weighted to the official exam blueprint</div>
+</header>
+
+<div id="intro">
+  <h2>Before you begin</h2>
+  <p>This mock exam mirrors the format of the official Fortinet FCSS Enterprise Firewall 7.6 Administrator exam delivered at Pearson VUE: scenario-based questions, CLI exhibits, and multiple-select items. Answers are withheld until you submit the entire exam, exactly like the real thing.</p>
+  <table class="rule-table">
+    <tr><td>Questions</td><td>40 multiple-choice (some require two selections — read the instruction line)</td></tr>
+    <tr><td>Time allowed</td><td>70 minutes with a live countdown; the exam auto-submits at 0:00</td></tr>
+    <tr><td>Scoring</td><td>Pass / fail with per-section performance, in the style of the official Fortinet score report</td></tr>
+    <tr><td>Marking</td><td>Multi-select questions are scored all-or-nothing — both correct options must be chosen</td></tr>
+    <tr><td>Navigation</td><td>Flag questions for review and jump around using the question grid</td></tr>
+  </table>
+  <p><b>Section weighting</b> (proportional to the official blueprint's coverage):</p>
+  <ul>
+    <li>1.0 System Configuration — 13 questions</li>
+    <li>2.0 Central Management — 6 questions</li>
+    <li>3.0 Security Profiles — 7 questions</li>
+    <li>4.0 Routing — 8 questions</li>
+    <li>5.0 VPN — 6 questions</li>
+  </ul>
+  <button class="btn primary" style="font-size:15px;padding:12px 30px;" onclick="startExam()">Begin Exam →</button>
+</div>
+
+<div class="exam-bar" id="barWrap">
+  <div class="timer" id="timer">70:00</div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+  </div>
+  <div class="meta" id="progMeta">0 / 40 answered</div>
+  <button class="btn primary" onclick="confirmSubmit()">Submit Exam</button>
+</div>
+
+<div class="layout" id="examArea">
+  <div id="questions"></div>
+  <div class="nav-panel">
+    <h3>Questions</h3>
+    <div class="nav-grid" id="navGrid"></div>
+    <div class="legend" id="legendBox">
+      <div><span style="background:var(--blue-light);border-color:var(--blue-border)"></span>Answered</div>
+      <div><span style="background:var(--amber-light);border-color:var(--amber-border)"></span>Flagged</div>
+      <div><span style="background:#fff"></span>Unanswered</div>
+    </div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<footer>LoFinance Study Programme · Mock Exam 05 · Based on the Enterprise Firewall 7.6 Administrator Study Guide (FortiOS 7.6, FortiManager 7.6) · Not an official Fortinet product</footer>
+
+<script>
+
+const DOMAINS = {
+  SC:"1.0 System Configuration", CM:"2.0 Central Management",
+  SP:"3.0 Security Profiles", RT:"4.0 Routing", VPN:"5.0 VPN"
+};
+
+const Q = [
+/* ---------------- 1.0 SYSTEM CONFIGURATION (13) ---------------- */
+{d:"SC",type:"multi",
+q:"Which two statements about the scale and compatibility of an FGSP deployment are true? (Choose two.)",
+o:["An FGSP deployment can include from 2 up to 16 standalone FortiGate devices","FGSP is compatible with FortiGate VRRP","FGSP peers must always be deployed in pairs of exactly two devices","FGSP cannot coexist with any other redundancy mechanism"],
+a:[0,1],
+ex:"FGSP scales well beyond a pair: 2 to 16 standalone FortiGates — or even 2 to 16 two-member FGCP clusters — can synchronize sessions, though each added peer increases the CPU, memory, and network cost of keeping everyone synchronized. It also composes with VRRP, letting you combine interoperable gateway failover with session survival. Remembering that FGSP is a peer mesh, not a two-node cluster, defuses several distractor patterns."},
+
+{d:"SC",type:"single",
+q:"With default settings, which session types does FGSP synchronize between peers?",
+o:["IPv4 and IPv6 TCP sessions, and IPsec tunnels","All session types, including UDP, ICMP, and NAT sessions","Only sessions inspected by security profiles","Only IPv4 TCP sessions; IPv6 requires a license"],
+a:[0],
+ex:"Out of the box, FGSP synchronizes IPv4 and IPv6 TCP sessions plus IPsec tunnels. Connectionless and special traffic — UDP, ICMP, SCTP, expectation sessions, and NAT sessions — can also be synchronized, but each requires explicit configuration. The pattern mirrors FGCP's session-pickup logic: stateful TCP is the default concern, and everything else is opt-in because synchronization has a real resource cost."},
+
+{d:"SC",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-A configuration</span>config system ha\n    set group-id 1\n    set group-name \"Cluster1\"\n    set mode standalone\n    set password fortinet1\n    set hbdev \"port2\" 50 \"port3\" 50\n    set standalone-config-sync enable\n    set override disable\n    set priority 200\nend</div>What does this configuration achieve?",
+o:["It synchronizes the configuration between two standalone (FGSP) FortiGates, without forming an FGCP cluster","It creates a standard FGCP active-passive cluster","It disables all HA functions on the FortiGate","It enables session synchronization but blocks configuration synchronization"],
+a:[0],
+ex:"The giveaway is set mode standalone combined with standalone-config-sync enable: these are FGSP peers that additionally keep their configurations aligned, so policies and objects match across the pair without FGCP's single-logical-device model. Config sync between FGSP peers is optional and disabled by default — the priority here determines which peer is the config source. An FGCP cluster would instead show mode a-p or a-a."},
+
+{d:"SC",type:"multi",
+q:"Which two statements about the Ethernet types used by FGCP cluster communication are true? (Choose two.)",
+o:["Heartbeat packets use Ethernet types 0x8890 and 0x8891, and can be captured with a sniffer filter such as \"ether proto 0x8890\"","Configuration synchronization uses Ethernet type 0x8893","All HA communication uses standard IP unicast on TCP port 703","Heartbeat frames are ordinary ICMP packets sent every second"],
+a:[0,1],
+ex:"FGCP communication is split by Ethernet type: 0x8890 and 0x8891 carry the heartbeats — used to discover members, elect the primary, detect failures, and redistribute traffic — while 0x8893 carries configuration synchronization. Because none of this is IP traffic, capturing it requires an Ethernet-level filter, for example diagnose sniff packet any \"ether proto 0x8890\" 4 on a NAT/route-mode cluster. Knowing the types turns HA troubleshooting captures from guesswork into a one-liner."},
+
+{d:"SC",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — Virtual cluster configuration</span>config system ha\n    set mode a-p\n    set vcluster-status enable\n    config vcluster\n        edit 1\n            set priority 200\n            set vdom \"root\" \"VDOM1\"\n        next\n        edit 2\n            set priority 100\n            set vdom \"VDOM2\"\n        next\n    end\nend</div>In a VDOM partitioning setup, what does the <code>set priority</code> value inside each vcluster entry control?",
+o:["Which cluster device becomes the primary for the VDOMs in that virtual cluster — the device with the highest priority wins","The bandwidth percentage allocated to each VDOM","The order in which VDOMs boot","The administrative access level for each VDOM"],
+a:[0],
+ex:"VDOM partitioning assigns VDOMs to virtual clusters, and each device carries a priority per vcluster: the device with the highest priority for a vcluster becomes the primary for those VDOMs. Configure device A higher for vcluster 1 and device B higher for vcluster 2, and each unit actively processes traffic for its VDOMs — active-passive redundancy with both boxes working. During a failover, the surviving device simply takes all VDOMs."},
+
+{d:"SC",type:"single",
+q:"An administrator wants to use virtual clustering to distribute VDOM traffic across both cluster members. Which HA mode must be configured?",
+o:["Active-passive","Active-active","Standalone","Transparent"],
+a:[0],
+ex:"Virtual clustering with VDOM partitioning is built on active-passive mode: each virtual cluster is its own A-P failover pair, and the load distribution comes from giving different VDOMs different primaries — not from A-A session balancing. This is exactly the study guide's alternative to active-active when you want both devices busy: A-P for predictable per-VDOM failover, partitioned so the hardware isn't idle."},
+
+{d:"SC",type:"single",
+q:"In the FortiGate life of a packet, what is the role of session helpers?",
+o:["They inspect control-channel protocols such as FTP or SIP and open the additional pinhole sessions those protocols negotiate dynamically","They accelerate session setup on the NP7","They synchronize sessions between HA members","They keep idle TCP sessions alive by sending keepalives"],
+a:[0],
+ex:"Session helpers sit in the kernel stage of the packet flow, right after policy lookup and session management. Protocols like FTP, SIP, and PPTP negotiate secondary connections on dynamic ports inside their control channel; the helper parses that dialogue and opens the expected pinholes so the data channel isn't dropped by stateful inspection. Without the helper (or its ALG equivalent), passive FTP through NAT is the classic casualty."},
+
+{d:"SC",type:"multi",
+q:"Client-1 traffic passes through an ISFW, then an NGFW, on its way to the Internet — both are Security Fabric members logging to FortiAnalyzer. Which two statements describe how logging works in this Fabric? (Choose two.)",
+o:["The session's traffic log is created by the first FortiGate that handled it — the ISFW in this case","Upstream FortiGate devices still log UTM events for the session, if configured","Every FortiGate in the path creates its own duplicate traffic log for the session","Downstream devices stop logging entirely once they join the Fabric"],
+a:[0,1],
+ex:"The Fabric prevents duplicate traffic logs with a simple ownership rule: a session's traffic is logged by the first FortiGate that handled it. Fabric members know the MAC addresses of their upstream and downstream peers, so when a packet arrives from a known peer's MAC, the device knows another member already owns the traffic log. Upstream devices still contribute UTM logs (web filter on the NGFW, IPS on a DCFW), and FortiAnalyzer correlates the traffic and UTM logs into one accurate picture of the session."},
+
+{d:"SC",type:"single",
+q:"LoFinance deploys FortiNAC to control network access. How does FortiNAC integrate with FortiGate so that firewall policies can act on FortiNAC's device classifications?",
+o:["FortiNAC is authorized on the root FortiGate as a Fabric connector and passes device IP addresses, FortiNAC group names, and firewall tags, which FortiGate uses in dynamic firewall addresses","FortiNAC replaces the FortiGate policy table with its own ACLs","FortiGate polls FortiNAC via SNMP every five minutes for a static host list","FortiNAC injects routes into FortiGate via BGP"],
+a:[0],
+ex:"The FortiNAC use case follows the standard Fabric connector pattern: telemetry and the root FortiGate's address are configured on FortiNAC, FortiNAC is authorized on the root FortiGate, and it then feeds device IPs, group names, and firewall tags into the Fabric. Those become dynamic firewall address objects, so policies written once automatically follow endpoints as FortiNAC classifies or re-classifies them — the same follow-the-object model as cloud SDN connectors, applied to the campus."},
+
+{d:"SC",type:"single",
+q:"In a Security Fabric where several FortiGates log different aspects of the same session, what is FortiAnalyzer's role?",
+o:["It correlates the traffic and UTM logs from the different devices so session details, reporting, and Fabric automation reflect the session accurately","It deletes all logs except those from the root FortiGate","It converts UTM logs into traffic logs","It rate-limits log transmission from downstream devices"],
+a:[0],
+ex:"One session can generate a traffic log on the first FortiGate, web-filter UTM logs on an upstream NGFW, and IPS logs on a DCFW. FortiAnalyzer's correlation stitches these into a single coherent view of the session — which is what makes accurate reporting possible and, critically, what allows Security Fabric automation (like compromised-host quarantine) to trigger on complete information rather than fragments. This correlation role is also why FortiAnalyzer is a prerequisite for the Fabric."},
+
+{d:"SC",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — FGSP peer configuration</span>config system standalone-cluster\n    set standalone-group-id 1\n    set group-member-id 1\n    set layer2-connection available\n    set session-sync-dev port1\nend</div>Two FortiGates with this style of configuration handle asymmetric traffic at layer 2. How is security inspection maintained when packets for one session arrive at different peers?",
+o:["All packets for a session are passed back to the device that processed the first packet, which requires layer 2 access between the peers and interfaces in the same subnets","Each peer inspects whichever packets it receives independently","Inspection is disabled for asymmetric sessions","The session is reset and forced to re-establish through one peer"],
+a:[0],
+ex:"In the FGSP layer-2 asymmetric use case, full security inspection is preserved by ensuring one device owns each session: packets that land on the wrong peer are handed back across the layer-2 connection to the device that processed the first packet. That is why the design requires the peers to have layer-2 adjacency and their internal/outgoing interfaces in the same subnets, and why layer2-connection available appears in the standalone-cluster configuration."},
+
+{d:"SC",type:"single",
+q:"Two FGSP data centres synchronize sessions across an untrusted WAN link. How can the session synchronization traffic itself be protected?",
+o:["Enable encryption with a pre-shared key under config system standalone-cluster; FortiGate automatically creates the IPsec tunnel and policies for the sync traffic","Session sync traffic cannot be encrypted and requires a private line","Manually build a GRE tunnel and policy-route the sync traffic into it","Enable HTTPS on the session-sync interface"],
+a:[0],
+ex:"FGSP has this built in: set encryption enable with a psksecret under config system standalone-cluster, and FortiGate automatically creates the IPsec VPN and the firewall policies needed to carry session synchronization inside the tunnel — no manual VPN plumbing. It exists precisely for the inter-data-centre case, where sync data (which describes live sessions) would otherwise cross intermediate networks in the clear."},
+
+{d:"SC",type:"single",
+q:"In Fortinet's enterprise reference architecture, which FortiGate series is positioned for branch and remote-site protection as a distributed edge firewall (DEFW), with throughput up to around 1 Gbps?",
+o:["The FortiGate 30–90 series","The FortiGate 4400F series","FortiGate VM on a hyperscaler","The FortiGate 7000 chassis series"],
+a:[0],
+ex:"The architecture lesson maps platform tiers to roles: the compact FortiGate 30–90 series serves branches as DEFWs (up to roughly 1 Gbps, often with integrated wireless), while the large appliances and chassis systems take the DCFW and campus-core roles. Platform-to-role questions reward remembering the tier boundaries rather than exact datasheet numbers — 'branch' plus 'distributed edge' points at the small series."},
+
+/* ---------------- 2.0 CENTRAL MANAGEMENT (6) ---------------- */
+{d:"CM",type:"single",
+q:"On FortiManager, what distinguishes <b>Auto-Retrieve</b> from a manual Retrieve?",
+o:["Auto-Retrieve is triggered automatically when FortiManager learns of configuration changes on the device, capturing them into the device database without administrator action","Auto-Retrieve pulls configuration from all devices in the ADOM at once","Auto-Retrieve also reinstalls the policy package after retrieving","Auto-Retrieve works only over the ADOM's Global layer"],
+a:[0],
+ex:"Both operations capture the FortiGate's current configuration as a new device-database revision; the difference is the trigger. A manual Retrieve is an administrator action, while Auto-Retrieve fires when FortiManager becomes aware of changes on the managed device, keeping the device layer current without waiting for a human. Neither touches the policy package — retrieval is strictly device-layer, which is why locally made policy changes still need importing to reach the policy layer."},
+
+{d:"CM",type:"single",
+q:"An administrator changed one DNS setting in a managed FortiGate's device database and wants to push just that pending device-database change quickly. Which FortiManager operation is designed for this?",
+o:["Quick Install (device DB)","Install Policy Package & Device Settings","Retrieve","Import Configuration"],
+a:[0],
+ex:"Quick Install (device DB) deploys pending device-database changes directly to the FortiGate — the lightweight path for small device-layer edits, skipping the full installation workflow. It sits alongside Install Device Settings (only) in the device-layer toolset; both avoid touching the policy package. Retrieve and Import flow the other way entirely, from the device into FortiManager."},
+
+{d:"CM",type:"single",
+q:"Where does an administrator adjust Feature Visibility (which features appear in the GUI) for a specific managed FortiGate on FortiManager?",
+o:["In the device layer, under Device Manager for that managed FortiGate","In the policy package's advanced settings","In the Global ADOM header policy","It can only be changed by logging in to the FortiGate directly"],
+a:[0],
+ex:"Feature Visibility is a device-scope setting, so on FortiManager it lives in the device layer — under Device Manager for the managed FortiGate, alongside the other per-device configuration areas such as CLI Configurations and the revision dashboard. Recognizing which layer owns a setting (device layer for device behaviour, policy layer for rules and shared objects) is the recurring skill behind FortiManager navigation questions."},
+
+{d:"CM",type:"single",
+q:"An administrator needs to compare what changed on a managed FortiGate between last week's configuration and today's. Which FortiManager feature supports this?",
+o:["The device's revision history, where each retrieved or installed configuration is stored as a revision that can be viewed and compared","The policy consistency checker","The FGFM tunnel keepalive log","Feature Visibility settings"],
+a:[0],
+ex:"Every FortiGate added to FortiManager has its own device database with a revision history: each retrieve and installation records a revision, and revisions can be examined and compared to see exactly what changed and when. This is the audit trail for device-layer configuration — invaluable after 'nothing changed, but...' incidents — and it is accessed from the device's dashboard under Configuration and Installation."},
+
+{d:"CM",type:"single",
+q:"Although FortiManager technically allows firewall policies to be configured in the device layer, why does Fortinet recommend against it?",
+o:["Policy management belongs in the policy layer's packages and shared objects; the device layer should be restricted to device settings such as network, VPN, system, and logging","Device-layer policies consume double the licenses","Device-layer policies cannot use address objects","Policies in the device layer are read-only"],
+a:[0],
+ex:"The recommendation preserves the architecture's clean split: policy packages and shared objects in the policy layer give you reuse, consistency checks, and multi-device installs, while the device layer stays focused on per-device settings (network, VPN, system, log). Configuring policies per-device in the device layer forfeits central policy management — at that point FortiManager is just a remote CLI. The exam rewards knowing not just where things can go, but where they should."},
+
+{d:"CM",type:"single",
+q:"A managed FortiGate was added to FortiManager with 'Automatically Link to Real Device' disabled. What is the operational consequence?",
+o:["Configuration changes must be pushed manually once the FGFM tunnel to the device is active","The device can never be managed and must be re-added","The FortiGate automatically pulls its configuration on a schedule","Policy packages install to the device database only, permanently"],
+a:[0],
+ex:"With automatic linking disabled, FortiManager stages configuration but does not push it on its own — the administrator must perform the installation manually once the FGFM management tunnel is up. This is a deliberate control point for environments where model devices are prepared before hardware is online, or where changes must wait for approved windows. The device remains fully manageable; only the automatic push is withheld."},
+
+/* ---------------- 3.0 SECURITY PROFILES (7) ---------------- */
+{d:"SP",type:"multi",
+q:"Which two statements about SSL/TLS protocol versions are true? (Choose two.)",
+o:["TLS 1.3, published in 2018 as RFC 8446, is the most current version","SSL 3.0, TLS 1.0, and TLS 1.1 have all been deprecated","TLS 1.2 was deprecated in 2020 and must not be used","SSL 2.0 is still supported for legacy administrative access"],
+a:[0,1],
+ex:"The version timeline matters both for the exam and for hardening: TLS 1.3 (RFC 8446, 2018) is current, TLS 1.2 remains supported, and everything older — SSL 2.0/3.0, TLS 1.0/1.1 — is deprecated. On FortiGate this shows up in settings such as admin-https-ssl-versions, where administrative HTTPS can be restricted to tlsv1-2 and tlsv1-3. Distractor C flips the status of TLS 1.2, which is deprecated nowhere and still ubiquitous."},
+
+{d:"SP",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — Negotiated cipher suite</span>TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256</div>In this TLS 1.2 cipher suite, which component identifies the key exchange algorithm?",
+o:["ECDHE","RSA","AES_128_GCM","SHA256"],
+a:[0],
+ex:"A TLS 1.2 cipher suite reads left to right: protocol (TLS), key exchange (ECDHE — ephemeral elliptic-curve Diffie-Hellman), authentication (RSA), bulk encryption (AES_128_GCM), and hash (SHA256). Being able to decompose a suite is practical for SSL inspection troubleshooting — for instance, recognizing that ECDHE provides forward secrecy while the RSA part only signs the handshake. The exam version of this is exactly the exhibit shown: name the role of one component."},
+
+{d:"SP",type:"single",
+q:"Which statement correctly describes HTTP/3 compared to HTTP/2?",
+o:["HTTP/3 runs over UDP with TLS 1.3 integrated by default, achieving faster connection setup than HTTP/2 over TCP","HTTP/3 removed encryption to improve performance","HTTP/3 uses TCP with mandatory TLS 1.0","HTTP/3 is identical to HTTP/2 except for larger headers"],
+a:[0],
+ex:"The protocol stack shifted: HTTP/2 rides TCP with TLS 1.2 or 1.3 layered on top, while HTTP/3 moves to UDP transport with TLS 1.3 integrated by default — collapsing the separate TCP and TLS handshakes into a faster combined setup. For a firewall engineer this matters because HTTP/3 traffic looks like UDP/443, not TCP/443, which affects how policies and inspection profiles see modern web traffic."},
+
+{d:"SP",type:"single",
+q:"An administrator suspects the application control and ISDB databases on a FortiGate are outdated. Which command shows the installed version and last update result for both?",
+o:["diagnose autoupdate versions","get system status","diagnose sys top","execute update-now --check"],
+a:[0],
+ex:"diagnose autoupdate versions lists every FortiGuard-delivered database with its version, contract expiry, last update attempt, and result — application control appears under Application Definitions and ISDB under Internet-service Full Database. It is the first command to run when application-based features misbehave, since stale definitions are a common root cause. The guide stresses that FortiGuard updates must be current for these features to work correctly."},
+
+{d:"SP",type:"single",
+q:"LoFinance wants SD-WAN rules that steer traffic based on the application (for example, routing Microsoft 365 out a specific link). What must be enabled before application control can be used inside SD-WAN rules?",
+o:["The Application Detection-Based SD-WAN feature under System > Feature Visibility","Deep SSL inspection on every policy","A dedicated ISDB license","Proxy-based inspection mode on the FortiGate"],
+a:[0],
+ex:"Application-based steering is gated behind a feature toggle: Application Detection-Based SD-WAN under System > Feature Visibility. Once enabled, SD-WAN rules can match applications — with the usual caveat that FortiGuard application definitions must be up to date, or detection (and therefore steering) misbehaves. ISDB-based rules, by contrast, work from the downloaded IP/port database and need no such toggle."},
+
+{d:"SP",type:"single",
+q:"Which security feature performs an on-demand query to FortiGuard (or a local FortiGuard server) for each new lookup, rather than relying on a database downloaded to the FortiGate?",
+o:["FortiGuard category-based web filtering","ISDB matching in firewall policies","Application control signature matching","IPS signature matching"],
+a:[0],
+ex:"The FortiGuard dependency works differently per feature: web filtering rates URLs by querying FDS (FortiGuard or a local distribution server such as FortiManager) on demand, caching the verdicts locally — while ISDB, application control, and IPS all match against databases downloaded to the FortiGate via scheduled updates. This distinction explains their different failure modes: lose FortiGuard connectivity and web rating breaks quickly, while the downloaded databases just gradually go stale."},
+
+{d:"SP",type:"single",
+q:"When comparing where features are configured on FortiGate, which statement is true?",
+o:["Web filter and application control are security profiles applied to policies, while ISDB entries are objects selected directly in the policy's destination field","All three are configured as security profiles","ISDB is a security profile; web filter is a firewall object","Application control is configured per interface rather than per policy"],
+a:[0],
+ex:"Web filter and application control are inspection features — security profiles attached to a firewall policy. ISDB is not an inspection feature at all: Internet Service entries live with firewall addresses as policy objects and are chosen as the destination (replacing address and service). This placement difference is also functional — ISDB decides whether traffic matches a policy, while the profiles decide what inspection happens to traffic that already matched."},
+
+/* ---------------- 4.0 ROUTING (8) ---------------- */
+{d:"RT",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — R2</span>R2 # config router ospf\n    set rfc1583-compatible enable\nend\n\nR2 # get router info routing-table all\n...\nO E2 10.2.0.0/24 [110/10] via 10.1.1.100, port4, 00:00:21, [1/0]\n                 [110/10] via 10.1.0.1, port3, 00:00:21, [1/0]\n...</div>What has this configuration enabled on R2?",
+o:["OSPF ECMP for external routes — both equal-cost paths to the external prefix are installed in the routing table","OSPF authentication compatibility with legacy routers","Automatic summarization of external routes","Conversion of E2 routes to E1"],
+a:[0],
+ex:"The exhibit shows one external (E2) prefix installed with two next hops — equal-cost multipath. For external OSPF routes, enabling rfc1583-compatible allows FortiGate to install multiple same-cost external paths in the routing database, load-sharing across them. The routing table itself is the evidence: same prefix, same [110/10] cost, two via lines. Without ECMP, only the single best path would appear."},
+
+{d:"RT",type:"single",
+q:"Which statement about the OSPF cost metric is true?",
+o:["Cost is a 16-bit value from 1 to 65,535, and a route's total cost is the sum of the costs of all interfaces along the path to the destination","Cost is measured in hops, with a maximum of 15","Cost is only compared for routes within the same area","Lower bandwidth interfaces automatically get lower costs"],
+a:[0],
+ex:"OSPF's metric is cost: a 16-bit positive value (1–65,535) per interface, with a path's metric being the sum of interface costs along the way and the lowest total winning. Hop counting is RIP's world, and the bandwidth relationship runs the other way — higher bandwidth yields lower cost via the reference-bandwidth formula. The 'sum along the path' behaviour is what makes a single mis-costed transit link poison end-to-end path selection."},
+
+{d:"RT",type:"single",
+q:"An administrator wants a summary view of a FortiGate's complete OSPF link-state database, organized by LSA type. Which command provides this?",
+o:["get router info ospf database brief","get router info ospf neighbor","get router info routing-table ospf","diagnose ip router ospf status"],
+a:[0],
+ex:"The OSPF command set maps cleanly to questions: get router info ospf status for the process overview, get router info ospf database brief for the complete LSDB ordered by LSA type, get router info ospf database router lsa for Type 1 detail, and get router info bfd neighbor for BFD state. The neighbor and routing-table commands show adjacencies and installed routes respectively — related, but neither displays the database itself."},
+
+{d:"RT",type:"multi",
+q:"Which two conditions must be met for two OSPF routers to become adjacent? (Choose two.)",
+o:["Each router must have a unique router ID","The hello and dead intervals must match between the peers","Both routers must have the same OSPF priority value","Both routers must use interfaces of the same bandwidth"],
+a:[0,1],
+ex:"The adjacency checklist from the routing supplement: peer addresses in the same subnet with the same mask, interfaces of the same type and in the same area, matching hello and dead intervals, unique router IDs, matching OSPF MTUs, and successful authentication if enabled. Priority and bandwidth are absent from the list on purpose — priority only shapes DR/BDR election, and bandwidth only shapes cost. Duplicate router IDs are a subtle one: the routers may see each other but the LSDB becomes inconsistent."},
+
+{d:"RT",type:"single",
+q:"An administrator must filter incoming BGP routes AND modify their attributes (for example, setting local preference on selected prefixes). Which filtering tool is required?",
+o:["A route map, which can match on access or prefix lists and modify BGP attributes","An access list alone","A prefix list alone","The distribute-list-in parameter"],
+a:[0],
+ex:"The three BGP filtering tools form a capability ladder: access lists match simply on prefixes, prefix lists add ge/le granularity, and route maps sit on top — they can use access and prefix lists as match objects and, uniquely, modify BGP attributes such as local preference, MED, or communities. Any requirement containing the word 'modify' or 'set' eliminates the pure filters immediately; only a route map can change what it matches."},
+
+{d:"RT",type:"single",
+q:"On a FortiGate BGP neighbour, where are the <code>route-map-in</code> and <code>route-map-out</code> parameters applied?",
+o:["route-map-in processes routes received from that neighbour; route-map-out processes routes advertised to that neighbour","Both apply only to routes redistributed from other protocols","route-map-in applies to IBGP peers and route-map-out to EBGP peers","They apply globally to all neighbours at once"],
+a:[0],
+ex:"The naming is directional from the FortiGate's perspective: route-map-in filters and manipulates what you accept from a neighbour (injecting into your BGP table), route-map-out shapes what you advertise to that neighbour. They are configured per neighbour, which is what enables different policies per peer — accept everything from the primary ISP, prepend on advertisements to the backup. Redistribution from other protocols is a separate route-map attachment point under config redistribute."},
+
+{d:"RT",type:"single",
+q:"BFD has been enabled on the OSPF routers between two data centres. Which command verifies the BFD negotiation status with the peers?",
+o:["get router info bfd neighbor","get router info ospf neighbor","diagnose sys session list","get system ha status"],
+a:[0],
+ex:"BFD state is its own table, separate from the routing protocol it protects: get router info bfd neighbor shows the negotiation status with each BFD peer. The OSPF neighbour command confirms the adjacency exists but says nothing about whether BFD is actually up and guarding it — a gap that has caught many engineers who assumed sub-second detection was active when BFD had never negotiated. Verify the protection layer, not just the protocol."},
+
+{d:"RT",type:"single",
+q:"During the kernel stage of packet processing, FortiGate performs a reverse path forwarding (RPF) check together with the routing lookup. What is the purpose of the RPF check?",
+o:["To verify the packet's source address is reachable through the interface it arrived on, protecting against spoofed source addresses","To confirm the destination has a valid MAC address","To pre-compute the return route for the reply traffic","To verify the packet's TTL is greater than 1"],
+a:[0],
+ex:"RPF is anti-spoofing at the routing layer: for the first packet of a session, FortiGate checks that a route back to the source exists via the arrival interface — if the source would never legitimately appear there, the packet is dropped. It runs in the kernel alongside routing and SD-WAN evaluation. RPF is also the classic troubleshooting suspect in asymmetric routing designs, where legitimate traffic arrives on an interface the routing table doesn't associate with its source."},
+
+/* ---------------- 5.0 VPN (6) ---------------- */
+{d:"VPN",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — IPsec diagnostics</span>FGT # diagnose vpn tunnel list name ToDC\n...\nnpu_flag=03\n...</div>What does <code>npu_flag=03</code> indicate about this IPsec tunnel?",
+o:["Both the inbound and outbound SAs have been copied to the NPU — traffic in both directions is hardware offloaded","The tunnel is down in both directions","Offloading is unsupported for this tunnel's algorithms","Only the outbound SA is offloaded"],
+a:[0],
+ex:"The npu_flag field tracks SA offload state: 00 means no SA copied (no traffic yet, or offload disabled), 01 means the outbound SA is copied, 02 the inbound SA, 03 both — full bidirectional hardware offload — and 20 means offloading is unsupported for the configuration. Which SA copies first simply depends on the direction of the first offloadable packet. This field is the definitive answer to 'is my VPN actually using the NP?'"},
+
+{d:"VPN",type:"single",
+q:"IPsec traffic on one specific tunnel must be excluded from hardware acceleration for troubleshooting, without affecting other tunnels. How is this done?",
+o:["Set npu-offload disable in that tunnel's phase 1 interface configuration","Disable auto-asic-offload globally under system settings","Remove the CP9 from the chassis","Change the tunnel to IKEv1"],
+a:[0],
+ex:"IPsec encryption/decryption offload is controlled per tunnel: config vpn ipsec phase1-interface → set npu-offload disable. It defaults to enabled for supported algorithms, and per-tunnel control is exactly what makes it useful for troubleshooting — you can take one tunnel off the NPU to rule hardware offload in or out while production tunnels stay accelerated. After disabling it, the tunnel's npu_flag will remain 00."},
+
+{d:"VPN",type:"single",
+q:"What is the effect of enabling perfect forward secrecy (PFS) on an IPsec phase 2?",
+o:["Each rekey performs a new Diffie-Hellman exchange, generating fresh independent keys so compromise of one key does not expose past or future sessions","The phase 2 keys are derived faster, improving performance","Phase 2 negotiates without any encryption keys","PFS disables rekeying entirely"],
+a:[0],
+ex:"PFS means every phase 2 negotiation runs its own Diffie-Hellman exchange with the configured DH group, producing keys that are cryptographically independent of the phase 1 keys and of previous sessions — so a compromised key unlocks only its own window of traffic. Disabling PFS uses a simpler, cheaper key derivation at the cost of exactly that independence. The trade-off is computational overhead versus security level, and for a financial enterprise the answer is usually PFS on."},
+
+{d:"VPN",type:"multi",
+q:"Which two statements about IKE security are true? (Choose two.)",
+o:["In IKEv1 aggressive mode, peer IDs are sent unencrypted, exposing them to eavesdroppers","IKEv1 main mode and IKEv2 both protect peer identities with encryption","IKEv2 aggressive mode encrypts peer IDs using the session key","Peer IDs are never transmitted in any IKE version"],
+a:[0,1],
+ex:"This is the security reason aggressive mode earned its reputation: it trades protection for speed by sending the peer ID before encryption is established, exposing identities (and enabling offline attacks on PSKs). Main mode and IKEv2 complete the key exchange first, so identities travel encrypted. Option C is a trap — IKEv2 has no aggressive mode at all, which is itself one of its advantages and a recurring distractor pattern."},
+
+{d:"VPN",type:"single",
+q:"In which environment does the study guide consider DPD mode <b>disable</b> an appropriate choice?",
+o:["Highly stable environments where the overhead of dead peer detection is unwarranted","Networks with frequent link flaps needing instant failover","Dial-up VPNs with roaming clients","Any tunnel carrying real-time voice traffic"],
+a:[0],
+ex:"The three DPD modes map to environment profiles: on-demand for unpredictable traffic where immediate failure response matters, on-idle for regular traffic patterns balancing assurance against overhead, and disable for highly stable environments where the detection overhead buys nothing. Flapping links and roaming clients are the opposite of stable — they are exactly where DPD earns its keep — making them the natural distractors."},
+
+{d:"VPN",type:"single",
+q:"A site-to-site IPsec tunnel completes phase 1 successfully, but phase 2 repeatedly fails to negotiate. Both sides use policy-based-style specific selectors. What is the most likely cause?",
+o:["The phase 2 selectors do not match — the source/destination networks configured on each peer are not mirror images of each other","The pre-shared key is wrong","NAT-T is enabled on only one side","The IKE version differs between the peers"],
+a:[0],
+ex:"The symptom pattern localizes the fault: a wrong PSK or IKE-version mismatch would break phase 1, which succeeded. Phase 2 negotiates the traffic selectors, and when specific selectors are used they must mirror between peers — one side's source is the other side's destination. Non-matching selectors are the canonical phase-2 failure, visible in the IKE debug as proposal/TS mismatches. (This is also why route-based designs with 0.0.0.0/0 selectors sidestep the whole class of problem.)"}
+];
+
+/* ---------------- ENGINE ---------------- */
+const state = { answers: Q.map(()=>new Set()), flags: Q.map(()=>false), submitted:false, timeLeft:70*60, timerId:null };
+const LETTERS = ["A","B","C","D","E"];
+
+function startExam(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('barWrap').style.display='flex';
+  document.getElementById('examArea').style.display='grid';
+  renderQuestions(); renderNav();
+  state.timerId = setInterval(tick,1000);
+  window.scrollTo(0,0);
+}
+function tick(){
+  state.timeLeft--;
+  const t=document.getElementById('timer');
+  const m=Math.floor(state.timeLeft/60), s=state.timeLeft%60;
+  t.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  if(state.timeLeft<=300) t.classList.add('low');
+  if(state.timeLeft<=0){ clearInterval(state.timerId); alert('Time is up — the exam will now be submitted.'); submitExam(); }
+}
+function renderQuestions(){
+  const wrap=document.getElementById('questions'); wrap.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const card=document.createElement('div'); card.className='q-card'; card.id='q'+i;
+    const inputType = qu.type==='multi'?'checkbox':'radio';
+    const instr = qu.type==='multi'?'(Choose two.)':'(Choose one.)';
+    let opts='';
+    qu.o.forEach((opt,j)=>{
+      opts+=`<label class="opt" id="opt-${i}-${j}">
+        <input type="${inputType}" name="q${i}" onchange="pick(${i},${j},this)">
+        <span class="letter">${LETTERS[j]}.</span><span class="txt">${opt}</span></label>`;
+    });
+    card.innerHTML=`
+      <div class="q-top">
+        <div><div class="q-num">Question ${i+1} of ${Q.length}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="q-domain">${DOMAINS[qu.d]}</span>
+          <button class="flag-btn" id="flag-${i}" onclick="toggleFlag(${i})">⚑ Flag</button>
+        </div>
+      </div>
+      <div class="q-text">${qu.q}</div>
+      <div class="q-instr">${instr}</div>
+      <div>${opts}</div>
+      <div id="fb-${i}"></div>`;
+    wrap.appendChild(card);
+  });
+}
+function pick(i,j,input){
+  const qu=Q[i];
+  if(qu.type==='single'){ state.answers[i]=new Set([j]); }
+  else{
+    if(input.checked){
+      if(state.answers[i].size>=2){ input.checked=false; return; }
+      state.answers[i].add(j);
+    } else state.answers[i].delete(j);
+  }
+  qu.o.forEach((_,k)=>{
+    document.getElementById(`opt-${i}-${k}`).classList.toggle('selected', state.answers[i].has(k));
+  });
+  updateProgress(); renderNav();
+}
+function toggleFlag(i){
+  state.flags[i]=!state.flags[i];
+  const b=document.getElementById('flag-'+i);
+  b.classList.toggle('flagged',state.flags[i]);
+  b.textContent = state.flags[i]?'⚑ Flagged':'⚑ Flag';
+  renderNav();
+}
+function updateProgress(){
+  const done=state.answers.filter(s=>s.size>0).length;
+  document.getElementById('progFill').style.width=(done/Q.length*100)+'%';
+  document.getElementById('progMeta').textContent=`${done} / ${Q.length} answered`;
+}
+function renderNav(){
+  const g=document.getElementById('navGrid'); g.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const c=document.createElement('div'); c.className='nav-cell'; c.textContent=i+1;
+    if(state.submitted){
+      c.classList.add(isCorrect(i)?'rev-correct':'rev-wrong');
+    } else {
+      if(state.flags[i]) c.classList.add('flagged');
+      else if(state.answers[i].size>0) c.classList.add('answered');
+    }
+    c.onclick=()=>document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});
+    g.appendChild(c);
+  });
+  if(state.submitted){
+    document.getElementById('legendBox').innerHTML=
+      `<div><span style="background:var(--green-light);border-color:var(--green-border)"></span>Correct</div>
+       <div><span style="background:var(--red-light);border-color:var(--red-border)"></span>Incorrect</div>`;
+  }
+}
+function isCorrect(i){
+  const a=state.answers[i], key=Q[i].a;
+  return a.size===key.length && key.every(k=>a.has(k));
+}
+function confirmSubmit(){
+  const un=state.answers.filter(s=>s.size===0).length;
+  const msg = un>0 ? `You have ${un} unanswered question${un>1?'s':''}. Unanswered questions are marked incorrect.\n\nSubmit the exam?`
+                   : 'Submit the exam? You will not be able to change your answers.';
+  if(confirm(msg)) submitExam();
+}
+function submitExam(){
+  if(state.submitted) return;
+  state.submitted=true; clearInterval(state.timerId);
+  // score
+  let correct=0; const dom={};
+  Object.keys(DOMAINS).forEach(k=>dom[k]={ok:0,tot:0});
+  Q.forEach((qu,i)=>{ dom[qu.d].tot++; if(isCorrect(i)){correct++; dom[qu.d].ok++;} });
+  const pct=Math.round(correct/Q.length*100);
+  const pass=pct>=70;
+  const used=70*60-state.timeLeft, um=Math.floor(used/60), us=used%60;
+
+  // results panel
+  let rows='';
+  Object.keys(DOMAINS).forEach(k=>{
+    const p=Math.round(dom[k].ok/dom[k].tot*100);
+    const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+    rows+=`<div class="perf-row">
+      <div class="name">${DOMAINS[k]}</div>
+      <div class="perf-bar"><div class="perf-fill" style="width:${p}%;background:${col}"></div></div>
+      <div class="perf-score">${dom[k].ok}/${dom[k].tot} &nbsp;(${p}%)</div></div>`;
+  });
+  const weakest = Object.keys(DOMAINS).reduce((w,k)=> (dom[k].ok/dom[k].tot < dom[w].ok/dom[w].tot ? k : w), 'SC');
+  document.getElementById('results').innerHTML=`
+    <div class="score-card">
+      <div class="score-head">
+        <div>
+          <div class="verdict ${pass?'pass':'fail'}">${pass?'PASS':'FAIL'}</div>
+          <div class="score-detail" style="margin-top:6px;">
+            <b>FCSS — FortiOS 7.6 Enterprise Firewall Administrator (Mock 05)</b><br>
+            Candidate: LoFinance Intermediate Engineer &nbsp;·&nbsp; Delivery: LoFinance Certification Lab<br>
+            Questions answered correctly: <b>${correct} of ${Q.length}</b> &nbsp;·&nbsp; Time used: <b>${um}m ${us}s of 70m</b>
+          </div>
+        </div>
+        <div class="big-pct">${pct}%</div>
+      </div>
+      <div class="section-perf">
+        <h3>Examination Score Report — Section Performance</h3>
+        <div class="note">Performance by exam section, relative to the number of items delivered in each section.</div>
+        ${rows}
+        <div class="disclaimer">The real Fortinet exam reports pass/fail only and does not publish its cut score; this mock uses a 70% provisional pass line as a study benchmark. Section bars mirror the style of the official Pearson VUE score report. ${pass?'':'Focus your next revision block on <b>'+DOMAINS[weakest]+'</b> — it was your lowest section.'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn primary" onclick="document.getElementById('q0').scrollIntoView({behavior:'smooth'})">Review Questions ↓</button>
+      <button class="btn ghost" onclick="location.reload()">Retake Exam</button>
+    </div>`;
+  document.getElementById('results').style.display='block';
+
+  // review mode on questions
+  Q.forEach((qu,i)=>{
+    qu.o.forEach((_,k)=>{
+      const el=document.getElementById(`opt-${i}-${k}`);
+      el.querySelector('input').disabled=true;
+      el.classList.remove('selected');
+      const chosen=state.answers[i].has(k), key=qu.a.includes(k);
+      if(chosen&&key) el.classList.add('correct-opt');
+      else if(chosen&&!key) el.classList.add('wrong-opt');
+      else if(!chosen&&key) el.classList.add('missed-opt');
+    });
+    const ok=isCorrect(i);
+    const yourAns = state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]).join(', ') : '— (unanswered)';
+    const keyAns = qu.a.map(x=>LETTERS[x]).join(', ');
+    document.getElementById('fb-'+i).innerHTML=
+      `<div class="explain ${ok?'ok':'bad'}">
+        <div class="verdict-line">${ok?'✓ Correct':'✗ Incorrect'} &nbsp;·&nbsp; Your answer: ${yourAns} &nbsp;·&nbsp; Correct answer: ${keyAns}</div>
+        ${qu.ex}</div>`;
+    const fb=document.getElementById('flag-'+i); fb.style.display='none';
+  });
+  document.getElementById('barWrap').style.display='none';
+  renderSocratic(correct,pct,dom);
+  renderNav();
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildSocraticPrompt(correct,pct,dom){
+  const examName=document.title.replace(/.*\|\s*/,'').trim();
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  let secLines=Object.keys(DOMAINS).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let p=`I've just completed the FCSS Enterprise Firewall 7.6 ${examName} in my LoFinance study project.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
+  p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
+  p+=`- Take ONE question at a time, in the order below, and wait for my response before continuing.\n`;
+  p+=`- Do NOT reveal the correct answer straight away. Ask me a guiding question so I can reason my way to it.\n`;
+  p+=`- If I head in the wrong direction, use partial insights ("You're looking in the right area...", "What would happen if...") rather than saying no.\n`;
+  p+=`- When I reason correctly, acknowledge WHY the reasoning was good, not just the answer.\n`;
+  p+=`- Rebuild the mental model behind each concept before moving on, and connect it to the LoFinance topology and previous sessions where it helps.\n`;
+  p+=`- Watch for a pattern across my mistakes. At the end, summarise the weak areas you observed and suggest knowledge-register updates.\n\n`;
+  p+=`Each item below includes the correct answer and a reference explanation for YOUR use as the coach — do not show them to me until I've reasoned it through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]}]  (exam Q${i+1}${qu.type==='multi'?', choose two':''})\n\n`;
+    p+=stripHtml(qu.q)+`\n\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex)}\n`;
+  });
+  p+=`\nStart with Question 1. Set the scene briefly if you like, then ask me your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom){
+  const prompt=buildSocraticPrompt(correct,pct,dom);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — there is nothing here to coach. Se&ntilde;or would quietly adjust his sombrero and say: <i>"Do it again in a week. Memory is only proven twice."</i></div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste it into a <b>new chat in this project</b> — Claude will take you through your mistakes one at a time, Socratically, without giving the answers away.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copySocratic()">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste it into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copySocratic(){
+  const ta=document.getElementById('socraticPrompt');
+  const done=()=>{const ok=document.getElementById('copyOk');ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+</script>
+</body>
+</html>
