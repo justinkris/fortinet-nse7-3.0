@@ -108,6 +108,19 @@ footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted
 .rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
 .rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
 #examArea,#barWrap{display:none;}
+
+/* socratic session */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
 </style>
 </head>
 <body>
@@ -590,8 +603,78 @@ function submitExam(){
     const fb=document.getElementById('flag-'+i); fb.style.display='none';
   });
   document.getElementById('barWrap').style.display='none';
+  renderSocratic(correct,pct,dom);
   renderNav();
   document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildSocraticPrompt(correct,pct,dom){
+  const examName=document.title.replace(/.*\|\s*/,'').trim();
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  let secLines=Object.keys(DOMAINS).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let p=`I've just completed the FCSS Enterprise Firewall 7.6 ${examName} in my LoFinance study project.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
+  p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
+  p+=`- Take ONE question at a time, in the order below, and wait for my response before continuing.\n`;
+  p+=`- Do NOT reveal the correct answer straight away. Ask me a guiding question so I can reason my way to it.\n`;
+  p+=`- If I head in the wrong direction, use partial insights ("You're looking in the right area...", "What would happen if...") rather than saying no.\n`;
+  p+=`- When I reason correctly, acknowledge WHY the reasoning was good, not just the answer.\n`;
+  p+=`- Rebuild the mental model behind each concept before moving on, and connect it to the LoFinance topology and previous sessions where it helps.\n`;
+  p+=`- Watch for a pattern across my mistakes. At the end, summarise the weak areas you observed and suggest knowledge-register updates.\n\n`;
+  p+=`Each item below includes the correct answer and a reference explanation for YOUR use as the coach — do not show them to me until I've reasoned it through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]}]  (exam Q${i+1}${qu.type==='multi'?', choose two':''})\n\n`;
+    p+=stripHtml(qu.q)+`\n\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex)}\n`;
+  });
+  p+=`\nStart with Question 1. Set the scene briefly if you like, then ask me your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom){
+  const prompt=buildSocraticPrompt(correct,pct,dom);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — there is nothing here to coach. Se&ntilde;or would quietly adjust his sombrero and say: <i>"Do it again in a week. Memory is only proven twice."</i></div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste it into a <b>new chat in this project</b> — Claude will take you through your mistakes one at a time, Socratically, without giving the answers away.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copySocratic()">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste it into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copySocratic(){
+  const ta=document.getElementById('socraticPrompt');
+  const done=()=>{const ok=document.getElementById('copyOk');ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
 }
 
 </script>
