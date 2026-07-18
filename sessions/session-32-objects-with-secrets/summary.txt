@@ -1,0 +1,226 @@
+SESSION 32 SUMMARY — "Objects with Secrets"
+Season 3 (Central Management arc) · Blueprint 2.1 · Study Guide 02 Central Management, pp. 40-43
+Written for Claude, to continue the story in Session 33.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Monday, after Friday's normalized-interfaces win. "ONE NAME, MANY PORTS" is taped to the server
+room door in 72pt font; a THIRD cactus wearing a tiny paper sombrero has joined the FMG shelf
+(cactus census now: crying IPsec-template cactus, two half-happy OSPF cacti, sombrero cactus).
+
+Penny arrived 08:40 with George Kanellis (Finance/audit) and a board-approved plan: THIRTY new
+branches over 18 months. Identical footprint each (one 100F, same six baseline rules, same
+profiles) — EXCEPT the LAN subnet (Branch1=172.16.1.0/24, Branch2=172.16.2.0/24, ...). Junior
+proposed thirty address objects + thirty policies "scripted in Excel by lunch." Cipher's coffee
+froze. Señor wrote $(branch_lan) on the whiteboard, handed out mandarin segments, and made the
+student first give Penny the BUSINESS case against copies, then DESIGN the mechanism before
+naming it.
+
+Mid-session beats: Junior asked a genuinely good question (what if a variable is unfilled on one
+box at onboarding?) and earned a "FAIL LOUDLY" sticky note on his trophy wall. Penny then asked
+for HQ DNS (10.10.10.53, identical everywhere) to be "the fancy dollar-sign thing"; Junior
+started building $(hq_dns) with thirty per-device entries; Señor's mandarin froze mid-air —
+the when-NOT-to-abstract lesson. Riley delivered a WAN-vs-wan case ticket for cold retrieval.
+Melbourne pair (two 100Fs, one emergency-recabled to port2) used for the mixed-fleet retrieval.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — derived dynamic objects/metadata variables from first
+  principles (third consecutive feature self-derivation after normalized interfaces S31).
+- Junior — proposed thirty copies (the mistake); redeemed himself with the unfilled-variable
+  question; then over-applied the new hammer to HQ DNS. "Found a hammer Friday; today everything
+  is a nail. It passes." — Señor.
+- Señor — mentor. Mandarin, sombrero. New line: reading glasses revealed in the S33 teaser.
+- Cipher — audit/consistency anchor; frozen coffee; demanded cold retrieval answers.
+- Penny — business owner; thirty-branch expansion; asked for HQ DNS abstraction (wrongly).
+- George Kanellis — Finance/audit; "the auditors would like the single-baseline story to STAY true."
+- Riley — help desk; delivered the WAN/wan Perth ticket.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+Thirty branches need the SAME certified baseline policy with a DIFFERENT internal subnet each,
+without cloning objects/policies (which re-creates drift and destroys the auditable single-
+baseline guarantee from S30/S31). Secondary: knowing when NOT to abstract (HQ DNS is identical
+everywhere → static object).
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (pp. 40-43)
+==================================================================
+- DYNAMIC OBJECTS (per-device object mapping): one policy-layer object name (e.g. Branch_LAN)
+  carries a DIFFERENT value per managed device. Generic object in the package; per-device values
+  stored IN FMG attached to each device entry; substitution AT INSTALL. The FortiGate receives
+  only the resolved value — it never sees the generic name or knows the mapping exists ("the box
+  gets the answer, not the question").
+- METADATA VARIABLES: created/edited at Policy & Objects > Advanced > Metadata Variables (policy
+  layer). GUI icon = MAGNIFYING GLASS with $ symbol. In supported fields, TYPE $ to trigger the
+  variable popup (+ to create new). Each variable = DEFAULT value + optional PER-DEVICE overrides.
+  Per-device value WINS over default (specific beats general — same law as S31 precedence).
+- Variables' extra power over dynamic objects: usable in PROVISIONING TEMPLATES and CLI TEMPLATES
+  as well as the policy layer — can make ANY templated config line vary per box, not just an
+  address value. (CLI template + $ variable can overwrite both layers; assigning a template flags
+  device-layer AND provisioning-template status Modified — triangle/exclamation.)
+- UNRESOLVED VARIABLE AT INSTALL: no default + no per-device value = install FAILS for that
+  device, nothing pushed. Consolidated law: "install is a validation gate, not a delivery van" —
+  missing interface mapping (S31), case-mismatched mapping, and unfilled variable are three
+  costumes of ONE machine: unresolvable reference at install = abort, fail loudly.
+- Empty default as a DESIGN FEATURE: a tripwire forcing conscious per-branch fill-in at
+  onboarding.
+- WHEN NOT TO ABSTRACT: a value identical everywhere (HQ DNS) belongs in a plain STATIC object —
+  the package is already the single source of truth for invariant values; editing it once +
+  reinstall propagates everywhere. A variable there adds zero capability and real cost
+  (indirection at 2am, unfilled-value risk, invitation for a rogue per-device override that
+  silently breaks the invariant). "Variables are for values that vary. Indirection is a loan;
+  variance pays the interest."
+- NOT ALL OBJECTS SUPPORT PER-DEVICE MAPPING. Supported (memorise-worthy): addresses, VIPs & VIP
+  groups, IPv4/IPv6 pools, virtual servers, ZTNA servers, user groups, LDAP/RADIUS/TACACS+
+  servers, FortiNAC/FSSO agent, metadata variables, dynamic local certificate, dynamic VPN
+  tunnel. NOT supported: ALL security profiles (web filter, AV, IPS, app control, DNS filter,
+  etc.), services & groups, schedules, traffic shapers, internet service, and more. When
+  per-device is unavailable and per-box differences are needed → UNIQUE NAMES per variation
+  (back to copies — the disease, accepted only where the cure is locked out).
+- Import conflict: importing a per-box-different object of an UNSUPPORTED type forces FMG to
+  choose between FortiGate value and its own → conflict; fix = uniquely named object, re-import.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT LANDED
+==================================================================
+- "One object, many truths" (extends S31's "one name, many ports").
+- "The box gets the ANSWER, not the QUESTION" — FortiGate stores only resolved values; all
+  intelligence lives in FMG.
+- "Install is a validation gate, not a delivery van. Fail loudly beats succeed wrongly."
+- "Variables are for values that vary" / "Indirection is a loan; variance pays the interest."
+- "Day-one cost vs every-day-after cost" — Junior optimises day one; the student prices the next
+  18 months. (Used to frame the anti-copies business case.)
+- Script/actor/opening-night analogy: package = script, per-device value = actor's filled-in
+  lines, install = opening night when placeholder becomes performance.
+- Specific-beats-general applied for the THIRD time (per-device variable value > default).
+
+==================================================================
+KEY GUI / OPERATIONS DISCUSSED
+==================================================================
+- Policy & Objects > Advanced > Metadata Variables (create/edit; per-device mapping supported).
+- Policy & Objects > Firewall Objects > Address → per-device mapping on an address object.
+- Type $ in a supported field → variable popup; + to create inline.
+- Magnifying-glass-$ icon identifies variables in the GUI.
+- Install preview shows the SUBSTITUTED per-device truth — "the preview is where secrets confess."
+- Error family: unresolvable reference at install aborts that device's install.
+
+==================================================================
+TROUBLESHOOTING APPROACH TAUGHT
+==================================================================
+1) Resolution first, not hardware/policy logic.
+2) Identify reference type: literal / normalized / dynamic object / metadata variable.
+3) Does a PER-DEVICE value exist for THIS box? Check specific entry before default.
+4) Case-check strings (WAN != wan).
+5) Read the install preview — it shows the substituted truth.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- Branch_LAN = one dynamic address object, per-device value per branch (30 values).
+- $(branch_lan) metadata variable, NO default (deliberate tripwire), for templated config.
+- HQ DNS = plain static object 10.10.10.53 (deliberately NOT abstracted).
+- Melbourne pair: one per-platform mapping (100F→port1) + one per-device (recabled box→port2).
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+No physical change. Management model: baseline package now references dynamic object Branch_LAN
+(30 per-device values) and metadata variable $(branch_lan); HQ DNS static by design. Thirty
+branches, one package, one value table. (Update lofinance-topology-as-built.html mgmt section.)
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Thirty-branch expansion ships on ONE certified package. Auditors re-verify nothing when branches
+onboard — only the small per-branch value table grows. Onboarding = fill in one value per branch;
+forgetting = loud install failure, not silent hollow rule. Junior's thirty-copy plan retired.
+Fourth-company acquisition (12 branches, next quarter — Q10 scenario) priced at "twelve values
+in a table, an afternoon, not a project."
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- Per-device mapping on address object = same name, different value per box (Q1).
+- Metadata variables: Policy & Objects > Advanced > Metadata Variables (Q2); magnifying-glass-$
+  icon (Q3); type $ to invoke (Q4); per-device value beats default (Q5).
+- Variables usable in provisioning templates AND policy layer — broader reach than dynamic
+  objects (Q6).
+- Security profiles (incl. web filter) do NOT support per-device mapping → unique names required;
+  distractor offers "per-device map the profile" (Q7). Import of per-box-different unsupported
+  object = conflict; fix = unique name + re-import.
+- Unresolved variable (no default, no per-device value) = install fails for that device (Q8).
+- Substitution happens AT INSTALL in FMG; FortiGate stores only the resolved value (Q9).
+- Unified law: unresolvable reference at install = abort (covers S31 interface-not-found,
+  case mismatch, unfilled variable).
+
+==================================================================
+STUDENT PERFORMANCE
+==================================================================
+Exam: 9.5/10 (Q6 True but missing the why; Q7 wrong first pass — offered per-device mapping for
+a web filter profile, recovered to unique-names on one nudge; Q10 content right but money-first
+lead was thin this time).
+Socratic phase highlights:
+- Derived generic-object-in-package correctly immediately; initially placed the REAL value "in
+  the object itself" (would have rebuilt Junior's problem inside one object) — recovered via the
+  Friday three-part machine scaffold; said "Not sure" once (healthy; scaffold worked).
+- "On the box, with the mapping" → sharpened to "in FMG attached to the box's entry; the
+  FortiGate never sees the question." Layer-location precision is the recurring sharpening.
+- Unfilled-variable question: predicted FMG "probs wouldn't allow that" — correct instinct,
+  reasoned to fail-loudly.
+- HQ DNS trap: PARTIAL MISS — defended the variable (default + canary-mapping cutover idea, which
+  was genuinely clever ops thinking and was credited) rather than recognising zero-variance =
+  static object. The when-NOT-to-abstract lesson had to be given, not derived. WATCH: he shares
+  Junior's new-hammer bias this week; retest cold.
+- MONEY-FIRST GATE (S31 retire-gate): NOT PASSED COLD. Q1 of session answered with engineering
+  framing ("why have 30 when you could have 1... what's the point of FMG"); needed explicit
+  redirect to business register; second attempt gave nouns (consistency, human error, money long
+  run) but thin — the assembled Penny-sentence was modelled FOR him. Q10 lead also thin. KEEP the
+  money-first edge OPEN; do not retire. It landed unprompted in S31 but did not repeat cold.
+- Mixed-fleet retrieval (Melbourne pair): CLEAN — per-platform for the pair + per-device for the
+  contradicting box. S31's minimum-set confusion RESOLVED; gate passed.
+- Case-sensitivity retrieval (WAN vs wan): first clause perfect (two separate objects), second
+  clause wrong ("two objects get created in device DB and pushed") — conflated mappings with
+  pushed config; recovered on one nudge to install-aborts. Concept of case-sensitivity solid;
+  the mappings-are-not-config layer distinction needed the nudge.
+- Global-ADOM vs normalized-interface distinction retrieval: NOT run this session (queue slot
+  used by Melbourne + WAN/wan). Carry to S33.
+- S30 carry (import direction; reinstall-keeps-preview): NOT retested. Carry to S33.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+1) Thirty copies of everything — taught day-one vs every-day-after cost; copies destroy the
+   auditable single baseline; drift arrives the first time 29-of-30 get edited.
+2) $(hq_dns) with thirty identical per-device entries — taught when NOT to abstract; variables
+   are for values that vary; needless indirection is pure cost and invites silent invariant
+   breakage. ("Found a hammer Friday; today everything is a nail.")
+Junior also earned genuine credit: the unfilled-variable onboarding question ("FAIL LOUDLY"
+sticky note now on his trophy wall).
+
+==================================================================
+TEASER DELIVERED FOR SESSION 33 — "The Scripts of Señor"
+==================================================================
+Tuesday. Junior's Excel sheet (the thirty-command generator) still open. Señor, unexpectedly
+interested: "The instinct was not wrong. Only the destination was." Opens Device Manager >
+Scripts — a window the student has never clicked. Two languages: one plain FortiOS CLI, one
+alien (proc, brackets everywhere → Tcl). "A script can be aimed at three targets: the live
+FortiGate, the device database, the policy package. Aim at the wrong one and your change exists
+where nobody is looking — until install day." Cipher: "Why do I feel like Junior is about to
+automate a mistake at scale?" Señor, revealing reading glasses nobody knew he owned: "Because,
+Cipher — that is precisely the lesson."
+Topics: FortiManager scripts — CLI vs Tcl; run targets (remote FortiGate / device DB / policy
+package); remote & device-DB use cases; auto-retrieve on remote-FortiGate scripts (policy
+changes excluded); device-DB scripts flag Modified (install needed); policy-package scripts flag
+package Modified (install package needed). Study Guide 02, pp. 41-50.
+
+STILL PENDING (carried debt): FMG IPsec-templates hands-on (crying cactus); S18/S19 OSPF
+internals II/III (two half-happy cacti); S30 retests (import direction DB→policy;
+reinstall-keeps-preview); global-ADOM vs normalized-interface distinction retrieval; MONEY-FIRST
+cold gate (failed to repeat this session — re-plant early in S33); HQ-DNS-style
+when-not-to-abstract cold retest.
+
+Date and Time completed: Friday, 17 July 2026.

@@ -1,0 +1,164 @@
+SESSION 33 SUMMARY — "The Scripts of Señor"
+Season 3 (Central Management arc) · Blueprint 2.1 · Study Guide 02 Central Management, pp. 44-47
+Written for Claude, to continue the story in Session 34.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Tuesday. Junior's Excel thirty-command generator still on the big screen. Señor arrived EARLY
+(08:15) — unprecedented — wearing the gold-rimmed READING GLASSES teased in S32 (their case is
+the only immaculate object on his disaster desk). At that desk (three keyboards, an OSPF LSDB
+printout used as a coaster), he opened Device Manager > Scripts > Create New and typed a
+ten-line CLI script from memory while eating a mandarin: syslog server + admin timeout + DNS fix
+for the whole fleet. Run target: Remote FortiGate Directly (via CLI). By 09:03 the fleet was
+done. Junior's colour-coded week of calendar blocks now described work that no longer existed.
+Señor: "Before lunch. With time remaining for a second mandarin."
+
+Cipher: "I am impressed AND terrified, and the ratio is not what you'd hope." Penny walked in
+and demanded the one-sentence business case COLD (the re-planted money-first gate). Later,
+Junior wrote his own script (custom admin profile so Riley stops asking for super_admin) but
+selected the DEVICE DATABASE target — green checkmark, Riley couldn't log in — the session's
+central teaching mistake. Cipher ran the cold whiteboard retrieval (global ADOM vs normalized
+interface) and wrote "DICTIONARY ≠ CONSTITUTION" on the board. Señor closed the session:
+"Junior. Your week is deleted. Do not fill it with new mistakes. Fill it with lunch."
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — passed money-first gate cold; derived all three run-target
+  behaviours largely from the layer model.
+- Junior — device-DB target mistake ("But it RAN"); calendar grief; warned about S34.
+- Señor — reading glasses debut; ten-line fleet script; mandarins; legal pad grading.
+- Cipher — "automation removes VARIANCE, not mistakes"; ran cold retrieval; dreads "teeth".
+- Penny — demanded and accepted the business sentence; tablet-down = applause.
+- Riley — victim of the staged-but-never-shipped admin profile.
+- George Kanellis — referenced; audit trail beneficiary; S34 "brief chat about change control".
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+Fleet-wide config changes (syslog, timeout, DNS) consumed a week of engineer time per round.
+Scripts collapse this to minutes WITH a revision-history audit trail — but each script must be
+aimed at the correct target or the change "exists where nobody is looking".
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (pp. 44-47)
+==================================================================
+THREE RUN TARGETS (Device Manager > Scripts):
+1) REMOTE FORTIGATE DIRECTLY (via CLI): executes on live box; FMG then AUTO-RETRIEVES the
+   result into the device DB (new revision in Configuration Revision History); Config Status =
+   Synchronized. EXCEPTION: firewall-policy changes are NOT carried up to the policy layer —
+   manual IMPORT required. Use case 1 in guide: pushing a remote CA certificate. Avoid modifying
+   objects used in firewall policies (policy-layer conflict risk).
+2) DEVICE DATABASE: edits FMG's mirror only; NOTHING pushed to the box; Config Status =
+   Modified; deliver with Install Device Settings (or package install if policies rode along).
+   Use case 2: custom admin profile.
+3) POLICY PACKAGE / ADOM DATABASE: writes to policy layer; package flagged Modified; deliver
+   with Install Policy Package (full trip: policy layer → device DB → FortiGate). No
+   auto-retrieve role (pump intake is the box; box never touched). Avoid importing the package
+   afterwards. Objects attached to the package install; unattached objects stay in ADOM DB.
+CLI vs TCL: CLI = fixed sequence of FortiOS commands ("a letter"), familiar syntax, metadata
+variables; Tcl = program that GENERATES commands ("a person") — if/else, loops, proc, runtime
+variables; costs complexity and 2am auditability. (Full comparison table incl. Jinja/API is
+pp. 49-50, S34 territory.)
+DEVICE-DB POLICY CHANGES cannot be auto-imported into the policy layer (exam Q7 fact).
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT LANDED
+==================================================================
+- "The run target is the address on the envelope." Wrong address = staged, not shipped.
+- "The change exists only where it landed; downstream needs deliberate delivery, upstream needs
+  deliberate import." (Student's consolidated law of the session.)
+- "Automate where blast radius is one (mirror sync); gate with a human where blast radius is
+  everyone (Import into shared truth)." — student derived the blast-radius asymmetry himself.
+- Auto-retrieve = "an upward pump with a fixed intake: box → device DB". Student used this to
+  correctly predict no auto-retrieve on package scripts.
+- CLI script = letter (cannot decide, cannot invent NEW mistakes); Tcl = person (can decide).
+- "Automation removes variance, not mistakes" (Cipher). Wrong change also ships before lunch.
+- "A green checkmark means the script ran, never that the change arrived."
+- "Reinstall skips the questions, never the confession" (wizard skipped, preview kept) — welded
+  anchor for the S30 reinstall fact.
+- "Dictionary ≠ Constitution": normalized interface = horizontal translation of port-name
+  vocabulary; global ADOM = vertical authority (header/footer rules above local packages).
+
+==================================================================
+KEY GUI / CLI DISCUSSED
+==================================================================
+- Device Manager > Scripts > Create New (type CLI/Tcl; select run target) / Run Script.
+- Device Manager > Device & Groups > Managed FortiGate → Config Status (Synchronized/Modified).
+- Dashboard: Summary > Configuration and Installation > Revision — script runs appear in
+  revision history via auto-retrieve.
+- Example script content: config system dns / set primary; remote CA cert push (guide use case).
+
+==================================================================
+TROUBLESHOOTING APPROACH TAUGHT
+==================================================================
+"The script ran but nothing happened": 1) don't debug the script — check the RUN TARGET first;
+2) remote → check revision history for auto-retrieve entry; 3) device DB → Modified = staged,
+install device settings; 4) package → package Modified, install package; 5) policies never climb
+on their own — Import deliberately.
+
+==================================================================
+CONFIGURATION DECISIONS / TOPOLOGY CHANGES
+==================================================================
+No physical change. Management model: Scripts now live — Señor's fleet script (remote target)
+and Junior's admin-profile script (device-DB target, later delivered via install). Script runs
+logged in each device's revision history (auditor-readable).
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Week of fleet work → minutes, with an audit trail George can read. Penny accepted the student's
+cold sentence (audit consistency + freed engineering time + money). Onboarding scripts can be
+staged (device DB / package) and delivered deliberately after review.
+
+==================================================================
+EXAM-RELEVANT NOTES / RESULTS (8/10 first pass; 10/10 resolved)
+==================================================================
+Correct first pass: remote script → Synchronized after auto-retrieve; remote policy change needs
+Import; device-DB script → Modified + install; package script → install package; remote = only
+no-install target; Tcl for if/else; CLI advantages = FortiOS syntax + metadata variables; Q10
+scenario (out-of-band SSH fix vs staged device DB — must retrieve/reconcile before Monday
+install or overwrite the fix) answered CLEAN.
+MISSED TWICE, then resolved with full scaffold (option-parsing, NOT concept gaps — he reasoned
+both correctly live earlier):
+- Q7: device-DB policy changes CANNOT be auto-imported to policy layer (he picked "flags
+  package Modified", then "discarded at next install"). Lesson given: when an option restates
+  the design law you already know, pick it over the dramatic ones.
+- Q9 (S30 carry): Reinstall skips WIZARD, keeps PREVIEW (he inverted twice). Anchor: "skips the
+  questions, never the confession." RETEST BOTH COLD IN S34/S35.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+1) Device-DB target with "done, try logging in" — the envelope-address lesson; green checkmark
+   ≠ delivery; Modified status contains the whole diagnosis.
+2) (Carried in) Excel generator — the instinct scripts formalise; destination wrong, not
+   instinct.
+
+==================================================================
+RETRIEVAL DEBT LEDGER (updated)
+==================================================================
+PAID THIS SESSION: MONEY-FIRST cold gate (PASSED — keep one confirmation rep in ~S35 then
+retire); S30 import-direction (passed inside Socratic flow, blast-radius reasoning excellent);
+global-ADOM vs normalized-interface (location right, PURPOSE needed scaffold — half-paid, retest
+cold with "what problem does each solve"); S30 reinstall-keeps-preview (FAILED twice in exam —
+now anchored, RETEST).
+STILL PENDING: FMG IPsec-templates hands-on (crying cactus — natural S34 payoff: a template
+could BE the fix); S18/S19 OSPF internals II/III (two half-happy cacti); when-not-to-abstract
+cold retest (NTP/syslog: variable or static?) — NOT run in S33, carry to S34; per-device support
+matrix discrimination (address vs web filter) — carry; mappings-are-not-config layer question —
+partially exercised via Q7, keep one cold rep.
+
+==================================================================
+TEASER DELIVERED FOR SESSION 34 — "Automation With Teeth"
+==================================================================
+Wednesday. Whiteboard: "$(dmz_name)" and "one character. thirty firewalls. choose the character
+carefully." Junior has assigned a CLI template to the entire fleet; a one-character typo in a
+metadata variable value is about to rename the DMZ on every firewall at install time. Penny in
+the building; George requesting "a brief chat about change control"; Riley's queue moving on its
+own. Topics: policy package scripts; CLI templates (continuous enforcement, overwrite device DB,
+pre-run vs continuous); script use cases; CLI/Tcl/Jinja/API comparison. Study Guide 02,
+pp. 48-53.
+
+Date and Time completed: Friday, 17 July 2026.

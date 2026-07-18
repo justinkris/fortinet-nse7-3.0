@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 32 Troubleshooting — Secrets That Don't Resolve</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#b02a2a;--red-light:#fbe9e7;--red-border:#e8b3ad;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text)}
+header{padding:40px 48px 30px;background:var(--ink-dark)}
+.eyebrow{display:inline-flex;background:rgba(155,184,230,.1);border:1px solid rgba(155,184,230,.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:.1em;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec}
+h1 em{font-style:italic;color:var(--ink-accent)}
+header p{font-size:15px;font-style:italic;color:rgba(251,247,236,.55);margin-top:8px}
+main{max-width:960px;margin:0 auto;padding:30px 48px 56px}
+h2{font-family:'Playfair Display',serif;font-size:23px;margin:28px 0 12px;padding-left:14px;border-left:3px solid var(--blue)}
+h3{font-family:'Playfair Display',serif;font-size:17px;margin:16px 0 6px}
+p,li{font-size:16.5px;line-height:1.65;color:var(--text-soft)}
+ul,ol{padding-left:22px;margin-bottom:12px}
+li{margin-bottom:4px}
+strong{color:var(--text)}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15.5px;line-height:1.6}
+.green{border-left-color:var(--green-border);background:var(--green-light)}
+.amber{border-left-color:var(--amber-border);background:var(--amber-light)}
+.red{border-left-color:var(--red-border);background:var(--red-light)}
+.tree{background:var(--ink-dark);border-radius:10px;margin:14px 0;overflow:hidden;border:1px solid var(--border)}
+.tree-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,.05)}
+.tree pre{padding:16px;overflow-x:auto;font-family:'SF Mono','Consolas',monospace;font-size:12.5px;line-height:1.7;color:#e8efff}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;padding:9px 12px;text-align:left}
+td{font-size:14.5px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5}
+td:first-child{font-weight:600;color:var(--text)}
+code{font-family:'SF Mono','Consolas',monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+footer{padding:18px 48px;background:var(--ink-dark);color:rgba(251,247,236,.5);font-size:12px;font-style:italic;text-align:center}
+@media(max-width:640px){header,main{padding-left:18px;padding-right:18px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">🔧 TROUBLESHOOTING GUIDE · SESSION 32 · DYNAMIC OBJECTS &amp; METADATA VARIABLES</div>
+  <h1>Secrets That <em>Don't Resolve</em></h1>
+  <p>How a senior engineer hunts a per-device value that never arrived — thinking first, clicking second.</p>
+</header>
+<main>
+
+<h2>Symptoms you'll actually see</h2>
+<ul>
+  <li>Policy package <strong>install fails</strong> for one or more devices — others succeed with the identical package.</li>
+  <li>Error family: <em>interface/object not found</em>, unresolved variable, or a device-specific validation failure at install.</li>
+  <li>A branch installs fine but a baseline rule <strong>matches no traffic</strong> — the address resolved to the wrong subnet.</li>
+  <li>A value that "should be the same everywhere" <strong>differs on one box</strong> — an invariant silently broken.</li>
+</ul>
+
+<h2>Questions to ask before touching anything</h2>
+<ol>
+  <li><strong>Which devices fail, which succeed?</strong> Same package, mixed results = per-device resolution problem, not a package problem.</li>
+  <li><strong>What kind of reference is failing?</strong> Literal string / normalized interface / dynamic object / metadata variable. Each has its own resolution path.</li>
+  <li><strong>Was this device recently onboarded?</strong> New boxes are the classic unfilled-value victims.</li>
+  <li><strong>Did anyone "help" with a per-device override recently?</strong> Rogue overrides are how invariants break silently.</li>
+  <li><strong>What does the install preview say?</strong> The preview shows the substituted truth — read it before forming a hypothesis.</li>
+</ol>
+<div class="callout"><strong>Core stance:</strong> mixed install results across identical packages are a <em>resolution</em> problem. The package is innocent until the per-device table proves otherwise.</div>
+
+<h2>Verification steps &amp; expected outputs</h2>
+<table>
+  <tr><th>Check</th><th>Where</th><th>What you expect / what failure looks like</th></tr>
+  <tr><td>Per-device value exists</td><td>Object / variable → per-device mapping list</td><td>Every failing device has a row. Missing row on exactly the failing box = root cause.</td></tr>
+  <tr><td>Default value</td><td>Policy &amp; Objects &gt; Advanced &gt; Metadata Variables</td><td>No default + no per-device value = install aborts for that device. (An empty default may be a deliberate tripwire — check design intent before "fixing" it.)</td></tr>
+  <tr><td>Case match</td><td>Rule reference vs mapping name</td><td><code>WAN</code> ≠ <code>wan</code>. Two different objects; the mismatch reproduces "not found" while everything looks configured.</td></tr>
+  <tr><td>Install preview</td><td>Install wizard → preview per device</td><td>Shows the <em>substituted</em> value that will land. Wrong subnet in preview = wrong per-device entry, not a policy bug.</td></tr>
+  <tr><td>Object type supports per-device?</td><td>Study-guide support matrix</td><td>Security profiles / services / schedules can't map — if per-box difference is needed there, unique names are the only mechanism.</td></tr>
+  <tr><td>What the FortiGate stores</td><td>Device CLI / device DB revision</td><td>Only resolved values. If you're looking for the mapping on the box, you're looking in the wrong layer — mappings live in FMG.</td></tr>
+</table>
+
+<h2>Decision tree</h2>
+<div class="tree"><div class="tree-label">Install failed / value wrong on some devices</div><pre>Same package, do ALL devices fail?
+├─ YES → package-level problem (bad reference for everyone;
+│         check the object/variable exists at all in policy layer)
+└─ NO, only some →  PER-DEVICE RESOLUTION problem
+     │
+     What is the failing reference?
+     ├─ Metadata variable
+     │    ├─ Per-device value for this box?  NO → fill it (root cause)
+     │    ├─ Default exists?                 NO → abort is BY DESIGN (tripwire)
+     │    └─ Both exist → per-device WINS; is the per-device value wrong?
+     ├─ Dynamic object (address etc.)
+     │    └─ Per-device mapping row for this box? Missing/wrong = root cause
+     ├─ Normalized interface
+     │    ├─ Mapping for this box (per-device first, then per-platform)?
+     │    └─ CASE-CHECK: WAN vs wan
+     └─ Literal string → only exists on boxes that use that exact name
+     │
+     Then: open INSTALL PREVIEW → confirm the substituted value is
+     what you intended → install → verify on the box (resolved value only)</pre></div>
+
+<h2>Common dead ends</h2>
+<ul>
+  <li><strong>SSH-ing to the FortiGate hunting for the mapping.</strong> It isn't there. Mappings and variables are FMG-side translation; the box only holds resolved values.</li>
+  <li><strong>Editing the shared object's "value" to fix one branch.</strong> You just changed it for everyone — the copies problem rebuilt inside one object.</li>
+  <li><strong>Re-installing repeatedly hoping validation relents.</strong> The gate isn't flaky; the reference is unresolvable. Fix the table, not the retry count.</li>
+  <li><strong>Blaming hardware/cabling</strong> for what is a name/value resolution failure. If the cable question even comes up, you've skipped step one.</li>
+  <li><strong>Adding a per-device override to a value that must be invariant</strong> "just to make it work" — you've silently broken the fleet-wide guarantee.</li>
+</ul>
+
+<h2>Likely root causes, ranked</h2>
+<ol>
+  <li>Unfilled per-device value on a newly onboarded device (variable with no default).</li>
+  <li>Missing per-device mapping row on a dynamic object for that box.</li>
+  <li>Case mismatch between rule reference and mapping (<code>WAN</code>/<code>wan</code>).</li>
+  <li>Wrong (typo'd) per-device value — installs fine, matches nothing. Only the preview or traffic tests reveal it.</li>
+  <li>Attempted per-device mapping on an unsupported object type — the "fix" was never possible; unique names required.</li>
+  <li>Rogue per-device override on an invariant value — the drift nobody notices until audit.</li>
+</ol>
+
+<h2>Exam traps</h2>
+<div class="callout amber"><strong>Trap 1:</strong> "Per-device map the web filter profile." Security profiles don't support it — unique names is the correct answer.</div>
+<div class="callout amber"><strong>Trap 2:</strong> "The FortiGate falls back to the default when the variable is empty." No — with no resolvable value, <strong>install fails for that device</strong>. Nothing is pushed.</div>
+<div class="callout amber"><strong>Trap 3:</strong> "The mapping is pushed to the device DB / FortiGate." Mappings are consulted <em>at install inside FMG</em>; only resolved values land on the box.</div>
+<div class="callout amber"><strong>Trap 4:</strong> Importing per-box-different configs of an unsupported type → conflict; the fix is a uniquely named object re-imported — not forcing a mapping.</div>
+
+<div class="callout green"><strong>The senior habit in one line:</strong> when identical packages produce different install results, open the per-device table and the install preview before forming any other hypothesis. The preview is where secrets confess.</div>
+
+</main>
+<footer>Session 32 · "Install is a validation gate, not a delivery van."</footer>
+</body>
+</html>

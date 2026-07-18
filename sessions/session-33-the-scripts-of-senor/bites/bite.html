@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 33 Bite — The Scripts of Señor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);}
+  header{padding:36px 40px 28px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:#fbf7ec;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+  main{max-width:920px;margin:0 auto;padding:28px 40px 48px;}
+  h2{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin:26px 0 10px;padding-left:12px;border-left:3px solid var(--blue);}
+  p,li{font-size:16.5px;line-height:1.65;color:var(--text-soft);}
+  ul{padding-left:22px;margin-bottom:10px;}
+  strong{color:var(--text);font-weight:600;}
+  .data-table{width:100%;border-collapse:collapse;margin:14px 0;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+  .data-table td{font-size:14.5px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15.5px;line-height:1.6;}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .mn{border-radius:10px;padding:12px 16px;margin:12px 0;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);font-size:15.5px;font-weight:600;}
+  .mn .lbl{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);text-transform:uppercase;display:block;margin-bottom:3px;}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:16px 40px;border-top:1px solid var(--border);background:var(--surface);}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow">SESSION 33 · BITE · FORTIMANAGER SCRIPTS</div>
+  <h1>Three Targets, <em>One Envelope</em></h1>
+  <p>Five minutes. The run target is the address; the status tells you where the work is sleeping.</p>
+</header>
+<main>
+
+<h2>The Machine</h2>
+<table class="data-table">
+  <tr><th>Run Target</th><th>Lands On</th><th>Status</th><th>Delivery</th><th>Auto-Retrieve?</th></tr>
+  <tr><td>Remote FortiGate Directly</td><td>Live box</td><td>Synchronized (after retrieve)</td><td>None — live. Import if policies changed</td><td>Yes (box → device DB)</td></tr>
+  <tr><td>Device Database</td><td>FMG mirror only</td><td>Device: Modified</td><td>Install Device Settings</td><td>No</td></tr>
+  <tr><td>Policy Package / ADOM DB</td><td>Policy layer</td><td>Package: Modified</td><td>Install Policy Package</td><td>No</td></tr>
+</table>
+<div class="mn"><span class="lbl">The Law</span>The change exists only where it landed. Downstream needs deliberate delivery; upstream needs deliberate import.</div>
+
+<h2>The Three Traps</h2>
+<ul>
+  <li><strong>Green checkmark ≠ delivered.</strong> It means "ran." Junior's admin profile sat Modified in the mirror while Riley couldn't log in. Cure: Install Device Settings.</li>
+  <li><strong>Policies never climb alone.</strong> Remote-script policy changes reach the device DB via auto-retrieve but require manual <strong>Import</strong> for the package. Device-DB policy edits <strong>cannot auto-import</strong> — ever.</li>
+  <li><strong>Don't import after a package script.</strong> Scripts write to the source of truth; a careless import drags the stale device-layer view back over your work.</li>
+</ul>
+<div class="callout"><strong>Why the Import gate exists:</strong> the device DB mirrors <em>one</em> box (blast radius: one — safe to automate). The package is shared truth for the fleet (blast radius: everyone — a human must open the gate).</div>
+
+<h2>CLI vs Tcl</h2>
+<ul>
+  <li><strong>CLI script = a letter.</strong> Fixed FortiOS commands, identical for every recipient. Familiar syntax + metadata variables. Cannot decide — and cannot invent <em>new</em> mistakes.</li>
+  <li><strong>Tcl script = a person.</strong> <code>proc</code>, if/else, loops — a program that generates commands and can branch per device (the Melbourne port2 box). Pays for logic with complexity and 2am auditability.</li>
+</ul>
+
+<h2>Two Anchors Worth the Whole Session</h2>
+<div class="callout-amber"><strong>"Reinstall skips the questions, never the confession."</strong> Reinstall Policy skips the wizard (bookkeeping) but keeps the preview (safety) — and pushes device-DB modifications too, so the preview matters more.</div>
+<div class="callout-green"><strong>"Automation removes variance, not mistakes."</strong> — Cipher. A wrong change also ships before lunch. Staged changes + out-of-band SSH fixes = reconcile revision history before installing.</div>
+
+</main>
+<footer>SESSION 33 BITE · THE SCRIPTS OF SEÑOR · STUDY GUIDE 02 PP. 44–47</footer>
+</body>
+</html>

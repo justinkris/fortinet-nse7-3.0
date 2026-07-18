@@ -1,0 +1,178 @@
+SESSION 33 REVISION PACK — "The Scripts of Señor"
+FortiManager Scripts: CLI vs Tcl · Run Targets · Remote & Device-DB Use Cases
+Study Guide 02 Central Management, pp. 44-47 · Blueprint 2.1
+
+====================================================================
+QUICK SUMMARY (one page)
+====================================================================
+FortiManager scripts (Device Manager > Scripts) execute in one of THREE contexts, and the
+run target — "the address on the envelope" — decides everything:
+
+1) REMOTE FORTIGATE DIRECTLY (via CLI)
+   - Executes on the LIVE FortiGate.
+   - FMG then AUTO-RETRIEVES the result into the device database (new entry in
+     Configuration Revision History). Config Status = Synchronized.
+   - EXCEPTION: firewall-policy changes land in the device DB but do NOT climb into the
+     policy package — manual IMPORT required.
+   - Guide use case: create/push a remote CA certificate. Avoid touching objects used in
+     firewall policies (conflict risk).
+
+2) DEVICE DATABASE
+   - Edits FMG's mirror ONLY. Nothing reaches the box.
+   - Config Status = Modified. Deliver with INSTALL DEVICE SETTINGS (or a package install
+     if policy changes are included).
+   - Guide use case: custom administrator profile.
+   - Device-DB POLICY edits CANNOT be automatically imported into the policy layer. Ever.
+
+3) POLICY PACKAGE / ADOM DATABASE
+   - Writes into the policy layer (e.g. address + policy). Package flagged Modified.
+   - Deliver with INSTALL POLICY PACKAGE (policy layer -> device DB -> FortiGate).
+   - No auto-retrieve role (its intake is the box; the box was never touched).
+   - Avoid importing afterwards. Objects attached to the package install; unattached
+     objects wait in the ADOM DB.
+
+THE LAW: the change exists only where it landed. Downstream needs deliberate delivery;
+upstream needs deliberate import. "Modified" = FMG holding work you haven't shipped.
+
+LANGUAGES: CLI script = a LETTER (fixed FortiOS commands, familiar syntax, metadata
+variables, cannot decide, cannot invent NEW mistakes). Tcl script = a PERSON (proc,
+if/else, loops, runtime variables — a program that GENERATES commands; can branch per
+device, e.g. the Melbourne port2 box). Tcl buys logic; pays in complexity/auditability.
+
+WISDOM: automation removes VARIANCE, not mistakes (Cipher). Automate where blast radius
+is one (mirror sync); gate with a human where blast radius is everyone (Import).
+
+====================================================================
+CHEAT SHEET
+====================================================================
+GUI PATHS
+  Device Manager > Scripts > Create New          (choose Type: CLI/Tcl; choose run target)
+  Device Manager > Scripts > Run Script
+  Device Manager > Device & Groups > [FortiGate] (Config Status)
+  Dashboard: Summary > Configuration and Installation > Revision  (auto-retrieve receipts)
+
+RUN-TARGET TABLE (memorise cold)
+  Target                | Lands on      | Status flip          | Delivery            | Auto-retrieve
+  Remote FortiGate      | live box      | Synchronized (after) | none; Import if pol | YES
+  Device Database       | FMG mirror    | device Modified      | Install Dev Settings| no
+  Policy Pkg / ADOM DB  | policy layer  | package Modified     | Install Policy Pkg  | no
+
+KEY BEHAVIOURS
+  - Auto-retrieve = upward pump, fixed intake: box -> device DB. Nothing else. Doesn't
+    update the policy package.
+  - Remote-script policy changes: retrieved to device DB, Import needed for package.
+  - Device-DB policy edits: CANNOT auto-import to policy layer.
+  - Package scripts: don't import afterwards; attached objects install, unattached stay
+    in ADOM DB.
+  - Reinstall Policy: skips the WIZARD, keeps the PREVIEW; also pushes device-DB
+    modifications. ("Skips the questions, never the confession.")
+  - Green checkmark = ran, not delivered.
+
+DESIGN RULES
+  - Choose CLI unless you need decisions; the letter cannot make new mistakes.
+  - Stage risky changes against the device DB / package; review; deliver deliberately.
+  - Before installing staged work: check revision history for out-of-band changes.
+
+====================================================================
+FLASHCARDS
+====================================================================
+Q: Three script run targets?
+A: Remote FortiGate Directly (via CLI); Device Database; Policy Package/ADOM Database.
+
+Q: What does FMG do automatically after a remote-FortiGate script?
+A: Auto-retrieve — captures the box's config into the device DB as a new revision;
+   status Synchronized.
+
+Q: Remote script created a firewall policy — where does it stop?
+A: Device DB. Manual Import required to bring it into the policy package.
+
+Q: Device-DB script ran; what's the status and the fix?
+A: Modified; Install Device Settings (or package install if policies included).
+
+Q: Can device-DB policy changes auto-import into the policy layer?
+A: No — never. Manual import path only.
+
+Q: Package script created address + policy — how do changes reach the FortiGate?
+A: Install the policy package (policy layer -> device DB -> FortiGate).
+
+Q: Which target requires NO install afterwards?
+A: Remote FortiGate Directly — the change is already live.
+
+Q: Does auto-retrieve fire after device-DB or package scripts?
+A: No. Its intake is the box; the box was never touched.
+
+Q: CLI script advantages?
+A: Familiar FortiOS syntax; metadata-variable support; auditable; no new failure modes.
+
+Q: When do you need Tcl?
+A: When the script must decide — if/else, loops, per-device branching.
+
+Q: After a package script, why avoid importing?
+A: Import drags the device layer's view over your fresh policy-layer work; scripts wrote
+   to the source of truth directly.
+
+Q: Reinstall Policy vs Install Policy Package — what's skipped, what's kept?
+A: Wizard skipped (device/package already paired); PREVIEW kept. Reinstall also pushes
+   device-DB modifications.
+
+Q: Staged device-DB changes Friday, SSH hotfix Saturday, install Monday — risk?
+A: The install can overwrite the hotfix. Retrieve/reconcile revision history first; read
+   the preview.
+
+Q: Guide use case for a remote script? For a device-DB script?
+A: Remote: create/push a remote CA certificate. Device DB: custom administrator profile.
+
+Q: Cipher's law of automation?
+A: Automation removes variance, not mistakes — wrong changes also ship before lunch.
+
+====================================================================
+PODCAST PROMPT — "The Packet Path", Episode 33: "The Scripts of Señor"
+====================================================================
+Generate a 10-14 minute podcast episode for the series "The Packet Path" — a warm,
+story-driven networking podcast that teaches Fortinet NSE7 Enterprise Firewall 7.6
+concepts through the ongoing saga of LoFinance (a financial company whose logo is stacks
+of money frozen in an ice cube). Two hosts: an enthusiastic narrator and a dry, technical
+co-host who interjects with precision.
+
+STORY TO TELL: Señor — the eccentric senior engineer with the sombrero, the mandarin
+habit, and the most catastrophic desk in the southern hemisphere — arrives EARLY, puts on
+reading glasses nobody knew he owned, and from that disaster of a desk types a ten-line
+FortiManager CLI script that completes Junior's entire colour-coded week of fleet work
+(syslog, admin timeout, DNS) before 9:03 AM. Run target: Remote FortiGate Directly.
+FortiManager auto-retrieves each result into the device database — receipts in revision
+history, status Synchronized. Then Junior writes his own script (an admin profile so
+help-desk Riley stops asking for super_admin) but aims it at the DEVICE DATABASE target.
+Green checkmark. "Done, try logging in." Riley cannot. The profile is staged in
+FortiManager's mirror, status Modified, undelivered — the envelope had the wrong address.
+
+TEACH, THROUGH THE STORY:
+1) The three run targets and the three beats for each: where the change lands, what flips
+   Modified, what operation delivers it (remote = live + auto-retrieve; device DB =
+   Modified + install device settings; policy package = package Modified + install
+   package).
+2) The exception: policy changes never climb into the policy package on their own —
+   Import is a deliberate human gate. Explain the BLAST-RADIUS reasoning: the device DB
+   mirrors one box (safe to automate), the package is shared truth for the fleet (a human
+   must open the gate).
+3) CLI vs Tcl using the "letter vs person" analogy — a letter is identical for every
+   recipient and cannot make NEW mistakes; a person (Tcl: proc, if/else, loops) can check
+   which device it's standing on (the Melbourne box recabled to port2) and branch.
+4) Cipher's line, delivered ominously: "Automation removes VARIANCE, not mistakes." A
+   wrong change also ships before lunch.
+5) The memory anchors, spoken aloud: "The run target is the address on the envelope."
+   "A green checkmark means the script ran, never that the change arrived." "Reinstall
+   skips the questions, never the confession."
+
+INCLUDE: Junior's mistake as the emotional centre (his deleted calendar week; his
+locked-out colleague); Señor's closing line ("Your week is deleted. Do not fill it with
+new mistakes. Fill it with lunch."); a 60-second rapid recap of the three-target table.
+
+END WITH THE TEASER for Episode 34, "Automation With Teeth": Junior has assigned a CLI
+template to the ENTIRE fleet — and somewhere in a metadata variable there is a
+one-character typo about to rename the DMZ on every firewall at once. The whiteboard
+reads: "one character. thirty firewalls. choose the character carefully." Fade out on
+Cipher whispering: "Teeth. Wonderful."
+
+====================================================================
+END OF PACK · Completed Friday, 17 July 2026
+====================================================================

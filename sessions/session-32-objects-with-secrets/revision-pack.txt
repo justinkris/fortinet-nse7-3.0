@@ -1,0 +1,205 @@
+==================================================================
+SESSION 32 REVISION PACK — "Objects with Secrets"
+Dynamic objects · Metadata variables · Study Guide 02, pp. 40-43 · Blueprint 2.1
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+Thirty branches need the SAME certified baseline with a DIFFERENT LAN subnet
+each. Junior's thirty copies work on day one and get more expensive every day
+after (every change x30; first missed edit = silent drift; the audited single
+baseline becomes thirty claims). The correct machine is Friday's, aimed at
+objects:
+
+  GENERIC OBJECT in the policy package
+    -> PER-DEVICE VALUE stored in FMG against each device entry
+      -> SUBSTITUTION AT INSTALL
+        -> the FortiGate receives only the RESOLVED value.
+           "The box gets the answer, not the question."
+
+DYNAMIC OBJECT = per-device mapping on an object (e.g. address Branch_LAN:
+Branch1=172.16.1.0/24, Branch2=192.168.0.0/24 under ONE name).
+
+METADATA VARIABLE = $(name). Default value + per-device overrides; per-device
+WINS (specific beats general). Broader reach than dynamic objects: usable in
+provisioning/CLI templates — ANY templated config line can vary per box. A CLI
+template with a $ variable can overwrite both layers; assigning it flags device
+layer + provisioning-template status Modified.
+
+UNRESOLVED VALUE AT INSTALL (no default, no per-device value) = install FAILS
+for that device; nothing pushed. One law, three costumes: missing interface
+mapping, case mismatch (WAN != wan), unfilled variable — install validates
+every reference and aborts rather than pushing a guess. "Install is a
+validation gate, not a delivery van. Fail loudly beats succeed wrongly."
+An EMPTY DEFAULT is a deliberate onboarding tripwire.
+
+WHEN NOT TO ABSTRACT: identical-everywhere values (HQ DNS 10.10.10.53) belong
+in a plain STATIC object — the package is already the single source of truth
+for invariants (edit once + reinstall = everywhere). A variable there adds
+zero capability and real cost. "Variables are for values that vary.
+Indirection is a loan; variance pays the interest."
+
+NOT ALL OBJECTS SUPPORT PER-DEVICE MAPPING. Security profiles (web filter, AV,
+IPS, app control...), services & groups, schedules, shapers CANNOT. Need
+per-box differences there? UNIQUE NAMES per variation. Importing per-box
+differences of an unsupported type = conflict; fix = uniquely named object,
+re-import.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+GUI PATHS
+  Metadata variables ......... Policy & Objects > Advanced > Metadata Variables
+  Dynamic address mapping .... Policy & Objects > Firewall Objects > Address
+                               > (object) > enable Per-Device Mapping
+  Invoke a variable .......... type $ in a supported field -> popup; + creates
+  Variable GUI indicator ..... magnifying-glass icon with $ symbol
+  Real device interfaces ..... Device Manager > ... > Network > Interfaces
+  Verify substitution ........ Install wizard PREVIEW (shows resolved values)
+
+KEY BEHAVIOURS
+  Per-device value vs default ........ PER-DEVICE WINS
+  Substitution timing ................ AT INSTALL, inside FMG
+  What the FortiGate stores .......... resolved values ONLY (never mappings)
+  Unresolved variable at install ..... install FAILS for that device
+  Case sensitivity ................... WAN != wan (two different objects)
+  Unsupported type + per-box diff .... unique names; import = conflict risk
+
+PER-DEVICE MAPPING SUPPORT (memorise the pattern)
+  YES: addresses, VIPs & VIP groups, IPv4/IPv6 pools, virtual servers,
+       ZTNA servers, user groups, LDAP/RADIUS/TACACS+ servers,
+       FortiNAC/FSSO, metadata variables, dynamic local certificate,
+       dynamic VPN tunnel
+  NO : ALL security profiles (web filter, AV, DNS filter, app control, IPS,
+       email filter, VoIP, ICAP, WAF, DLP...), services & service groups,
+       schedules, traffic shapers, internet service, SSL/SSH inspection,
+       protocol options, replacement message groups, most fabric connectors
+
+DESIGN RULES
+  - Value varies per box .................. dynamic object / metadata variable
+  - Value identical everywhere ............ static object in the package
+  - Per-branch variable ................... NO default (tripwire on onboarding)
+  - Invariant value ....................... NEVER add per-device overrides
+  - Per-device (interfaces) ............... only for a box CONTRADICTING its
+                                            platform; solo-model boxes still
+                                            use per-platform
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: One address name, different subnet per FortiGate, one package — feature?
+A: Per-device mapping on the address object (dynamic object).
+
+Q: Where are metadata variables created?
+A: Policy & Objects > Advanced > Metadata Variables (policy layer).
+
+Q: How does the GUI mark a metadata variable?
+A: Magnifying-glass icon with a $ symbol.
+
+Q: How do you insert a variable into a field?
+A: Type $ — a popup lists variables; + creates a new one.
+
+Q: Variable has default AND per-device value — which lands?
+A: The per-device value. Specific beats general.
+
+Q: Variable has no default and no per-device value for a box — install result?
+A: Install FAILS for that device. Nothing is pushed.
+
+Q: When and where does substitution happen?
+A: At install, inside FortiManager. The FortiGate stores only resolved values.
+
+Q: Does a per-device mapping appear in the FortiGate's config?
+A: No. Mappings are FMG-side translation; only the resolved value is pushed.
+
+Q: What's the extra power of variables over dynamic objects?
+A: They work in provisioning/CLI templates too — any templated config line
+   can vary per box, not just an address value.
+
+Q: Two FortiGates need the same-named web filter profile with different
+   settings — move?
+A: Unique profile names per variation. Security profiles do NOT support
+   per-device mapping.
+
+Q: Importing a per-box-different object of an unsupported type causes?
+A: A conflict — FMG must choose between the FortiGate value and its own.
+   Fix: uniquely named object, re-import.
+
+Q: HQ DNS is identical on all branches — variable or static object? Why?
+A: Static object. The package already propagates edits everywhere; a variable
+   adds zero capability and real cost. Variables are for values that vary.
+
+Q: Why is an EMPTY default sometimes a feature?
+A: It's a tripwire: onboarding a box without filling the value fails loudly
+   at install instead of shipping a hollow rule.
+
+Q: Name the one law behind "interface not found", WAN/wan, and unfilled
+   variables.
+A: Install validates every reference against FMG's knowledge of the target;
+   unresolvable = abort. Fail loudly beats succeed wrongly.
+
+Q: Two 100Fs, one emergency-recabled to port2 — mappings needed?
+A: One per-platform (100F->port1) + one per-device for the recabled box only.
+   Per-device is for a box CONTRADICTING its platform.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 32: "Objects with Secrets"
+------------------------------------------------------------------
+Generate a 10-14 minute podcast episode for "The Packet Path", a narrative
+tech-education show about a fictional Sydney fintech, LoFinance (logo: stacks
+of money frozen in an ice cube), where an intermediate network engineer is
+mentored by an eccentric senior called Señor (always in a sombrero, always
+eating mandarins).
+
+STORY: Monday after the normalized-interfaces victory. Penny (business owner)
+arrives with George Kanellis from Finance: the board approved THIRTY new
+branches, identical baseline policy each, but every branch has its own LAN
+subnet. Junior (young, overconfident, recently redeemed) proposes thirty
+address objects and thirty policies "scripted in Excel by lunch." Cipher
+(security/audit) reminds everyone the auditors certified ONE baseline. Señor
+writes $(branch_lan) on the whiteboard and demands a design before a menu
+path.
+
+TEACH (in this order, with reasoning aloud):
+1. The business case against copies: day-one cost vs every-day-after cost.
+   Thirty copies work day one; every change becomes thirty changes; the first
+   missed edit is silent drift; the certified single baseline becomes thirty
+   claims to verify by hand.
+2. The machine: generic object in the package -> per-device value stored in
+   FortiManager against each device -> substitution at install. Use the
+   theatre analogy: the package is the SCRIPT, per-device values are each
+   ACTOR'S OWN LINES, install is OPENING NIGHT. Punchline: the FortiGate gets
+   the ANSWER, not the QUESTION — it never sees the generic name.
+3. Metadata variables: created under Policy & Objects > Advanced, marked with
+   a magnifying-glass-$ icon, invoked by typing $. Default plus per-device
+   overrides; per-device wins — specific beats general, the same law as
+   longest-prefix routing. Their edge over dynamic objects: they reach into
+   CLI and provisioning templates, so ANY line of config can vary per box.
+4. Junior's good question: what if a value is forgotten on one new branch?
+   Answer: install FAILS for that device — install is a validation gate, not
+   a delivery van; fail loudly beats succeed wrongly. An empty default is a
+   deliberate tripwire.
+5. Junior's mistake of the week: Penny asks for the identical-everywhere HQ
+   DNS server as a variable, and Junior starts building thirty identical
+   per-device entries. Señor's mandarin freezes mid-air. Lesson: variables
+   are for values that VARY; the boring static object is the senior choice
+   for invariants; indirection is a loan and variance pays the interest.
+6. The locked door: security profiles (web filter etc.), services and
+   schedules CANNOT per-device map — per-box differences there force UNIQUE
+   NAMES, and importing per-box differences of unsupported types causes a
+   conflict.
+
+END with the teaser: Tuesday, Señor discovers Junior's Excel command
+generator and — instead of scolding — opens a window nobody has clicked:
+Device Manager > Scripts. Two languages, three possible targets (the live
+FortiGate, the device database, the policy package). "Aim at the wrong one,
+and your change exists where nobody is looking — until install day." Señor
+puts on reading glasses nobody knew he owned. Next episode: "The Scripts of
+Señor."
+
+TONE: warm, wry, precise. Reasoning first, feature names second. Use the
+analogies verbatim where marked. No music cues needed.
+
+==================================================================
+END OF PACK — Session 32 · Friday, 17 July 2026
+==================================================================

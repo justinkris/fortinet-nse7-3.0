@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 32 Bite — Objects with Secrets</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text)}
+header{padding:36px 40px 28px;background:var(--ink-dark)}
+.eyebrow{display:inline-flex;background:rgba(155,184,230,.1);border:1px solid rgba(155,184,230,.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:.1em;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec}
+h1 em{font-style:italic;color:var(--ink-accent)}
+main{max-width:860px;margin:0 auto;padding:28px 40px 48px}
+h2{font-family:'Playfair Display',serif;font-size:20px;margin:24px 0 10px;padding-left:12px;border-left:3px solid var(--blue)}
+p,li{font-size:16.5px;line-height:1.65;color:var(--text-soft)}
+ul{padding-left:20px;margin-bottom:10px}
+li{margin-bottom:4px}
+strong{color:var(--text)}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15.5px;line-height:1.6}
+.green{border-left-color:var(--green-border);background:var(--green-light)}
+.amber{border-left-color:var(--amber-border);background:var(--amber-light)}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;padding:8px 12px;text-align:left}
+td{font-size:14.5px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-soft)}
+td:first-child{font-weight:600;color:var(--text)}
+code{font-family:'SF Mono','Consolas',monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+footer{padding:18px 40px;background:var(--ink-dark);color:rgba(251,247,236,.5);font-size:12px;font-style:italic;text-align:center}
+@media(max-width:640px){header,main{padding-left:18px;padding-right:18px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">⚡ 5-MINUTE BITE · SESSION 32 · STUDY GUIDE 02, pp. 40–43</div>
+  <h1>Objects with <em>Secrets</em></h1>
+</header>
+<main>
+
+<h2>The machine (same as Friday, aimed at objects)</h2>
+<p><strong>Generic object in the package → per-device value stored in FMG against each device → substitution at install.</strong> The FortiGate receives only the resolved value. <em>The box gets the answer, not the question.</em></p>
+<p>One address object <code>Branch_LAN</code> = 172.16.1.0/24 on Branch1, 192.168.0.0/24 on Branch2 — thirty branches, one certified package, one value table.</p>
+
+<h2>Metadata variables — the general weapon</h2>
+<ul>
+  <li>Created at <strong>Policy &amp; Objects &gt; Advanced &gt; Metadata Variables</strong>.</li>
+  <li>GUI icon: <strong>magnifying glass + $</strong>. In a field, <strong>type $</strong> → popup; <strong>+</strong> to create.</li>
+  <li><strong>Default value + per-device overrides.</strong> Per-device wins — specific beats general.</li>
+  <li><strong>Extra reach vs dynamic objects:</strong> usable in provisioning/<strong>CLI templates</strong> — any templated config line can vary per box, not just an address. Template + $ variable can overwrite both layers; assignment flags statuses <strong>Modified</strong>.</li>
+</ul>
+
+<h2>Unresolved value at install</h2>
+<div class="callout green"><strong>No default + no per-device value = install FAILS for that device.</strong> Nothing pushed. Install is a validation gate, not a delivery van — fail loudly beats succeed wrongly. One law, three costumes: missing mapping, case mismatch (<code>WAN</code> ≠ <code>wan</code>), unfilled variable → all abort.</div>
+<p>An <strong>empty default is a tripwire feature</strong>: it forces every onboarding to consciously fill in the branch value.</p>
+
+<h2>When NOT to abstract</h2>
+<div class="callout amber"><strong>Variables are for values that vary.</strong> HQ DNS is identical everywhere → plain static object. The package already gives "edit once, reinstall, everywhere gets it." A variable there adds zero capability and real cost: 2 a.m. indirection, unfilled-install risk, and an invitation for a rogue per-device override to silently break the invariant.</div>
+
+<h2>Not everything can carry a secret</h2>
+<table>
+  <tr><th>Per-device mapping YES</th><th>Per-device mapping NO → unique names</th></tr>
+  <tr><td>Addresses, VIPs, IP pools</td><td>ALL security profiles (web filter, AV, IPS, app ctrl…)</td></tr>
+  <tr><td>User groups, LDAP/RADIUS/TACACS+</td><td>Services &amp; groups, schedules, shapers</td></tr>
+  <tr><td>Metadata variables, dyn. cert, dyn. VPN tunnel</td><td>SSL/SSH inspection, protocol options</td></tr>
+</table>
+<div class="callout">Importing a per-box-different <em>unsupported</em> object = conflict (FMG must choose a value). Fix: uniquely named object, re-import. Exam distractor: "per-device map the web filter profile" — <strong>locked</strong>.</div>
+
+<h2>Business frame (say the money first)</h2>
+<p>"Junior's thirty copies work on day one and get more expensive every day after — every change becomes thirty changes, the first missed edit is silent drift, and the certified single baseline becomes thirty claims to verify by hand. Under per-device mapping, onboarding a branch costs <strong>one value in a table</strong> and the audited rules stay frozen."</p>
+
+</main>
+<footer>Session 32 · "One object, many truths."</footer>
+</body>
+</html>

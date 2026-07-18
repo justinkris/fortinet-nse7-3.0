@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 33 Troubleshooting — Where Is My Change Sleeping?</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#b91c1c;--red-light:#fde8e8;--red-border:#f2b8b8;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);}
+  header{padding:40px 48px 30px;background:var(--ink-dark);}
+  .eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+  header h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:700;color:#fbf7ec;line-height:1.05;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+  main{max-width:1000px;margin:0 auto;padding:30px 48px 56px;}
+  h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin:28px 0 12px;padding-left:14px;border-left:3px solid var(--blue);}
+  p,li{font-size:16.5px;line-height:1.68;color:var(--text-soft);}
+  ul,ol{padding-left:22px;margin-bottom:12px;}
+  strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:14px 0;font-size:15.5px;line-height:1.6;}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:14px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:7px 14px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:14px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.6;color:#e8efff;}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:14px 0;}
+  .tree .node{font-family:'Outfit',sans-serif;font-size:13.5px;line-height:1.7;color:var(--text);padding:6px 0 6px 0;}
+  .tree .q{font-weight:700;color:var(--blue);}
+  .tree .arm{padding-left:26px;border-left:2px solid var(--border-dim);margin-left:8px;}
+  .data-table{width:100%;border-collapse:collapse;margin:14px 0;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 12px;text-align:left;}
+  .data-table td{font-size:14.5px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:16px 48px;border-top:1px solid var(--border);background:var(--surface);}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 33 · TROUBLESHOOTING · SENIOR THINKING</div>
+  <h1>Where Is My Change <em>Sleeping?</em></h1>
+  <p>The script ran. The change didn't arrive. A senior engineer checks the envelope before blaming the letter.</p>
+</header>
+<main>
+
+<h2>Symptoms</h2>
+<ul>
+  <li>"The script ran successfully but the config isn't on the FortiGate." (Junior's ticket, verbatim.)</li>
+  <li>A device or package sits at <strong>Modified</strong> and nobody remembers why.</li>
+  <li>A policy created by script is visible in the device DB but missing from the policy package.</li>
+  <li>An install pushed changes nobody expected (staged script work riding along, or an out-of-band fix overwritten).</li>
+</ul>
+
+<h2>Questions a Senior Asks First</h2>
+<ol>
+  <li><strong>What was the run target?</strong> The envelope's address explains 80% of these tickets before any debugging.</li>
+  <li><strong>What does the Config Status say right now?</strong> Synchronized / Modified is the system telling you where the work is sleeping.</li>
+  <li><strong>Did the change involve firewall policies?</strong> If yes, an Import gate sits in the path — was it crossed?</li>
+  <li><strong>What's in the revision history?</strong> Script runs leave receipts via auto-retrieve. No receipt on a "remote" run = the script never touched the box.</li>
+  <li><strong>Has anything happened out-of-band since staging?</strong> An SSH fix between "script Friday" and "install Monday" is a collision waiting for the preview to catch.</li>
+</ol>
+
+<h2>Verification — Where to Look and What You Expect</h2>
+<div class="code-block"><div class="code-label">FortiManager GUI checkpoints</div><pre><code>Device Manager > Scripts                      # script definition: TYPE (CLI/Tcl) and RUN TARGET
+Device Manager > Device & Groups > [FortiGate] # Config Status: Synchronized | Modified
+Dashboard: Summary > Configuration and
+  Installation > Revision > Total Revision     # auto-retrieve receipts after remote script runs
+Policy & Objects > [package]                   # package Modified flag after package scripts
+Install wizard / Reinstall preview             # the confession: exactly what will ship</code></pre></div>
+<table class="data-table">
+  <tr><th>Observation</th><th>Meaning</th><th>Next Move</th></tr>
+  <tr><td>Status Synchronized + new revision entry</td><td>Remote script ran and auto-retrieve receipted it</td><td>Change is live. If policies changed, Import to sync the package.</td></tr>
+  <tr><td>Status Modified, box unchanged</td><td>Device-DB script: staged, undelivered</td><td>Install Device Settings (preview first).</td></tr>
+  <tr><td>Package flagged Modified</td><td>Policy-package script wrote to the policy layer</td><td>Install Policy Package. Do NOT import.</td></tr>
+  <tr><td>Policy in device DB, absent from package</td><td>Below the Import gate — by design</td><td>Import deliberately, after review. It will never auto-climb.</td></tr>
+</table>
+
+<h2>Decision Tree</h2>
+<div class="tree">
+  <div class="node q">"Script ran but nothing happened" — what was the run target?</div>
+  <div class="arm">
+    <div class="node"><span class="q">REMOTE FORTIGATE →</span> Check revision history for the auto-retrieve receipt.</div>
+    <div class="arm">
+      <div class="node">Receipt present → change IS live. Complaint is about the policy layer? → policies don't auto-import → run <strong>Import</strong>.</div>
+      <div class="node">No receipt → script never reached the box → check device connectivity / script errors, not the config.</div>
+    </div>
+    <div class="node"><span class="q">DEVICE DATABASE →</span> Status Modified? → staged, not shipped → <strong>Install Device Settings</strong>. Read the preview.</div>
+    <div class="node"><span class="q">POLICY PACKAGE →</span> Package Modified? → <strong>Install Policy Package</strong>. Objects unattached to the package will NOT install (they wait in the ADOM DB).</div>
+  </div>
+  <div class="node q">Before ANY install: has the box changed out-of-band since staging?</div>
+  <div class="arm"><div class="node">Yes/unsure → retrieve + reconcile first, or the install may overwrite the fix. The preview is where secrets confess — read it.</div></div>
+</div>
+
+<h2>Common Dead Ends</h2>
+<ul>
+  <li><strong>Debugging the script syntax</strong> when the script ran fine — against the wrong target. Check the envelope first.</li>
+  <li><strong>Waiting for the policy to "sync up"</strong> into the package. It will wait forever. The Import gate is deliberate.</li>
+  <li><strong>Importing after a package script</strong> "to be safe." That drags the device layer's stale view over fresh policy-layer work.</li>
+  <li><strong>Re-running the script</strong> on a Modified device. You'll stage the same change twice and learn nothing — the status already told you the answer.</li>
+</ul>
+
+<h2>Likely Root Causes, Ranked</h2>
+<ol>
+  <li>Wrong run target selected at script creation (Junior's classic).</li>
+  <li>Delivery step skipped — Modified status ignored, install never run.</li>
+  <li>Import step skipped for policy changes after a remote script.</li>
+  <li>Out-of-band change collided with staged device-DB work.</li>
+  <li>Package script's objects never attached to the package (stranded in ADOM DB).</li>
+</ol>
+
+<h2>Exam Traps</h2>
+<div class="callout-red"><strong>Trap 1:</strong> options claiming device-DB policy changes "flag the package Modified" or are "auto-imported." The boring truth — <em>they cannot be automatically imported</em> — is the answer. When one option restates the design law you already know, take it over the dramatic ones.</div>
+<div class="callout-amber"><strong>Trap 2:</strong> reinstall vs install. Reinstall skips the <em>wizard</em>, keeps the <em>preview</em> — and pushes device-DB modifications too. "Skips the questions, never the confession."</div>
+<div class="callout"><strong>Trap 3:</strong> "which target needs no install?" Only Remote FortiGate Directly — it's already live. Everything else stages.</div>
+
+</main>
+<footer>SESSION 33 TROUBLESHOOTING · THE SCRIPTS OF SEÑOR · LOFINANCE SEASON 3</footer>
+</body>
+</html>
