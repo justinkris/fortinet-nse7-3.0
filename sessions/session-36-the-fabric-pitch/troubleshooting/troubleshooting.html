@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 36 — Troubleshooting the Security Fabric</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.72;font-size:17px}
+header{background:var(--ink-dark);padding:40px 52px}
+.eyebrow{display:inline-block;border:1px solid rgba(155,184,230,.28);background:rgba(155,184,230,.1);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;padding:4px 12px;border-radius:20px;margin-bottom:10px}
+header h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec}
+header h1 em{font-style:italic;color:var(--ink-accent);font-weight:500}
+main{max-width:840px;margin:0 auto;padding:40px 30px 70px}
+h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--blue-deep);margin:42px 0 12px;border-bottom:2px solid var(--border);padding-bottom:6px}
+p{margin:0 0 12px}
+.q{background:var(--blue-light);border:1px solid var(--blue-border);border-left:4px solid var(--blue);border-radius:8px;padding:12px 16px;margin:10px 0;font-style:italic}
+.code{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--ink-dark);color:#dfe8fb;padding:16px 20px;border-radius:10px;margin:14px 0;white-space:pre;overflow-x:auto;line-height:1.6}
+.tree{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);padding:18px 22px;border-radius:10px;margin:14px 0;white-space:pre;line-height:1.7;overflow-x:auto}
+.dead{border:1px solid var(--amber-border);background:var(--amber-light);border-left:4px solid var(--amber);border-radius:8px;padding:12px 16px;margin:10px 0}
+.dead b{color:var(--amber)}
+.root{border:1px solid var(--green-border);background:var(--green-light);border-left:4px solid var(--green);border-radius:8px;padding:12px 16px;margin:10px 0}
+ul{margin:0 0 12px 26px}li{margin-bottom:6px}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:15px;background:var(--surface)}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-2);text-align:left;padding:9px 12px;border:1px solid var(--border-dim)}
+td{padding:9px 12px;border:1px solid var(--border-dim)}
+footer{text-align:center;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted);padding:24px;border-top:1px solid var(--border)}
+</style></head>
+<body>
+<header>
+<span class="eyebrow">TROUBLESHOOTING GUIDE · SESSION 36 · THINK LIKE A SENIOR</span>
+<h1>Security Fabric — <em>When the Fabric Frays</em></h1>
+</header>
+<main>
+
+<p>The commands matter less than the order of your questions. Fabric problems come in two families: <strong>membership</strong> ("device isn't in the fabric") and <strong>evidence</strong> ("logs are duplicated / missing / unexplainable"). Identify the family before typing anything.</p>
+
+<h2>Symptom Family 1 — "The device isn't showing in the fabric"</h2>
+<p><strong>Questions to ask first:</strong></p>
+<div class="q">Has anyone authorized it on the root? (This resolves the majority of cases — check before touching any config.)</div>
+<div class="q">Is its role set to Join Existing Fabric, and does the upstream IP actually point at a fabric member's join-enabled interface?</div>
+<div class="q">Can it reach the upstream device at all — routing, intermediate policy?</div>
+<p><strong>Verification path:</strong></p>
+<ul>
+<li>Root GUI → <strong>System &gt; Firmware &amp; Registration</strong> → look for the pending request (refresh the page — requests aren't always instant). Non-FortiGate products (FortiNDR etc.): check the notification/alert icon on the root's top bar.</li>
+<li>Downstream → <strong>Security Fabric &gt; Fabric Connectors &gt; Security Fabric Setup</strong> → confirm role and Upstream FortiGate IP/FQDN.</li>
+<li>Root → <strong>Security Fabric &gt; Physical/Logical Topology</strong> → authorized members appear here.</li>
+</ul>
+<div class="dead"><b>Dead end to avoid:</b> re-typing IPs, rebooting, or re-entering the fabric name while a perfectly healthy request sits unauthorized in the root's queue. Dave's firewall was never broken. It was unloved.</div>
+<div class="root"><b>Likely root causes:</b> unauthorized request (most common) · wrong upstream IP · join not allowed on the upstream interface · plain reachability.</div>
+
+<h2>Symptom Family 2 — "FortiAnalyzer shows duplicate / missing / weird logs"</h2>
+<p>Before any command, rebuild the expected packet path and apply the logging laws:</p>
+<div class="tree">Session path:  Client → ISFW → NGFW(NAT+WebFilter) → Internet
+
+Expected evidence:
+  ISFW   → 1 traffic log        (first FortiGate in path — owns the session)
+  NGFW   → 1 traffic log        (ONLY because it NATs: new src IP/port)
+         → UTM log(s)           (web filter — logs where inspection runs)
+  DCFW   → nothing              (not in this path)
+  FAZ    → correlates all of the above automatically</div>
+<p><strong>Decision tree:</strong></p>
+<ul>
+<li><strong>More traffic logs than expected?</strong> → Is one of the "extra" devices NATing? Then it's correct behaviour, not a fault. If no NAT → is the upstream device actually a fabric member? Peer-MAC recognition only suppresses duplicates between <em>fabric members</em>; a non-member upstream logs normally.</li>
+<li><strong>Fewer logs than expected?</strong> → Which device was <em>first</em> in the path? Only that one owes a traffic log. If even the first device's log is missing → check that device's connection to FAZ, not the fabric.</li>
+<li><strong>UTM event "missing"?</strong> → You're looking on the wrong box. UTM logs live on the device that ran the inspection, regardless of who logged the traffic.</li>
+<li><strong>"Root is down, are we blind?"</strong> → No. Members log to FAZ directly and independently. If leaf logs stopped when the root died, the real fault is coincidental (shared path/power), not fabric design — investigate the member↔FAZ path.</li>
+</ul>
+
+<h2>Symptom Family 3 — "The external feed isn't blocking anything"</h2>
+<div class="q">Is the resource object actually referenced in a firewall policy — or was it created and never used?</div>
+<div class="q">Is the source list plain text in a supported format, reachable over HTTP/HTTPS/STIX from FortiGate?</div>
+<div class="q">Has a fetch happened since the list changed? (Feeds update periodically — "the list changed 30 seconds ago" isn't a fault.)</div>
+
+<h2>Exam Traps</h2>
+<table>
+<tr><th>Trap</th><th>Truth</th></tr>
+<tr><td>"Every fabric FortiGate in the path logs the session."</td><td>Only the first — plus any member that NATs.</td></tr>
+<tr><td>"NAT log is a duplicate and FAZ discards it."</td><td>It's required evidence (translated IP/port) and FAZ correlates it.</td></tr>
+<tr><td>"UTM logs are suppressed like duplicate traffic logs."</td><td>Never — UTM logs at the inspection point, always.</td></tr>
+<tr><td>"Root failure stops downstream logging."</td><td>Members log to FAZ independently.</td></tr>
+<tr><td>"Join Existing Fabric + correct IP = member."</td><td>Inert until authorized on the root.</td></tr>
+<tr><td>"FSSO/RADIUS are fabric connectors."</td><td>External connectors — not Fortinet fabric products.</td></tr>
+</table>
+
+<h2>The Senior Habit</h2>
+<p>Every fabric-evidence question is answered by three restatements, in order: <em>What was the packet's path? Who was first? Who changed the packet or inspected it?</em> The log layout falls out of those answers before you open a single GUI.</p>
+
+</main>
+<footer>LoFinance · Session 36 Troubleshooting · "Detection is not an opinion." — the label maker</footer>
+</body></html>

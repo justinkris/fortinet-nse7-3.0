@@ -1,0 +1,173 @@
+==================================================================
+SESSION 37 — "WEAVING IT TOGETHER"
+Security Fabric deployment; device detection
+Study Guide: 09 Security Fabric, pp. 262–267 (+ deployment config
+from Use Case Solutions pp. 378–381 pattern)
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Tuesday 07:58, deployment day. Señor arrived with a LABEL MAKER,
+labelling everything ("COFFEE MACHINE"; his sombrero = "ROOT";
+Junior's laptop = "NOT YET"). Penny opened with a DIEGETIC COLD GATE:
+before signing the budget line she demanded the BIA triad plus one
+sentence each — student passed CLEAN, cold, compressed (Broad = see
+everywhere; Integrated = devices as one system not islands;
+Automated = act without humans). BIA anchor is PAID.
+
+Deployment proceeded root-first: HQ-NGFW configured as fabric root
+(Security Fabric > Fabric Connectors > Security Fabric Setup:
+role = Serve as Fabric Root; Allow other Security Fabric devices to
+join = port5; Fabric name = LoFinance-Fabric; FortiAnalyzer IP =
+10.0.99.10 — root REQUIRES FAZ). ISFW and DCFW set to Join Existing
+Fabric, upstream 10.0.12.254. Authorization done on root at
+System > Firmware & Registration (alarm-icon badge shortcut noted).
+DAVE'S 14-DAY-PENDING Vaultline branch FGT (FGT60F-VLTN) was FINALLY
+AUTHORIZED after Cipher's one-word intervention ("Verify") — serial
+checked against asset register first. Dave is now IN the fabric.
+
+Device detection enabled per-interface on ISFW access ports
+(set device-identification enable). Riley's Vaultline break-room
+smart TV (41 outbound connections/night) appeared, identified.
+
+BUSINESS EVENT / INCIDENT: the topology map revealed an UNMANAGED
+8-PORT SWITCH nobody bought on DCFW port4, and behind it a Dell
+Linux server, hostname "MINERVA", first seen 97 days ago. FAZ's
+97-day log memory showed nightly 02:00 outbound HTTPS to a cloud
+backup provider. Root cause: a Q1 data-migration CONTRACTOR parked
+the box + switch, ran nightly backups of LoFinance financial data
+to his PERSONAL cloud account, left in May; the box kept running.
+Found on DAY ONE of fabric visibility. Penny escalated to legal,
+then to Dr. Vasse. Evidence-first investigation praised (student
+asked where / what MACs / talking-to-whom before any action).
+
+SAML SSO closed the session (Señor's "SIX PASSWORDS" label):
+root = the ONLY permitted IdP; downstream FGTs + FAZ + FMG = SPs;
+hop between devices via top-banner list, no re-auth in browser
+session. Student guessed root correctly; we converted guess to
+derivation (single trust anchor: defines fabric, holds join
+interface, authorizes members → must also be the identity voucher).
+
+CHARACTERS: Señor (label maker; "ORDER OF OPERATIONS"; graded
+gauntlet), Junior (eager, twice restrained, his S36 rhyme "NAT =
+new identity = new log" reused by student), Penny (cold gate;
+one-finger one-sentence cap; escalated Minerva), Riley (smart-TV
+payoff, victory lap), Cipher ("Verify."; ran the Minerva
+investigation; almost smiled at SSO), Dave (authorized at last),
+Dr. Vasse (referenced; gets the breach call).
+
+TECHNICAL CONCEPTS COVERED
+------------------------------------------------------------------
+1. Root-first deployment order + WHY (downstream needs an existing
+   fabric name + listening interface + reachable root to point at).
+2. Root setup fields as SECURITY BOUNDARIES: join-listening
+   interface = attack surface (never ISP-facing — anyone on the
+   internet could knock); authorization = human trust gate.
+   Two gates: where you can knock + who lets you in.
+3. Downstream join config (role, upstream IP/FQDN, SAML option).
+4. Authorization workflow: root, System > Firmware & Registration
+   (+ alarm-icon badge). MENU-NAME TRAP: NOT under Security Fabric.
+   Hook taught: "joining is registration, so it lives with
+   registration."
+5. Device detection: PASSIVE, per-interface, belongs at the ACCESS
+   LAYER (ISFW). Artifacts: MAC OUI (hardware DNA), DHCP hostname +
+   option fingerprint (the introduction), app-layer chatter —
+   DNS/SNI/User-Agent (the accent). CLI: config system interface /
+   set device-identification enable; diagnose user device list.
+6. Topology views (Physical/Logical) on root; detected endpoints
+   populate views + asset inventory.
+7. Fabric logging correlation (pp. 262 drill, applied to Minerva):
+   first fabric FGT in path owns the traffic log; NAT upstream =
+   second legitimate traffic log (Rosetta Stone); UTM logs where
+   inspection ran; FAZ auto-correlates.
+8. FortiNDR use case (exam Q): downstream files to FortiNDR TRANSIT
+   THROUGH THE ROOT (not FAZ). Inline blocking: FGT AV first; if
+   clean-unknown, session held, FortiNDR ML verdict, release/kill.
+9. SAML SSO in fabric: root = only IdP; downstream/FAZ/FMG = SP.
+
+MENTAL MODELS / ANALOGIES (new this session)
+------------------------------------------------------------------
+- Every setup field is "a security boundary wearing a text box
+  costume."
+- Two gates: the listening interface (where you may knock) +
+  authorization (who opens the door). Dave = right door, still
+  waiting = stranger with flowers, finally let in.
+- Device detection = "the ISFW reading the room": MAC OUI = DNA,
+  DHCP = introduction, traffic chatter = accent. "Devices cannot
+  shut up about what they are."
+- "Devices are born at the access layer; the edge sees shadows"
+  (reused from S36 to derive detection placement).
+- FAZ = fabric's MEMORY vs root = fabric's SPINE (logs go to
+  memory; fabric transit — e.g. FortiNDR files — goes through the
+  spine). Coined to fix the Q8 miss.
+- One fabric, one anchor, one voucher (root-as-IdP derivation).
+- Visibility is retroactive when you have memory (97-day lookback).
+
+KEY CLI / GUI
+------------------------------------------------------------------
+- Root: Security Fabric > Fabric Connectors > Security Fabric Setup
+  (Serve as Fabric Root / join interface / fabric name / FAZ IP).
+- Downstream: same path, Join Existing Fabric + upstream IP.
+- AUTHORIZE on root: System > Firmware & Registration (+ alarm badge).
+- Security Fabric > Physical Topology / Logical Topology.
+- config system interface → set device-identification enable.
+- diagnose user device list (MAC, vendor, type, os, host, port,
+  first-seen age) — used live on Minerva.
+
+EXAM GAUNTLET RESULT: 7/10
+------------------------------------------------------------------
+CLEAN: FAZ-required-for-root MCQ; fabric logging counts (2 traffic +
+UTM at NGFW) — logging anchor now PAID, retire to spot-checks;
+detection placement reasoning; passive artifacts; SAML SSO MCQ (B);
+global-ADOM vs normalized-interfaces purpose — S33 half-debt SETTLED
+(excellent separation: which-rules-exist-everywhere vs how-rules-
+find-interfaces).
+HALF: Q1 authorized-on-root correct but menu wrong (said Security
+Fabric menu; correct System > Firmware & Registration) — vendor-
+vocab growth area struck AGAIN, same session it was taught.
+HALF: Q2 gave "not authorized" + invented "licensing"; missed the
+join-listening-interface cause.
+MISS: Q8 FortiNDR file path — defaulted to FAZ. Pattern: when
+unsure, he reaches for FAZ. Spine-vs-memory anchor planted.
+MISS: Q9 COLD RETEST FAILED — "reinstall keeps preview" anchor
+(from S33 era) DECAYED; he answered "re-approve". Correct: reinstall
+KEEPS the previously approved normalized-interface mapping.
+RE-ANCHORED this session; back on spaced-retest queue.
+
+JUNIOR'S MISTAKES & LESSONS
+------------------------------------------------------------------
+Junior tried to click Join before the root existed ("NOT YET"
+label) → taught deployment order as a dependency, not a ritual.
+His S36 rhyme paid off when the student retrieved it under pressure.
+
+BUSINESS OUTCOME
+------------------------------------------------------------------
+Fabric live (root + 3 downstream + FAZ), detection at access layer,
+SSO active. Day-one visibility caught a 97-day insider-adjacent
+data exfiltration (Minerva). Penny → legal → Vasse. Student's
+money-sentence hit the ONE-SENTENCE cap (compression WIN) but used
+"could be" for a confirmed 97-day breach — coached: state what
+HAPPENED (fact + duration + money category), not what might.
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+HQ-NGFW = fabric ROOT (join iface port5, fabric name
+LoFinance-Fabric, FAZ 10.0.99.10). HQ-ISFW + HQ-DCFW = authorized
+downstream. Dave's FGT60F-VLTN = authorized downstream (branch).
+Device detection on ISFW access ports. SAML SSO: root IdP, others
+SP. Minerva + rogue switch removed to evidence.
+
+TEASER DELIVERED FOR SESSION 38 — "IF THIS, THEN FIREWALL"
+------------------------------------------------------------------
+Thursday 02:00: DCFW CPU hits 96%, nobody awake, fabric watches and
+does NOTHING. Friday, Señor's whiteboard: "THE FABRIC WATCHED. THE
+FABRIC DID NOTHING. THIS IS MY FAULT." A fabric that waits for
+humans is only two-thirds of BIA. Junior: "So we teach it…
+reflexes?" Label on the root: "IF / THEN". Riley: "Also the
+security rating page gave us a score. You're not going to like the
+score." Topics: automation stitches (triggers/actions, root-pushed,
+root not required for leaf execution of existing stitches),
+security rating. High-CPU + config-backup + IoC-quarantine use
+cases map directly to pp. 268–276.
+
+Date and Time completed: Sunday, 19 July 2026.

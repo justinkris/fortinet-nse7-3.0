@@ -1,0 +1,236 @@
+SESSION 34 SUMMARY — "Automation With Teeth"
+Season 3 (Central Management arc) · Blueprint 2.1 · Study Guide 02 Central Management, pp. 48-53
+Written for Claude, to continue the story in Session 35.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Wednesday, 08:47. Señor's whiteboard wiped except one corner threat: "$(dmz_name) — one
+character. thirty firewalls. choose the character carefully." Junior stood UNUSUALLY still at
+Device Manager. He had built his first CLI template (fleet DMZ addressing standard, metadata
+variable) and — proud — ASSIGNED IT TO ALL THIRTY managed FortiGates the night before. This
+morning: thirty amber triangles. Device-layer status Modified AND provisioning-template status
+Modified on every row. In line four he had HAND-TYPED the variable reference instead of using
+the $ picker — one character wrong, the kind the eye slides over.
+
+Penny in the building for board prep. George Kanellis sent a calendar invite: "Brief chat:
+change control (15 min)." Riley's queue quiet — for now. Señor peeled a mandarin, studied the
+thirty triangles ten seconds, then: "Good. It is Wednesday, and the network still works. The
+machine did exactly what you learned yesterday it would do." He tasked the student to explain to
+Junior why he was frightened and whether he SHOULD be.
+
+The student established the whole safety case cold, then across the session dismantled the
+template model, the policy-package-script model, and — critically — reconstructed the
+reinstall-preview fact that had FAILED TWICE in S33's exam. Session was PAUSED overnight
+(student called it, correctly — "sleep consolidates the model") and RESUMED next day from the
+top. On resumption the student re-derived everything cleanly and pushed PAST the taught answer on
+the canary question (see below). Closed on 9/10 exam.
+
+NOTE ON PACING: student self-regulated — took a night off mid-session before the exam block,
+then asked to "start again from the top." Re-running the cold open produced BETTER retrieval than
+a same-night push would have. This confirms S33's learning note about consolidation. Honour this
+pattern: when he calls a break, the restart is not lost ground — it is a stronger encoding.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — established "assigned ≠ installed" cold; derived the
+  stencil-overwrite model; upgraded the canary answer to "canary in a staging/prototype env that
+  mirrors prod but doesn't care if it breaks" UNPROMPTED (blast-radius = free, not just
+  survivable); rebuilt the reinstall fact cold; 9/10 exam.
+- Junior — first CLI template, assigned to all 30, hand-typed the reference (declined the $
+  seatbelt); "templates are letters that get re-sent, forever"; the episode's teaching mistake.
+- Señor — reading glasses; mandarins; "fix the stencil, not the glass"; "the tool that works
+  today over the tool that works tomorrow... a young engineer's optimism. We will cure it.
+  Gently."
+- Cipher — "automation removes variance, not mistakes" (paid off from S33); "the script and the
+  template are the same animal wearing different collars"; "the orphan object is a tool left in
+  the drawer"; "a senior says what falls into [the net]."
+- Penny — in-building for board prep; the change-control business context.
+- George Kanellis — change-control meeting; the student effectively WROTE his policy
+  (fix-at-winning-level → canary → preview → widen).
+- Riley — queue quiet; not central this episode.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+A continuous CLI template assigned fleet-wide can enforce a standard across 30 firewalls with one
+edit — but a single typo in the template (or in a shared metadata value) hits ALL THIRTY
+identically, because the stencil and the dictionary entry are single shared objects. "Automation
+removes variance, not mistakes": the wrong change would ship perfectly, everywhere, at once. The
+save was that ASSIGN STAGES, INSTALL SHIPS — nothing reached a live FortiGate.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (pp. 48-53)
+==================================================================
+CLI TEMPLATES (device layer):
+- A CLI template is a provisioning template. It "overwrites the device database" — a STENCIL that
+  sits ABOVE the device DB and presses down at install, winning over device-layer config.
+- ASSIGN is a BINDING verb, NOT a delivery verb (distinct from the eight sync verbs: retrieve,
+  import, install, reinstall, quick install, revert, install device settings, refresh). Assign
+  binds the stencil to devices and flips device-layer status to Modified — but ships nothing.
+  Assign edits the PENDING device-DB state, never the live box.
+- Assigning a CLI template flips TWO statuses: device-layer Modified AND provisioning-template
+  Modified. (Contrast: a device-DB script flips only device-layer.) The policy package stays
+  quiet — nothing touched the policy layer.
+- You CANNOT out-edit a template from below: a manual fix on the FortiGate (or its mirror) is
+  re-overwritten on the next install. Fix must happen IN THE TEMPLATE (the level that wins).
+- PRE-RUN CLI TEMPLATE: one-time, ZTP/LTP onboarding; AUTO-UNASSIGNS after quick-install; does
+  NOT remain in the device DB. Fire once, gone.
+- CONTINUOUS CLI TEMPLATE: stays bound; NOT auto-unassigned; RE-OVERWRITES on EVERY install =
+  drift enforcement. This is the "teeth." Junior used this flavour → recurring typo threat.
+- Delivery of a device-layer template change to one box: INSTALL DEVICE SETTINGS (not Install
+  Policy Package — don't drag the whole policy layer to fix a device-layer setting). "Match the
+  install to the layer."
+METADATA VARIABLES (S32 payoff):
+- Two separate places: VALUE lives in Policy & Objects > Advanced > Metadata Variables (the
+  dictionary; per-device mapping supported → default + custom). REFERENCE (e.g. $(dmz_name)) is
+  used INSIDE the template. "The dictionary is right; the pointer to it is bent."
+- The $ pop-up picker prevents misspelling the reference (you choose from real entries).
+  Hand-typing = declining the seatbelt. Junior's typo was in the REFERENCE (template line 4), not
+  the value.
+- EITHER a wrong value OR a wrong reference hits all 30 — both are single shared objects. That is
+  the "one character, thirty firewalls."
+POLICY-PACKAGE SCRIPTS (policy layer):
+- Run target = policy package. Green "script ran" flags POLICY PACKAGE Modified; NOTHING is live
+  on the FortiGate yet (staged, not shipped — the SAME law as templates, different surface).
+- Delivery: INSTALL POLICY PACKAGE — a TWO-HOP path: policy layer → DEVICE DATABASE → FortiGate.
+  Nothing skips the device DB; it is the single door every change walks through to reach the box.
+- ATTACHED vs UNATTACHED: install carries objects the package USES (referenced by a policy) plus
+  the rules; an unreferenced object stays PARKED in the ADOM database, uninstalled. "Install
+  carries what the package uses, not everything it contains."
+REINSTALL (S30/S33 carry, now anchored WITH mechanism):
+- Reinstall SKIPS THE WIZARD (device/package already paired), KEEPS THE PREVIEW. "Skips the
+  questions, never the confession."
+- WHY the preview matters MORE: reinstall drags STAGED DEVICE-DB MODIFICATIONS down through the
+  same door (two-hop). The preview is where you catch the device-layer change you forgot was
+  staged, riding down on a "routine" reinstall.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT LANDED
+==================================================================
+- CLI template = a STENCIL that sits above the device DB and overwrites it at install. The
+  stencil always wins → can't out-edit it from below.
+- ASSIGN edits the recipe; INSTALL cooks it. (Assign = binding, not delivery.)
+- Pre-run = fire once, then detaches (onboarding). Continuous = stays bound, overwrites on every
+  install (enforcement). "A continuous template's whole job is to keep winning."
+- "The dictionary is right; the pointer to it is bent" (value correct in Metadata Variables;
+  reference typo in the template).
+- The $ picker = a seatbelt. Hand-typing the reference = declining it.
+- STUDENT'S OWN UPGRADE: canary in a staging/prototype env → test where failure is FREE, not just
+  survivable. "Fix at the level that wins → verify where failure is free → widen only after
+  evidence."
+- Nothing skips the device database — it is the single DOOR every change walks through to the
+  box. (Explains two-hop install AND why reinstall drags device-DB mods down.)
+- "Install carries what the package USES, not everything it CONTAINS." Orphan object = a tool
+  left in the drawer.
+- "Reinstall skips the questions, never the confession" — NOW welded to the mechanism (device-DB
+  mods ride down; the preview catches them).
+- Cipher: "the script and the template are the same animal wearing different collars — both
+  stage, both wait, both lie green while the box stays ignorant."
+
+==================================================================
+KEY GUI / CLI DISCUSSED
+==================================================================
+- Device Manager > Provisioning Templates > CLI Template (create / assign).
+- Device Manager > Device & Groups > Managed FortiGate → device-layer & provisioning-template
+  status (Modified = amber triangle).
+- Policy & Objects > Advanced > Metadata Variables (variable VALUE; per-device mapping).
+- Template reference syntax: $(variable_name) — insert via $ picker, not by hand.
+- Device Manager > Scripts (policy-package target) → run → Install Policy Package to deliver.
+- Install Device Settings (device-layer delivery, one box) vs Install Policy Package (two-hop:
+  policy → device DB → FortiGate).
+- Reinstall (wizard skipped, preview kept).
+
+==================================================================
+TROUBLESHOOTING APPROACH TAUGHT
+==================================================================
+Continuous-template misfire / "the fix won't stick":
+1) Don't fix the FortiGate — the template re-overwrites it. Fix the LEVEL THAT WINS (template).
+2) For a metadata typo: is it the VALUE (dictionary) or the REFERENCE (template line)? Story clue
+   decides. Reference typo → resolves to nothing → all assigned devices.
+3) Canary install to a staging/prototype box that mirrors prod (failure = free).
+4) Read the install PREVIEW on the canary.
+5) Widen to the fleet only after the canary is green.
+Framework consolidated: FIX AT THE LEVEL THAT WINS → VERIFY WHERE FAILURE IS FREE → WIDEN AFTER
+EVIDENCE.
+
+==================================================================
+CONFIGURATION / TOPOLOGY CHANGES
+==================================================================
+No physical change. Management model HARDENS: continuous CLI templates now run as fleet-wide
+enforcement (device layer, overwrite-on-install), fed by metadata variables ($-picker,
+per-device-mappable). Policy-package scripts stage policy-layer objects (attached install;
+orphans park in ADOM DB). Change-control discipline in force (fix-winning-level → canary →
+preview → widen) — effectively the intermediate wrote George's policy.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Junior's typo never reached a live DMZ (assign staged it; no install ran). Fleet enforcement now
+possible with one edit — but gated by change-control discipline the student articulated. Business
+sentence available for S35 Penny gate: "one edit enforces the standard on all 30 boxes and
+auto-corrects drift, gated by a canary so a mistake never ships fleet-wide — consistent config,
+lower risk, engineers freed."
+
+==================================================================
+EXAM-RELEVANT NOTES / RESULTS (9/10 first pass)
+==================================================================
+CORRECT first pass (9): Q1 assign flips device+template status, nothing live; Q2 pre-run
+auto-unassigns / continuous re-applies; Q3 template re-overwrites manual fix; Q4 policy-package
+script → package Modified, object NOT live (carried "staged not shipped" across template→script,
+the exact law that slipped live earlier — FIXED under pressure); Q5 install policy pkg = policy →
+device DB → FortiGate; Q6 attached object installs, orphan stays in ADOM DB; Q7 REINSTALL skips
+wizard keeps preview (FAILED TWICE in S33 — now COLD-CORRECT, anchored with mechanism); Q8
+Install Device Settings for device-layer change; Q10 value in Metadata Variables / reference in
+template.
+MISSED (1): Q9 — "enforce identical SNMP fleet-wide, auto-correct drift" — chose A (one-time
+script) over B (continuous CLI template). ROOT CAUSE: same MCQ pattern family as S33 — picked the
+option that ACTS (a script does the thing, feels concrete) over the option that HOLDS (a template
+enforces, feels passive). Under time pressure he reaches for the verb with more action in it.
+FIX GIVEN: "when two options both achieve the immediate result, ask which one is still true in
+six months" → flips A→B. Tell: permanent/standard/fleet-wide/drift = template; set-once = script.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+1) Assigned a continuous CLI template to all 30 with a hand-typed reference typo → "one
+   character, thirty firewalls." Taught: assign stages (safe), the $ picker is a seatbelt, and a
+   continuous template's power (always wins) is also its danger.
+2) (Would-be) instinct to fix the typo directly on a FortiGate → the stencil re-overwrites it.
+   Taught: fix at the level that wins.
+
+==================================================================
+RETRIEVAL DEBT LEDGER (updated)
+==================================================================
+PAID THIS SESSION: reinstall-keeps-preview (FAILED TWICE S33 → COLD-CORRECT + mechanism, RETIRE
+this specific fact but keep one confirmation rep option in S36); "staged not shipped" generalised
+across surfaces (template→script) under exam pressure — LAW now attached to the machine, not the
+example.
+STILL PENDING (carry to S35 Cowboy Hat — natural battlefield for all of these):
+- MONEY-FIRST cold gate: NOT explicitly run this session (Penny was in-building but no cold
+  sentence demanded). One confirmation rep still owed — plant in S35, then retire.
+- when-not-to-abstract cold (NTP/syslog: variable or static?) — NOT run S33 or S34; carry.
+- per-device support matrix discrimination (address vs web-filter profile) — carry.
+- global-ADOM vs normalized-interface PURPOSE cold ("what problem does each solve", ban location
+  words) — S33 half-paid, retest cold in S35.
+- FMG IPsec-templates hands-on (crying cactus) — templates now covered conceptually; a template
+  could BE the payoff in a Cowboy Hat scenario.
+- S18/S19 OSPF internals II/III (two half-happy cacti) — long-standing.
+- MCQ EXAM-TECHNIQUE (top exam risk, now TWO sessions running): "which option is still true in
+  six months / which is the boring restatement of the law." Drill in S35 before/within the boss
+  battle.
+
+==================================================================
+TEASER DELIVERED FOR SESSION 35 — "Cowboy Hat: The Wrong Install" (BOSS BATTLE)
+==================================================================
+The cowboy hat comes off the shelf. FortiManager review UNDER FIRE: something installed to the
+wrong place — a policy package on the wrong device, OR device settings that overwrote a change
+someone needed, on a night when the PREVIEW WAS SKIPPED. No teaching scaffold. Student walks the
+whole machine COLD: retrieve, import, install, reinstall, quick install, revert, device settings,
+refresh — PLUS everything from S34 (assign vs install, stencil overwrite, two-hop install,
+attached/unattached, device-DB-as-single-door). Señor answers FEWER questions. Cipher watching.
+Penny wants the business sentence in ten words. Study Guide 02 — Central Management review /
+FortiManager troubleshooting.
+
+Date and Time completed: Saturday, 18 July 2026.

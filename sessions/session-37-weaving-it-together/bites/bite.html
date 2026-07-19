@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 37 — Study Bite (5 min)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital@0;1&family=Outfit:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-muted:#6b7794;
+--blue:#1e40af;--blue-light:#eff4fc;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--amber:#b45309;--amber-light:#fcf2c3;--green:#1a7c4a;--green-light:#dff0e1;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:17px}
+header{padding:32px 8%;background:var(--ink-dark)}
+.eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.12em}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;margin-top:6px}
+main{max-width:780px;margin:0 auto;padding:30px 22px 60px}
+h2{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:26px 0 8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:10px 0}
+.trap{border-left:4px solid var(--amber);background:var(--amber-light);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0}
+.anchor{font-family:'Playfair Display',serif;font-style:italic;color:var(--blue);text-align:center;margin:14px 0;font-size:18px}
+pre{background:var(--ink-dark);color:#dce7f7;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:12px 14px;border-radius:8px;overflow-x:auto;line-height:1.5}
+ul{margin:6px 0 6px 22px} li{margin:4px 0}
+b.k{font-family:'Outfit',sans-serif;font-size:14px}
+footer{text-align:center;padding:20px;font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.1em;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<header><span class="eyebrow">SESSION 37 · STUDY BITE · ~5 MINUTES</span><h1>Fabric Deployment &amp; Device Detection</h1></header>
+<main>
+
+<h2>Deployment order</h2>
+<div class="card"><b class="k">Root first — it's a dependency.</b> Downstream devices need three things only the root provides: a fabric that exists (<i>Serve as Fabric Root</i>), a fabric <b>name</b>, and a <b>listening interface</b> ("Allow other Security Fabric devices to join"). The root also <b>requires FortiAnalyzer</b> before the fabric can exist. Downstream: <i>Join Existing Fabric</i> + Upstream FortiGate IP/FQDN.</div>
+
+<h2>Two gates</h2>
+<div class="card">1) <b>Listening interface</b> — internal-facing only; the join interface is attack surface, never the ISP port. 2) <b>Authorization</b> — a human on the root accepts each request. Membership = trust.</div>
+<div class="trap"><b>Menu trap:</b> authorize on the root at <b>System &gt; Firmware &amp; Registration</b> (or via the alarm-icon badge) — <i>not</i> the Security Fabric menu. Hook: joining is registration → lives with Registration.</div>
+
+<h2>Device detection (passive, per-interface, access layer)</h2>
+<div class="card">Enable on <b>ISFW access ports</b> — devices are born at the access layer; the edge sees shadows. Three passive leaks:
+<ul><li><b>MAC OUI</b> — vendor from the first 3 bytes (hardware DNA)</li>
+<li><b>DHCP</b> — hostname + option fingerprint (the introduction)</li>
+<li><b>Traffic</b> — DNS / SNI / User-Agent (the accent)</li></ul>
+<pre>set device-identification enable      # per interface
+diagnose user device list             # MAC, vendor, type, os, host, first-seen</pre></div>
+<div class="anchor">"Devices cannot shut up about what they are."</div>
+
+<h2>Fabric logging (the Minerva rules)</h2>
+<div class="card"><b>First fabric FortiGate in the path owns the traffic log.</b> Every NAT point upstream mints one more legitimate traffic log (<b>NAT = new identity = new log</b> — the Rosetta Stone). UTM logs live where inspection ran. FAZ correlates them all — and its history makes visibility retroactive (97 days back on day one).</div>
+
+<h2>FortiNDR &amp; SAML SSO</h2>
+<div class="card">Downstream files to FortiNDR <b>transit through the root</b> — <i>FAZ = memory, root = spine.</i> Inline blocking: AV first → hold session → ML verdict → release or kill.<br><br>
+SAML SSO: <b>root = the only permitted IdP</b>; downstream FGTs, FAZ, FMG = SPs; hop devices via top-banner list, one browser session. <i>One fabric, one anchor, one voucher.</i></div>
+
+<h2>Business line</h2>
+<div class="card" style="border-left:4px solid var(--green);background:var(--green-light)">Day one of fabric visibility exposed Minerva — a rogue server that <b>had been</b> copying financial data to a personal cloud nightly for 97 days. State facts, not "could be": fact + duration + money category.</div>
+
+</main>
+<footer>LOFINANCE · SESSION 37 BITE</footer>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 34 Troubleshooting — Automation With Teeth</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;
+  --border:#d4c89a;--border-dim:#ebe1c2;
+  --text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;
+  --blue:#1e40af;--blue-vivid:#2563eb;--blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--blue-border:#b8cce8;
+  --ink-dark:#0d1a3a;--ink-accent:#9bb8e6;
+  --green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;
+  --amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;
+  --coral:#c65d4a;--coral-light:#f9e4de;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;}
+header{padding:44px 60px 34px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.02;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;}
+.motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+.motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+.motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+.motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);margin-top:6px;}
+main{max-width:1160px;margin:0 auto;}
+.main-content{padding:36px 60px 60px;}
+.section-block{margin-bottom:44px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.section-block h2{font-family:'Playfair Display',serif;font-size:29px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+.section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+.section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text-soft);margin:22px 0 10px;}
+.section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+.section-block p strong{color:var(--text);font-weight:600;}
+.section-block p em{color:var(--blue);font-style:italic;}
+.section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+.section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:5px;}
+.section-block li strong{color:var(--text);font-weight:600;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+.callout strong{color:var(--text);font-weight:600;}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.callout-coral{border-left-color:var(--coral);background:var(--coral-light);}
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+.data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+.data-table tr:hover td{background:var(--blue-glow);}
+.data-table td:first-child{color:var(--text);font-weight:600;}
+.code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+.code-block pre{padding:16px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;white-space:pre;}
+.socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:18px 0;border-top:3px solid var(--blue);}
+.socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;}
+.socratic-q{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text);font-style:italic;margin-bottom:6px;padding-left:22px;position:relative;}
+.socratic-q::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;color:var(--blue);}
+.mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+.mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+.mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+.analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+.analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+.analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+footer span{color:var(--blue);}
+.pill{display:inline-block;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:12px;}
+.pill-blue{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+.pill-green{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+.pill-amber{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+@media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:32px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}footer{padding:16px 24px;}}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:18px 0;font-family:'Cormorant Garamond',serif;}
+.tree .node{padding:8px 0 8px 20px;border-left:2px solid var(--blue-border);margin-left:8px;position:relative;font-size:16px;color:var(--text-soft);}
+.tree .node b{color:var(--text);}
+.tree .q{font-family:'Playfair Display',serif;font-style:italic;font-weight:600;color:var(--blue);}
+.symptom{background:var(--coral-light);border:1px solid var(--coral);border-radius:10px;padding:12px 18px;margin:10px 0;font-family:'Cormorant Garamond',serif;font-size:16px;color:#7a2f22;}
+.symptom b{color:#5c1f14;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> Troubleshooting Guide · Session 34</div>
+  <h1>When Automation <em>Bites Back</em></h1>
+  <p>How a senior engineer thinks through a template or script that "ran" but didn't land &mdash; or landed everywhere.</p>
+</header>
+<div class="motivation-banner">
+  <div class="motivation-text">The emphasis is <em>thinking</em>, not memorising commands.</div>
+  <div class="motivation-sub">Every fault below is a question about <em>which layer</em> and <em>which door</em>, not about syntax.</div>
+</div>
+<main><div class="main-content">
+
+<div class="section-block">
+  <div class="section-label">Symptoms You'll See</div>
+  <h2>What the Screen <em>Tells You</em></h2>
+  <div class="symptom"><b>Thirty amber triangles</b> after assigning a template &mdash; device-layer <b>and</b> provisioning-template status both Modified.</div>
+  <div class="symptom"><b>"The script ran (green) but nothing changed on the box."</b></div>
+  <div class="symptom"><b>"I fixed it on the FortiGate but it reverted after the next install."</b></div>
+  <div class="symptom"><b>"An object I made never showed up on the firewall."</b></div>
+  <div class="symptom"><b>"A routine reinstall changed something I didn't expect."</b></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Questions to Ask First</div>
+  <h2>Before You Touch <em>Anything</em></h2>
+  <ul>
+    <li><strong>Which layer did the change land in?</strong> Device layer (template / device-DB script) or policy layer (policy-package script)?</li>
+    <li><strong>Was anything <em>installed</em>, or only assigned/run?</strong> Amber/Modified = staged. Green checkmark = ran, not shipped.</li>
+    <li><strong>Is a continuous template assigned to this device?</strong> If so, any fix below it is temporary.</li>
+    <li><strong>Is the object referenced by a policy?</strong> Unreferenced objects don't install.</li>
+    <li><strong>For a metadata fault: value or reference?</strong> Dictionary entry vs template line.</li>
+  </ul>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Verification Commands &amp; Checks</div>
+  <h2>Where to <em>Look</em></h2>
+  <table class="data-table">
+    <tr><th>Check</th><th>Where</th><th>What it tells you</th></tr>
+    <tr><td>Config Status</td><td>Device Manager &gt; Device &amp; Groups &gt; Managed FortiGate</td><td>Synchronized vs Modified (staged)</td></tr>
+    <tr><td>Which statuses are amber</td><td>Same view</td><td>Device-layer only = script; +provisioning-template = CLI template</td></tr>
+    <tr><td>Metadata value</td><td>Policy &amp; Objects &gt; Advanced &gt; Metadata Variables</td><td>Is the dictionary entry correct? Per-device override?</td></tr>
+    <tr><td>Reference in template</td><td>Device Manager &gt; Provisioning Templates &gt; CLI Template</td><td>Is <code>$(name)</code> spelled to match a real entry?</td></tr>
+    <tr><td>Install preview</td><td>During Install / Reinstall</td><td>Exact diff about to ship &mdash; incl. device-DB drift</td></tr>
+    <tr><td>Revision history</td><td>Dashboard &gt; Configuration and Installation &gt; Revision</td><td>Did a change actually reach the box, and when?</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Decision Tree</div>
+  <h2>"It Ran, But <em>Nothing Happened</em>"</h2>
+  <div class="tree">
+    <div class="node q">Is the Config Status Modified (amber)?</div>
+    <div class="node"><b>Yes</b> &rarr; it's <b>staged, not shipped</b>. You didn't install. &rarr; Install the right layer:</div>
+    <div class="node">&nbsp;&nbsp;&bull; Device-layer change (template / device-DB script) &rarr; <b>Install Device Settings</b>.</div>
+    <div class="node">&nbsp;&nbsp;&bull; Policy-layer change (policy-package script) &rarr; <b>Install Policy Package</b> (two-hop).</div>
+    <div class="node q">No &mdash; it says Synchronized but the change still isn't right?</div>
+    <div class="node"><b>Object missing?</b> &rarr; Is it <b>referenced by a policy</b>? If not, it stayed in the ADOM DB (not carried).</div>
+    <div class="node"><b>Value wrong on all devices?</b> &rarr; Metadata <b>value</b> (dictionary) or <b>reference</b> (template). Fix the right one.</div>
+    <div class="node"><b>Fix keeps reverting?</b> &rarr; A <b>continuous template</b> is overwriting you. Fix the template, not the box.</div>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Recovery Sequence</div>
+  <h2>The <em>Safe</em> Fix</h2>
+  <ol>
+    <li><strong>Fix at the level that wins.</strong> If a template enforces it, edit the template. If a shared value is wrong, edit the dictionary entry.</li>
+    <li><strong>Re-insert references with the <code>$</code> picker</strong> &mdash; restore the seatbelt.</li>
+    <li><strong>Canary install</strong> to a staging/prototype device that mirrors prod but doesn't matter if it breaks &mdash; verify where failure is <em>free</em>.</li>
+    <li><strong>Read the install preview</strong> on the canary. Confirm exactly what ships (watch for device-DB drift riding along).</li>
+    <li><strong>Widen to the fleet</strong> only after the canary is green.</li>
+  </ol>
+  <div class="callout"><strong>Framework:</strong> Fix at the level that wins &rarr; verify where failure is free &rarr; widen only after evidence.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Common Dead Ends</div>
+  <h2>Where Time <em>Gets Wasted</em></h2>
+  <ul>
+    <li><strong>Debugging the script's syntax</strong> when the real fault is the <em>run target</em> / <em>layer</em>. Check where it landed first.</li>
+    <li><strong>Fixing the FortiGate by hand</strong> under a continuous template &mdash; you're painting under a stencil.</li>
+    <li><strong>Re-running Install Policy Package</strong> to deliver a device-layer change &mdash; heavier than needed, bigger surface for something else to be stale.</li>
+    <li><strong>Assuming a made object installed</strong> because the script succeeded &mdash; unreferenced = uninstalled.</li>
+    <li><strong>Skipping the reinstall preview</strong> because "it's just a reinstall" &mdash; that's exactly when device-DB drift ships silently.</li>
+  </ul>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Likely Root Causes</div>
+  <h2>What It <em>Usually</em> Is</h2>
+  <table class="data-table">
+    <tr><th>Symptom</th><th>Most likely root cause</th></tr>
+    <tr><td>Ran green, box unchanged</td><td>Staged not shipped &mdash; no install ran for that layer</td></tr>
+    <tr><td>Fix reverts every install</td><td>Continuous CLI template overwriting from above</td></tr>
+    <tr><td>Wrong value on all 30</td><td>Bad metadata value or bad reference &mdash; a single shared object</td></tr>
+    <tr><td>Object never appeared</td><td>Object not referenced by any policy &mdash; stayed in ADOM DB</td></tr>
+    <tr><td>Reinstall changed extra config</td><td>Staged device-DB modifications dragged down with the package</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Exam Traps</div>
+  <h2>Where the <em>Question Bites</em></h2>
+  <ul>
+    <li><strong>"Ran successfully"</strong> in the stem does <em>not</em> mean "on the FortiGate." Look for whether an install happened.</li>
+    <li><strong>"Enforce / auto-correct drift"</strong> &rarr; continuous template, never a one-time script &mdash; even if the script would set it correctly today.</li>
+    <li><strong>Reinstall</strong> keeps the preview and can carry device-DB mods &mdash; not the "low-risk quick push" it looks like.</li>
+    <li><strong>Only referenced objects install</strong> &mdash; distractors will offer "both objects" or "neither."</li>
+    <li><strong>Match install to layer</strong> &mdash; Install Device Settings for device-layer, Install Policy Package for policy-layer.</li>
+  </ul>
+</div>
+
+</div></main>
+<footer>NSE7 EF 7.6 &middot; Session 34 &middot; <span>Troubleshooting</span> &middot; think in layers and doors</footer>
+</body>
+</html>

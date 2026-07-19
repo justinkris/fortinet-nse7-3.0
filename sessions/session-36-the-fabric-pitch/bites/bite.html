@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 36 Bite — Security Fabric: Purpose & Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-muted:#6b7794;--blue:#1e40af;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:17px}
+header{background:var(--ink-dark);padding:36px 48px}
+.eyebrow{display:inline-block;border:1px solid rgba(155,184,230,.28);background:rgba(155,184,230,.1);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.12em;padding:4px 12px;border-radius:20px;margin-bottom:10px}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec}
+header h1 em{font-style:italic;color:var(--ink-accent);font-weight:500}
+main{max-width:760px;margin:0 auto;padding:36px 28px 70px}
+h2{font-family:'Outfit',sans-serif;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin:30px 0 10px}
+.card{background:var(--surface);border:1px solid var(--border-dim);border-radius:10px;padding:16px 20px;margin:12px 0}
+.big{font-family:'Playfair Display',serif;font-size:20px;color:var(--blue-deep)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:1px 6px;border-radius:4px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:15px;background:var(--surface)}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--surface-2);text-align:left;padding:8px 12px;border:1px solid var(--border-dim)}
+td{padding:8px 12px;border:1px solid var(--border-dim)}
+.trap{border:1px solid var(--amber-border);background:var(--amber-light);border-left:4px solid var(--amber);padding:12px 16px;border-radius:8px;margin:14px 0}
+.trap b{color:var(--amber);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:4px}
+ul{margin:0 0 8px 24px}li{margin-bottom:5px}
+footer{text-align:center;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted);padding:24px;border-top:1px solid var(--border)}
+</style></head>
+<body>
+<header>
+<span class="eyebrow">STUDY BITE · 5 MINUTES · SESSION 36</span>
+<h1>Security Fabric — <em>Purpose & Architecture</em></h1>
+</header>
+<main>
+
+<h2>Why it exists</h2>
+<div class="card"><span class="big">Every standalone firewall's knowledge is an island.</span> Session tables, device visibility, and logs are siloed per box. The fabric makes Fortinet products (and, via connectors, third parties) into one nervous system — so "show me every device" has an answer.</div>
+
+<h2>Three pillars — memorize verbatim: BIA</h2>
+<ul>
+<li><strong>Broad</strong> — detect & enforce <em>everywhere</em> (endpoint → network → cloud).</li>
+<li><strong>Integrated</strong> — close gaps; products operate as one.</li>
+<li><strong>Automated</strong> — faster time-to-prevention; self-healing network.</li>
+</ul>
+<div class="trap"><b>Exam trap</b>Distractors sound more architectural ("centralized, distributed, hybrid"). Pick Fortinet's boring official triad.</div>
+
+<h2>Shape & core</h2>
+<div class="card"><strong>Tree topology.</strong> One <strong>root</strong> FortiGate = the most <em>upstream</em> device (position, not traffic volume). Downstream FortiGates point at their upstream. Root hosts: Physical/Logical Topology views, fabric connectors, authorization.<br><br><strong>Core components = FortiGate + FortiAnalyzer.</strong> Topology = "what exists now"; FAZ = "what happened last Tuesday" — auditors live in last Tuesday.</div>
+
+<h2>Connectors</h2>
+<table>
+<tr><th>Fabric connectors</th><th>External connectors</th></tr>
+<tr><td>Fortinet products: FortiGate, FAZ, EMS + Central Mgmt, Sandbox, FortiNAC/NDR family</td><td>Everything else: AWS/GCP, Kubernetes/VMware, FSSO/RADIUS, threat feeds</td></tr>
+</table>
+<p><strong>External feed:</strong> plain-text list at a URL → fetched via HTTP/HTTPS/STIX (or Push API) → becomes a <strong>resource object</strong> usable in firewall policies. List updates; policy never edited.</p>
+
+<h2>Logging laws</h2>
+<ul>
+<li>The fabric logs each session <strong>once</strong> — owned by the <strong>first</strong> FortiGate in the path.</li>
+<li>Peers recognised by <strong>MAC address</strong> → no duplicate traffic logs.</li>
+<li><strong>Exception 1 — NAT:</strong> NATing member adds a traffic log (new src IP/port = evidence existing nowhere else).</li>
+<li><strong>Exception 2 — UTM:</strong> UTM events always log at the inspecting device.</li>
+<li>Members log to FAZ <strong>directly & independently</strong> → root down ≠ logging stops.</li>
+<li>FAZ correlates traffic + UTM logs automatically — zero extra config.</li>
+</ul>
+
+<h2>Joining</h2>
+<div class="card">Downstream: role = <span class="mono">Join Existing Fabric</span> + upstream IP. Then it <em>waits</em> until an admin <strong>authorizes it on the root</strong> (<span class="mono">System &gt; Firmware &amp; Registration</span> for FortiGates; alert-icon notification for other products). Knowing the root's IP is never enough.</div>
+
+<h2>One-breath business case</h2>
+<div class="card" style="font-style:italic">"When — not if — we have an incident, regulators will demand a complete record of every device and session; the fabric turns that from a court date into a ten-minute report."</div>
+
+</main>
+<footer>LoFinance · Session 36 Bite · Read before work, read before the exam</footer>
+</body></html>

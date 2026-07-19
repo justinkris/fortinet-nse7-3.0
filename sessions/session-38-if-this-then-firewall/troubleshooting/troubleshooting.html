@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 38 Troubleshooting — Automation Stitches</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:wght@400;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text)}
+header{padding:36px 48px 28px;background:var(--ink-dark)}
+.eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec}
+header h1 em{font-style:italic;color:var(--ink-accent)}
+header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px}
+main{max-width:980px;margin:0 auto;padding:32px 48px 56px}
+h2{font-family:'Playfair Display',serif;font-size:22px;margin:28px 0 12px;padding-left:12px;border-left:3px solid var(--blue)}
+p,li{font-size:16.5px;line-height:1.65;color:var(--text-soft);margin-bottom:8px}
+ul,ol{padding-left:20px;margin-bottom:10px}
+strong{color:var(--text)}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15.5px;line-height:1.6}
+.callout-a{border-left-color:var(--amber-border);background:var(--amber-light)}
+.callout-g{border-left-color:var(--green-border);background:var(--green-light)}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0;font-family:'SF Mono','Consolas',monospace;font-size:12px;line-height:1.85;white-space:pre;overflow-x:auto;color:var(--text-soft)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 12px;text-align:left}
+td{font-size:15px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5}
+td:first-child{color:var(--text);font-weight:600}
+code{font-family:'SF Mono','Consolas',monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+footer{padding:16px;background:var(--ink-dark);color:rgba(251,247,236,0.5);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 38 · TROUBLESHOOTING GUIDE</div>
+  <h1>When Automation <em>Misbehaves</em></h1>
+  <p>The senior skill for stitches is bidirectional: explain why automation fired (archaeology) and why it didn't (dependency-chain analysis). Commands matter less than knowing whose job each step is.</p>
+</header>
+<main>
+
+<h2>Symptom Families</h2>
+<table>
+  <tr><th>Symptom</th><th>First hypothesis family</th></tr>
+  <tr><td>"Something acted at 3am and nobody knows why"</td><td>A stitch fired — reconstruct trigger → action from logs; check Security Fabric &gt; Automation on the root</td></tr>
+  <tr><td>High-CPU email arrived empty / half-filled</td><td>Actions not Sequential, or delay too short for the script to finish before <code>%%results%%</code> was consumed</td></tr>
+  <tr><td>Stitch never fires on a leaf FGT</td><td>Scope excludes that FGT; push never happened; or trigger threshold not reached (<code>cpu-use-threshold</code>)</td></tr>
+  <tr><td>Compromised host was detected but NOT quarantined</td><td>Break in the 5-step chain — isolate which link (see decision tree)</td></tr>
+  <tr><td>Scheduled backup missing</td><td>Frequency/menu mismatch, or root clock/time-system wrong — the ROOT's clock governs</td></tr>
+  <tr><td>Root FGT down, panic about automation</td><td>Non-issue for EXISTING stitches (leaves execute local copies) — real issue: no NEW stitches can be authored/pushed</td></tr>
+</table>
+
+<h2>Questions to Ask Before Touching Anything</h2>
+<ol>
+  <li><strong>What exactly happened, and when?</strong> (Timestamp bounds the log search.)</li>
+  <li><strong>Which device performed the final action?</strong> Work backwards from the actor, not forwards from a guess.</li>
+  <li><strong>Was this an existing stitch or a change?</strong> Existing stitches survive root failure; changes require the root.</li>
+  <li><strong>Whose job was each step?</strong> Memory→FAZ · connections→FGT · management→EMS · execution→endpoint.</li>
+  <li><strong>What is the dependency chain between actions?</strong> Any action consuming another's output needs Sequential + adequate delay.</li>
+</ol>
+
+<h2>Decision Tree — "Host compromised but not quarantined"</h2>
+<div class="tree">Compromise confirmed, no quarantine
+│
+├─ Is the endpoint FortiClient (Linux)? ── YES → unsupported. Dead end by design.
+│
+├─ Step 1: Did FortiClient log to FAZ?
+│    NO → FC↔FAZ logging broken. Fix logging first.
+│
+├─ Step 2: Did FAZ raise the IoC?
+│    NO → FAZ analysis/event-handler side. The scribe never
+│         turned detective — nothing downstream can fire.
+│
+├─ Step 3: Did FGT receive the notice AND verify the endpoint?
+│    NO → endpoint not a CONNECTED FortiClient endpoint, or
+│         FGT lacks the EMS IP / admin credentials it needs
+│         to forward the order.
+│
+├─ Step 4: Did EMS receive and dispatch the quarantine msg?
+│    NO → FGT→EMS auth/API problem, or EMS can't locate
+│         the endpoint (does EMS actually manage it?).
+│
+└─ Step 5: Did the endpoint quarantine and report back?
+     NO → FC↔EMS connectivity, or the endpoint went offline
+          before the message landed.
+Manual override at any point:
+diagnose endpoint fctems queue-complete-calls Q-&lt;endpoint_ip&gt;</div>
+
+<h2>Expected Evidence at Each Link</h2>
+<ul>
+  <li><strong>FAZ:</strong> the FortiClient log entry for the malicious event, then the IoC event itself.</li>
+  <li><strong>FGT:</strong> record of the FAZ notification and the outbound call to EMS.</li>
+  <li><strong>EMS:</strong> the quarantine dispatch to the named endpoint.</li>
+  <li><strong>Endpoint:</strong> the status change report back to FGT + EMS — the chain <em>closes the loop</em>; a missing status report is itself a symptom.</li>
+</ul>
+
+<h2>Common Dead Ends</h2>
+<ul>
+  <li><strong>Staring at firewall policies.</strong> The quarantine chain doesn't use them; "the FortiGate blocked it" is the intuitive wrong answer.</li>
+  <li><strong>Restarting the root to "fix" leaf automation.</strong> Leaves run local copies; the root is only needed to author or change stitches.</li>
+  <li><strong>Lengthening the email action's own settings</strong> when the empty-body cause is the missing delay before it.</li>
+  <li><strong>Checking the leaf's clock for a missed schedule.</strong> The root's time system governs.</li>
+</ul>
+
+<h2>Likely Root Causes, Ranked</h2>
+<ol>
+  <li>Broken prerequisite plumbing (FC↔EMS, FC/FGT↔FAZ logging, FGT missing EMS credentials)</li>
+  <li>Scope/push mismatch — the stitch was never sent to the FGT expected to run it</li>
+  <li>Sequential/delay mis-set in multi-action stitches</li>
+  <li>Threshold never crossed (<code>cpu-use-threshold</code> raised or default misunderstood)</li>
+  <li>Platform exclusions (Linux FortiClient)</li>
+</ol>
+
+<h2>Exam Traps</h2>
+<div class="callout-a">
+<strong>Trap 1:</strong> "Root fails → stitches stop on downstream FGTs." False — config-time push.<br>
+<strong>Trap 2:</strong> "FortiGate detects the IoC." False — FortiAnalyzer discovers it.<br>
+<strong>Trap 3:</strong> "EMS blocks the endpoint's traffic." False — the endpoint quarantines <em>itself</em>.<br>
+<strong>Trap 4:</strong> Component lists swapping EMS for FortiManager/FortiNDR/FortiSwitch.<br>
+<strong>Trap 5:</strong> <code>%%results%%</code> questions that omit Sequential — the parameter is meaningless without it.
+</div>
+
+<div class="callout-g"><strong>The senior habit:</strong> when the network acts alone, don't ask "which box did it" — ask "whose job is each step," then walk the chain link by link, verifying evidence at every handoff before changing anything.</div>
+
+</main>
+<footer>LOFINANCE · SESSION 38 TROUBLESHOOTING · THINK IN CHAINS, NOT BOXES</footer>
+</body>
+</html>

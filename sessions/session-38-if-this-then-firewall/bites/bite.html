@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 38 Bite — If This, Then Firewall</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text)}
+header{padding:36px 48px 28px;background:var(--ink-dark)}
+.eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px}
+header h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec}
+header h1 em{font-style:italic;color:var(--ink-accent)}
+main{max-width:860px;margin:0 auto;padding:32px 48px 56px}
+h2{font-family:'Playfair Display',serif;font-size:21px;margin:26px 0 10px;padding-left:12px;border-left:3px solid var(--blue)}
+p,li{font-size:16.5px;line-height:1.65;color:var(--text-soft);margin-bottom:8px}
+ul,ol{padding-left:20px;margin-bottom:10px}
+strong{color:var(--text)}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15.5px;line-height:1.6}
+.callout-g{border-left-color:var(--green-border);background:var(--green-light)}
+.callout-a{border-left-color:var(--amber-border);background:var(--amber-light)}
+.flow{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:12px 0;font-family:'SF Mono','Consolas',monospace;font-size:12px;line-height:1.8;white-space:pre;overflow-x:auto;color:var(--text-soft)}
+code{font-family:'SF Mono','Consolas',monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+footer{padding:18px;background:var(--ink-dark);color:rgba(251,247,236,0.5);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 38 · 5-MINUTE BITE · AUTOMATION STITCHES</div>
+  <h1>If This, Then <em>Firewall</em></h1>
+</header>
+<main>
+
+<h2>1 · The Stitch</h2>
+<p><strong>Trigger + action(s)</strong> = a stitch (if/then automation). Fabric not required — but in a fabric, stitches are <strong>configured on the root</strong> (Security Fabric &gt; Automation), scoped to all or a subset of FGTs, and <strong>pushed to the leaves</strong>. Triggers can come from the FGT itself or other fabric devices via FAZ event handlers.</p>
+<div class="callout-g callout"><strong>Exam gold:</strong> the push happens at <strong>config time, not trigger time</strong> — leaves hold local copies, so previously configured stitches keep running when the root is <strong>down</strong>. Root = author, not dispatcher.</div>
+
+<h2>2 · High-CPU Pipeline</h2>
+<p>Preconfigured <strong>High CPU</strong> trigger — threshold via <code>config system global → set cpu-use-threshold</code>, <strong>default 90%</strong>. Actions: CLI diagnostics script, then email whose body is <strong><code>%%results%%</code></strong> (the script's output).</p>
+<div class="callout-a callout"><strong>Sequential + 30s delay</strong> — the email consumes the script's output, so the script must <em>finish</em> first. Simultaneous = empty envelope. <em>Let the kettle boil before pouring.</em></div>
+
+<h2>3 · Scheduled Backup</h2>
+<p><strong>Schedule trigger</strong> (time itself is the trigger): <strong>once / hourly / daily / weekly / monthly</strong>, governed by the <strong>root FortiGate's clock</strong>. Backups land in <strong>Configuration &gt; Revisions</strong> — rollback-ready.</p>
+
+<h2>4 · IoC Quarantine (the 3am chain)</h2>
+<p>Required four: <strong>FortiGate · FortiAnalyzer · FortiClient EMS · FortiClient</strong>. FGT holds EMS IP + admin credentials.</p>
+<div class="flow">1. FortiClient logs malicious site → FAZ
+2. FAZ discovers IoC → notifies FGT
+3. FGT verifies endpoint CONNECTED → notifies EMS
+4. EMS sends quarantine message → endpoint
+5. Endpoint quarantines ITSELF, reports back</div>
+<p>Manual: <code>diagnose endpoint fctems queue-complete-calls Q-&lt;ip&gt;</code>. <strong>Not on FortiClient (Linux).</strong></p>
+<div class="callout"><strong>Why not a firewall block?</strong> "You can only block what is inline" — same-L2 traffic never crosses the firewall; the laptop is mobile; DHCP re-issues IPs. Only endpoint quarantine follows the compromise around.</div>
+
+<h2>5 · Security Rating (preview)</h2>
+<p>The fabric audits itself against best practices → score + prioritised findings, some auto-fixable. Watching (CPU) · Acting (quarantine) · <strong>Judging (rating)</strong>. Full story: Session 39.</p>
+
+</main>
+<footer>LOFINANCE · SESSION 38 BITE</footer>
+</body>
+</html>

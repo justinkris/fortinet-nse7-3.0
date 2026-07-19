@@ -1,0 +1,198 @@
+==================================================================
+SESSION 36 REVISION PACK — "The Fabric Pitch"
+Security Fabric: purpose, components, root & downstream FortiGates
+Blueprint 1.1 · SG 09 pp. 255-261
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+An insurer's assessor asked "show me every device on your network,"
+and no single LoFinance product could answer — each firewall's
+session table, each log store, each endpoint view is an island.
+
+The Security Fabric solves this: Fortinet's cybersecurity mesh
+platform on FortiOS, built on three pillars — BROAD (see and
+enforce everywhere), INTEGRATED (products operate as one),
+AUTOMATED (self-healing, fast response). Open to third parties
+via connectors.
+
+Architecture: a TREE, not a mesh. One ROOT FortiGate — the most
+UPSTREAM device (position in flow, not traffic volume; LoFinance =
+HQ NGFW). Downstream FortiGates point to their upstream. The root
+hosts Physical/Logical Topology views, fabric connector config,
+and member authorization. Core components = FortiGate +
+FortiAnalyzer (the fabric's memory: topology = "now", FAZ = "last
+Tuesday" — where auditors live). EMS/FortiClient extend visibility
+onto the endpoint itself.
+
+Connectors: fabric connectors = Fortinet products (FGT, FAZ, EMS,
+Central Mgmt, Sandbox, FortiNAC/NDR family). External connectors =
+everything else (AWS/GCP, Kubernetes/VMware, FSSO/RADIUS, threat
+feeds). External feeds: plain-text list at a URL, fetched via
+HTTP/HTTPS/STIX or Push API, becomes a resource object used
+directly in firewall policies.
+
+Logging: the fabric logs each session ONCE — owned by the FIRST
+FortiGate that handled it. Members recognise peers by MAC and
+suppress duplicate traffic logs. Exceptions: NAT forces an extra
+traffic log (new src IP/port = evidence existing nowhere else);
+UTM events always log at the inspecting device. Members log to FAZ
+directly and independently — root failure never darkens the
+evidence trail. FAZ correlates everything automatically.
+
+Joining: downstream sets "Join Existing Fabric" + upstream IP,
+then WAITS until an admin authorizes it on the root (FortiGates:
+System > Firmware & Registration; other products: alert-icon
+notification). Reaching the root's IP is never membership.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+GUI PATHS
+  Security Fabric > Fabric Connectors > Security Fabric Setup
+      role: Serve as Fabric Root | Join Existing Fabric
+      Allow other Security Fabric devices to join: <interface>
+      Fabric name: <name>            (root)
+      Upstream FortiGate IP/FQDN: <ip>  (downstream)
+  System > Firmware & Registration      -> authorize downstream FGTs
+  Security Fabric > Physical Topology / Logical Topology  (root)
+  Security Fabric > External Connectors -> external feeds, SDN, SSO
+  Policy & Objects > Firewall Policy    -> external-feed resource object
+
+KEY FACTS / DEFAULTS / BEHAVIOURS
+  Core fabric components ........ FortiGate + FortiAnalyzer
+  Pillars ....................... Broad / Integrated / Automated (BIA)
+  Topology ...................... Tree; root = most upstream FGT
+  Root role ..................... topology views, connectors, authorization
+  Traffic log owner ............. FIRST fabric FGT in the path
+  Duplicate suppression via ..... peer MAC recognition
+  Extra traffic log when ........ an upstream member performs NAT
+  UTM logging ................... always at the inspecting device
+  Root down ..................... members keep logging to FAZ (direct)
+  FAZ correlation ............... automatic, no extra config
+  External feed transports ...... HTTP, HTTPS, STIX (+ Push API/REST)
+  External feed produces ........ resource object for firewall policies
+  Join without authorization .... inert (pending on root)
+
+DESIGN RULES
+  - Choose the root by POSITION (most upstream), not throughput.
+  - Fabric membership is invitation-only: request + authorize.
+  - Fortinet product -> fabric connector; else -> external connector.
+  - Evidence design: NAT points are where identity changes — expect
+    (and want) logs there.
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: Minimum core components of the Security Fabric?
+A: FortiGate + FortiAnalyzer.
+
+Q: The three key concepts of the Security Fabric?
+A: Broad, Integrated, Automated.
+
+Q: What topology does the Security Fabric use?
+A: A tree — one root FortiGate, downstream FortiGates as branches.
+
+Q: How should the root FortiGate be chosen?
+A: The most upstream FortiGate (position in traffic flow).
+
+Q: Which device in the fabric logs a session's traffic?
+A: The first FortiGate that handled the session.
+
+Q: How do members avoid duplicate traffic logs?
+A: They recognise the MAC addresses of upstream/downstream fabric
+   peers and skip logging sessions arriving from a peer's MAC.
+
+Q: The one operation that forces an ADDITIONAL traffic log upstream?
+A: NAT — the translated IP/port must be recorded (new evidence).
+
+Q: Are UTM logs ever suppressed in the fabric?
+A: No — UTM events always log on the device performing inspection.
+
+Q: Root FortiGate fails. Do downstream logs to FAZ stop?
+A: No — each member logs to FortiAnalyzer independently/directly.
+
+Q: Fabric connector vs external connector — the dividing rule?
+A: Fortinet product = fabric connector; non-Fortinet/multivendor
+   (SDN, FSSO/RADIUS, threat feeds) = external connector.
+
+Q: What does creating an external feed give you on FortiGate?
+A: A periodically-updated resource object usable in firewall
+   policies (fetched via HTTP/HTTPS/STIX, or Push API).
+
+Q: A FortiGate set to "Join Existing Fabric" with the correct
+   upstream IP — is it a member?
+A: Not until an administrator authorizes it on the root
+   (System > Firmware & Registration).
+
+Q: Where do the Physical and Logical Topology views live?
+A: On the root FortiGate.
+
+Q: (Retrieval) A remote-target FMG script edits a firewall policy
+   on the device. How does the policy layer learn of it?
+A: It doesn't automatically — manual Import into the policy package.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path", Episode 36: The Fabric Pitch
+------------------------------------------------------------------
+Generate a 10-14 minute podcast episode for the series "The Packet
+Path" — a storytelling technical podcast following an intermediate
+network engineer at LoFinance, a financial company whose logo is
+stacks of money frozen in an ice cube. Warm, wry narrator; light
+sound-design cues welcome.
+
+STORY: An insurer-appointed external assessor, Dr. Imogen Vasse —
+leather notebook, terrifying calm — opens the quarterly audit with
+one question: "Show me every device on your network." Silence. The
+eccentric senior engineer, Señor (sombrero, mandarins, immaculate
+diagrams above a disaster desk), finishes his mandarin, leaves the
+peel in one unbroken spiral, and writes one word on the whiteboard:
+FABRIC. Mid-pitch, an email arrives from Dave, a branch engineer
+who pointed a spare FortiGate at HQ and cheerfully assumed he'd
+joined the fabric. He has not. He is a stranger holding flowers
+outside the building, and he will refresh his authorization request
+four times before the credits.
+
+TEACH, through the story:
+1. The islands problem — every firewall's session table is its own
+   private universe; the answers to the auditor's question exist,
+   scattered across six products that don't speak.
+2. Proximity = visibility: devices are BORN at the access layer;
+   the edge only sees their shadows — and the logical endpoint of
+   that idea is an agent ON the device (FortiClient + EMS), which
+   our engineer invents before being taught it.
+3. The fabric's shape: a tree with one ROOT FortiGate — the most
+   upstream device — holding the topology views, connectors, and
+   the authorization queue.
+4. Core components: FortiGate + FortiAnalyzer. FAZ is the fabric's
+   memory: topology answers "now", FAZ answers "last Tuesday", and
+   auditors live in last Tuesday.
+5. The logging laws: one session, one log, owned by the FIRST
+   FortiGate; peers recognised by MAC; EXCEPT the NAT log — the
+   Rosetta Stone joining the private 10.x identity to the public
+   one — and UTM logs, which always live where inspection happens.
+6. The 2 a.m. test: the root dies; the crown is vacant but the
+   witnesses keep writing — members log to FortiAnalyzer directly.
+7. Connectors: Fortinet product = fabric connector; the rest of
+   the world (AWS, Kubernetes, FSSO, threat feeds) = external
+   connectors, including external feeds that turn a plain-text URL
+   into a living firewall object.
+
+JUNIOR'S MISTAKE: he counts firewalls to count logs — "two devices,
+two logs!" — and learns the fabric dedupes by design, with
+exceptions that are principled, not random. NAT = new identity =
+new log.
+
+MEMORABLE LINES TO KEEP: "She is not asking about firewalls. She is
+asking whether the firewalls talk to each other." / "Juniors answer
+with the box in front of them. Seniors answer with the system." /
+Penny on the business case: "That was four sentences wearing a
+trench coat."
+
+END-OF-EPISODE TEASER: Tomorrow the marker becomes config. Señor
+arrives with a label maker. The label reads: DETECTION IS NOT AN
+OPINION. Somewhere in the Vaultline break room, a smart TV has
+been... browsing. And Dave refreshes his request one more time.
+Next episode: "Weaving It Together" — the fabric opens its eyes.
+==================================================================

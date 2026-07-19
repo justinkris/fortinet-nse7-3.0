@@ -1,0 +1,196 @@
+==================================================================
+SESSION 37 — "WEAVING IT TOGETHER" — COMBINED REVISION PACK
+Security Fabric deployment · device detection · pp. 262–267
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+Deploy ROOT FIRST — downstream devices join by pointing at a fabric
+name, listening interface, and root IP that must already exist. The
+root requires a FortiAnalyzer before the fabric can be enabled.
+Two gates protect membership: (1) the join-listening interface —
+internal-facing only, because the join door is attack surface —
+and (2) human AUTHORIZATION on the root at System > Firmware &
+Registration (alarm-icon badge shortcut). Membership is trust:
+topology visibility, telemetry, SSO, automation.
+
+Non-Fortinet devices can't join; the fabric learns of them via
+PASSIVE device detection, enabled PER-INTERFACE at the ACCESS layer
+(devices are born at the access layer; the edge sees shadows).
+Identity leaks: MAC OUI (vendor/DNA), DHCP hostname + option
+fingerprint (introduction), traffic chatter — DNS/SNI/User-Agent
+(accent). Detected devices populate Physical/Logical Topology and
+the asset inventory — which is how a 97-day rogue server (Minerva)
+surfaced on day one of visibility, investigated backwards through
+FAZ's log memory.
+
+Logging rules (applied live): first fabric FGT in path owns the
+traffic log; each upstream NAT point mints one more legitimate
+traffic log (NAT = new identity = new log); UTM logs live where
+inspection ran; FAZ correlates.
+
+FortiNDR: downstream files TRANSIT THROUGH THE ROOT (spine), not
+FAZ (memory). Inline blocking = AV first → hold session → ML
+verdict → release/terminate.
+
+SAML SSO: root = the ONLY permitted IdP; downstream FGTs, FAZ, FMG
+register as SPs; hop devices from the top-banner list without
+re-auth in the same browser session. One fabric, one anchor, one
+voucher.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+GUI PATHS
+  Root/downstream setup .... Security Fabric > Fabric Connectors >
+                             Security Fabric Setup
+  AUTHORIZE downstream ..... System > Firmware & Registration
+                             (or alarm-icon badge, top banner)
+  Topology views ........... Security Fabric > Physical Topology /
+                             Logical Topology
+  FortiNAC dynamic addrs ... Policy & Objects > Addresses
+                             (FortiNAC Tag section)
+
+ROOT SETUP FIELDS
+  Security Fabric role ................ Serve as Fabric Root
+  Allow other ... devices to join ..... <internal iface, e.g. port5>
+  Fabric name ......................... LoFinance-Fabric
+  FortiAnalyzer IP .................... REQUIRED
+
+DOWNSTREAM SETUP FIELDS
+  Role ................... Join Existing Fabric
+  Upstream FortiGate ..... IP/FQDN of root's join-side address
+  SAML Single Sign-On .... optional at join
+
+CLI
+  config system interface
+      edit "portX"
+          set device-identification enable
+      next
+  end
+  diagnose user device list        # MAC/vendor/type/os/host/port/age
+
+KEY BEHAVIOURS / RULES
+  - Root first: deployment order is a dependency.
+  - Join interface = attack surface; never ISP-facing.
+  - Verify serial vs asset register BEFORE authorizing.
+  - Detection is passive + per-interface + access layer.
+  - Traffic log: first fabric FGT; +1 per NAT point; UTM where
+    inspection ran; FAZ correlates.
+  - FortiNDR transit: through the root. FAZ = memory, root = spine.
+  - SAML: root-only IdP; FGT/FAZ/FMG as SP; per-browser-session.
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: Which device must be configured first in a fabric, and why?
+A: The root — downstream devices need an existing fabric name,
+   listening interface, and root IP to point at.
+
+Q: What must exist on the root before the fabric can be enabled?
+A: A FortiAnalyzer (IP configured in Security Fabric Setup).
+
+Q: Exact menu to authorize a downstream FortiGate?
+A: On the ROOT: System > Firmware & Registration.
+
+Q: Two root-side reasons a join request never appears?
+A: (1) Awaiting authorization; (2) join-listening interface not
+   enabled / wrong interface.
+
+Q: Why restrict the join-listening interface?
+A: Fabric membership is trust; listening on the ISP interface would
+   let anyone on the internet knock. Attack-surface decision.
+
+Q: Where does device detection belong, and why?
+A: Access layer (ISFW), per-interface — closest to the source;
+   the edge sees forwarded/NAT'd shadows.
+
+Q: Three passive identity leaks used by device detection?
+A: MAC OUI (vendor), DHCP hostname/option fingerprint, application
+   chatter (DNS, TLS SNI, HTTP User-Agent).
+
+Q: Is device detection active scanning?
+A: No — entirely passive observation of traffic the device sends.
+
+Q: Client → ISFW → NGFW(SNAT+webfilter) → Internet: traffic logs?
+A: Two — ISFW (first fabric FGT owns the session log) and NGFW
+   (SNAT = new identity = new log). UTM log(s) on NGFW.
+
+Q: Downstream FGT sends a file to FortiNDR — via what?
+A: Transits through the ROOT FortiGate (not FortiAnalyzer).
+
+Q: FortiNDR inline blocking flow?
+A: FGT AV first; if unknown, hold session → FortiNDR ML verdict →
+   release if clean, terminate if malicious.
+
+Q: SAML SSO fabric roles?
+A: Root = only permitted IdP; downstream FGTs, FAZ, FMG = SPs;
+   no re-auth within the same browser session.
+
+Q: Where do pending fabric requests show besides the menu?
+A: Number badge next to the alarm icon in the root's top banner.
+
+Q: CLI to list detected devices?
+A: diagnose user device list.
+
+Q: (FMG retrieval) Does reinstalling a policy package keep the
+   approved normalized-interface mapping?
+A: YES — reinstall keeps the previously approved mapping.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "THE PACKET PATH", EPISODE 37
+------------------------------------------------------------------
+Generate a 10–14 minute podcast episode of "The Packet Path", an
+enterprise-networking story-and-study show. Two hosts: a warm
+narrator and a slightly sardonic senior-engineer voice.
+
+STORY: At LoFinance (fintech; logo: money frozen in an ice cube),
+deployment day for the Security Fabric. Señor, the eccentric senior
+engineer in a sombrero, arrives with a label maker and labels his
+sombrero "ROOT". Penny, the COO, refuses to sign the budget until
+the intermediate engineer recites Fortinet's three words — Broad,
+Integrated, Automated — cold. He does. Junior tries to click "Join"
+on the downstream firewalls before the root exists; Señor labels
+his laptop "NOT YET" and the show explains WHY root-first is a
+dependency: downstream devices point at a fabric name, a listening
+interface, and a root IP that must already exist — and the root
+won't even enable without a FortiAnalyzer. Explain the "two gates":
+the join-listening interface (never the ISP port — the fabric's
+front door is attack surface) and human authorization on the root
+at the counterintuitive menu System > Firmware & Registration
+("joining is registration"). Dave, the branch engineer whose join
+request sat pending for two weeks like a stranger holding flowers,
+is finally verified and authorized.
+
+Then the payoff: device detection goes live at the access layer —
+"devices are born at the access layer; the edge sees shadows" —
+and the hosts explain the three passive leaks with the analogy
+MAC OUI = hardware DNA, DHCP = the introduction, traffic = the
+accent. "Devices cannot shut up about what they are." The topology
+map reveals a switch nobody bought and a server nobody owns:
+MINERVA, first seen 97 days ago, a departed contractor's box
+backing up financial data to his personal cloud nightly at 02:00.
+Walk through the evidence-first investigation (where / what MACs /
+talking to whom) and use it to teach the fabric logging rules:
+first fabric FortiGate owns the traffic log, NAT mints a second
+("NAT = new identity = new log" — Junior's rhyme), UTM logs live
+where inspection ran, FortiAnalyzer correlates — and its 97-day
+memory makes visibility retroactive.
+
+JUNIOR'S MISTAKE: clicking Join before the root existed — teach
+order-of-operations as dependency, not ritual. Also cover the
+intermediate engineer's near-miss: assuming FortiNDR files go to
+FortiAnalyzer — correct with "FAZ is the fabric's memory; the root
+is the spine; transit goes through the spine." Close the technical
+half with SAML SSO: only the root may be Identity Provider — one
+fabric, one anchor, one voucher.
+
+END with the teaser: Thursday 02:00, the DCFW's CPU hits 96% and
+the fabric watches and does NOTHING. Señor's whiteboard: "THE
+FABRIC WATCHED. THE FABRIC DID NOTHING. THIS IS MY FAULT." Next
+episode: automation stitches — the fabric learns reflexes — and a
+security rating score nobody is going to like.
+
+Tone: cinematic but precise; every analogy must carry real
+technical weight; recap the key rules in the final two minutes.

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 37 — Weaving It Together · Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital@0;1&family=Outfit:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;
+--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;
+--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;
+--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.65;font-size:17px}
+header{padding:44px 8% 34px;background:var(--ink-dark)}
+.eyebrow{display:inline-block;background:rgba(155,184,230,.1);border:1px solid rgba(155,184,230,.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:.1em;margin-bottom:14px}
+header h1{font-family:'Playfair Display',serif;font-size:42px;color:#fbf7ec;line-height:1.05}
+header h1 em{font-style:italic;color:var(--ink-accent)}
+header p{font-style:italic;color:rgba(251,247,236,.55);margin-top:10px}
+main{max-width:900px;margin:0 auto;padding:40px 24px 80px}
+h2{font-family:'Playfair Display',serif;font-size:26px;margin:44px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+h3{font-family:'Outfit',sans-serif;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:26px 0 8px}
+p{margin:10px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:16px 0}
+.callout{border-left:4px solid var(--blue);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0}
+.callout.warn{border-color:var(--amber);background:var(--amber-light)}
+.callout.win{border-color:var(--green);background:var(--green-light)}
+.callout b{font-family:'Outfit',sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:4px}
+pre{background:var(--ink-dark);color:#dce7f7;font-family:'JetBrains Mono',monospace;font-size:13px;padding:16px 18px;border-radius:10px;overflow-x:auto;margin:12px 0;line-height:1.55}
+code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:var(--surface-2);padding:1px 6px;border-radius:4px}
+table{width:100%;border-collapse:collapse;margin:14px 0;background:var(--surface);font-size:15px}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:10px 12px;border:1px solid var(--border)}
+td{padding:10px 12px;border:1px solid var(--border-dim);vertical-align:top}
+ul,ol{margin:8px 0 8px 24px}
+li{margin:5px 0}
+.anchor{font-family:'Playfair Display',serif;font-style:italic;font-size:19px;color:var(--blue);text-align:center;margin:20px 0}
+.story{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;font-style:italic;color:var(--text-soft)}
+footer{text-align:center;padding:24px;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.1em;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<header>
+  <span class="eyebrow">SESSION 37 · COMPLETE GUIDE · STUDY GUIDE 09 · pp. 262–267</span>
+  <h1>Weaving It <em>Together</em></h1>
+  <p>Security Fabric deployment · authorization · device detection · the Minerva incident · SAML SSO</p>
+</header>
+<main>
+
+<h2>Story Recap</h2>
+<div class="story">
+<p>Deployment day. Señor labelled his sombrero <code>ROOT</code>. Penny withheld the budget signature until the BIA triad was recited cold — it was. The fabric went live root-first; Dave's 14-day-pending branch FortiGate was finally verified and authorized. Then the topology map bloomed and revealed what nobody wanted: an unmanaged switch nobody bought on DCFW port4, and behind it <b>Minerva</b> — a contractor's Dell server that had been exfiltrating LoFinance financial data to a personal cloud account nightly for 97 days. Found on day one of visibility. Cipher: "Verify." Penny: legal first, Vasse second.</p>
+</div>
+
+<h2>Learning Objectives</h2>
+<ul>
+<li>Deploy a Security Fabric root-first and explain <em>why</em> the order is a dependency, not a ritual</li>
+<li>Configure root and downstream Security Fabric Setup fields and treat each as a security boundary</li>
+<li>Authorize downstream devices in the correct (counterintuitive) menu</li>
+<li>Explain passive device detection: what leaks identity, and where detection belongs</li>
+<li>Apply the fabric logging rules to a real investigation</li>
+<li>Place FortiNDR file transit and SAML SSO roles correctly in the fabric trust model</li>
+</ul>
+
+<h2>1 · Root-First Deployment</h2>
+<p>A downstream FortiGate joins by pointing its <b>Upstream FortiGate IP/FQDN</b> at an existing root. Before the root exists, there is no fabric name to join and no interface listening for requests — a join attempt simply dies. The root defines three things everyone else depends on:</p>
+<ol>
+<li><b>That a fabric exists</b> — role: <code>Serve as Fabric Root</code></li>
+<li><b>The fabric's name</b> — the identity downstream devices join</li>
+<li><b>The listening interface</b> — <code>Allow other Security Fabric devices to join</code></li>
+</ol>
+<div class="card"><h3>Root config — HQ-NGFW</h3>
+<pre>Security Fabric &gt; Fabric Connectors &gt; Security Fabric Setup
+  Security Fabric role:                        Serve as Fabric Root
+  Allow other Security Fabric devices to join: port5   (internal-facing)
+  Fabric name:                                 LoFinance-Fabric
+  FortiAnalyzer IP:                            10.0.99.10</pre>
+<p>The root <b>requires a FortiAnalyzer</b> before the fabric can be enabled. The fabric refuses to exist without its memory. (Exam MCQ favourite.)</p></div>
+<div class="card"><h3>Downstream config — HQ-ISFW / HQ-DCFW / branch</h3>
+<pre>Security Fabric &gt; Fabric Connectors &gt; Security Fabric Setup
+  Security Fabric role:        Join Existing Fabric
+  Upstream FortiGate IP/FQDN:  10.0.12.254
+  SAML Single Sign-On:         (optional at join)</pre></div>
+
+<h2>2 · Setup Fields Are Security Boundaries</h2>
+<div class="anchor">"Every setup field is a security boundary wearing a text box costume."</div>
+<p>Why must you pick a <em>specific</em> join interface instead of listening everywhere? Because the NGFW has an ISP-facing interface. If the fabric listened on every port, anyone on the internet with a FortiGate — or software pretending to be one — could send join requests to your trust perimeter. Fabric membership grants topology visibility, telemetry sharing, and eventually SSO and automation: it is a <b>trust relationship</b>, so the listening interface is an attack-surface decision.</p>
+<div class="callout"><b>The Two Gates</b>Gate 1 — the listening interface: <em>where</em> may you even knock? Gate 2 — authorization: even at the right door, a human must let you in. Defense in depth, applied to the fabric itself. Dave stood at the right door for two weeks.</div>
+
+<h2>3 · Authorization</h2>
+<p>Authorization always happens <b>on the root</b>. The pending request appears as a badge next to the <b>alarm icon</b> in the root's top banner, and the full queue lives at:</p>
+<div class="callout warn"><b>Menu trap</b><code>System &gt; Firmware &amp; Registration</code> — <em>not</em> under the Security Fabric menu, where every reasonable human first looks. Hook: <b>joining the fabric is a form of device registration, so it lives with Registration.</b> This exact path was missed twice in one session; drill it.</div>
+<p>Before authorizing, verify — Cipher's one word. Confirm the serial against the asset register. Authorization is a trust decision, not a click.</p>
+
+<h2>4 · Device Detection</h2>
+<p>FortiGates join the fabric; TVs, printers, and rogue servers cannot. The fabric learns they exist through <b>passive device detection</b> — eavesdropping on traffic the device was going to send anyway.</p>
+<table>
+<tr><th>Leak</th><th>What it reveals</th><th>Metaphor</th></tr>
+<tr><td><b>MAC OUI</b> — first 3 bytes of every frame's source MAC</td><td>Manufacturer, before any IP exists</td><td>Hardware DNA</td></tr>
+<tr><td><b>DHCP</b> — hostname + option fingerprint</td><td>Self-declared name, OS/type pattern</td><td>The introduction</td></tr>
+<tr><td><b>Traffic chatter</b> — DNS, TLS SNI, HTTP User-Agent</td><td>What it is by what it talks to</td><td>The accent</td></tr>
+</table>
+<div class="anchor">"Devices cannot shut up about what they are."</div>
+<p><b>Placement:</b> detection belongs at the <b>access layer (ISFW)</b> — closest to the source. By the edge, traffic is forwarded, aggregated, possibly NAT'd: <em>devices are born at the access layer; the edge sees their shadows.</em> It is per-interface, not global:</p>
+<pre>config system interface
+    edit "port3"
+        set device-identification enable
+    next
+end
+
+HQ-DCFW # diagnose user device list
+vd 0  d8:9e:f3:aa:41:07  gen 42
+    created 97d  seen 44s  port4
+    hardware vendor 'Dell'  type 'Server'
+    os 'Linux'  host 'minerva'</pre>
+<p>Detected devices populate the root's <b>Physical / Logical Topology</b> views and the asset inventory.</p>
+
+<h2>5 · The Minerva Investigation — Logging Rules Applied</h2>
+<p>Path: <code>minerva → DCFW → NGFW (SNAT + web filter) → Internet</code>. For one nightly session:</p>
+<ol>
+<li><b>DCFW</b> writes the traffic log — the <b>first fabric FortiGate in the path</b> owns the session's traffic log; upstream members do not duplicate it.</li>
+<li><b>NGFW</b> writes a <em>second, legitimate</em> traffic log — because SNAT gave the session a new identity. <b>NAT = new identity = new log.</b> That log is the Rosetta Stone joining private IP to public IP.</li>
+<li><b>NGFW</b> writes any UTM logs — UTM logs live <em>where inspection ran</em> (web filtering here; DCFW's IPS faces inbound and stays silent).</li>
+<li><b>FortiAnalyzer</b> auto-correlates them into one linked view — and because it held 97 days of history, the investigation could look backwards from day one of visibility.</li>
+</ol>
+<div class="callout win"><b>Senior lesson</b>Evidence before action: where is it connected, what MACs sit behind it, who does it talk to — <em>then</em> touch cables. Visibility is retroactive when you have memory.</div>
+
+<h2>6 · FortiNDR in the Fabric</h2>
+<p>Any fabric FortiGate can submit suspicious files to FortiNDR — but for downstream devices, files <b>transit through the root FortiGate</b>, not FortiAnalyzer. Inline blocking flow: FortiGate AV runs first; a signature match blocks locally. Unknown-but-suspicious files cause FortiGate to <b>hold the user session</b>, send the file to FortiNDR for ML/ANN analysis, then release (clean) or terminate (malicious) on the verdict. FortiNDR's own join request is accepted on the root like any member.</p>
+<div class="anchor">"FAZ is the fabric's memory. The root is the fabric's spine.<br>Logs flow to memory; fabric transit flows through the spine."</div>
+
+<h2>7 · SAML SSO in the Fabric</h2>
+<p>One login, then hop between fabric devices via the top-banner device list — no re-authentication within the same browser session.</p>
+<table>
+<tr><th>Role</th><th>Who may hold it</th></tr>
+<tr><td>Identity Provider (IdP)</td><td><b>Root FortiGate only</b></td></tr>
+<tr><td>Service Provider (SP)</td><td>Downstream FortiGates, FortiAnalyzer, FortiManager</td></tr>
+</table>
+<p><b>Why root-only?</b> The fabric has exactly one trust anchor: the root defines the fabric, holds the listening interface, and authorizes every member. The device that vouches for identities must be the same device that decides membership. <em>One fabric, one anchor, one voucher.</em></p>
+
+<h2>Common Mistakes (including today's)</h2>
+<ul>
+<li>Configuring downstream "Join" before the root exists — the request has nothing to point at.</li>
+<li>Looking for authorization under the Security Fabric menu — it's <b>System &gt; Firmware &amp; Registration</b>.</li>
+<li>Assuming the NGFW owns the traffic log because it's the edge — the <em>first</em> fabric FortiGate owns it.</li>
+<li>Sending FortiNDR files to FAZ in your head — transit goes through the <b>root</b>.</li>
+<li>Believing detection is active scanning — it is passive, and per-interface.</li>
+<li>Hedging a confirmed incident ("could be exfiltrating") — Minerva <em>did</em>, for 97 days. State fact + duration + money category.</li>
+</ul>
+
+<h2>Exam Tips</h2>
+<ul>
+<li>Root requirements MCQ: <b>FortiAnalyzer is required</b>; FortiManager/EMS are not.</li>
+<li>"Downstream joined but doesn't appear": check root's <b>authorization queue</b> and the <b>join-listening interface</b> before debugging IP reachability.</li>
+<li>SAML distractors: "any FortiGate can be IdP" and "requires FortiAuthenticator" are both false.</li>
+<li>Log-count scenarios: count NAT points +1 traffic log each; UTM logs sit where the profile ran.</li>
+</ul>
+
+<h2>Key Takeaways</h2>
+<div class="card"><p>Order of operations is a security property. Every setup field is a boundary. Detection is passive and lives at the access layer. First fabric FortiGate owns the traffic log; NAT mints a second. FAZ is memory, root is spine, and only the root vouches for identity. And on day one of visibility, LoFinance found a 97-day breach — which is the entire business case in one sentence.</p></div>
+
+</main>
+<footer>LOFINANCE · NSE7 EF 7.6 · SESSION 37 · "DETECTION IS NOT AN OPINION"</footer>
+</body>
+</html>

@@ -1,0 +1,168 @@
+==================================================================
+SESSION 38 SUMMARY — "IF THIS, THEN FIREWALL"
+Season 4 · Blueprint 1.1 · SG 09 Security Fabric pp. 268–276
+Topics: Automation stitches; security rating (intro)
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Tuesday 03:04 AM: Chad Berkowitz (marketing) clicked a phishing
+link ("LoFinance Q3 Leak??? confidential.pdf.exe") days earlier;
+his laptop contacted a freshly registered malicious domain.
+FortiClient logged it → at 03:06 the laptop displayed "This device
+has been quarantined" and cut all its own traffic. No engineer
+was awake. Riley's morning ticket #4471: "Something quarantined a
+compromised host at 3am. Why did the network save us? Genuinely
+asking. Also slightly terrified." Chad filed "wifi broken???" and
+went home. Señor had quietly built THREE stitches after the S37
+teaser's 02:00 DCFW CPU shame ("THE FABRIC WATCHED. THE FABRIC
+DID NOTHING") — whiteboard now reads "THE FABRIC WATCHED. THE
+FABRIC ACTED. NOW EXPLAIN HOW, OR IT'S MAGIC — AND WE DO NOT RUN
+A BANK ON MAGIC." Junior compared stitches to his smart lights
+(phone joins Wi-Fi → lights purple) — Señor: "disturbingly, not
+entirely wrong." End scene: Señor produced the Security Rating
+printout (grade withheld, "not good") — teed up S39.
+
+CHARACTERS: Señor (mentor, sombrero, built the stitches), Junior
+(smart-lights analogy; proposed email-only alert; proposed
+firewall-block instead of quarantine — both used as teaching
+foils), Riley (ticket author, guessed "FortiGate blocked it" —
+wrong on both halves), Chad (compromised user, third phishing
+training enrolment), Penny (wants the sentence + the rating
+number), Cipher (teased for S39 conflict), Dave (watched Q1 cold
+gate via webcam).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+Explain autonomous network action (auditability — "we do not run
+a bank on magic"); formalise automation after the un-diagnosed
+02:00 CPU spike; MTTC for endpoint compromise dropped from
+"whenever an engineer wakes" to 2 minutes unattended.
+
+TECHNICAL CONCEPTS COVERED
+------------------------------------------------------------------
+1. STITCH = TRIGGER + ACTION(S). If/then automated workflow.
+   Fabric NOT required for stitches; but in a fabric, stitches are
+   configured on the ROOT, scoped to all or subset of FGTs, and
+   PUSHED to relevant leaves.
+2. PUSH AT CONFIG TIME, NOT TRIGGER TIME. Leaves own local copies;
+   root does NOT need to be operational for previously configured
+   stitches to run on leaves. (Exam favourite. Rhymes with S36
+   "crown vacant, witnesses keep writing.")
+3. USE CASE 1 — HIGH CPU: preconfigured High CPU trigger; config
+   system global / set cpu-use-threshold (default 90). Two custom
+   actions: Collect_Diagnostics_Action (CLI script) then
+   Email_Diagnostics_Action with %%results%% as email body.
+   SEQUENTIAL mode + 30s DELAY so the script COMPLETES before the
+   email consumes its output (delay = dependency, not courtesy).
+4. USE CASE 2 — CONFIG BACKUP: SCHEDULE trigger (time itself is
+   the trigger — no verb-less stitch). Frequencies: once, hourly,
+   daily, weekly, monthly; GUI menu changes with frequency choice.
+   ROOT FortiGate's clock governs. Results land in
+   Configuration > Revisions; usable for rollback. All-or-subset
+   FGT scoping.
+5. USE CASE 3 — IoC DETECTION + AUTOMATED QUARANTINE. Required 4:
+   FortiGate, FortiAnalyzer, FortiClient EMS, FortiClient.
+   FortiClient connects to BOTH EMS and FGT; FC + FGT both log to
+   FAZ; FGT preconfigured with EMS IP + admin credentials.
+   5 steps: (1) FortiClient logs malicious site → FAZ;
+   (2) FAZ discovers IoC → notifies FGT (the SCRIBE is the
+   DETECTIVE — detection lives where memory lives);
+   (3) FGT verifies endpoint is a CONNECTED FortiClient endpoint
+   → notifies EMS; (4) EMS locates endpoint → sends quarantine
+   message; (5) endpoint quarantines ITSELF, blocks all traffic,
+   reports status to FGT + EMS (loop closes).
+   Manual trigger CLI: diagnose endpoint fctems
+   queue-complete-calls Q-<endpoint_ip>. NOT supported on
+   FortiClient (Linux).
+6. WHY SELF-QUARANTINE BEATS FIREWALL BLOCK: "You can only block
+   what is inline" (STUDENT'S OWN SENTENCE — canon). Firewall
+   never sees same-L2-domain traffic; quarantine travels with a
+   mobile endpoint; blocks the DEVICE not a DHCP-lease IP.
+7. SECURITY RATING (intro only): fabric-wide audit vs Fortinet
+   best practices, run from the fabric, score + prioritised
+   actionable findings, some auto-fixable. Depth deferred to S39.
+
+MENTAL MODELS / ANALOGIES
+------------------------------------------------------------------
+- Junior's smart lights = trigger/action shape ("shaped correctly;
+  a jellyfish is also shaped correctly").
+- Root = AUTHOR, not DISPATCHER.
+- "Delay = let the kettle boil before pouring" (Junior).
+- Time itself as a trigger (no verb-less sentence in stitch
+  grammar).
+- Scribe-is-the-detective (FAZ finds the IoC).
+- "Watching (High CPU) / Acting (quarantine) / Judging (rating)".
+- Alert-without-evidence repeats the failure it alerts about.
+
+KEY CLI
+------------------------------------------------------------------
+config system global / set cpu-use-threshold 90
+diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>
+GUI: Security Fabric > Automation (Trigger / Action / Stitch);
+Configuration > Revisions; Security Rating page.
+
+TROUBLESHOOTING APPROACH
+------------------------------------------------------------------
+Archaeology of autonomous action: reconstruct the chain by asking
+WHOSE JOB each step is (memory→FAZ, connections→FGT, manages the
+target→EMS, executes→endpoint) instead of assuming the nearest
+firewall acted. Riley's "the FortiGate blocked it" = the exam trap.
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+Three stitches in production on HQ-NGFW (root): High-CPU
+diagnostics+email (all FGTs, sequential, 30s delay, %%results%%),
+scheduled config backup (all FGTs, root clock), IoC quarantine
+chain (FGT+FAZ+EMS+FortiClient). Security Rating enabled on root.
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+No new hardware/links. Root authors 3 stitches; every leaf holds
+local copies (automation survives root failure). Rating enabled.
+
+EXAM PERFORMANCE (10-question gauntlet): 6.5/10 strict.
+✓ Q1 COLD PASS (3rd attempt): System > Firmware & Registration —
+  menu debt PAID. Confirmation retest ~S41 then retire.
+HALF Q2: root-side join-failure causes — got interface cause
+  (packet-side framing), gave "wrong root IP" (downstream-side).
+  Second root-side cause = root not serving as fabric root.
+✓ Q3: root-down → leaf stitches keep running (derived mechanism).
+HALF Q4: knew delay + output-completeness; missed the label
+  SEQUENTIAL and the definition of %%results%%.
+HALF Q5: 90% correct; missed CLI context (config system global /
+  cpu-use-threshold).
+MISS Q6 (honest "not sure"): Schedule frequencies + ROOT clock —
+  taught SAME session; he'd skipped the clock wrinkle live too.
+  Retest queue.
+✓ Q7 FLAWLESS: full 5-step IoC chain, all actors correct.
+✓ Q8: four required components (FortiNDR distractor not taken —
+  S37 FAZ/NDR confusion pattern beaten).
+✓ Q9 COLD RETEST PASS: reinstall KEEPS approved mapping — the
+  re-anchor HELD. One more pass ~S41 → retire with honours.
+HALF Q10: money-sentence — confirmed-fact lesson landed (no "could
+  be") but heavy subjunctive ("would have / if it weren't") and
+  "a lot of money" is not a money category. Coached with Penny
+  rewrite referencing the 97-day figure. Still the growth edge.
+
+JUNIOR'S MISTAKES & LESSONS
+------------------------------------------------------------------
+(1) Email-only alert → taught alert-without-evidence antipattern
+and %%results%% pipeline. (2) "Just block the IP on HQ-ISFW" →
+taught inline-enforcement limits + endpoint containment. (3) "Root
+down kills automation" → taught config-time push. Smart-lights
+analogy was his rare WIN.
+
+TEASER DELIVERED FOR SESSION 39 — "RATING DAY"
+------------------------------------------------------------------
+Penny (printout she shouldn't have): "This number is going in my
+board pack. Boards love numbers." Cipher (identical printout):
+"This number leaves this room when it stops being embarrassing —
+some findings are a map of our weaknesses." Both turn to the
+student simultaneously. Señor: "The fabric has watched, acted, and
+now JUDGED — the two most dangerous people in this company both
+want custody of the verdict. You're the referee. Read every
+finding before the whistle." Topics: Security Fabric hardening,
+review and verification, pp. 274–278.
+
+Date and Time completed: Sunday, 19 July 2026.

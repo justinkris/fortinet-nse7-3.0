@@ -1,0 +1,267 @@
+======================================================================
+SESSION 34 — "AUTOMATION WITH TEETH" — COMBINED REVISION PACK
+NSE7 EF 7.6 · Central Management · Study Guide 02, pp. 48-53 · Blueprint 2.1
+======================================================================
+
+
+######################################################################
+## 1. QUICK SUMMARY (one page)
+######################################################################
+
+Junior built his first CONTINUOUS CLI TEMPLATE (fleet DMZ standard, driven by
+a metadata variable) and assigned it to all 30 FortiGates — with a one-character
+typo in the variable REFERENCE (hand-typed instead of using the $ picker). Thirty
+amber triangles. But: ASSIGN STAGES, INSTALL SHIPS. Nothing reached a live box.
+Amber = the machine confessing before it acts.
+
+Key machine facts:
+- A CLI template is a device-layer STENCIL that OVERWRITES the device database at
+  install. It WINS — you cannot out-edit it from below (a manual FortiGate fix is
+  re-overwritten next install). Fix the STENCIL, not the glass.
+- ASSIGN is a BINDING verb, not a delivery verb. It flips TWO statuses (device
+  layer + provisioning template) and ships nothing. (Assign edits the recipe;
+  install cooks it.)
+- PRE-RUN template = one-time onboarding (ZTP/LTP), AUTO-UNASSIGNS after install.
+  CONTINUOUS template = stays bound, RE-OVERWRITES on every install = enforcement.
+  That recurring re-application is the "teeth."
+- METADATA VARIABLE has two homes: VALUE in Policy & Objects > Advanced > Metadata
+  Variables (dictionary, per-device mapping); REFERENCE $(name) INSIDE the template.
+  The $ picker prevents misspelling the reference. "Dictionary right, pointer bent."
+- POLICY-PACKAGE SCRIPT: green = ran, not shipped; flips PACKAGE Modified; deliver
+  with INSTALL POLICY PACKAGE (two-hop: policy layer -> device database -> FortiGate).
+  NOTHING skips the device DB — the single door.
+- ATTACHED vs UNATTACHED: install carries objects the package USES (referenced by a
+  policy) + the rules. Unreferenced objects stay parked in the ADOM DB.
+- REINSTALL skips the WIZARD, keeps the PREVIEW — and matters MORE because it drags
+  staged device-DB modifications down the same door; the preview catches them.
+
+Discipline consolidated (effectively wrote George's change-control policy):
+  FIX AT THE LEVEL THAT WINS -> VERIFY WHERE FAILURE IS FREE -> WIDEN AFTER EVIDENCE.
+
+
+######################################################################
+## 2. CHEAT SHEET (commands · GUI paths · defaults · behaviours)
+######################################################################
+
+GUI PATHS
+  Create / assign CLI template ...... Device Manager > Provisioning Templates > CLI Template
+  Metadata variable VALUE ........... Policy & Objects > Advanced > Metadata Variables
+  Run a script (pick target) ........ Device Manager > Scripts
+  Config Status (Sync/Modified) ..... Device Manager > Device & Groups > Managed FortiGate
+  Revision history .................. Dashboard > Summary > Configuration and Installation > Revision
+
+REFERENCE SYNTAX
+  In a template:  set subnet $(dmz_subnet)    <- insert via the $ picker, never by hand
+
+INSTALL VERBS — MATCH TO LAYER
+  Device-layer change (template / device-DB script) .... Install Device Settings
+  Policy-layer change (policy-package script) .......... Install Policy Package (two-hop)
+  Already-paired re-push .............................. Reinstall (skips wizard, keeps preview)
+
+STATUS BEHAVIOURS
+  Assign template ......... device-layer Modified + provisioning-template Modified (box untouched)
+  Device-DB script ........ device-layer Modified only
+  Policy-package script ... policy package Modified (object NOT live until install)
+  Remote-FortiGate script . runs on box, FMG auto-retrieves to device DB (except policy changes)
+
+TEMPLATE FLAVOURS
+  Pre-run ..... one-time, ZTP/LTP, AUTO-UNASSIGNS, not retained in device DB
+  Continuous .. persists, OVERWRITES device DB on EVERY install, enforces/corrects drift
+
+TWO-HOP INSTALL PATH
+  Install Policy Package:  policy layer  ->  device database  ->  FortiGate
+  (Nothing skips the device DB. It is the single door.)
+
+DESIGN RULES
+  - Fix at the level that wins (template > device config).
+  - Match the install to the layer (don't ship the constitution to fix a street sign).
+  - Verify where failure is free (canary in staging that mirrors prod).
+  - Read the preview — especially on reinstall (device-DB drift rides along).
+  - Use the $ picker for references (seatbelt).
+
+
+######################################################################
+## 3. FLASHCARDS (Q -> A)
+######################################################################
+
+Q: A CLI template is assigned to 30 devices, no install run. What's true?
+A: Device-layer + provisioning-template status = Modified on all 30; nothing is
+   on any live FortiGate. Assign stages, install ships.
+
+Q: Is "Assign" one of the eight install/sync verbs?
+A: No. Assign is a BINDING verb (creates the template->device relationship). It
+   flips status but delivers nothing.
+
+Q: Pre-run vs continuous CLI template — the defining difference?
+A: Pre-run AUTO-UNASSIGNS after install (one-time onboarding). Continuous STAYS
+   BOUND and re-overwrites on every install (enforcement).
+
+Q: A CLI template "overwrites the device database." You fix the setting directly on
+   the FortiGate. After the next install?
+A: The template re-overwrites it; the manual fix is lost. Fix the template.
+
+Q: Where does a metadata variable's VALUE live? Its REFERENCE?
+A: Value in Policy & Objects > Advanced > Metadata Variables (dictionary). Reference
+   $(name) inside the template.
+
+Q: What does the $ pop-up picker protect against?
+A: Misspelling the reference — you choose from real dictionary entries. Hand-typing
+   declines that guardrail.
+
+Q: A policy-package script shows a green "ran" result. Is the object live on the box?
+A: No. The policy package is flagged Modified. It's live only after Install Policy Package.
+
+Q: What path does Install Policy Package take?
+A: policy layer -> device database -> FortiGate (two-hop). Nothing skips the device DB.
+
+Q: A policy-package script makes two objects; one is in a policy, one isn't. After
+   install, which reaches the FortiGate?
+A: Only the referenced one. The orphan stays in the ADOM database (install carries
+   what the package USES, not everything it contains).
+
+Q: How does Reinstall differ from a standard Install?
+A: Skips the WIZARD (device + package already paired), KEEPS the PREVIEW.
+
+Q: Why does the reinstall preview matter MORE, not less?
+A: Reinstall also drags staged device-DB modifications down the same door; the
+   preview is where you catch a device-layer change you forgot was staged.
+
+Q: Enforce identical SNMP fleet-wide with drift auto-corrected — script or template?
+A: Continuous CLI template. A one-time script sets it today but corrects no future drift.
+
+Q: Correct install verb to deliver a device-layer template change to one box?
+A: Install Device Settings (not Install Policy Package — don't drag the whole policy layer).
+
+Q: Why does a single-character typo hit all 30 firewalls?
+A: The template and the metadata dictionary entry are single shared objects; every
+   assigned device inherits the same fault.
+
+Q: MCQ heuristic when two options both work?
+A: Ask "which is still true in six months?" permanent/standard/drift -> template;
+   set-once -> script.
+
+
+######################################################################
+## 4. PODCAST PROMPT — "The Packet Path"
+######################################################################
+
+Generate a ~9-minute episode of "The Packet Path", the LoFinance engineering podcast.
+
+EPISODE TITLE: "Automation With Teeth"
+
+TONE: Two hosts — one warm and curious, one dry and precise (Cipher-flavoured).
+Conversational, a little wry, genuinely instructional. Enterprise-networking
+storytelling, not a lecture.
+
+TELL THE STORY:
+- Wednesday morning at LoFinance. Junior, uncharacteristically still, staring at
+  thirty amber warning triangles across Device Manager. He'd built his first CLI
+  template — a fleet-wide DMZ standard driven by a metadata variable — and, proud,
+  assigned it to ALL THIRTY firewalls before going home. In line four he hand-typed
+  the variable reference instead of using the $ picker. One character wrong.
+- Senor peels a mandarin, looks at the carnage, and says: "Good. It is Wednesday,
+  and the network still works." Because THAT is the lesson.
+
+REINFORCE THE CONCEPTS (weave in, don't list):
+- Assign stages, install ships. Amber is the machine confessing before it acts. The
+  typo touched zero live firewalls because nobody installed.
+- A CLI template is a STENCIL that sits above the device database and overwrites it —
+  it always wins, so you can't out-edit it from below. Fix the stencil, not the glass.
+- Continuous vs pre-run: pre-run fires once and detaches (onboarding); continuous
+  stays bound and re-overwrites on every install. THAT recurring re-application is
+  the "teeth" in the title.
+- A metadata variable has two homes — the VALUE in the dictionary, the REFERENCE in
+  the template. "The dictionary is right; the pointer is bent." The $ picker is a
+  seatbelt Junior declined.
+- On the second half: policy-package scripts, and how nothing reaches a firewall
+  without walking through the device database — the single door. Install carries only
+  what a policy actually uses; orphan objects stay in the drawer.
+
+USE THESE MEMORABLE LINES:
+- Cipher: "Automation removes variance, not mistakes." (The wrong change ships
+  perfectly, everywhere, at once.)
+- Cipher: "The script and the template are the same animal wearing different collars."
+- Senor: "Fix the stencil, not the glass."
+- The student's upgrade: "Test where failure is FREE, not just survivable."
+
+JUNIOR'S MISTAKE:
+He assigned a continuous, drift-enforcing template — the most powerful automation in
+the room — with a hand-typed typo and no canary. Power met responsibility. The save
+was purely that assign is not install.
+
+EXPLAIN THE REASONING:
+Why the amber state was the safe state; why fixing the firewall directly would fail;
+why a continuous template makes a typo a recurring threat; why you canary in staging
+where failure costs nothing; why you match the install to the layer.
+
+END WITH A TEASER:
+Next episode is a BOSS BATTLE — "Cowboy Hat: The Wrong Install." Something got
+installed to the wrong place on a night the preview was skipped. Senor is going to
+answer FEWER questions. Cipher is watching. Penny wants the business case in ten words.
+
+
+######################################################################
+## 5. EXAM-STYLE QUESTIONS (self-test — answers at bottom)
+######################################################################
+
+1) A CLI template is assigned to 30 FortiGates; no install has run. Which is true?
+   A) Config is live on all 30    B) Only device-layer status Modified
+   C) Device-layer AND provisioning-template Modified; nothing on the boxes
+   D) Policy package Modified
+
+2) Defining difference, pre-run vs continuous CLI template?
+   A) Pre-run supports metadata variables; continuous doesn't
+   B) Pre-run auto-unassigns after install; continuous stays bound and re-applies
+   C) Continuous is onboarding-only    D) Pre-run installs the policy package
+
+3) A template "overwrites the device database." An admin fixes the setting directly on
+   the FortiGate. After the next install?
+   A) Manual fix preserved   B) Template re-overwrites; fix lost
+   C) FortiManager prompts to merge   D) Template auto-unassigns
+
+4) A script creates an address object and puts it in a policy (policy-package target).
+   Immediately after a green result?
+   A) Object live on FortiGate   B) Policy package Modified; object not yet on box
+   C) Device-layer Modified; auto-retrieve syncs it   D) Nothing changed
+
+5) Install Policy Package delivers config by which path?
+   A) Policy layer straight to FortiGate   B) policy layer -> device DB -> FortiGate
+   C) FortiGate -> device DB -> policy layer   D) Device DB only; box pulls later
+
+6) A policy-package script makes two address objects; one used in a policy, one not.
+   After Install Policy Package?
+   A) Both reach the box   B) Neither   C) Only the referenced one; orphan stays in ADOM DB
+   D) Only the unreferenced one
+
+7) Reinstall differs from standard Install how?
+   A) Skips preview, runs wizard   B) Skips both   C) Skips wizard, keeps preview
+   D) Identical to Install
+
+8) Deliver a device-layer CLI template change to one FortiGate without dragging the
+   whole policy layer?
+   A) Install Policy Package   B) Install Device Settings   C) Import Policy   D) Retrieve
+
+9) Enforce identical SNMP across all 30 NGFWs permanently, drift auto-corrected. Best tool?
+   A) One-time CLI script per device DB   B) Continuous CLI template assigned to all 30
+   C) Pre-run CLI template   D) Remote-FortiGate script run once
+
+10) Where does a metadata variable's value live vs its reference?
+   A) Both in the template   B) Value in Policy & Objects > Advanced > Metadata Variables;
+   reference $(name) in the template   C) Value in template; reference in device DB
+   D) Both in the policy package
+
+--- ANSWERS ---
+1:C  2:B  3:B  4:B  5:B  6:C  7:C  8:B  9:B  10:B
+
+WATCH: Q9 is the trap of the set — a one-time script SETS SNMP correctly today, but the
+requirement says "permanently / auto-correct drift", which only a CONTINUOUS TEMPLATE does.
+When two options both work now, ask which is still true in six months.
+
+
+######################################################################
+## 6. THE ONE LINE
+######################################################################
+Assign stages. Install ships. Fix at the level that wins, verify at the smallest
+blast radius, widen only after evidence.
+
+Completed: Saturday, 18 July 2026.

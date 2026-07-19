@@ -1,0 +1,232 @@
+==================================================================
+SESSION 38 REVISION PACK — "IF THIS, THEN FIREWALL"
+Automation stitches · Security rating (intro) · SG 09 pp. 268–276
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+A stitch is if/then automation: TRIGGER + ACTION(S). The Security
+Fabric is not required for stitches, but inside a fabric they are
+configured on the ROOT (Security Fabric > Automation), scoped to
+all or a subset of FortiGates, and PUSHED to the relevant leaves.
+The push happens at CONFIG time, not trigger time — every leaf
+holds a local copy, so previously configured stitches keep running
+when the root is down. Root = author, not dispatcher.
+
+Three use cases:
+1) HIGH CPU — preconfigured trigger; threshold set by
+   cpu-use-threshold (config system global), default 90%. Actions:
+   Collect_Diagnostics_Action (CLI script) then
+   Email_Diagnostics_Action whose body is %%results%% (the
+   script's output). Must be SEQUENTIAL with a delay (30s) so the
+   script completes before the email consumes its output.
+2) CONFIG BACKUP — SCHEDULE trigger (time is the trigger): once /
+   hourly / daily / weekly / monthly, per the ROOT FortiGate's
+   clock; GUI menu changes with frequency. Backups land in
+   Configuration > Revisions (rollback-ready); all-or-subset
+   scoping.
+3) IoC QUARANTINE — requires FortiGate + FortiAnalyzer +
+   FortiClient EMS + FortiClient. FC connects to both EMS and FGT;
+   FC and FGT log to FAZ; FGT holds EMS IP + admin credentials.
+   Flow: FC logs → FAZ discovers IoC → notifies FGT → FGT verifies
+   endpoint is CONNECTED → notifies EMS → EMS sends quarantine
+   message → endpoint quarantines ITSELF (blocks all traffic) and
+   reports status to FGT + EMS. Manual: diagnose endpoint fctems
+   queue-complete-calls Q-<ip>. Not supported on FortiClient
+   (Linux). Endpoint quarantine beats a firewall block because
+   "you can only block what is inline": same-L2 traffic never
+   crosses the firewall, the endpoint is mobile, and DHCP re-issues
+   IPs — quarantine follows the device.
+
+SECURITY RATING (intro): the fabric audits itself against Fortinet
+best practices → score + prioritised actionable findings, some
+auto-fixable. Watching (CPU) · Acting (quarantine) · Judging
+(rating). Depth in Session 39.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+GUI PATHS
+  Security Fabric > Automation        (Trigger / Action / Stitch)
+  Configuration > Revisions           (backup results, rollback)
+  Security Rating page                (fabric self-audit)
+
+CLI
+  config system global
+      set cpu-use-threshold 90        # default 90
+  end
+  diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>
+
+DEFAULTS / TIMERS
+  cpu-use-threshold ................ 90%
+  Diagnostics→email delay (our build) 30 seconds
+  Schedule frequencies ............. once, hourly, daily, weekly,
+                                     monthly (ROOT's clock)
+
+KEY BEHAVIOURS
+  - Stitch = trigger + one or MORE actions
+  - Authored on root; pushed to leaves at CONFIG time
+  - Root down → existing leaf stitches KEEP RUNNING
+  - Root down → NEW stitches cannot be authored/pushed
+  - Sequential = next action consumes previous action's output
+  - %%results%% = output of the previous (CLI script) action
+  - Triggers may come from other fabric devices via FAZ event
+    handlers
+  - IoC detection is FAZ's job; enforcement is the ENDPOINT's job
+  - FGT sanity check before EMS handoff: is the endpoint a
+    CONNECTED FortiClient endpoint?
+  - Quarantine unsupported on FortiClient (Linux)
+
+DESIGN RULES
+  - Pair every alert with the evidence a human would have gathered
+  - Enforcement placement determines containment scope; only the
+    endpoint travels with the compromise
+  - When actions form a pipeline, completion is a dependency —
+    Sequential + delay
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: Two components of every automation stitch?
+A: A trigger and one or more actions.
+
+Q: Where are stitches configured in a Security Fabric?
+A: On the root FortiGate (Security Fabric > Automation), pushed
+   to relevant leaves.
+
+Q: Root FortiGate fails — what happens to existing stitches on
+   downstream FGTs?
+A: They keep functioning; leaves hold local copies (push happens
+   at config time).
+
+Q: Is the Security Fabric required to use stitches?
+A: No — standalone FortiGates can run stitches.
+
+Q: Default High CPU threshold and where to change it?
+A: 90%; config system global > set cpu-use-threshold.
+
+Q: What does %%results%% contain?
+A: The output of the previous action (the CLI diagnostics script),
+   used as the email body.
+
+Q: What two stitch settings make %%results%% arrive complete?
+A: Sequential action mode + a delay long enough for the script
+   to finish (30s in our build).
+
+Q: Schedule trigger frequency options?
+A: Once, hourly, daily, weekly, monthly.
+
+Q: Whose clock governs a fabric-wide scheduled stitch?
+A: The root FortiGate's time system.
+
+Q: Where do automated config backups appear?
+A: Configuration > Revisions (usable for rollback).
+
+Q: Four required components for automated IoC quarantine?
+A: FortiGate, FortiAnalyzer, FortiClient EMS, FortiClient.
+
+Q: Who discovers the IoC?
+A: FortiAnalyzer (from FortiClient's logs).
+
+Q: Who executes the quarantine?
+A: The endpoint itself — FortiClient blocks all its own traffic
+   after EMS's message, then reports status to FGT and EMS.
+
+Q: What does the FGT verify before notifying EMS?
+A: That the endpoint is a connected FortiClient endpoint (and
+   which EMS it belongs to).
+
+Q: What must be preconfigured on the FGT for the quarantine chain?
+A: The EMS IP address and administrator login credentials.
+
+Q: CLI to manually trigger endpoint quarantine?
+A: diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>.
+
+Q: Which FortiClient platform is excluded from quarantine?
+A: FortiClient (Linux).
+
+Q: Why does endpoint quarantine beat a firewall IP block? (3)
+A: Same-L2 traffic never crosses the firewall ("you can only
+   block what is inline"); quarantine travels with a mobile
+   endpoint; it blocks the device, not a DHCP-lease IP.
+
+Q: What is the Security Rating?
+A: A fabric-wide audit against Fortinet best practices producing
+   a score and prioritised, actionable (partly auto-fixable)
+   findings.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "THE PACKET PATH", EPISODE 38
+------------------------------------------------------------------
+Generate a 10–14 minute podcast episode of "The Packet Path", a
+narrative-driven networking education show. Warm, wry narrator;
+light sound-design cues welcome.
+
+EPISODE TITLE: "If This, Then Firewall"
+
+COLD OPEN: Tuesday, 03:04 AM at LoFinance — a financial company
+whose logo is stacks of money frozen in an ice cube. Marketing
+employee Chad Berkowitz's laptop, compromised by a phishing
+attachment days earlier, reaches out to a malicious domain. At
+03:06 the laptop announces "This device has been quarantined" and
+cuts its own network access. No human is awake. Chad assumes the
+Wi-Fi broke and goes home. Morning: help-desk lead Riley files
+ticket #4471 — "Why did the network save us? Genuinely asking.
+Also slightly terrified."
+
+ACT 1 — THE CONFESSION PAID FORWARD: Recap the senior engineer
+Señor (sombrero, chaotic desk, immaculate diagrams) and his
+whiteboard shame from two weeks prior: a 02:00 CPU spike the
+"fabric watched and did nothing" about. He built three automation
+stitches in response. Junior compares stitches to his smart lights
+— phone joins Wi-Fi, lights turn purple — and is "disturbingly,
+not entirely wrong": a stitch is a TRIGGER plus ACTION(S).
+
+ACT 2 — AUTHOR, NOT DISPATCHER: Junior claims a dead root kills
+fabric-wide automation. Wrong — teach the key mechanism with
+emphasis: stitches are configured on the root and PUSHED to leaf
+FortiGates AT CONFIG TIME; each leaf owns a local copy and
+executes it without consulting the root. Root down, automation
+lives. Use the analogy: the root is the author of the playbook,
+not the coach calling plays.
+
+ACT 3 — THE KETTLE: The High-CPU stitch. Junior's email-only
+alert would repeat the original failure — an alert without
+evidence. Pair a CLI diagnostics script with an email whose body
+is %%results%%, and explain the Sequential setting plus the
+30-second delay with the analogy "let the kettle boil before
+pouring" — the email consumes the script's output, so completion
+is a dependency. Mention cpu-use-threshold default 90%. Briefly
+cover the Schedule trigger for config backups (time itself is a
+trigger; once/hourly/daily/weekly/monthly; the ROOT's clock;
+results in Configuration > Revisions).
+
+ACT 4 — THE SCRIBE IS THE DETECTIVE: Walk the five-step 3am chain
+slowly: FortiClient logs to FortiAnalyzer; FORTIANALYZER discovers
+the Indicator of Compromise (detection lives where the memory
+lives); FortiGate verifies the endpoint is a connected FortiClient
+endpoint; FortiGate notifies FortiClient EMS (chain of command —
+EMS manages the agent); EMS sends the quarantine message; the
+ENDPOINT QUARANTINES ITSELF and reports back. Note the manual CLI
+(diagnose endpoint fctems queue-complete-calls) and the Linux
+exclusion. Then the student's own line, delivered as the episode's
+thesis: "You can only block what is inline" — why a firewall
+block can't contain a host from its own L2 neighbours, can't
+follow a laptop to a café, and only blocks a rented IP address.
+
+JUNIOR'S MISTAKE: his "just block the IP on the firewall" plan —
+walk through why each of its three failures matters.
+
+CLOSER: The fabric now watches (High CPU), acts (quarantine), and
+— per a printout Señor slides across the desk — judges: the
+Security Rating has graded LoFinance's fabric, and the grade is
+not good. TEASER: next episode, "Rating Day" — the CFO wants the
+number in her board pack; the CISO says the number is a map of
+their weaknesses and leaves the room over his dead body. Our
+engineer is the referee. End line, Señor: "Read every finding
+before the whistle."
+
+------------------------------------------------------------------
+END OF PACK
+------------------------------------------------------------------

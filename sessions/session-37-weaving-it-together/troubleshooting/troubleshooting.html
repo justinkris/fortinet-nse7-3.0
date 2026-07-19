@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 37 — Troubleshooting Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital@0;1&family=Outfit:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--muted:#6b7794;
+--blue:#1e40af;--blue-light:#eff4fc;--ink:#0d1a3a;--accent:#9bb8e6;--amber:#b45309;--amber-l:#fcf2c3;--green:#1a7c4a;--green-l:#dff0e1}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:17px}
+header{padding:36px 8%;background:var(--ink)}
+header h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec}
+header span{font-family:'Outfit',sans-serif;font-size:11px;color:var(--accent);letter-spacing:.12em}
+main{max-width:860px;margin:0 auto;padding:32px 22px 70px}
+h2{font-family:'Playfair Display',serif;font-size:23px;margin:34px 0 10px;border-bottom:2px solid var(--border);padding-bottom:6px}
+h3{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:20px 0 6px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0}
+.step{display:flex;gap:14px;margin:10px 0;align-items:flex-start}
+.n{font-family:'Outfit',sans-serif;font-weight:700;color:#fffdf5;background:var(--blue);border-radius:50%;min-width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px}
+pre{background:var(--ink);color:#dce7f7;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:12px 14px;border-radius:8px;overflow-x:auto;line-height:1.5;margin:8px 0}
+.trap{border-left:4px solid var(--amber);background:var(--amber-l);border-radius:0 8px 8px 0;padding:12px 16px;margin:10px 0}
+.win{border-left:4px solid var(--green);background:var(--green-l);border-radius:0 8px 8px 0;padding:12px 16px;margin:10px 0}
+ul{margin:6px 0 6px 22px} li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--surface);font-size:15px}
+th{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-align:left;background:var(--surface-2);padding:8px 10px;border:1px solid var(--border)}
+td{padding:8px 10px;border:1px solid var(--border-dim);vertical-align:top}
+footer{text-align:center;font-family:'Outfit',sans-serif;font-size:10px;color:var(--muted);letter-spacing:.12em;padding:18px}
+</style>
+</head>
+<body>
+<header><span>SESSION 37 · TROUBLESHOOTING · THINK LIKE THE SENIOR</span><h1>Fabric Deployment &amp; Rogue Devices</h1></header>
+<main>
+
+<h2>Scenario A — "I clicked Join and nothing happened"</h2>
+<div class="card">
+<h3>Symptom</h3>
+<p>A downstream FortiGate is configured to Join Existing Fabric but never appears in the root's topology.</p>
+<h3>Questions before commands</h3>
+<ul>
+<li>Does the root exist yet? (Deployment order is a dependency — was it configured first?)</li>
+<li>Which interface did the join request arrive on — and which interface is the root <em>listening</em> on?</li>
+<li>Has anyone checked the <b>authorization queue</b>? Pending ≠ broken.</li>
+</ul>
+<h3>Decision path</h3>
+<div class="step"><div class="n">1</div><div><b>Root's authorization queue first.</b> <code>System &gt; Firmware &amp; Registration</code> (or the alarm-icon badge). If the device is listed as Pending — nothing is broken; a human simply hasn't said yes. This is the cheapest check, so it goes first.</div></div>
+<div class="step"><div class="n">2</div><div><b>Not in the queue? Check the root's listening interface.</b> "Allow other Security Fabric devices to join" must include the interface the downstream request arrives on. Right door / nobody listening is silent.</div></div>
+<div class="step"><div class="n">3</div><div><b>Then downstream config.</b> Upstream FortiGate IP/FQDN correct? Reaches the root's <em>join</em> interface (not some other interface of the root)?</div></div>
+<div class="step"><div class="n">4</div><div><b>Only then basic reachability.</b> Ping/route from downstream to the upstream IP. Most people start here; the fabric-aware engineer ends here.</div></div>
+<div class="trap"><b>Dead ends:</b> debugging routing for an hour when the request is sitting in the authorization queue; hunting "licensing" issues (not a taught join-failure cause); looking for the authorize button under the Security Fabric menu.</div>
+</div>
+
+<h2>Scenario B — the unknown device (Minerva pattern)</h2>
+<div class="card">
+<h3>Symptom</h3>
+<p>The topology map shows a device or switch nobody recognises.</p>
+<h3>Evidence before action — in this order</h3>
+<div class="step"><div class="n">1</div><div><b>Where is it?</b> Physical Topology → which FortiGate, which port. (Minerva: DCFW port4, behind an unmanaged switch.)</div></div>
+<div class="step"><div class="n">2</div><div><b>What is behind it?</b>
+<pre>diagnose user device list
+  → MAC (OUI = vendor), type, os, hostname, port, first-seen age</pre>
+One MAC = one box. First-seen age is your incident timeline.</div></div>
+<div class="step"><div class="n">3</div><div><b>Who does it talk to?</b> FortiAnalyzer history filtered on its IP — visibility is retroactive when you have memory. Read the logs with the ownership rules: first fabric FGT = traffic log; NAT upstream = second log (the Rosetta Stone to public-IP identity); UTM where inspected.</div></div>
+<div class="step"><div class="n">4</div><div><b>Correlate with the business.</b> Asset register, HR/contractor records, change tickets. Technology tells you <em>what</em>; the business tells you <em>who</em> and <em>why</em>.</div></div>
+<div class="step"><div class="n">5</div><div><b>Then act</b> — contain, preserve evidence, escalate. Never unplug first: you destroy live state and tip off an active adversary.</div></div>
+<div class="win"><b>Senior behaviours:</b> scope before touching; one hypothesis at a time; state confirmed facts as facts ("it HAS been exfiltrating for 97 days"), not hedges.</div>
+</div>
+
+<h2>Scenario C — "The topology map is missing my endpoints"</h2>
+<div class="card">
+<ul>
+<li>Device detection is <b>per-interface</b> — is <code>set device-identification enable</code> on the actual access interface?</li>
+<li>Is detection enabled at the <b>access layer</b>? Enabling it only at the edge shows shadows, not devices.</li>
+<li>Detection is <b>passive</b> — a silent device won't appear until it speaks (DHCP renew, ARP, any traffic).</li>
+</ul>
+</div>
+
+<h2>Likely root causes — quick table</h2>
+<table>
+<tr><th>Symptom</th><th>Most likely cause</th><th>Verify</th></tr>
+<tr><td>Join never appears</td><td>Awaiting authorization</td><td>System &gt; Firmware &amp; Registration</td></tr>
+<tr><td>Join never arrives</td><td>Wrong/absent listening interface on root</td><td>Security Fabric Setup on root</td></tr>
+<tr><td>Fabric won't enable on root</td><td>No FortiAnalyzer configured</td><td>FAZ IP in Security Fabric Setup</td></tr>
+<tr><td>Endpoint invisible</td><td>device-identification off on that interface / detection only at edge</td><td>config system interface; move to ISFW</td></tr>
+<tr><td>"Duplicate" logs in FAZ</td><td>Not duplicates — NAT log or UTM log</td><td>Check NAT points and inspection locations</td></tr>
+</table>
+
+<h2>Exam traps</h2>
+<ul>
+<li>Authorization menu: <b>System &gt; Firmware &amp; Registration</b> — the Security Fabric menu is the distractor.</li>
+<li>"Which device is required for the fabric?" → FortiAnalyzer (not FortiManager, not EMS).</li>
+<li>FortiNDR file path from a downstream FGT → through the <b>root</b> (FAZ is the distractor).</li>
+<li>Log-count questions → count the first FGT + every NAT point; UTM separately.</li>
+<li>SAML: only the <b>root</b> can be IdP; FortiAuthenticator is not required.</li>
+</ul>
+
+</main>
+<footer>LOFINANCE · SESSION 37 · EVIDENCE BEFORE ACTION</footer>
+</body>
+</html>

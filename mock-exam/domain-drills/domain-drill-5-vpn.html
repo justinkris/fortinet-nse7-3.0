@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCSS — Enterprise Firewall 7.6 | Domain Drill 5: 5.0 VPN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#b0322c; --red-light:#fbe4e2; --red-border:#eab0ab;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+code,pre{font-family:'JetBrains Mono',monospace;}
+
+header{padding:34px 48px 26px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+header h1{font-family:'Cormorant Garamond',serif;font-size:34px;color:#f5f0e0;font-weight:600;line-height:1.15;}
+header .sub{color:var(--ink-accent);font-size:13px;margin-top:6px;letter-spacing:0.04em;}
+
+.exam-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:2px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+.exam-bar .timer{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;}
+.exam-bar .timer.low{color:var(--red);background:var(--red-light);border-color:var(--red-border);animation:blink 1.2s infinite;}
+.exam-bar .progress-wrap{flex:1;min-width:180px;}
+.progress-track{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:var(--blue-vivid);border-radius:6px;transition:width .3s;}
+.exam-bar .meta{font-size:12px;color:var(--text-muted);letter-spacing:0.05em;}
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;padding:9px 20px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-light);color:var(--blue-deep);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--blue-vivid);color:#fff;}
+.btn.primary{background:var(--blue-vivid);color:#fff;border-color:var(--blue-deep);}
+.btn.primary:hover{background:var(--blue-deep);}
+.btn.ghost{background:transparent;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.layout{display:grid;grid-template-columns:1fr 220px;gap:28px;max-width:1180px;margin:0 auto;padding:32px 48px 90px;}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:24px 18px 90px;}.nav-panel{position:static !important;}}
+
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:22px;box-shadow:0 1px 3px rgba(13,26,58,0.05);}
+.q-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
+.q-num{font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;}
+.q-domain{font-size:10px;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;background:var(--border-dim);padding:3px 10px;border-radius:12px;}
+.flag-btn{font-size:11px;border:1px solid var(--border);background:none;border-radius:12px;padding:3px 12px;cursor:pointer;color:var(--text-muted);}
+.flag-btn.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);font-weight:600;}
+.q-text{font-size:16px;line-height:1.55;color:var(--text);margin-bottom:6px;font-weight:500;}
+.q-instr{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-bottom:14px;}
+.exhibit{background:var(--ink-dark);color:#dbe6f7;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.6;overflow-x:auto;margin:12px 0 16px;white-space:pre;}
+.exhibit .lbl{display:block;color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border-dim);border-radius:10px;padding:12px 16px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt:hover{border-color:var(--blue-border);background:var(--blue-light);}
+.opt input{margin-top:3px;accent-color:var(--blue-vivid);width:16px;height:16px;flex-shrink:0;}
+.opt .letter{font-weight:700;color:var(--blue-deep);font-size:13px;min-width:18px;margin-top:1px;}
+.opt .txt{font-size:14.5px;line-height:1.5;color:var(--text-soft);}
+.opt.selected{border-color:var(--blue-vivid);background:var(--blue-light);}
+.opt.correct-opt{border-color:var(--green-border);background:var(--green-light);}
+.opt.wrong-opt{border-color:var(--red-border);background:var(--red-light);}
+.opt.missed-opt{border-color:var(--green-border);background:#fff;outline:2px dashed var(--green-border);}
+
+.nav-panel{position:sticky;top:78px;align-self:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.nav-panel h3{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.nav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.nav-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--border-dim);border-radius:7px;cursor:pointer;background:#fff;color:var(--text-muted);}
+.nav-cell.answered{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue-deep);}
+.nav-cell.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+.nav-cell.rev-correct{background:var(--green-light);border-color:var(--green-border);color:var(--green);}
+.nav-cell.rev-wrong{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.legend{margin-top:14px;font-size:10.5px;color:var(--text-muted);line-height:1.9;}
+.legend span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border-dim);}
+
+/* results */
+#results{display:none;max-width:1180px;margin:0 auto;padding:36px 48px 40px;}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.score-head{padding:28px 34px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;border-bottom:1px solid var(--border-dim);}
+.verdict{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+.verdict.pass{color:var(--green);} .verdict.fail{color:var(--red);}
+.score-detail{font-size:13px;color:var(--text-muted);line-height:1.7;}
+.score-detail b{color:var(--text);}
+.big-pct{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;color:var(--blue-deep);margin-left:auto;}
+.section-perf{padding:24px 34px 30px;}
+.section-perf h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;}
+.section-perf .note{font-size:12px;color:var(--text-muted);margin-bottom:18px;}
+.perf-row{display:grid;grid-template-columns:250px 1fr 110px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border-dim);}
+.perf-row .name{font-size:13.5px;font-weight:500;color:var(--text-soft);}
+.perf-bar{height:14px;background:var(--border-dim);border-radius:8px;overflow:hidden;position:relative;}
+.perf-fill{height:100%;border-radius:8px;transition:width .8s ease;}
+.perf-score{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted);text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:16px;line-height:1.6;}
+.explain{margin-top:14px;border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;line-height:1.65;color:var(--text-soft);}
+.explain .verdict-line{font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+.explain.ok .verdict-line{color:var(--green);} .explain.bad .verdict-line{color:var(--red);}
+.explain code{background:rgba(13,26,58,0.08);padding:1px 6px;border-radius:4px;font-size:12px;}
+footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted);letter-spacing:0.05em;}
+
+/* intro modal */
+#intro{max-width:760px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 42px;box-shadow:0 3px 12px rgba(13,26,58,0.08);}
+#intro h2{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;}
+#intro p,#intro li{font-size:14.5px;line-height:1.7;color:var(--text-soft);}
+#intro ul{margin:12px 0 20px 20px;}
+.rule-table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;}
+.rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
+.rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
+#examArea,#barWrap{display:none;}
+
+/* socratic session */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> LoFinance Certification Lab</div>
+  <h1>FCSS — FortiOS 7.6 Enterprise Firewall Administrator</h1>
+  <div class="sub">Domain Drill 5 &nbsp;·&nbsp; 5.0 VPN &nbsp;·&nbsp; 40 questions &nbsp;·&nbsp; 70 minutes</div>
+</header>
+
+<div id="intro">
+  <h2>Before you begin</h2>
+  <p>This mock exam is a single-domain drill for the official Fortinet FCSS Enterprise Firewall 7.6 Administrator exam, concentrating entirely on <b>5.0 VPN</b>: scenario-based questions, CLI exhibits, and multiple-select items. Answers are withheld until you submit the entire exam, exactly like the real thing.</p>
+  <table class="rule-table">
+    <tr><td>Questions</td><td>40 multiple-choice (some require two selections — read the instruction line)</td></tr>
+    <tr><td>Time allowed</td><td>70 minutes with a live countdown; the exam auto-submits at 0:00</td></tr>
+    <tr><td>Scoring</td><td>Pass / fail with per-section performance, in the style of the official Fortinet score report</td></tr>
+    <tr><td>Marking</td><td>Multi-select questions are scored all-or-nothing — both correct options must be chosen</td></tr>
+    <tr><td>Navigation</td><td>Flag questions for review and jump around using the question grid</td></tr>
+  </table>
+  <p><b>Focus:</b> all 40 questions target a single blueprint section — <b>5.0 VPN</b> — compiled from the Mock Exam 1–6 series plus new items, so it doubles as spaced retrieval of everything you have sat plus fresh territory.</p>
+  <button class="btn primary" style="font-size:15px;padding:12px 30px;" onclick="startExam()">Begin Exam →</button>
+</div>
+
+<div class="exam-bar" id="barWrap">
+  <div class="timer" id="timer">70:00</div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+  </div>
+  <div class="meta" id="progMeta">0 / 40 answered</div>
+  <button class="btn primary" onclick="confirmSubmit()">Submit Exam</button>
+</div>
+
+<div class="layout" id="examArea">
+  <div id="questions"></div>
+  <div class="nav-panel">
+    <h3>Questions</h3>
+    <div class="nav-grid" id="navGrid"></div>
+    <div class="legend" id="legendBox">
+      <div><span style="background:var(--blue-light);border-color:var(--blue-border)"></span>Answered</div>
+      <div><span style="background:var(--amber-light);border-color:var(--amber-border)"></span>Flagged</div>
+      <div><span style="background:#fff"></span>Unanswered</div>
+    </div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<footer>LoFinance Study Programme · Domain Drill 5 · Based on the Enterprise Firewall 7.6 Administrator Study Guide (FortiOS 7.6, FortiManager 7.6) · Not an official Fortinet product</footer>
+
+<script>
+
+const DOMAINS = {
+  SC:"1.0 System Configuration", CM:"2.0 Central Management",
+  SP:"3.0 Security Profiles", RT:"4.0 Routing", VPN:"5.0 VPN"
+};
+
+const Q = [
+{d:"VPN",type:"multi",
+q:"Which two capabilities does ADVPN support? (Choose two.)",
+o:["Shortcut creation without any routing mechanism to direct traffic into the tunnels","Both single-hub and multiple-hub architectures","On-demand shortcut tunnels between spokes located behind NAT devices","Only IPv4 traffic; IPv6 requires manual full-mesh tunnels"],
+a:[1,2],
+ex:"The ADVPN introduction lists its scope: dynamic spoke-to-spoke tunnels with NAT support for on-demand tunnels, single or multiple hub architectures, both IPv4 and IPv6, and reliance on a routing mechanism (a dynamic protocol such as BGP, OSPF, or RIP in the classic design) so traffic knows to enter the shortcuts. The two false options invert the IPv6 support and the routing requirement — a reminder to read Fortinet's capability lists carefully."},
+
+{d:"VPN",type:"single",
+q:"Two FortiGates in an FGSP deployment terminate IPsec tunnels. One peer fails and its traffic shifts to the survivor. What happens to the IPsec tunnels?",
+o:["All tunnels must renegotiate from IKE_SA_INIT","Only tunnels with DPD disabled survive","They survive — FGSP synchronizes IPsec tunnel state between peers by default, alongside TCP sessions","IPsec is not supported in FGSP designs"],
+a:[2],
+ex:"FGSP's default synchronization scope is broader than most people recall: IPv4 and IPv6 TCP sessions AND IPsec tunnels. The surviving peer already holds the tunnel state, so encrypted traffic continues without a fresh negotiation — essential in data-centre designs where the FortiGates terminate site-to-site VPNs as well as firewalling. UDP, ICMP, and NAT sessions remain the opt-in extras requiring explicit configuration."},
+
+,
+
+{d:"VPN",type:"single",
+q:"LoFinance runs a dual-hub ADVPN design, with each hub serving its own region. Spokes in region 1 must be able to establish shortcuts to spokes in region 2 through the hub-to-hub tunnel. Which setting is required on the hubs' inter-hub phase 1 interfaces?",
+o:["set net-device enable","set auto-discovery-forwarder enable","set auto-discovery-receiver enable","set type static with mode aggressive"],
+a:[1],
+ex:"In multi-hub ADVPN, shortcut messages must propagate between regions, and the forwarder role does exactly that: enabled on the hub-to-hub tunnels, it relays the shortcut offers and queries across the hub boundary so cross-region spoke pairs can negotiate direct tunnels. Sender stays on each hub's spoke-facing dial-up phase 1, receiver stays on the spokes — the three roles map cleanly onto the three tunnel types in the topology."},
+
+{d:"VPN",type:"single",
+q:"In an ADVPN topology, which statement about tunnel lifecycle is true?",
+o:["The hub tears down its spoke tunnels whenever a shortcut forms","All tunnels, including spoke-to-hub, are created on demand","Shortcuts remain up permanently once created","Spoke-to-hub tunnels are persistent, while spoke-to-spoke shortcuts are created on demand and torn down when idle"],
+a:[3],
+ex:"ADVPN's economy comes from this asymmetry: the spoke-to-hub overlay is the permanent skeleton (carrying routing and the shortcut signalling), while spoke-to-spoke shortcuts exist only while traffic justifies them — created on demand when the hub brokers an introduction, removed after idling. The parent tunnels are never sacrificed for shortcuts; they are what makes future shortcuts (and fallback through the hub) possible."},
+
+{d:"VPN",type:"single",
+q:"What is the effect of enabling perfect forward secrecy (PFS) on an IPsec phase 2?",
+o:["Each rekey performs a new Diffie-Hellman exchange, generating fresh independent keys so compromise of one key does not expose past or future sessions","The phase 2 keys are derived faster, improving performance","PFS disables rekeying entirely","Phase 2 negotiates without any encryption keys"],
+a:[0],
+ex:"PFS means every phase 2 negotiation runs its own Diffie-Hellman exchange with the configured DH group, producing keys that are cryptographically independent of the phase 1 keys and of previous sessions — so a compromised key unlocks only its own window of traffic. Disabling PFS uses a simpler, cheaper key derivation at the cost of exactly that independence. The trade-off is computational overhead versus security level, and for a financial enterprise the answer is usually PFS on."},
+
+{d:"VPN",type:"single",
+q:"On a route-based IPsec VPN between two FortiGates, phase 2 selectors are left at their default of 0.0.0.0/0 for both source and destination. How is traffic steered into the tunnel?",
+o:["Traffic cannot flow until specific selectors are configured","The firewall policy's NAT setting selects the traffic","All traffic on the FortiGate is forced into the tunnel","By the routing table — routes pointing at the virtual tunnel interface decide which traffic is encrypted"],
+a:[3],
+ex:"Route-based VPN separates concerns: wide-open 0.0.0.0/0 selectors let the SA carry anything, and the routing table (static routes or a dynamic protocol over the tunnel interface) decides what actually enters — with firewall policies on the tunnel interface still controlling permission. This is what makes route-based VPNs composable with OSPF, BGP, ADVPN, and SD-WAN, whereas narrow selectors are chiefly needed for interoperability with policy-based third-party peers."},
+
+{d:"VPN",type:"single",
+q:"In IKEv2, which exchange carries peer authentication and establishes the first child SA?",
+o:["IKE_SA_INIT","CREATE_CHILD_SA","INFORMATIONAL","IKE_AUTH"],
+a:[3],
+ex:"IKE_SA_INIT negotiates cryptographic algorithms and performs the Diffie-Hellman exchange; the following IKE_AUTH exchange authenticates the peers and — efficiently — establishes the first child SA in the same round trip. Additional or rekeyed child SAs use CREATE_CHILD_SA, and INFORMATIONAL handles notifications and deletions. Mapping functions to exchange names is a straightforward mark on the exam."},
+
+{d:"VPN",type:"single",
+q:"A FortiGate hub terminates two separate IKEv2 dial-up VPN configurations on the same WAN interface — one for branch FortiGates and one for a partner network. IKEv2 has no aggressive mode to carry a peer ID in the first packet. How does the hub match incoming connections to the correct phase 1?",
+o:["By the network-id value configured on each phase 1 and sent by the initiators","IKEv2 cannot support two dynamic phase 1 configurations on one interface","By the source port of the IKE negotiation","By comparing the initiator's certificate CN against the tunnel name"],
+a:[0],
+ex:"With IKEv1, aggressive mode's early peer ID lets a gateway select among multiple dial-up phase 1s; IKEv2 removed aggressive mode, so FortiOS uses the network-id (network overlay ID) instead — each phase 1 carries a distinct ID, initiators send it, and the responder matches the connection to the right configuration. The same mechanism appears in ADVPN hub configs, which is why 'set network-id x' shows up throughout the IKEv2 and ADVPN lessons."},
+
+{d:"VPN",type:"single",
+q:"A hub FortiGate must accept IBGP sessions from dozens of ADVPN spokes whose tunnel IP addresses are assigned dynamically, without configuring each neighbour individually. Which configuration enables this?",
+o:["A neighbor-group holding the common BGP settings, with a neighbor-range defining the IP range from which dynamic peers are accepted","Enabling ebgp-enforce-multihop on the hub","A static neighbor entry per spoke, generated by a CLI script","Setting the hub's BGP AS to 0 to accept any peer"],
+a:[0],
+ex:"This is the dynamic-peering pattern from the SD-WAN/ADVPN designs: the neighbor-group carries the shared session settings (remote AS, route-reflector-client, timers), and neighbor-range declares the subnet — typically the tunnel overlay range — from which incoming peers are automatically matched to that group. The hub then accepts any spoke in the range with zero per-spoke configuration, which is what makes hub-and-spoke BGP scale to large estates."},
+
+{d:"VPN",type:"multi",
+q:"Which two statements about ADVPN 2.0 with SD-WAN in FortiOS 7.6 are true? (Choose two.)",
+o:["Edge discovery lets spokes learn each other's WAN link information through IKE messages, exchanged every 5 seconds to keep the best path current","It replaces IKE with a proprietary discovery protocol","It requires spokes to establish permanent full-mesh tunnels at startup","It removes the reliance on specific BGP routing designs by using SD-WAN rules and link health to steer shortcut establishment"],
+a:[0,3],
+ex:"ADVPN 2.0's headline changes are edge discovery — spokes obtain and refresh remote WAN link information via IKE messages every 5 seconds — and path management, where spokes use SD-WAN rules, underlay availability, and link health to pick and establish the best shortcut path. This decouples shortcut behaviour from the rigid BGP designs classic ADVPN needed. Tunnels remain on-demand IKE-negotiated shortcuts; nothing becomes a permanent full mesh."},
+
+{d:"VPN",type:"single",
+q:"LoFinance is replacing pre-shared keys with digital certificates for IPsec peer authentication on its site-to-site tunnels. What is the principal security benefit?",
+o:["Certificate authentication removes the need for phase 1 entirely","No shared secret needs to be distributed and stored on every peer — each device proves its identity with its own private key and a verifiable certificate","Certificates encrypt the data traffic more strongly than PSKs","Certificates make the tunnel immune to man-in-the-middle attacks at the ESP layer"],
+a:[1],
+ex:"PSK weaknesses are operational: the same secret sits on both (or many) devices, must be distributed somehow, and rarely gets rotated. Signature-based authentication replaces that with per-device key pairs — the private key never leaves the device, identity is verified against a CA, and revocation gives you per-peer control. Data encryption strength is unchanged: authentication method and ESP cipher are independent choices, which is the trap in option C."},
+
+{d:"VPN",type:"single",
+q:"On an ADVPN hub, what is the effect of leaving <code>net-device disable</code> on the dial-up phase 1?",
+o:["Dynamic routing becomes impossible over the VPN","The hub refuses more than one spoke","All connecting spokes share a single IPsec virtual interface on the hub, rather than each spoke instantiating its own tunnel interface","Each spoke receives a dedicated kernel interface, one per connection"],
+a:[2],
+ex:"net-device decides the hub's interface model for dial-up: disabled (the shared model) gives one IPsec virtual interface carrying every spoke, while enabled creates a per-spoke interface. The shared model is why the hub's OSPF interface must be point-to-multipoint — many neighbours on one interface — and it shapes routing, policy, and monitoring granularity. Dynamic routing works in both models; only its configuration details differ."},
+
+,
+
+{d:"VPN",type:"single",
+q:"On an ADVPN or dial-up VPN hub, the phase 1 interface is configured with <code>set type dynamic</code>. Why?",
+o:["The spokes' public IP addresses are unknown or change, so the hub must accept IKE negotiations from any source address","It allows the hub to operate without a WAN IP address","It enables the tunnel to change encryption algorithms dynamically","It makes the tunnel interface disappear when idle"],
+a:[0],
+ex:"type dynamic makes the hub a listener: rather than defining a fixed remote gateway, it accepts IKE negotiations from peers whose addresses it cannot know in advance — branch spokes on DHCP or LTE, roaming clients, ADVPN members. Each connecting spoke is matched to the dial-up phase 1 (with network-id disambiguating when several exist). The setting concerns peer addressing only; algorithms and the hub's own addressing are configured elsewhere."},
+
+{d:"VPN",type:"single",
+q:"When an ADVPN shortcut is established between two spokes, why do the spokes generally NOT require new firewall policies for the shortcut traffic?",
+o:["ADVPN requires policies only on the hub","Shortcut tunnels are instantiated as children of the existing spoke-to-hub tunnel interface, so policies referencing that interface already apply","The hub pushes temporary policies to both spokes during shortcut negotiation","Shortcut traffic bypasses firewall policy inspection entirely"],
+a:[1],
+ex:"Shortcuts are dynamically created child tunnels of the spoke's existing ADVPN phase 1 interface — from the policy engine's perspective, traffic still enters and leaves via that parent interface, so the policies written for hub-reachable traffic cover the shortcut path too. No inspection is bypassed and the hub pushes nothing; the elegance of ADVPN is that dynamic connectivity changes while the security policy model stays put."},
+
+{d:"VPN",type:"single",
+q:"Which statement about route-based IPsec VPNs on FortiGate is true?",
+o:["Traffic selection is performed exclusively by the phase 2 selectors, with no routing involvement","Each tunnel is represented by a virtual tunnel interface, and traffic is directed into the VPN by routes, with firewall policies referencing the tunnel interface","Route-based VPNs cannot participate in dynamic routing protocols","A route-based VPN requires one firewall policy per remote subnet"],
+a:[1],
+ex:"Route-based is FortiGate's native model: the phase 1 creates a virtual interface, routes decide what enters the tunnel, and policies to/from that interface authorize it — three separable controls. That interface is exactly what lets OSPF and BGP run over the VPN, which in turn is what ADVPN and SD-WAN build on. Policies scale by interface and zone, not per remote subnet; and selectors, in this model, usually stay at 0.0.0.0/0 as capability rather than steering."},
+
+{d:"VPN",type:"single",
+q:"In classic ADVPN, the hub detects spoke-to-spoke traffic and sends a shortcut offer to Spoke 1. What happens next in the shortcut message exchange?",
+o:["The hub builds the tunnel on behalf of both spokes and hands over the SAs","Spoke 2 immediately initiates an IKE session to Spoke 1's protected subnet address","Spoke 1 acknowledges the offer and sends a shortcut query, which is forwarded toward Spoke 2 so the peers can exchange the information needed to build the direct tunnel","Spoke 1 sends a gratuitous ARP announcing its tunnel IP"],
+a:[2],
+ex:"The sequence is: hub sends a shortcut offer to the initiating spoke; the spoke acknowledges and issues a shortcut query; the query travels via the hub to the other spoke, and the reply gives the initiator what it needs (including public addressing) to bring up the direct IKE/IPsec shortcut. The hub brokers the introduction but never builds or owns the spoke-to-spoke SAs — after convergence, traffic bypasses it entirely."},
+
+{d:"VPN",type:"single",
+q:"How do IKEv1 main mode and aggressive mode differ in their phase 1 exchange?",
+o:["Main mode uses three messages; aggressive uses six","Main mode is only available with IKEv2","Aggressive mode adds mandatory certificate authentication","Main mode uses six messages; aggressive mode compresses the negotiation into three messages at the cost of exposing identity information earlier"],
+a:[3],
+ex:"IKEv1 offers two phase 1 gears: main mode's six-message exchange establishes protection before identities are exchanged, while aggressive mode collapses to three messages by sending identity material up front — faster, historically used for dial-up PSK scenarios, but exposed. IKEv2 made the debate obsolete with a single four-message initial exchange that keeps identities protected, which is why aggressive-mode references in IKEv2 answer options are automatic eliminations."},
+
+,
+
+{d:"VPN",type:"single",
+q:"A backup IPsec tunnel carries no traffic for days at a time, but LoFinance requires it to be established and monitored at all times so failover is instant. Which phase 2 setting achieves this?",
+o:["Lower the phase 2 key lifetime to one minute","Enable auto-negotiate (autokey keepalive), so the tunnel negotiates and stays up even without user traffic","Set the phase 2 selectors to a single host","Enable PFS"],
+a:[1],
+ex:"By default, phase 2 negotiates on demand — a silent tunnel may not exist at all until traffic arrives, adding setup delay at exactly the wrong moment for a failover path. Auto-negotiate (with keepalive) brings the SAs up proactively and renegotiates them on expiry, keeping the standby tunnel warm and monitorable. Shortening the key lifetime just adds rekey churn to a tunnel that still would not self-establish."},
+
+,
+
+{d:"VPN",type:"single",
+q:"For large ADVPN deployments, why does Fortinet's design guidance favour BGP over OSPF as the overlay routing protocol?",
+o:["OSPF cannot run over IPsec interfaces at all","BGP converges faster than OSPF in all topologies","OSPF requires a license on FortiGate","BGP scales better for many peers with per-neighbour policy control and no LSA flooding, and the hub can use route reflection instead of maintaining a flooded link-state domain across hundreds of spokes"],
+a:[3],
+ex:"Both protocols work over ADVPN, but they age differently: OSPF floods link-state across the domain and recalculates SPF as spokes churn, while BGP treats each spoke as a policied peering — route reflection on the hub, neighbor-groups and ranges for dynamic peers, and per-neighbour filtering. At hundreds of spokes the operational difference is decisive, which is why the reference designs (and ADVPN 2.0's SD-WAN integration) are built around BGP."},
+
+,
+
+{d:"VPN",type:"single",
+q:"An IPsec tunnel to a partner fails during negotiation. The administrator needs to watch the IKE negotiation in real time on the CLI to see which payload or proposal is being rejected. Which command set is appropriate?",
+o:["diagnose sys session list","diagnose debug application ike -1 combined with diagnose debug enable","execute ping-options repeat 100","get router info routing-table all"],
+a:[1],
+ex:"IKE negotiation problems are diagnosed at the IKE daemon: diagnose debug application ike -1 (with debug enabled, and ideally a filter on the peer's address) streams the live exchange, showing proposal mismatches, failed authentication, selector disagreements, and NAT-T decisions. The other commands examine routing, established sessions, or reachability — useful context, but none of them can show why phase 1 or phase 2 is being rejected."},
+
+{d:"VPN",type:"single",
+q:"Which command gives a quick overview of all IKE phase 1 negotiations and their current status on a FortiGate?",
+o:["execute ping-options source","get router info routing-table static","diagnose vpn ike gateway list","diagnose sys top"],
+a:[2],
+ex:"diagnose vpn ike gateway list is the phase 1 census: each IKE gateway with its peer address, IKE version, state, and negotiation details. Its companion, diagnose vpn tunnel list, covers the phase 2/data-plane view — established SAs, selectors, counters, and the npu_flag. Pairing the two ('is phase 1 up?' then 'are the SAs passing traffic?') is the standard two-step triage before reaching for full IKE debugging."},
+
+,
+
+{d:"VPN",type:"single",
+q:"A firewall between two IPsec gateways must be opened for the VPN. Which traffic must be permitted for a tunnel using NAT-T when needed?",
+o:["TCP 500 and TCP 4500 only","IP protocol 51 (AH) and UDP 1701","UDP 500 and TCP 443","UDP 500 (IKE), UDP 4500 (NAT-T), and IP protocol 50 (ESP)"],
+a:[3],
+ex:"The IPsec port triad: IKE negotiates on UDP 500; when NAT is detected, IKE and the encapsulated data move to UDP 4500; and without NAT in the path, the data itself travels as ESP — IP protocol 50, which is not TCP or UDP at all. That last point is the classic firewall mistake: 'protocol 50' cannot be expressed as a port rule. AH (protocol 51) belongs to a different, rarely used IPsec mode, and UDP 1701 is L2TP."},
+
+,
+
+{d:"VPN",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — Hub configuration</span>config vpn ipsec phase1-interface\n    edit \"ADVPN\"\n        set type dynamic\n        set interface \"port1\"\n        set ike-version 2\n        set auto-discovery-sender enable\n        set network-id 1\n        ...\n    next\nend</div>Which setting must be configured on each spoke's phase 1 interface so that spokes can participate in ADVPN shortcut negotiation with this hub?",
+o:["set auto-discovery-forwarder enable","set type dynamic","set auto-discovery-receiver enable","set auto-discovery-sender enable"],
+a:[2],
+ex:"ADVPN roles map directly to these keywords: the hub is the sender (it offers shortcuts), spokes are receivers (they accept shortcut offers and build on-demand tunnels), and forwarder is used on hub-to-hub tunnels in multi-hub designs so shortcut messages propagate between regions. 'type dynamic' belongs on the hub, which accepts connections from many spokes with unknown IPs."},
+
+{d:"VPN",type:"single",
+q:"In an established ADVPN topology, what event causes the hub to send a shortcut offer message to a spoke?",
+o:["The hub detects traffic flowing through it from one spoke to another spoke","The hub's IKE SA rekeys","A spoke advertises a new BGP prefix to the hub","A spoke's dead peer detection timer expires"],
+a:[0],
+ex:"Shortcuts are traffic-driven: when spoke-to-spoke traffic transits the hub, the hub sends a shortcut offer to the initiating spoke, which acknowledges and queries, leading to a direct spoke-to-spoke tunnel. Once the shortcut is up and routing has converged, that traffic bypasses the hub entirely — the whole point of ADVPN's 'hub-and-spoke simplicity with full-mesh efficiency'."},
+
+{d:"VPN",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — IPsec diagnostics</span>FGT # diagnose vpn tunnel list name ToDC\n...\nnpu_flag=03\n...</div>What does <code>npu_flag=03</code> indicate about this IPsec tunnel?",
+o:["The tunnel is down in both directions","Both the inbound and outbound SAs have been copied to the NPU — traffic in both directions is hardware offloaded","Offloading is unsupported for this tunnel's algorithms","Only the outbound SA is offloaded"],
+a:[1],
+ex:"The npu_flag field tracks SA offload state: 00 means no SA copied (no traffic yet, or offload disabled), 01 means the outbound SA is copied, 02 the inbound SA, 03 both — full bidirectional hardware offload — and 20 means offloading is unsupported for the configuration. Which SA copies first simply depends on the direction of the first offloadable packet. This field is the definitive answer to 'is my VPN actually using the NP?'"},
+
+{d:"VPN",type:"single",
+q:"A site-to-site IPsec tunnel completes phase 1 successfully, but phase 2 repeatedly fails to negotiate. Both sides use policy-based-style specific selectors. What is the most likely cause?",
+o:["The IKE version differs between the peers","The pre-shared key is wrong","The phase 2 selectors do not match — the source/destination networks configured on each peer are not mirror images of each other","NAT-T is enabled on only one side"],
+a:[2],
+ex:"The symptom pattern localizes the fault: a wrong PSK or IKE-version mismatch would break phase 1, which succeeded. Phase 2 negotiates the traffic selectors, and when specific selectors are used they must mirror between peers — one side's source is the other side's destination. Non-matching selectors are the canonical phase-2 failure, visible in the IKE debug as proposal/TS mismatches. (This is also why route-based designs with 0.0.0.0/0 selectors sidestep the whole class of problem.)"},
+
+{d:"VPN",type:"multi",
+q:"Which two statements about dead peer detection (DPD) modes on FortiGate are true? (Choose two.)",
+o:["On-idle mode suits networks with regular traffic intervals, balancing connectivity assurance against resource usage","On-demand mode is best when traffic patterns are unpredictable and an immediate response to connectivity problems is crucial","Disable mode causes the tunnel to be torn down every time traffic stops","On-idle mode sends DPD probes continuously regardless of traffic"],
+a:[0,1],
+ex:"FortiGate supports three DPD modes with distinct fits: on-demand probes in reaction to traffic conditions, making it right for unpredictable patterns needing fast failure response; on-idle probes when the tunnel goes quiet, balancing assurance and overhead for regular-interval networks; and disable removes DPD entirely for highly stable environments — it does not tear anything down, it simply stops checking. Matching mode to environment is how the guide frames it, and how the exam asks it."},
+
+{d:"VPN",type:"single",
+q:"IPsec traffic on one specific tunnel must be excluded from hardware acceleration for troubleshooting, without affecting other tunnels. How is this done?",
+o:["Remove the CP9 from the chassis","Change the tunnel to IKEv1","Disable auto-asic-offload globally under system settings","Set npu-offload disable in that tunnel's phase 1 interface configuration"],
+a:[3],
+ex:"IPsec encryption/decryption offload is controlled per tunnel: config vpn ipsec phase1-interface → set npu-offload disable. It defaults to enabled for supported algorithms, and per-tunnel control is exactly what makes it useful for troubleshooting — you can take one tunnel off the NPU to rule hardware offload in or out while production tunnels stay accelerated. After disabling it, the tunnel's npu_flag will remain 00."},
+
+{d:"VPN",type:"single",
+q:"LoFinance runs ADVPN with IBGP between the hub and 30 spokes. Spokes must learn each other's routes through the hub without configuring BGP sessions between every pair of spokes. Which configuration on the hub achieves this?",
+o:["Configure the spoke neighbor-group as a route-reflector client on the hub","Lower the BGP keepalive timers on the hub","Redistribute connected routes into BGP on every spoke","Enable ebgp-multihop on all spoke sessions"],
+a:[0],
+ex:"IBGP does not re-advertise routes between IBGP peers, so without help the spokes would never learn each other's prefixes through the hub. Making the hub a route reflector — applied to the spoke neighbor-group in the study guide's design — lets it reflect spoke routes to other spokes, avoiding a full mesh of 435 sessions. ebgp-multihop is irrelevant here because all sessions are IBGP within one AS."},
+
+{d:"VPN",type:"single",
+q:"Beyond the auto-discovery IPsec settings, what else is required for ADVPN spokes to reach each other's protected networks through dynamically created shortcuts?",
+o:["A dynamic routing protocol (such as BGP or OSPF) running over the VPN so spokes learn routes to each other's subnets","Static routes on every spoke pointing at every other spoke's tunnel","Nothing further; shortcut tunnels carry their own routing automatically","Policy routes on the hub redirecting spoke traffic"],
+a:[0],
+ex:"Classic ADVPN relies on a dynamic routing protocol — BGP, OSPF, or RIP — running over the tunnels so each spoke learns the prefixes behind the other spokes; when a shortcut forms, routing converges onto the direct path. Static routes to every peer would recreate the full-mesh administration problem ADVPN exists to remove. (Note that shortcut traffic still needs to match firewall policy on the spokes.)"},
+
+{d:"VPN",type:"single",
+q:"Which statement correctly maps IPsec negotiation phases to their security associations?",
+o:["Phase 2 only runs when NAT-T is detected","Phase 1 creates the data-plane SAs; phase 2 secures the control channel","Both phases create a single shared bidirectional SA","Phase 1 establishes the IKE SA protecting the negotiation channel; phase 2 establishes the IPsec SAs — a pair of unidirectional SAs — that protect the actual data"],
+a:[3],
+ex:"The two phases divide control from data: phase 1 produces the IKE SA — the encrypted, authenticated channel the peers negotiate through — and phase 2 (CREATE_CHILD_SA in IKEv2 terms) produces the IPsec SAs carrying user traffic, as a pair because each SA is unidirectional (one inbound, one outbound). This is why the npu_flag tracks two SA copies for offload, and why 'phase 1 up, phase 2 down' cleanly means the channel works but the traffic definition doesn't."},
+
+{d:"VPN",type:"single",
+q:"For certificate-based IKE authentication between two FortiGates, what must each peer possess?",
+o:["A FortiGuard subscription covering certificate services","Only the remote peer's certificate, imported manually","Its own certificate with the corresponding private key, plus the CA certificate needed to validate the peer's certificate","A copy of the peer's private key"],
+a:[2],
+ex:"Signature authentication has two halves per device: proving its own identity (its certificate plus the private key that never leaves the device) and verifying the peer (the CA chain that signed the peer's certificate, with revocation checking where configured). No private key is ever shared — that is precisely the improvement over PSKs. Missing CA certificates are the most frequent build error, surfacing in IKE debugs as certificate validation failures despite both certs being individually valid."},
+
+,
+
+{d:"VPN",type:"single",
+q:"Phase 1 and phase 2 are both up on a route-based tunnel, but users cannot reach the remote subnet. What should the administrator check FIRST?",
+o:["The routing table — confirm a route to the remote subnet points at the tunnel interface, since routing steers traffic into route-based VPNs","The IKE version","The pre-shared key on both peers","The NAT-T setting"],
+a:[0],
+ex:"Triage follows the architecture: with both SAs established, authentication and negotiation (PSK, IKE version, NAT-T) are proven working — those settings could not be wrong. In a route-based VPN, what remains is whether traffic is being sent into the tunnel at all (routing) and whether it is permitted (policy). A missing or misdirected route is the most common culprit, visible instantly in the routing table or a debug flow trace showing the wrong egress interface."},
+
+,
+
+{d:"VPN",type:"multi",
+q:"Which two statements accurately describe advantages of IKEv2 over IKEv1? (Choose two.)",
+o:["IKEv2 establishes the IKE SA with fewer messages — a four-message initial exchange instead of main mode's six","IKEv2 retains both main mode and aggressive mode for backwards compatibility","IKEv2 natively supports EAP for user authentication","IKEv2 requires a separate NAT-T add-on licence"],
+a:[0,2],
+ex:"IKEv2 completes the initial negotiation in four messages (IKE_SA_INIT + IKE_AUTH) versus IKEv1 main mode's six, and it adds native EAP support — important for remote access and integration with authentication servers. IKEv2 deliberately eliminated the main/aggressive mode split, and NAT traversal is built into the protocol, not licensed. Remember: v2 = simpler exchanges, built-in NAT-T, EAP, and reliable (acknowledged) messaging."},
+
+{d:"VPN",type:"single",
+q:"In which environment does the study guide consider DPD mode <b>disable</b> an appropriate choice?",
+o:["Any tunnel carrying real-time voice traffic","Networks with frequent link flaps needing instant failover","Highly stable environments where the overhead of dead peer detection is unwarranted","Dial-up VPNs with roaming clients"],
+a:[2],
+ex:"The three DPD modes map to environment profiles: on-demand for unpredictable traffic where immediate failure response matters, on-idle for regular traffic patterns balancing assurance against overhead, and disable for highly stable environments where the detection overhead buys nothing. Flapping links and roaming clients are the opposite of stable — they are exactly where DPD earns its keep — making them the natural distractors."},
+
+{d:"VPN",type:"multi",
+q:"Which two statements about IPsec hardware offloading are true? (Choose two.)",
+o:["All encryption algorithms are offloadable on all models","Hardware offloading capability and supported algorithms vary by processor type and FortiGate model","IPsec offloading requires manually copying the SAs to the NPU with a CLI command","Offloading is enabled by default for supported algorithms"],
+a:[1,3],
+ex:"Two facts frame IPsec offload: it is on by default where supported (per-tunnel opt-out via npu-offload disable), and what counts as supported depends on the processor generation and model — algorithm coverage is not universal, which is why npu_flag=20 exists to mark unsupported configurations. SA copying to the NPU is automatic, triggered by the first offloadable packet in each direction; there is no manual copy step."},
+
+{d:"VPN",type:"multi",
+q:"Which two statements about IKE security are true? (Choose two.)",
+o:["IKEv2 aggressive mode encrypts peer IDs using the session key","Peer IDs are never transmitted in any IKE version","IKEv1 main mode and IKEv2 both protect peer identities with encryption","In IKEv1 aggressive mode, peer IDs are sent unencrypted, exposing them to eavesdroppers"],
+a:[2,3],
+ex:"This is the security reason aggressive mode earned its reputation: it trades protection for speed by sending the peer ID before encryption is established, exposing identities (and enabling offline attacks on PSKs). Main mode and IKEv2 complete the key exchange first, so identities travel encrypted. Option A is a trap — IKEv2 has no aggressive mode at all, which is itself one of its advantages and a recurring distractor pattern."},
+
+{d:"VPN",type:"single",
+q:"Which statement about IKEv2 message exchanges is true?",
+o:["IKEv2 relies on TCP for reliability","All IKEv2 exchanges are request/response pairs — every request expects an acknowledgement, making the protocol reliable","IKEv2 messages are fire-and-forget with no retransmission logic","Only IKE_SA_INIT is acknowledged"],
+a:[1],
+ex:"IKEv2 formalized what IKEv1 left loose: the protocol is a strict sequence of request/response pairs with retransmission handled by the initiator of each exchange, giving reliable semantics over UDP without needing TCP. This is one of the quiet advantages behind 'IKEv2 reduces complexity' — lost packets produce defined retransmissions instead of the stuck half-negotiations familiar from IKEv1 debugging."},
+
+,
+
+{d:"VPN",type:"single",
+q:"After an IKEv2 tunnel is established, which exchange is used to rekey the IKE SA or the IPsec (child) SAs without restarting the whole negotiation?",
+o:["IKE_SA_INIT","CREATE_CHILD_SA","AGGRESSIVE_MODE","IKE_AUTH"],
+a:[1],
+ex:"CREATE_CHILD_SA is IKEv2's maintenance workhorse: it establishes additional child SAs and performs rekeying of both child SAs and the IKE SA itself, optionally with fresh Diffie-Hellman for forward secrecy — all without repeating IKE_SA_INIT/IKE_AUTH. Aggressive mode does not exist in IKEv2 at all, a fact the exam loves to slip into option lists."},
+
+{d:"VPN",type:"single",
+q:"During IKE negotiation, both peers detect that a NAT device sits between them. What changes in how the IPsec traffic is transmitted?",
+o:["ESP packets are encapsulated in UDP port 4500 (NAT-T) so they can traverse the NAT device","The peers switch to TCP port 443 encapsulation by default","The tunnel switches from ESP to AH for integrity protection","IKE falls back to version 1 automatically"],
+a:[0],
+ex:"Plain ESP has no ports, so NAT devices cannot track or translate it reliably. NAT traversal solves this: NAT presence is discovered during IKE (via NAT discovery payloads), and both IKE and ESP then move into UDP 4500 encapsulation, giving the NAT device ports to translate. AH would make things worse — it authenticates the IP header that NAT must modify — and there is no automatic fallback to IKEv1 or TCP 443."}
+];
+
+/* ---------------- ENGINE ---------------- */
+const state = { answers: Q.map(()=>new Set()), flags: Q.map(()=>false), submitted:false, timeLeft:70*60, timerId:null };
+const LETTERS = ["A","B","C","D","E"];
+
+function startExam(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('barWrap').style.display='flex';
+  document.getElementById('examArea').style.display='grid';
+  renderQuestions(); renderNav();
+  state.timerId = setInterval(tick,1000);
+  window.scrollTo(0,0);
+}
+function tick(){
+  state.timeLeft--;
+  const t=document.getElementById('timer');
+  const m=Math.floor(state.timeLeft/60), s=state.timeLeft%60;
+  t.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  if(state.timeLeft<=300) t.classList.add('low');
+  if(state.timeLeft<=0){ clearInterval(state.timerId); alert('Time is up — the exam will now be submitted.'); submitExam(); }
+}
+function renderQuestions(){
+  const wrap=document.getElementById('questions'); wrap.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const card=document.createElement('div'); card.className='q-card'; card.id='q'+i;
+    const inputType = qu.type==='multi'?'checkbox':'radio';
+    const instr = qu.type==='multi'?'(Choose two.)':'(Choose one.)';
+    let opts='';
+    qu.o.forEach((opt,j)=>{
+      opts+=`<label class="opt" id="opt-${i}-${j}">
+        <input type="${inputType}" name="q${i}" onchange="pick(${i},${j},this)">
+        <span class="letter">${LETTERS[j]}.</span><span class="txt">${opt}</span></label>`;
+    });
+    card.innerHTML=`
+      <div class="q-top">
+        <div><div class="q-num">Question ${i+1} of ${Q.length}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="q-domain">${DOMAINS[qu.d]}</span>
+          <button class="flag-btn" id="flag-${i}" onclick="toggleFlag(${i})">⚑ Flag</button>
+        </div>
+      </div>
+      <div class="q-text">${qu.q}</div>
+      <div class="q-instr">${instr}</div>
+      <div>${opts}</div>
+      <div id="fb-${i}"></div>`;
+    wrap.appendChild(card);
+  });
+}
+function pick(i,j,input){
+  const qu=Q[i];
+  if(qu.type==='single'){ state.answers[i]=new Set([j]); }
+  else{
+    if(input.checked){
+      if(state.answers[i].size>=2){ input.checked=false; return; }
+      state.answers[i].add(j);
+    } else state.answers[i].delete(j);
+  }
+  qu.o.forEach((_,k)=>{
+    document.getElementById(`opt-${i}-${k}`).classList.toggle('selected', state.answers[i].has(k));
+  });
+  updateProgress(); renderNav();
+}
+function toggleFlag(i){
+  state.flags[i]=!state.flags[i];
+  const b=document.getElementById('flag-'+i);
+  b.classList.toggle('flagged',state.flags[i]);
+  b.textContent = state.flags[i]?'⚑ Flagged':'⚑ Flag';
+  renderNav();
+}
+function updateProgress(){
+  const done=state.answers.filter(s=>s.size>0).length;
+  document.getElementById('progFill').style.width=(done/Q.length*100)+'%';
+  document.getElementById('progMeta').textContent=`${done} / ${Q.length} answered`;
+}
+function renderNav(){
+  const g=document.getElementById('navGrid'); g.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const c=document.createElement('div'); c.className='nav-cell'; c.textContent=i+1;
+    if(state.submitted){
+      c.classList.add(isCorrect(i)?'rev-correct':'rev-wrong');
+    } else {
+      if(state.flags[i]) c.classList.add('flagged');
+      else if(state.answers[i].size>0) c.classList.add('answered');
+    }
+    c.onclick=()=>document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});
+    g.appendChild(c);
+  });
+  if(state.submitted){
+    document.getElementById('legendBox').innerHTML=
+      `<div><span style="background:var(--green-light);border-color:var(--green-border)"></span>Correct</div>
+       <div><span style="background:var(--red-light);border-color:var(--red-border)"></span>Incorrect</div>`;
+  }
+}
+function isCorrect(i){
+  const a=state.answers[i], key=Q[i].a;
+  return a.size===key.length && key.every(k=>a.has(k));
+}
+function confirmSubmit(){
+  const un=state.answers.filter(s=>s.size===0).length;
+  const msg = un>0 ? `You have ${un} unanswered question${un>1?'s':''}. Unanswered questions are marked incorrect.\n\nSubmit the exam?`
+                   : 'Submit the exam? You will not be able to change your answers.';
+  if(confirm(msg)) submitExam();
+}
+function submitExam(){
+  if(state.submitted) return;
+  state.submitted=true; clearInterval(state.timerId);
+  // score
+  let correct=0; const dom={};
+  Object.keys(DOMAINS).forEach(k=>dom[k]={ok:0,tot:0});
+  Q.forEach((qu,i)=>{ dom[qu.d].tot++; if(isCorrect(i)){correct++; dom[qu.d].ok++;} });
+  const pct=Math.round(correct/Q.length*100);
+  const pass=pct>=70;
+  const used=70*60-state.timeLeft, um=Math.floor(used/60), us=used%60;
+
+  // results panel
+  let rows='';
+  Object.keys(DOMAINS).filter(k=>dom[k].tot>0).forEach(k=>{
+    const p=Math.round(dom[k].ok/dom[k].tot*100);
+    const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+    rows+=`<div class="perf-row">
+      <div class="name">${DOMAINS[k]}</div>
+      <div class="perf-bar"><div class="perf-fill" style="width:${p}%;background:${col}"></div></div>
+      <div class="perf-score">${dom[k].ok}/${dom[k].tot} &nbsp;(${p}%)</div></div>`;
+  });
+  const dk=Object.keys(DOMAINS).filter(k=>dom[k].tot>0);
+  const weakest = dk.reduce((w,k)=> (dom[k].ok/dom[k].tot < dom[w].ok/dom[w].tot ? k : w), dk[0]);
+  document.getElementById('results').innerHTML=`
+    <div class="score-card">
+      <div class="score-head">
+        <div>
+          <div class="verdict ${pass?'pass':'fail'}">${pass?'PASS':'FAIL'}</div>
+          <div class="score-detail" style="margin-top:6px;">
+            <b>FCSS — FortiOS 7.6 Enterprise Firewall Administrator (Drill 5)</b><br>
+            Candidate: LoFinance Intermediate Engineer &nbsp;·&nbsp; Delivery: LoFinance Certification Lab<br>
+            Questions answered correctly: <b>${correct} of ${Q.length}</b> &nbsp;·&nbsp; Time used: <b>${um}m ${us}s of 70m</b>
+          </div>
+        </div>
+        <div class="big-pct">${pct}%</div>
+      </div>
+      <div class="section-perf">
+        <h3>Examination Score Report — Section Performance</h3>
+        <div class="note">Performance by exam section, relative to the number of items delivered in each section.</div>
+        ${rows}
+        <div class="disclaimer">The real Fortinet exam reports pass/fail only and does not publish its cut score; this mock uses a 70% provisional pass line as a study benchmark. Section bars mirror the style of the official Pearson VUE score report. ${pass?'':'Focus your next revision block on <b>'+DOMAINS[weakest]+'</b> — it was your lowest section.'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn primary" onclick="document.getElementById('q0').scrollIntoView({behavior:'smooth'})">Review Questions ↓</button>
+      <button class="btn ghost" onclick="location.reload()">Retake Exam</button>
+    </div>`;
+  document.getElementById('results').style.display='block';
+
+  // review mode on questions
+  Q.forEach((qu,i)=>{
+    qu.o.forEach((_,k)=>{
+      const el=document.getElementById(`opt-${i}-${k}`);
+      el.querySelector('input').disabled=true;
+      el.classList.remove('selected');
+      const chosen=state.answers[i].has(k), key=qu.a.includes(k);
+      if(chosen&&key) el.classList.add('correct-opt');
+      else if(chosen&&!key) el.classList.add('wrong-opt');
+      else if(!chosen&&key) el.classList.add('missed-opt');
+    });
+    const ok=isCorrect(i);
+    const yourAns = state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]).join(', ') : '— (unanswered)';
+    const keyAns = qu.a.map(x=>LETTERS[x]).join(', ');
+    document.getElementById('fb-'+i).innerHTML=
+      `<div class="explain ${ok?'ok':'bad'}">
+        <div class="verdict-line">${ok?'✓ Correct':'✗ Incorrect'} &nbsp;·&nbsp; Your answer: ${yourAns} &nbsp;·&nbsp; Correct answer: ${keyAns}</div>
+        ${qu.ex}</div>`;
+    const fb=document.getElementById('flag-'+i); fb.style.display='none';
+  });
+  document.getElementById('barWrap').style.display='none';
+  renderSocratic(correct,pct,dom);
+  renderNav();
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildSocraticPrompt(correct,pct,dom){
+  const examName=document.title.replace(/.*\|\s*/,'').trim();
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  let secLines=Object.keys(DOMAINS).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let p=`I've just completed the FCSS Enterprise Firewall 7.6 ${examName} in my LoFinance study project.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
+  p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
+  p+=`- Take ONE question at a time, in the order below, and wait for my response before continuing.\n`;
+  p+=`- Do NOT reveal the correct answer straight away. Ask me a guiding question so I can reason my way to it.\n`;
+  p+=`- If I head in the wrong direction, use partial insights ("You're looking in the right area...", "What would happen if...") rather than saying no.\n`;
+  p+=`- When I reason correctly, acknowledge WHY the reasoning was good, not just the answer.\n`;
+  p+=`- Rebuild the mental model behind each concept before moving on, and connect it to the LoFinance topology and previous sessions where it helps.\n`;
+  p+=`- Watch for a pattern across my mistakes. At the end, summarise the weak areas you observed and suggest knowledge-register updates.\n\n`;
+  p+=`Each item below includes the correct answer and a reference explanation for YOUR use as the coach — do not show them to me until I've reasoned it through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]}]  (exam Q${i+1}${qu.type==='multi'?', choose two':''})\n\n`;
+    p+=stripHtml(qu.q)+`\n\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex)}\n`;
+  });
+  p+=`\nStart with Question 1. Set the scene briefly if you like, then ask me your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom){
+  const prompt=buildSocraticPrompt(correct,pct,dom);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — there is nothing here to coach. Se&ntilde;or would quietly adjust his sombrero and say: <i>"Do it again in a week. Memory is only proven twice."</i></div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste it into a <b>new chat in this project</b> — Claude will take you through your mistakes one at a time, Socratically, without giving the answers away.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copySocratic()">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste it into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copySocratic(){
+  const ta=document.getElementById('socraticPrompt');
+  const done=()=>{const ok=document.getElementById('copyOk');ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+</script>
+</body>
+</html>

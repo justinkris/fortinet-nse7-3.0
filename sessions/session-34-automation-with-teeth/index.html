@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 34 — Automation With Teeth</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --plum:#7c1a5f; --plum-light:#f7e5f0; --plum-border:#d8a7c5;
+    --teal:#0f766e; --teal-light:#ccfbf1; --teal-border:#5eead4;
+    --rose:#9f1239; --rose-light:#fce7ed; --rose-border:#f7a8c0;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+  header{padding:56px 60px 40px;background:var(--ink-dark);color:#fbf7ec;position:relative;}
+  .see-image{position:absolute;right:60px;top:56px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:8px 16px;border-radius:999px;background:rgba(155,184,230,0.14);color:var(--ink-accent);border:1px solid rgba(155,184,230,0.36);cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;}
+  .see-image:hover{background:rgba(155,184,230,0.24);color:#fbf7ec;border-color:rgba(155,184,230,0.6);transform:translateY(-1px);}
+  .see-image::before{content:'▸ ';color:var(--ink-accent);}
+  .image-modal{border:none;padding:0;background:transparent;max-width:min(92vw,1100px);max-height:92vh;width:fit-content;height:fit-content;overflow:visible;margin:auto;position:fixed;inset:0;}
+  .image-modal::backdrop{background:rgba(10,24,58,0.72);backdrop-filter:blur(2px);}
+  .image-modal-inner{position:relative;background:var(--surface);border-radius:16px;overflow:hidden;box-shadow:0 24px 60px -20px rgba(10,24,58,0.6);display:flex;align-items:center;justify-content:center;max-height:92vh;}
+  .image-modal-inner img{display:block;margin:0 auto;max-width:min(92vw,1100px);max-height:88vh;width:auto;height:auto;object-fit:contain;background:var(--surface-2);}
+  .image-modal-close{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'Outfit',sans-serif;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s ease,background .18s ease,color .18s ease,border-color .18s ease;box-shadow:0 4px 12px -6px rgba(10,24,58,0.25);}
+  .image-modal-close:hover{transform:scale(1.06);background:var(--blue);color:#fbf7ec;border-color:var(--blue);}
+  @media(max-width:640px){.see-image{position:static;margin-bottom:16px;align-self:flex-start;display:inline-block;}}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.12em;margin-bottom:16px;text-transform:uppercase;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:56px;font-weight:700;line-height:1.02;letter-spacing:-0.015em;margin-bottom:12px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:19px;font-style:italic;color:rgba(251,247,236,0.6);max-width:760px;line-height:1.55;}
+  .crumb{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(251,247,236,0.55);margin-bottom:18px;}
+  .crumb a{color:rgba(251,247,236,0.7);text-decoration:none;border-bottom:1px solid transparent;}
+  .crumb a:hover{border-bottom-color:rgba(251,247,236,0.7);}
+  main{flex:1;padding:48px 60px 72px;}
+  .tile-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr;grid-auto-rows:auto;gap:18px;max-width:1200px;margin:0 auto;}
+  .tile{position:relative;display:flex;flex-direction:column;gap:12px;padding:26px 28px 30px;background:var(--surface);border:1px solid var(--border);border-radius:14px;text-decoration:none;color:var(--text);transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;overflow:hidden;}
+  .tile:hover{transform:translateY(-2px);box-shadow:0 8px 24px -12px rgba(10,24,56,0.18);border-color:var(--blue);}
+  .tile-empty{opacity:0.5;cursor:default;background:var(--surface-2);}
+  .tile-empty:hover{transform:none;border-color:var(--border);box-shadow:none;}
+  .tile-image{grid-column:1;grid-row:1 / span 2;padding:0;background:var(--surface-2);cursor:zoom-in;font-family:inherit;color:inherit;text-align:left;align-items:stretch;min-height:0;border:1px solid var(--border);}
+  .tile-image img{display:block;width:100%;height:100%;object-fit:cover;border-radius:13px;}
+  .tile-concepts{grid-column:1 / -1;grid-row:auto;padding:26px 30px 28px;background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;gap:18px;cursor:default;}
+  .tile-concepts:hover{transform:none;box-shadow:none;border-color:var(--border);}
+  .concepts-header{display:flex;align-items:center;gap:14px;}
+  .chip-concepts{background:var(--teal-light);color:var(--teal);border:1px solid var(--teal-border);}
+  .concepts-count{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);}
+  .concepts-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:18px 24px;}
+  .concepts-item{display:flex;gap:10px;align-items:flex-start;}
+  .concepts-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--blue);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:6px;padding:3px 7px;flex:0 0 auto;min-width:28px;text-align:center;}
+  .concepts-body{flex:1;min-width:0;}
+  .concepts-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--text);line-height:1.25;margin-bottom:4px;}
+  .concepts-detail{font-family:'Cormorant Garamond',serif;font-size:14.5px;line-height:1.45;color:var(--text-soft);}
+  @media(max-width:960px){.concepts-list{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:640px){.concepts-list{grid-template-columns:1fr;}.tile-concepts{padding:20px 22px;}}
+  @media(max-width:960px){.tile-grid{grid-template-columns:repeat(3,1fr);}.tile-image{grid-column:1;grid-row:1 / span 2;}}
+  @media(max-width:700px){.tile-grid{grid-template-columns:1fr 1fr;grid-auto-rows:auto;}.tile-image{grid-column:1 / -1;grid-row:auto;aspect-ratio:16/9;}.tile-image img{aspect-ratio:16/9;}}
+  .tile-chip{align-self:flex-start;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;padding:4px 10px;border-radius:12px;text-transform:uppercase;}
+  .chip-guide{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .chip-bite{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .chip-nibble{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .chip-trouble{background:var(--rose-light);color:var(--rose);border:1px solid var(--rose-border);}
+  .chip-visual{background:var(--plum-light);color:var(--plum);border:1px solid var(--plum-border);}
+  .chip-register{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+  .tile-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text);line-height:1.15;}
+  .tile-desc{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.55;font-style:italic;}
+  .tile-status{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);}
+  .tile-arrow{position:absolute;right:22px;bottom:20px;font-family:'Outfit',sans-serif;font-size:22px;color:var(--blue);transition:transform .18s ease;}
+  .tile:hover .tile-arrow{transform:translateX(4px);}
+  .docs{max-width:1200px;margin:40px auto 0;padding-top:28px;border-top:1px solid var(--border);}
+  .docs-label{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;}
+  .docs-list{display:flex;flex-wrap:wrap;gap:10px;}
+  .doc-link{display:inline-block;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text);text-decoration:none;font-family:'Outfit',sans-serif;font-size:13px;}
+  .doc-link:hover{border-color:var(--blue);color:var(--blue);}
+  footer{padding:18px 60px;border-top:1px solid var(--border);background:var(--surface);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;text-align:center;}
+  footer span{color:var(--blue);}
+  @media(max-width:640px){
+    header{padding:36px 24px 28px;}
+    header h1{font-size:36px;}
+    header p{font-size:16px;}
+    main{padding:28px 20px 44px;}
+    .tile-grid{grid-template-columns:1fr;gap:14px;}
+    .tile{padding:22px 22px 26px;}
+    .tile-title{font-size:22px;}
+    footer{padding:14px 24px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="see-image" type="button" onclick="document.getElementById('sessionImageModal').showModal();">See Image</button>
+  <div class="crumb"><a href="../../index.html">Home</a> › <a href="../index.html">Sessions</a> › Session 34</div>
+  <div class="eyebrow"><span class="dot-live"></span>Session 34 · LoFinance Study Hub</div>
+  <h1>Session 34 <em>Automation With Teeth</em></h1>
+  <p>Pick a subpage below. Faded tiles are pieces not yet sorted into this session.</p>
+</header>
+<main>
+  <div class="tile-grid">
+      <button class="tile tile-image" type="button" aria-label="Open full session image" onclick="document.getElementById('sessionImageModal').showModal();">
+        <img src="../images/session-34-automation-with-teeth.png" alt="Session 34 — Automation With Teeth" onerror="this.closest('.tile-image').style.display='none';">
+      </button>
+      <a class="tile" href="guides/complete-guide.html"><span class="tile-chip chip-guide">COMPLETE GUIDE</span><span class="tile-title">Complete Guide</span><span class="tile-desc">Full walk-through of the session</span><span class="tile-arrow">→</span></a>
+      <a class="tile" href="bites/bite.html"><span class="tile-chip chip-bite">BITE</span><span class="tile-title">Bite</span><span class="tile-desc">Focused explainer</span><span class="tile-arrow">→</span></a>
+      <a class="tile" href="nibbles/nibble.html"><span class="tile-chip chip-nibble">NIBBLE</span><span class="tile-title">Nibble</span><span class="tile-desc">Short reference card</span><span class="tile-arrow">→</span></a>
+      <a class="tile" href="troubleshooting/troubleshooting.html"><span class="tile-chip chip-trouble">TROUBLESHOOTING</span><span class="tile-title">Troubleshooting</span><span class="tile-desc">Symptoms → causes → fixes</span><span class="tile-arrow">→</span></a>
+      <a class="tile" href="visual/visual.html"><span class="tile-chip chip-visual">VISUAL</span><span class="tile-title">Visual</span><span class="tile-desc">Diagrams and mental models</span><span class="tile-arrow">→</span></a>
+      <a class="tile" href="knowledge-register.html"><span class="tile-chip chip-register">KNOWLEDGE REGISTER</span><span class="tile-title">Knowledge Register</span><span class="tile-desc">Confidence snapshot at end of session</span><span class="tile-arrow">→</span></a>
+  </div>
+    <div class="docs">
+      <div class="docs-label">Docs</div>
+      <div class="docs-list"><a class="doc-link" href="summary.txt">Session Summary</a><a class="doc-link" href="revision-pack.txt">Revision Pack</a></div>
+    </div>
+</main>
+<footer>NSE7 Enterprise Firewall 7.6 <span>·</span> LoFinance Study Hub</footer>
+<dialog id="sessionImageModal" class="image-modal" onclick="if(event.target===this)this.close();">
+  <div class="image-modal-inner">
+    <button class="image-modal-close" type="button" aria-label="Close" onclick="this.closest('dialog').close();">×</button>
+    <img src="../images/session-34-automation-with-teeth.png" alt="Session 34 — Automation With Teeth" onerror="this.closest('dialog').close();alert('Image not yet generated for this session.');">
+  </div>
+</dialog>
+</body>
+</html>
