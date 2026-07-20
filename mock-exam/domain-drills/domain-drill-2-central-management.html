@@ -203,8 +203,6 @@ o:["Ten ADOMs are pre-created for common FortiOS versions","Disabled — an admi
 a:[1],
 ex:"ADOMs are an opt-in structure: out of the box FortiManager manages everything in one administrative space, and an administrator enables ADOMs in the system settings when separation is needed — by version, team, tenant, or function. Enabling them early is best practice for growing estates, because retrofitting ADOM boundaries onto a mature single-space deployment is far messier than starting with them."},
 
-,
-
 {d:"CM",type:"single",
 q:"An administrator wants to run a script that changes system settings on a managed FortiGate. Fortinet recommends running scripts on the device database rather than directly on the device via the CLI. Why?",
 o:["Device-database changes are tracked and deployed through the normal install process","Scripts run on the device database can use FortiOS commands that direct scripts cannot","Direct-to-device scripts require a separate scripting license","Scripts run directly on the device execute more slowly"],
@@ -223,8 +221,6 @@ o:["Only FortiAnalyzer can distribute firmware","Firmware is upgraded automatica
 a:[3],
 ex:"Firmware lifecycle is part of central management: FortiManager stores images and pushes upgrades to selected devices or groups on schedule, letting an estate be upgraded wave by wave through change windows. Remember the ADOM interaction — ADOMs are version-bound, so after upgrading devices across a major version, they move to (or their ADOM becomes) the matching-version ADOM. Policy installs never carry firmware; the two pipelines are separate."},
 
-,
-
 {d:"CM",type:"single",
 q:"An engineer makes an emergency change directly on a managed FortiGate's GUI. FortiManager later shows the device configuration status as <b>Auto-update</b>. What does this indicate?",
 o:["FortiManager detected the change and automatically retrieved it into the device-layer database","FortiManager rejected the change and reverted the FortiGate to the last revision","The change was written to the policy package and installed to all other devices","The FortiGate is unreachable and its status is stale"],
@@ -236,8 +232,6 @@ q:"LoFinance operates FortiGates on FortiOS 7.6 and some older units on 7.2 that
 o:["Put them all in the root ADOM; ADOM version does not matter","Create one policy package with two installation targets","Place them in separate ADOMs matching their firmware versions","Manage the 7.2 units by CLI only"],
 a:[2],
 ex:"Each ADOM is tied to a FortiOS version, which determines the feature set, syntax, and object model FortiManager uses for the devices inside it. Mixing 7.2 and 7.6 devices under one version's ADOM risks pushing configuration the older units cannot parse. Separate version-matched ADOMs — with the 7.2 ADOM upgraded once the devices are — is the supported lifecycle approach."},
-
-,
 
 {d:"CM",type:"single",
 q:"Before pushing a policy package to production firewalls, a change manager asks to see exactly which CLI commands FortiManager will send to each FortiGate. Which feature provides this?",
@@ -257,15 +251,11 @@ o:["The FortiGate automatically pulls its configuration on a schedule","The devi
 a:[2],
 ex:"With automatic linking disabled, FortiManager stages configuration but does not push it on its own — the administrator must perform the installation manually once the FGFM management tunnel is up. This is a deliberate control point for environments where model devices are prepared before hardware is online, or where changes must wait for approved windows. The device remains fully manageable; only the automatic push is withheld."},
 
-,
-
 {d:"CM",type:"single",
 q:"After onboarding, an administrator makes an emergency change directly to a FIREWALL POLICY on the managed FortiGate. Auto-update captures the change into FortiManager's device database. What must still be done to make the change permanent?",
 o:["Disable FGFM to prevent further installs","Run Import Policy again to update the policy-layer package","Take an ADOM revision to lock the change in","Nothing; auto-update fully protects the change against future installs"],
 a:[1],
 ex:"Auto-update and retrieve only maintain the device layer. Firewall policies are governed by the policy layer, and the package there still holds the old rule set — so the next Install Policy Package will faithfully re-impose it, erasing the emergency change. The fix is to import the policy again, reconciling the package with reality. The device-layer/policy-layer gap is the single most tested FortiManager concept, and this scenario is its sharpest form."},
-
-,
 
 {d:"CM",type:"single",
 q:"On FortiManager, what does the <b>Retrieve</b> operation do for a managed FortiGate?",
@@ -309,8 +299,6 @@ o:["config system dns with the FortiManager as primary","config system fortiguar
 a:[2],
 ex:"On the FortiGate side, central management is declared under config system central-management: set type fortimanager and set fmg with the manager's address. This is what triggers the device to build the FGFM tunnel and announce itself for authorization. The fortiguard override-server setting is a different integration — pointing rating/update queries at a local FDS such as FortiManager — and confusing the two is a classic distractor."},
 
-,
-
 {d:"CM",type:"single",
 q:"Although FortiManager technically allows firewall policies to be configured in the device layer, why does Fortinet recommend against it?",
 o:["Device-layer policies cannot use address objects","Policy management belongs in the policy layer's packages","Device-layer policies consume double the licenses","Policies in the device layer are read-only"],
@@ -322,8 +310,6 @@ q:"A managed FortiGate uses an address object 'DC-Subnet' whose value must diffe
 o:["A separate policy package per site","Dynamic (per-device) mapping on the address object","A Global ADOM footer policy","Metadata variables inside the firewall policy"],
 a:[1],
 ex:"Per-device mapping extends beyond interfaces to eligible objects such as addresses: one logical object in the policy package, with device-specific values resolved at install time. The policies stay identical everywhere — which is the entire point of central management — while the data adapts per site. Metadata variables solve the analogous problem for CLI templates, not for policy objects; the two mechanisms are parallel but live in different layers."},
-
-,
 
 {d:"CM",type:"single",
 q:"An administrator changed only device-layer settings (a static route and an interface description) for one managed FortiGate. Which operation pushes these changes without involving the policy package?",
@@ -343,15 +329,11 @@ o:["Installation details are not retained after success","The FGFM tunnel log st
 a:[3],
 ex:"Installations, like retrieves, write to the device's revision history — so the exact configuration state after each push is preserved and can be compared against earlier revisions. Combined with Install Preview before the change and the revision diff after it, FortiManager gives a complete before/approve/after audit chain. This chain is a compliance requirement in most financial environments, which is why the workflow questions keep circling back to it."},
 
-,
-
 {d:"CM",type:"single",
 q:"During Install Preview for one device, FortiManager reports an error because a normalized interface used in the policy package has no mapping for that device's platform. What must the administrator do?",
 o:["Create the missing interface mapping, then re-run the installation","Force the install; the device will ignore unmapped policies","Rename the physical interface on the FortiGate to match the normalized name","Delete the policy referencing the interface"],
 a:[0],
 ex:"A policy package speaks in normalized interfaces; installation is the moment those abstractions must resolve to real ports on each target. A missing mapping is therefore a hard stop — the fix is to supply it (per-platform for the model family, or per-device for the exception) and install again. Forcing ahead or deleting policies treats the symptom; the abstraction layer is only as complete as its mappings."},
-
-,
 
 {d:"CM",type:"single",
 q:"On FortiManager, a managed device's configuration status shows <b>Modified</b> at the device-settings level. What does this mean?",
@@ -365,15 +347,11 @@ o:["Either side may initiate; the first to connect wins","The tunnel is brokered
 a:[2],
 ex:"The FGFM tunnel is device-initiated: the FortiGate reaches out to the configured FortiManager on TCP 541 and the persistent management tunnel is built from that connection. This direction matters operationally — branch FortiGates behind NAT can still be managed because they dial out, and firewall rules along the path must permit the FortiGate-to-FortiManager direction on 541."},
 
-,
-
 {d:"CM",type:"single",
 q:"An administrator wants to prepare the full configuration for a new branch FortiGate on FortiManager before the hardware has even shipped. Which capability enables this?",
 o:["Retrieving the configuration from a similar existing branch","It is impossible to configure a device that has never connected","Cloning the FGFM tunnel of another device","Adding a model device matched later by serial number or pre-shared key"],
 a:[3],
 ex:"Model devices are FortiManager's zero-touch story: the administrator creates the device entry in advance (matched later by serial number or pre-shared key), assigns templates, policy packages, and metadata values, and the moment the physical unit connects over FGFM it is matched and provisioned. Combined with metadata variables, one template set can pre-stage an entire branch rollout before a single box is unpacked."},
-
-,
 
 {d:"CM",type:"single",
 q:"Which statement about CLI templates on FortiManager is true?",
@@ -399,8 +377,6 @@ o:["Authorize, retrieve, import and resolve conflicts, then preview the install"
 a:[0],
 ex:"Onboarding order exists to guarantee nothing is pushed before FortiManager's model matches reality: authorize, retrieve (device layer captured), import (policy layer populated, conflicts consciously resolved), then preview before the first install. Installing a default package onto an unimported production firewall is the catastrophic version of skipping these steps — it replaces the running policy with whatever the ADOM happened to contain."},
 
-,
-
 {d:"CM",type:"single",
 q:"An administrator needs to compare what changed on a managed FortiGate between last week's configuration and today's. Which FortiManager feature supports this?",
 o:["The policy consistency checker","The FGFM tunnel keepalive log","Feature Visibility settings","The device's revision history"],
@@ -413,15 +389,11 @@ o:["Global ADOM header and footer policies","A CLI template repeated in every AD
 a:[0],
 ex:"The Global ADOM sits above the regular ADOMs and lets you define global objects and header/footer policies: header rules are inserted above, and footer rules below, each local policy package when assigned to ADOMs. This guarantees corporate-mandated rules are enforced everywhere while local teams keep autonomy over their own packages — precisely the multi-ADOM governance model the Central Management lesson describes."},
 
-,
-
 {d:"CM",type:"single",
 q:"LoFinance's branch FortiGates are not permitted direct Internet access to Fortinet's update servers. How can FortiManager solve this?",
 o:["Branches must use an HTTP proxy; FortiManager has no FortiGuard role","FortiManager can disable FortiGuard services on all managed devices","FortiManager tunnels each FortiGate's queries individually over FGFM in real time only","FortiManager can act as a local FortiGuard distribution server"],
 a:[3],
 ex:"FortiManager includes a built-in FortiGuard Distribution Server: it downloads packages and databases from Fortinet once, then serves antivirus/IPS updates and web-filter rating queries locally to managed devices. This is the standard design for closed or bandwidth-constrained networks and is exactly the pattern the Central Management lesson highlights."},
-
-,
 
 {d:"CM",type:"single",
 q:"A single CLI template must configure a syslog server on 40 branch FortiGates, but each branch uses a different source IP for logging. How should this be implemented on FortiManager?",
@@ -440,8 +412,6 @@ q:"Two administrators are told to work on the same ADOM's policy package at the 
 o:["The second administrator's session is terminated immediately","Concurrent editing is controlled through ADOM locking","FortiManager merges any conflicting edits automatically with no configuration needed","Both sets of changes are silently applied in login order"],
 a:[1],
 ex:"When workspace mode is used, editing is serialized through locks: an administrator takes the ADOM lock, works, saves, and unlocks — and colleagues see the lock rather than a race condition. Extended workflow modes add approval steps on top. The default free-for-all is workable for a single admin, but multi-admin estates (and audited environments like finance) run locked workspaces precisely to make 'who changed what, when' answerable."},
-
-,
 
 {d:"CM",type:"single",
 q:"Communication between a managed FortiGate and FortiManager suddenly stops and the device shows as offline in Device Manager. Which protocol and port should the administrator verify along the path?",
@@ -640,7 +610,7 @@ function buildSocraticPrompt(correct,pct,dom){
   const wrong=[];
   Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
   if(wrong.length===0) return null;
-  let secLines=Object.keys(DOMAINS).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
   let p=`I've just completed the FCSS Enterprise Firewall 7.6 ${examName} in my LoFinance study project.\n`;
   p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
   p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;

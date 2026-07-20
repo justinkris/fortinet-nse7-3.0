@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 19 — IPsec VPN — IKEv2 Hub &amp; Spoke — Mini Enterprise Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --coral:#c2543b; --coral-light:#fbe9e3; --coral-border:#eec3b5;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);line-height:1.65;font-size:17px;}
+
+  header{padding:56px 60px 44px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:16px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.05;color:#fbf7ec;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:17px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:14px;max-width:760px;}
+
+  main{max-width:1040px;margin:0 auto;padding:48px 40px 100px;}
+
+  h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--text);margin:64px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--border);letter-spacing:-0.01em;}
+  h2 .labno{display:inline-block;background:var(--blue);color:#fffdf5;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:4px 12px;border-radius:14px;vertical-align:middle;margin-right:12px;text-transform:uppercase;}
+  h3{font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin:34px 0 12px;}
+  h4{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;color:var(--text-soft);margin:22px 0 8px;}
+  p{margin:0 0 14px;color:var(--text-soft);}
+  em{color:var(--blue-deep);}
+  strong{color:var(--text);}
+  ul,ol{margin:0 0 16px 24px;color:var(--text-soft);}
+  li{margin-bottom:6px;}
+
+  /* Boxes */
+  .box{border:1px solid var(--border-dim);border-radius:10px;padding:20px 24px;margin:20px 0;background:var(--surface);}
+  .box .box-label{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:10px;display:block;}
+  .why{background:var(--blue-light);border-color:var(--blue-border);}
+  .why .box-label{color:var(--blue);}
+  .think{background:var(--amber-light);border-color:var(--amber-border);}
+  .think .box-label{color:var(--amber);}
+  .think .stop{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--amber);border-top:1px dashed var(--amber-border);padding-top:10px;margin-top:12px;letter-spacing:0.04em;}
+  .mental{background:var(--green-light);border-color:var(--green-border);}
+  .mental .box-label{color:var(--green);}
+  .warn{background:var(--coral-light);border-color:var(--coral-border);}
+  .warn .box-label{color:var(--coral);}
+  .tip{background:var(--surface-2);border-color:var(--border);}
+  .tip .box-label{color:var(--text-muted);}
+  .challenge{background:#f3efff;border-color:#cfc4f2;}
+  .challenge .box-label{color:#5b3fb8;}
+
+  /* Code */
+  pre{background:var(--ink-dark);color:#e8eefc;font-family:'SFMono-Regular',Consolas,'Courier New',monospace;font-size:13px;line-height:1.55;padding:18px 22px;border-radius:8px;overflow-x:auto;margin:14px 0 20px;}
+  pre .c{color:#7f96c4;font-style:italic;}
+  pre .out{color:#9fd8a9;}
+  code{font-family:Consolas,'Courier New',monospace;font-size:0.85em;background:var(--surface-2);border:1px solid var(--border-dim);padding:1px 6px;border-radius:4px;color:var(--blue-deep);}
+  pre code{background:none;border:none;padding:0;color:inherit;}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0 24px;font-family:'Outfit',sans-serif;font-size:13px;background:var(--surface);}
+  th{background:var(--ink-dark);color:#fbf7ec;text-align:left;padding:9px 12px;font-weight:600;letter-spacing:0.04em;font-size:12px;}
+  td{padding:8px 12px;border-bottom:1px solid var(--border-dim);color:var(--text-soft);vertical-align:top;}
+  tr:nth-child(even) td{background:var(--surface-2);}
+  td code{font-size:12px;}
+
+  /* GUI path */
+  .gui{font-family:'Outfit',sans-serif;font-size:13px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;margin:10px 0 16px;color:var(--text-soft);}
+  .gui b{color:var(--blue);}
+
+  /* TOC */
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 34px;margin:32px 0;}
+  .toc h3{margin-top:0;}
+  .toc ol{columns:2;column-gap:40px;font-family:'Outfit',sans-serif;font-size:13.5px;margin-left:18px;}
+  .toc a{color:var(--text-soft);text-decoration:none;}
+  .toc a:hover{color:var(--blue);text-decoration:underline;}
+
+  /* Topology diagram */
+  .topo{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:30px;margin:24px 0;font-family:'Outfit',sans-serif;}
+  .topo pre{background:var(--surface-2);color:var(--text);border:1px solid var(--border-dim);font-size:12.5px;}
+
+  .divider{border:none;border-top:1px dashed var(--border);margin:56px 0;}
+
+  footer{text-align:center;padding:40px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);}
+
+  @media (max-width:720px){
+    header{padding:40px 24px;}
+    header h1{font-size:32px;}
+    main{padding:32px 18px 80px;}
+    .toc ol{columns:1;}
+  }
+
+
+/* ---- shared site chrome (dark header + sidebar + layout) ---- */
+
+  html,body{min-height:100vh;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);line-height:1.65;font-size:17px;margin:0;}
+  header{padding:56px 60px 44px;background:var(--ink-dark);position:relative;}
+  .crumb{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(251,247,236,0.55);margin-bottom:18px;}
+  .crumb a{color:rgba(251,247,236,0.7);text-decoration:none;border-bottom:1px solid transparent;}
+  .crumb a:hover{border-bottom-color:rgba(251,247,236,0.7);}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.12em;margin-bottom:16px;text-transform:uppercase;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:46px;font-weight:700;line-height:1.05;color:#fbf7ec;letter-spacing:-0.01em;margin:0;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-size:17px;font-style:italic;color:rgba(251,247,236,0.6);margin-top:14px;max-width:760px;}
+
+  .layout{display:grid;grid-template-columns:280px 1fr;max-width:1440px;margin:0 auto;}
+  .sidebar{border-right:1px solid var(--border);background:var(--surface-2);}
+  .sidebar-inner{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:32px 20px 40px;}
+  .sidebar-group{margin-bottom:24px;}
+  .sidebar-heading{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);padding:0 12px 10px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;text-decoration:none;color:var(--text-soft);font-family:'Outfit',sans-serif;font-size:13.5px;line-height:1.35;transition:background .15s ease,color .15s ease;}
+  .nav-item:hover{background:rgba(30,64,175,0.06);color:var(--blue);}
+  .nav-active{background:var(--blue);color:#fbf7ec !important;}
+  .nav-active:hover{background:var(--blue);color:#fbf7ec !important;}
+  .nav-active .nav-chip{background:rgba(255,255,255,0.22);color:#fbf7ec;}
+  .nav-chip{flex:0 0 auto;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.06em;padding:2px 7px;border-radius:8px;background:var(--surface);color:var(--blue);border:1px solid var(--blue-border);min-width:26px;text-align:center;}
+  .nav-label{flex:1;}
+
+  main{padding:48px 56px 100px;max-width:920px;}
+
+  h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--text);margin:56px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--border);letter-spacing:-0.01em;}
+  h2:first-child{margin-top:0;}
+  h2 .labno{display:inline-block;background:var(--blue);color:#fffdf5;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:4px 12px;border-radius:14px;vertical-align:middle;margin-right:12px;text-transform:uppercase;}
+  h3{font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin:34px 0 12px;}
+  h4{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;color:var(--text-soft);margin:22px 0 8px;}
+
+  footer{text-align:center;padding:32px 40px;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+    .sidebar{border-right:none;border-bottom:1px solid var(--border);}
+    .sidebar-inner{position:static;max-height:none;padding:20px 16px 24px;}
+    header{padding:40px 24px;}
+    header h1{font-size:32px;}
+    main{padding:32px 20px 60px;}
+  }
+
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="../../index.html">Home</a> › <a href="../index.html">Justin's Pages</a> › <a href="index.html">Mini Enterprise Lab</a> › Lab 19</div>
+  <div class="eyebrow"><span class="dot-live"></span>Lab 19 · Mini Enterprise</div>
+  <h1>Lab 19 <em>IPsec VPN — IKEv2 Hub &amp; Spoke</em></h1>
+  <p>Concept-first walk-through — build carefully, break deliberately, verify always.</p>
+</header>
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="sidebar-inner">
+    <div class="sidebar-group">
+      <div class="sidebar-heading">Reference</div>
+      <a class="nav-item" href="index.html"><span class="nav-label">Overview & Hub</span></a><a class="nav-item" href="topology.html"><span class="nav-label">Topology</span></a><a class="nav-item" href="ip-addressing.html"><span class="nav-label">IP Addressing</span></a><a class="nav-item" href="naming-standards.html"><span class="nav-label">Naming Standards</span></a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-heading">Labs</div>
+      <a class="nav-item" href="lab-00-proxmox-environment-setup.html"><span class="nav-chip">00</span><span class="nav-label">Proxmox Environment Setup</span></a><a class="nav-item" href="lab-01-initial-fortigate-configuration.html"><span class="nav-chip">01</span><span class="nav-label">Initial FortiGate Configuration</span></a><a class="nav-item" href="lab-02-routing-fundamentals.html"><span class="nav-chip">02</span><span class="nav-label">Routing Fundamentals</span></a><a class="nav-item" href="lab-03-firewall-policies-and-zones.html"><span class="nav-chip">03</span><span class="nav-label">Firewall Policies &amp; Zones</span></a><a class="nav-item" href="lab-04-objects-and-services.html"><span class="nav-chip">04</span><span class="nav-label">Objects &amp; Services</span></a><a class="nav-item" href="lab-05-nat.html"><span class="nav-chip">05</span><span class="nav-label">NAT</span></a><a class="nav-item" href="lab-06-security-profiles-foundation.html"><span class="nav-chip">06</span><span class="nav-label">Security Profiles Foundation</span></a><a class="nav-item" href="lab-07-ssl-inspection.html"><span class="nav-chip">07</span><span class="nav-label">SSL Inspection</span></a><a class="nav-item" href="lab-08-intrusion-prevention-ips.html"><span class="nav-chip">08</span><span class="nav-label">Intrusion Prevention (IPS)</span></a><a class="nav-item" href="lab-09-web-filtering.html"><span class="nav-chip">09</span><span class="nav-label">Web Filtering</span></a><a class="nav-item" href="lab-10-application-control.html"><span class="nav-chip">10</span><span class="nav-label">Application Control</span></a><a class="nav-item" href="lab-11-fortianalyzer.html"><span class="nav-chip">11</span><span class="nav-label">FortiAnalyzer</span></a><a class="nav-item" href="lab-12-fortimanager-onboarding.html"><span class="nav-chip">12</span><span class="nav-label">FortiManager Onboarding</span></a><a class="nav-item" href="lab-13-policy-packages.html"><span class="nav-chip">13</span><span class="nav-label">Policy Packages</span></a><a class="nav-item" href="lab-14-templates-and-metadata-variables.html"><span class="nav-chip">14</span><span class="nav-label">Templates &amp; Metadata Variables</span></a><a class="nav-item" href="lab-15-scripts.html"><span class="nav-chip">15</span><span class="nav-label">Scripts</span></a><a class="nav-item" href="lab-16-adoms.html"><span class="nav-chip">16</span><span class="nav-label">ADOMs</span></a><a class="nav-item" href="lab-17-dynamic-and-per-device-objects.html"><span class="nav-chip">17</span><span class="nav-label">Dynamic &amp; Per-Device Objects</span></a><a class="nav-item" href="lab-18-security-fabric.html"><span class="nav-chip">18</span><span class="nav-label">Security Fabric</span></a><a class="nav-item nav-active" href="lab-19-ipsec-vpn-ikev2-hub-and-spoke.html"><span class="nav-chip">19</span><span class="nav-label">IPsec VPN — IKEv2 Hub &amp; Spoke</span></a><a class="nav-item" href="lab-20-advpn.html"><span class="nav-chip">20</span><span class="nav-label">ADVPN</span></a><a class="nav-item" href="lab-21-troubleshooting-scenarios.html"><span class="nav-chip">21</span><span class="nav-label">Troubleshooting Scenarios</span></a><a class="nav-item" href="lab-22-end-to-end-enterprise-deployment.html"><span class="nav-chip">22</span><span class="nav-label">End-to-End Enterprise Deployment</span></a>
+    </div>
+  </div>
+</aside>
+
+<main>
+<h3>Objective</h3>
+<p>Build IKEv2 route-based IPsec tunnels from both branches to HQ, route all inter-site and management traffic through them, retire the Lab 11/12 VIP workarounds, and learn the IPsec diagnostic set that dominates NSE7 troubleshooting questions.</p>
+
+<div class="box why"><span class="box-label">Why this matters</span>
+<p style="margin:0">This is the lab where LoFinance becomes one network instead of three islands. Route-based VPN (tunnel interfaces + routes + policies) is the enterprise pattern because tunnels become just another interface your routing and zones already know how to reason about. And IPsec troubleshooting — phase 1 vs phase 2 failures, selector mismatches, the difference between "tunnel up" and "traffic flows" — is arguably the single most-tested skill area of the exam.</p></div>
+
+<div class="box think"><span class="box-label">Think first</span>
+<ol style="margin-bottom:0">
+  <li>IKE negotiates in two phases. What does each phase actually establish, and why would a phase-1-up/phase-2-down state point you at completely different settings than phase-1-down?</li>
+  <li>Route-based VPN gives you a tunnel <em>interface</em>. List three things you already know how to do with interfaces that suddenly apply to VPNs for free (zones? routing? policies? monitoring?).</li>
+  <li>Traffic enters the tunnel only if three separate things agree: a route, a policy, and the phase-2 selectors. Construct a failure where the first two are right and the third silently blackholes traffic.</li>
+  <li>Hub-and-spoke: BRA→BRB traffic hairpins through HQ. What's the latency/bandwidth cost, and what does HQ gain in control? (Hold this tension — Lab 20 resolves it.)</li>
+</ol>
+<p class="stop">Stop reading and write your predictions before continuing.</p>
+</div>
+
+<div class="box mental"><span class="box-label">Mental model — the armoured courier run</span>
+<p style="margin:0">Phase 1 is the two vault managers meeting once to verify identities and agree how they'll seal containers (authentication + the IKE SA — the <em>relationship</em>). Phase 2 commissions the actual armoured containers for specific cargo manifests (IPsec SAs + selectors — the <em>traffic</em>). A route is the dispatch note saying "send this parcel via the courier"; a policy is the security officer approving the shipment; the selectors are the manifest printed on the container — if the parcel isn't on the manifest, the courier politely refuses it even though the trucks are running. Three signatures, one shipment.</p></div>
+
+<h3>Configuration — HQ (hub), one tunnel per spoke</h3>
+<pre>config vpn ipsec phase1-interface
+    edit "vpn-bra"
+        set interface port1
+        set ike-version 2
+        set peertype any
+        set net-device disable
+        set proposal aes256-sha256
+        set dhgrp 14
+        set remote-gw 203.0.113.20
+        set psksecret &lt;strong-shared-secret&gt;
+    next
+    edit "vpn-brb"
+        set interface port1
+        set ike-version 2
+        set proposal aes256-sha256
+        set dhgrp 14
+        set remote-gw 203.0.113.30
+        set psksecret &lt;strong-shared-secret&gt;
+    next
+end
+config vpn ipsec phase2-interface
+    edit "vpn-bra-p2"
+        set phase1name "vpn-bra"
+        set proposal aes256-sha256
+        set src-subnet 0.0.0.0/0        <span class="c"># route-based: let routing decide; selectors wide</span>
+        set dst-subnet 0.0.0.0/0
+    next
+    edit "vpn-brb-p2"
+        set phase1name "vpn-brb"
+        set proposal aes256-sha256
+        set src-subnet 0.0.0.0/0
+        set dst-subnet 0.0.0.0/0
+    next
+end
+<span class="c"># Tunnel interface IPs (overlay):</span>
+config system interface
+    edit "vpn-bra"
+        set ip 10.255.1.1/32
+        set remote-ip 10.255.1.2/32
+    next
+    edit "vpn-brb"
+        set ip 10.255.2.1/32
+        set remote-ip 10.255.2.2/32
+    next
+end
+<span class="c"># Zone + routes + policies:</span>
+config system zone
+    edit Z_VPN
+        set interface vpn-bra vpn-brb
+    next
+end
+config router static
+    edit 20
+        set dst 10.20.0.0/16
+        set device vpn-bra
+    next
+    edit 21
+        set dst 10.30.0.0/16
+        set device vpn-brb
+    next
+end
+config firewall policy
+    edit 20
+        set name "VPN-to-MGMT_faz-fmg"
+        set srcintf Z_VPN
+        set dstintf Z_MGMT
+        set srcaddr GRP_ALL_BRANCH_LANS
+        set dstaddr HOST_FAZ01 HOST_FMG01
+        set service GRP_SVC_MGMT SYSLOG      <span class="c"># plus OFTP tcp/514, FGFM tcp/541</span>
+        set action accept
+        set logtraffic all
+    next
+    edit 21
+        set name "LAN-to-VPN_hq-to-branches"
+        set srcintf Z_LAN
+        set dstintf Z_VPN
+        set srcaddr GRP_HQ_INTERNAL
+        set dstaddr GRP_ALL_BRANCH_LANS
+        set service ALL
+        set action accept
+        set logtraffic all
+    next
+    <span class="c"># plus the mirror VPN→LAN policy as required</span>
+end</pre>
+<p><strong>Spokes</strong> (mirror image, shown for BRA): phase1 <code>vpn-hub</code> → remote-gw 203.0.113.10; tunnel IP 10.255.1.2/32 (remote .1); static routes for 10.10.0.0/16 <em>and</em> 10.30.0.0/16 (BRB via the hub!) out <code>vpn-hub</code>; policies lan↔vpn-hub. Then repoint FAZ/FMG settings at the real 10.10.99.x addresses and <strong>delete the Lab 11/12 VIPs and WAN policies</strong> — attack surface you no longer need. In a perfect world you'd do all of this via FMG's VPN Manager / templates; doing it by hand once is deliberate, so the abstraction never becomes magic.</p>
+
+<h3>Verification — the NSE7 diagnostic set</h3>
+<pre>get vpn ike gateway                      <span class="c"># phase 1: established?</span>
+get vpn ipsec tunnel summary             <span class="c"># phase 2 SAs, selectors, byte counters</span>
+diagnose vpn tunnel list name vpn-bra    <span class="c"># SPIs, npu, counters — is traffic entering?</span>
+
+<span class="c"># Live negotiation debug (the exam output goldmine):</span>
+diagnose vpn ike log-filter dst-addr4 203.0.113.20
+diagnose debug application ike -1
+diagnose debug enable
+<span class="c"># ...bring the tunnel up, read every line, then:</span>
+diagnose debug disable
+
+<span class="c"># End-to-end:</span>
+execute ping-options source 10.10.10.1
+execute ping 10.20.10.1
+execute log fortianalyzer test-connectivity     <span class="c"># from a branch — now via tunnel</span></pre>
+<div class="box tip"><span class="box-label">Read the counters, not the state</span><p style="margin:0">"Tunnel up" with the <em>encap</em> counter rising and <em>decap</em> frozen means your side sends and nothing returns — look at the far side's routing/policy. Both frozen with the tunnel up means nothing is being routed in — look at <em>your</em> routes/selectors. Counter asymmetry is a compass; learn to read it before touching config.</p></div>
+
+<h3>Reflection</h3>
+<ul>
+  <li>Which config item on hub vs spoke must match exactly (proposals, DH group, PSK) and which are deliberately asymmetric (remote-gw, tunnel IPs, routes)? Build the two-column table from memory.</li>
+  <li>Now that management traffic rides the tunnel: what new dependency have you created for FMG reaching the branches, and what's your out-of-band story when the tunnel is down?</li>
+  <li>Why did wide phase-2 selectors (0/0) plus precise <em>routes</em> suit route-based VPN better than precise selectors? When would a partner-facing tunnel invert that choice?</li>
+</ul>
+
+<div class="box challenge"><span class="box-label">Challenge exercise</span>
+<p style="margin:0">Break BRA's tunnel three different ways — wrong PSK, mismatched phase-2 proposal, missing return route on the hub — and for each, capture the <em>distinguishing evidence</em> (which command, which line). You are building a symptom→cause table that is pure exam gold. Snapshot first.</p></div>
+
+<hr class="divider">
+</main>
+</div>
+<footer>LoFinance Mini Enterprise Lab Guide <span>·</span> NSE7 EF 7.6</footer>
+<!-- image-swap:v1 -->
+<style>
+  /* image-swap: hide placeholder chrome + metadata once the real PNG loads */
+  .image-placeholder.img-loaded,
+  .imgph.img-loaded,
+  .ip-container.img-loaded {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .image-placeholder.img-loaded > :not(img):not(picture):not(figure),
+  .imgph.img-loaded > :not(img):not(picture):not(figure),
+  .ip-container.img-loaded > :not(img):not(picture):not(figure) {
+    display: none !important;
+  }
+</style>
+<script>
+  (function () {
+    var SEL = '.image-placeholder, .imgph, .ip-container';
+    function mark(wrap, img) {
+      if (img.complete && img.naturalWidth > 0) {
+        wrap.classList.add('img-loaded');
+      }
+    }
+    function scan() {
+      document.querySelectorAll(SEL).forEach(function (wrap) {
+        var img = wrap.querySelector('img[src]');
+        if (!img) return;
+        if (img.complete) {
+          mark(wrap, img);
+        } else {
+          img.addEventListener('load', function () { mark(wrap, img); });
+        }
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', scan);
+    } else {
+      scan();
+    }
+  })();
+</script>
+<!-- /image-swap:v1 -->
+
+</body>
+</html>

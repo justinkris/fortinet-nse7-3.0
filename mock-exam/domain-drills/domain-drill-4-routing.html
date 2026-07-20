@@ -197,8 +197,6 @@ o:["To pre-compute and cache the return route for the session's reply traffic","
 a:[3],
 ex:"RPF is anti-spoofing at the routing layer: for the first packet of a session, FortiGate checks that a route back to the source exists via the arrival interface — if the source would never legitimately appear there, the packet is dropped. It runs in the kernel alongside routing and SD-WAN evaluation. RPF is also the classic troubleshooting suspect in asymmetric routing designs, where legitimate traffic arrives on an interface the routing table doesn't associate with its source."},
 
-,
-
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Interface OSPF settings</span>FGT-A port2:  hello-interval 10, dead-interval 40\nFGT-B port1:  hello-interval 30, dead-interval 120</div>These two FortiGates are connected on the same subnet and configured for the same OSPF area, but never list each other as neighbours. Why?",
 o:["The hello and dead intervals do not match","FGT-B's timers exceed the OSPF maximum","The dead interval must always be exactly ten times the hello interval","OSPF requires identical interface names on both peers"],
@@ -343,8 +341,6 @@ o:["BGP graceful restart","Setting the BGP keepalive timer to 1 second","Enablin
 a:[0],
 ex:"Graceful restart tells peers to keep the stale routes in the forwarding plane and continue forwarding while the restarting router (or new HA primary) rebuilds its sessions — availability during control-plane disruption. BFD and short keepalives do the opposite: they accelerate failure detection and would tear the session down faster. The study guide explicitly pairs graceful-restart with HA failover for exactly this reason."},
 
-,
-
 {d:"RT",type:"single",
 q:"On a broadcast OSPF segment with a DR and BDR elected, two DROther routers show each other in state <b>2-Way/DROther</b>. Is this a problem?",
 o:["Yes — every OSPF neighbour pair must reach Full state","No — but only if BFD is enabled between them","Yes — 2-Way indicates an MTU mismatch","No — DROthers only form full adjacencies with the DR and BDR"],
@@ -356,8 +352,6 @@ q:"In LoFinance's SD-WAN design, BGP sessions between hub and spokes are establi
 o:["The session survives individual underlay link failures","Loopbacks allow BGP to run without TCP","Loopback peering doubles the available BGP bandwidth","It removes the need for the update-source setting"],
 a:[0],
 ex:"A loopback is never 'down', so anchoring the session to it decouples BGP stability from any single physical link: when one underlay fails, the session simply rides another path to the same loopback, avoiding session resets, RIB churn, and CPU load from flapping. The costs of this design are the extra pieces it requires — update-source pointing at the loopback, a route to the peer's loopback, and (for EBGP) multihop enforcement."},
-
-,
 
 {d:"RT",type:"single",
 q:"In a multi-area OSPF design, which statement describes an Area Border Router (ABR)?",
@@ -383,8 +377,6 @@ o:["Type 3 LSA filtering on the ABR","OSPF graceful restart","Enabling ECMP acro
 a:[3],
 ex:"BFD runs a lightweight, high-frequency hello exchange between forwarding planes and signals the routing protocol the instant the path dies — sub-second detection without loading the OSPF process with aggressive hellos. Graceful restart is the opposite philosophy: it hides a control-plane restart to keep forwarding stable. Pairing 'fast failure detection' with BFD and 'survive a restart/failover' with graceful restart resolves both exam variants."},
 
-,
-
 {d:"RT",type:"single",
 q:"Within an autonomous system, LoFinance wants all IBGP routers to prefer exiting through the primary data-centre firewall for all Internet prefixes. Which BGP attribute is designed for this, and how does it behave?",
 o:["Origin code — set to IGP on the primary path","MED — exchanged between different autonomous systems, lower value preferred","Local Preference — exchanged only between IBGP peers, higher value preferred","AS-Path — prepended internally so IBGP routers avoid the backup path"],
@@ -396,8 +388,6 @@ q:"Two OSPF routers in the same area were accidentally configured with the same 
 o:["Move one router to a stub area","Nothing — OSPF tolerates duplicate router IDs within an area","Increase the dead interval to give the LSDB time to converge","Assign a unique router ID to one of them with set router-id"],
 a:[3],
 ex:"A unique router ID appears explicitly in the adjacency requirements list, and for good reason: the router ID keys every LSA a router originates, so duplicates make two routers' advertisements collide in the LSDB, producing flapping routes and adjacency instability that no timer tuning can fix. The remedy is administrative — set router-id explicitly (best practice on every router regardless, so IDs never depend on interface address selection)."},
-
-,
 
 {d:"RT",type:"single",
 q:"Two FortiGates should form an OSPF adjacency over a LAN. The neighbour appears but is stuck cycling in the ExStart/ExChange state.<div class='exhibit'><span class='lbl'>Exhibit — FGT-A</span>FGT-A # get router info ospf neighbor\nOSPF process 0, VRF 0:\nNeighbor ID   Pri  State           Dead Time  Address     Interface\n10.10.1.2     1    ExStart/DROther 00:00:33   10.10.1.2   port2</div>Which is the most likely root cause?",
@@ -620,7 +610,7 @@ function buildSocraticPrompt(correct,pct,dom){
   const wrong=[];
   Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
   if(wrong.length===0) return null;
-  let secLines=Object.keys(DOMAINS).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
   let p=`I've just completed the FCSS Enterprise Firewall 7.6 ${examName} in my LoFinance study project.\n`;
   p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
   p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;

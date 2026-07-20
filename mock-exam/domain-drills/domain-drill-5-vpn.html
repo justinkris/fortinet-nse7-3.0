@@ -191,8 +191,6 @@ o:["All tunnels must renegotiate from IKE_SA_INIT","Only tunnels with DPD disabl
 a:[2],
 ex:"FGSP's default synchronization scope is broader than most people recall: IPv4 and IPv6 TCP sessions AND IPsec tunnels. The surviving peer already holds the tunnel state, so encrypted traffic continues without a fresh negotiation — essential in data-centre designs where the FortiGates terminate site-to-site VPNs as well as firewalling. UDP, ICMP, and NAT sessions remain the opt-in extras requiring explicit configuration."},
 
-,
-
 {d:"VPN",type:"single",
 q:"LoFinance runs a dual-hub ADVPN design, with each hub serving its own region. Spokes in region 1 must be able to establish shortcuts to spokes in region 2 through the hub-to-hub tunnel. Which setting is required on the hubs' inter-hub phase 1 interfaces?",
 o:["set net-device enable","set auto-discovery-forwarder enable","set auto-discovery-receiver enable","set type static with mode aggressive"],
@@ -253,8 +251,6 @@ o:["Dynamic routing becomes impossible over the VPN","The hub refuses more than 
 a:[2],
 ex:"net-device decides the hub's interface model for dial-up: disabled (the shared model) gives one IPsec virtual interface carrying every spoke, while enabled creates a per-spoke interface. The shared model is why the hub's OSPF interface must be point-to-multipoint — many neighbours on one interface — and it shapes routing, policy, and monitoring granularity. Dynamic routing works in both models; only its configuration details differ."},
 
-,
-
 {d:"VPN",type:"single",
 q:"On an ADVPN or dial-up VPN hub, the phase 1 interface is configured with <code>set type dynamic</code>. Why?",
 o:["The spokes' public IP addresses are unknown or change","It allows the hub to operate without a WAN IP address","It enables the tunnel to change encryption algorithms dynamically","It makes the tunnel interface disappear when idle"],
@@ -285,23 +281,17 @@ o:["Main mode uses three messages; aggressive uses six","Main mode is only avail
 a:[3],
 ex:"IKEv1 offers two phase 1 gears: main mode's six-message exchange establishes protection before identities are exchanged, while aggressive mode collapses to three messages by sending identity material up front — faster, historically used for dial-up PSK scenarios, but exposed. IKEv2 made the debate obsolete with a single four-message initial exchange that keeps identities protected, which is why aggressive-mode references in IKEv2 answer options are automatic eliminations."},
 
-,
-
 {d:"VPN",type:"single",
 q:"A backup IPsec tunnel carries no traffic for days at a time, but LoFinance requires it to be established and monitored at all times so failover is instant. Which phase 2 setting achieves this?",
 o:["Lower the phase 2 key lifetime to one minute","Enable auto-negotiate (autokey keepalive)","Set the phase 2 selectors to a single host","Enable PFS"],
 a:[1],
 ex:"By default, phase 2 negotiates on demand — a silent tunnel may not exist at all until traffic arrives, adding setup delay at exactly the wrong moment for a failover path. Auto-negotiate (with keepalive) brings the SAs up proactively and renegotiates them on expiry, keeping the standby tunnel warm and monitorable. Shortening the key lifetime just adds rekey churn to a tunnel that still would not self-establish."},
 
-,
-
 {d:"VPN",type:"single",
 q:"For large ADVPN deployments, why does Fortinet's design guidance favour BGP over OSPF as the overlay routing protocol?",
 o:["OSPF cannot run over IPsec interfaces at all","BGP converges faster than OSPF in every topology and traffic condition","OSPF requires a license on FortiGate","BGP scales better, with route reflection and per-peer policy control"],
 a:[3],
 ex:"Both protocols work over ADVPN, but they age differently: OSPF floods link-state across the domain and recalculates SPF as spokes churn, while BGP treats each spoke as a policied peering — route reflection on the hub, neighbor-groups and ranges for dynamic peers, and per-neighbour filtering. At hundreds of spokes the operational difference is decisive, which is why the reference designs (and ADVPN 2.0's SD-WAN integration) are built around BGP."},
-
-,
 
 {d:"VPN",type:"single",
 q:"An IPsec tunnel to a partner fails during negotiation. The administrator needs to watch the IKE negotiation in real time on the CLI to see which payload or proposal is being rejected. Which command set is appropriate?",
@@ -315,15 +305,11 @@ o:["execute ping-options source","get router info routing-table static","diagnos
 a:[2],
 ex:"diagnose vpn ike gateway list is the phase 1 census: each IKE gateway with its peer address, IKE version, state, and negotiation details. Its companion, diagnose vpn tunnel list, covers the phase 2/data-plane view — established SAs, selectors, counters, and the npu_flag. Pairing the two ('is phase 1 up?' then 'are the SAs passing traffic?') is the standard two-step triage before reaching for full IKE debugging."},
 
-,
-
 {d:"VPN",type:"single",
 q:"A firewall between two IPsec gateways must be opened for the VPN. Which traffic must be permitted for a tunnel using NAT-T when needed?",
 o:["TCP 500 and TCP 4500 only, since IKE requires reliable transport","IP protocol 51 (AH) and UDP 1701","UDP 500 and TCP 443","UDP 500 (IKE), UDP 4500 (NAT-T), and IP protocol 50 (ESP)"],
 a:[3],
 ex:"The IPsec port triad: IKE negotiates on UDP 500; when NAT is detected, IKE and the encapsulated data move to UDP 4500; and without NAT in the path, the data itself travels as ESP — IP protocol 50, which is not TCP or UDP at all. That last point is the classic firewall mistake: 'protocol 50' cannot be expressed as a port rule. AH (protocol 51) belongs to a different, rarely used IPsec mode, and UDP 1701 is L2TP."},
-
-,
 
 {d:"VPN",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Hub configuration</span>config vpn ipsec phase1-interface\n    edit \"ADVPN\"\n        set type dynamic\n        set interface \"port1\"\n        set ike-version 2\n        set auto-discovery-sender enable\n        set network-id 1\n        ...\n    next\nend</div>Which setting must be configured on each spoke's phase 1 interface so that spokes can participate in ADVPN shortcut negotiation with this hub?",
@@ -385,15 +371,11 @@ o:["A FortiGuard subscription covering certificate services","Only the remote pe
 a:[2],
 ex:"Signature authentication has two halves per device: proving its own identity (its certificate plus the private key that never leaves the device) and verifying the peer (the CA chain that signed the peer's certificate, with revocation checking where configured). No private key is ever shared — that is precisely the improvement over PSKs. Missing CA certificates are the most frequent build error, surfacing in IKE debugs as certificate validation failures despite both certs being individually valid."},
 
-,
-
 {d:"VPN",type:"single",
 q:"Phase 1 and phase 2 are both up on a route-based tunnel, but users cannot reach the remote subnet. What should the administrator check FIRST?",
 o:["The routing table — a route to the remote subnet via the tunnel","The IKE version","The pre-shared key configured on both peers for phase 1 authentication","The NAT-T setting"],
 a:[0],
 ex:"Triage follows the architecture: with both SAs established, authentication and negotiation (PSK, IKE version, NAT-T) are proven working — those settings could not be wrong. In a route-based VPN, what remains is whether traffic is being sent into the tunnel at all (routing) and whether it is permitted (policy). A missing or misdirected route is the most common culprit, visible instantly in the routing table or a debug flow trace showing the wrong egress interface."},
-
-,
 
 {d:"VPN",type:"multi",
 q:"Which two statements accurately describe advantages of IKEv2 over IKEv1? (Choose two.)",
@@ -424,8 +406,6 @@ q:"Which statement about IKEv2 message exchanges is true?",
 o:["IKEv2 relies on TCP for reliability","All IKEv2 exchanges are request/response pairs","IKEv2 messages are fire-and-forget with no retransmission logic","Only IKE_SA_INIT is acknowledged"],
 a:[1],
 ex:"IKEv2 formalized what IKEv1 left loose: the protocol is a strict sequence of request/response pairs with retransmission handled by the initiator of each exchange, giving reliable semantics over UDP without needing TCP. This is one of the quiet advantages behind 'IKEv2 reduces complexity' — lost packets produce defined retransmissions instead of the stuck half-negotiations familiar from IKEv1 debugging."},
-
-,
 
 {d:"VPN",type:"single",
 q:"After an IKEv2 tunnel is established, which exchange is used to rekey the IKE SA or the IPsec (child) SAs without restarting the whole negotiation?",
@@ -630,7 +610,7 @@ function buildSocraticPrompt(correct,pct,dom){
   const wrong=[];
   Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
   if(wrong.length===0) return null;
-  let secLines=Object.keys(DOMAINS).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
   let p=`I've just completed the FCSS Enterprise Firewall 7.6 ${examName} in my LoFinance study project.\n`;
   p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
   p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
