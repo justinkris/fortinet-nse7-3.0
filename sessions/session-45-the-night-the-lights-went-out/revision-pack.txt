@@ -1,0 +1,196 @@
+==================================================================
+SESSION 45 REVISION PACK — "THE NIGHT THE LIGHTS WENT OUT"
+FGCP: HA modes · cluster requirements · primary election
+Blueprint 1.3 · SG 04 High Availability pp. 84–88
+==================================================================
+
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+A substation fault put LoFinance on 12 minutes of UPS behind a
+single 900G. Penny funded HA. FGCP joins 2+ FortiGates into one
+brain: configuration sync, session sync, and one virtual identity
+(vMAC/IP) so failover is invisible.
+
+MODES: active-passive (one works, one waits, fully synced) vs
+active-active (primary owns the vMACs, receives every session
+FIRST, and load-balances some to the partner — those sessions pay
+an inter-chassis hop both directions for life; value is mainly for
+inspection-heavy CP/CPU work). LoFinance chose a-p to protect the
+NP Direct trading path.
+
+REQUIREMENTS — blockers (no cluster if mismatched): same MODEL,
+FIRMWARE, HARD-DRIVE CONFIG, OPERATING MODE (mgmt VDOM NAT/
+transparent). Setup identity must also match: group-id, group-name,
+password, hbdev settings. THE EXCEPTION: licensing — cluster forms
+anyway but runs at the LOWEST license level of any member.
+
+HEARTBEAT: ≥2 hb interfaces (higher number = higher priority;
+direct-connect 2-member pairs; DHCP/PPPoE→static during setup).
+One silent heartbeat risks SPLIT-BRAIN: both members promote, one
+identity duplicated, network chaos. Ethertypes (not IP):
+0x8890/0x8891 heartbeat-election-failure-detection; 0x8893 config
+sync.
+
+ELECTION, override DISABLED (default), stops at first decider:
+  1. Connected monitored interfaces (most up wins)
+  2. HA uptime (highest wins ONLY if gap >= 5 minutes)
+  3. Priority (highest)
+  4. Serial number (highest)
+HA uptime resets to 0 on monitored-iface failure or reboot.
+Graceful failover with zero config change: diagnose sys ha
+reset-uptime ON THE PRIMARY.
+
+Override ENABLED (CLI ONLY): priority jumps above uptime. Benefit:
+deterministic preferred primary. Bill: recovered ex-primary takes
+the role back = a guaranteed SECOND failover per incident; a
+flapping member becomes a failover generator. Override + priority
+are NOT synchronised — set per member. Graceful failover lever
+here = change priorities.
+
+CHEAT SHEET
+------------------------------------------------------------------
+CLI
+  config system ha
+      set mode a-p | a-a
+      set group-id <0-255>        (must match)
+      set group-name "<name>"     (must match)
+      set password <secret>       (must match)
+      set hbdev "<if1>" 50 "<if2>" 50   (higher # = higher prio)
+      set override enable         (CLI only; per member; not synced)
+      set priority <n>            (per member; not synced)
+  end
+  diagnose sys ha reset-uptime            (on primary; graceful failover)
+  diagnose sys ha dump-by vcluster        (uptime/reset_cnt standings;
+                                           uptime 0 = LOWEST member)
+  diagnose sniffer packet any "ether proto 0x8890" 4
+  get system ha status / get system status
+
+DEFAULTS & RULES
+  Override: disabled by default.
+  Uptime rule: must lead by >= 5 minutes to decide the election.
+  Election stops at the first criterion that picks a winner.
+  Licensing mismatch: forms, degrades to lowest level.
+  Model/firmware/HDD/op-mode mismatch: does NOT form.
+  Ethertypes: 8890/8891 alive · 8893 identical.
+  A-A packet path: primary first, always; partner sessions hop.
+
+DESIGN RULES
+  >=2 heartbeat links. Direct-connect 2-member hb.
+  Match licenses before the purchase order.
+  Mode choice follows the packet path, not the price tag.
+  Override only when a business reason demands a fixed primary and
+  can afford failback failovers.
+
+FLASHCARDS (Q -> A)
+------------------------------------------------------------------
+Q: Four member requirements that block FGCP formation?
+A: Same model, firmware, hard-drive config, operating mode.
+
+Q: What happens when cluster members have different licenses?
+A: Cluster still forms; runs at the lowest license level.
+
+Q: Election order, override disabled?
+A: Monitored interfaces > HA uptime (>=5 min gap) > priority > serial.
+
+Q: Election order, override enabled?
+A: Monitored interfaces > priority > HA uptime > serial.
+
+Q: Where do you configure override?
+A: CLI only; per member; not synchronised (nor is priority).
+
+Q: Graceful failover, default settings, no config change?
+A: diagnose sys ha reset-uptime — on the primary.
+
+Q: dump-by vcluster shows uptime/reset_cnt=0/1 — meaning?
+A: This member has the LOWEST HA uptime (0 is relative) and its
+   uptime has been reset once.
+
+Q: What resets HA uptime to 0?
+A: Monitored interface failure, reboot, or manual reset-uptime.
+
+Q: FGCP ethertypes and their jobs?
+A: 0x8890/0x8891 heartbeat/election/failure-detection;
+   0x8893 configuration sync. ("88-90 alive, 88-93 identical.")
+
+Q: Why at least two heartbeat interfaces?
+A: A silent heartbeat causes split-brain: both members promote and
+   duplicate the shared vMAC/IP identity.
+
+Q: In a-a, where does every new session arrive first?
+A: The primary (it owns the virtual MACs); partner-assigned
+   sessions pay an inter-chassis hop both ways for life.
+
+Q: Cost of enabling override?
+A: A guaranteed second failover (failback) whenever the preferred
+   primary recovers; flapping member = perpetual failovers.
+
+Q: True/false: override guarantees fewer failovers?
+A: FALSE — it guarantees more (failback per incident).
+
+Q: DHCP/PPPoE interfaces during cluster setup?
+A: Switch to static during initial formation; revert after.
+
+Q: Manual quarantine of an endpoint — where do you type, and which
+   OS is excluded? (register debt)
+A: ON the FortiGate: diagnose endpoint fctems queue-complete-calls
+   Q-<endpoint_ip>; EMS delivers it. FortiClient (Linux) excluded.
+
+PODCAST PROMPT — "THE PACKET PATH" · EPISODE 45
+------------------------------------------------------------------
+Generate a 10–14 minute podcast episode of "The Packet Path", a
+narrative networking show. Two hosts: a storyteller and an
+engineer. Episode title: "The Night the Lights Went Out."
+
+STORY: At 2:47 AM a substation fault drops a Sydney trading firm,
+LoFinance, onto UPS power. The runtime gauge falls to 12 minutes
+before the street comes back. Every trade runs through ONE
+FortiGate. The next morning the ops director, Penny, asks the
+question that finally funds high availability: "What if it
+hadn't?" The junior engineer wants to buy a second box by Friday —
+including, at one point, a discounted DIFFERENT model. The mentor,
+Señor (a man in a sombrero who communicates approval by putting
+his coffee DOWN), forces the team to understand clustering before
+purchasing.
+
+TEACH, through the story, in this order:
+1. FGCP as a shared brain: config sync + session sync + one
+   virtual MAC/IP identity, so failover is invisible.
+2. Requirements: same model, firmware, hard-drive config,
+   operating mode — or no cluster. Licensing is the twist: the
+   cluster forms but runs at the LOWEST license level. Analogy:
+   "the cluster runs at the level of its poorest member" — an
+   unlicensed second box effectively refunds the licenses on the
+   first.
+3. Heartbeats and split-brain: why two heartbeat links; ethertypes
+   0x8890/0x8891 (alive) and 0x8893 (identical).
+4. Primary election with override off: monitored interfaces first
+   ("facts about now beat preferences from Tuesday"), then HA
+   uptime with the five-minute rule, then priority, then serial
+   ("twins settle it by birth certificate"). The graceful-failover
+   trick: diagnose sys ha reset-uptime on the primary — no config
+   change.
+5. Override: CLI-only, priority jumps above uptime, deterministic
+   primary — but "every guarantee has a bill": a second failover
+   when the old primary recovers, and a flapping box becomes a
+   failover machine. Override and priority don't sync between
+   members.
+6. The mode decision: in active-active, every session hits the
+   primary FIRST, and partner-balanced sessions pay an
+   inter-chassis hop both directions for life — "the toll booth
+   in a redundancy costume" for a firm that just spent a season
+   removing an internal hop to win back 2.1 milliseconds. They
+   choose active-passive: "the idle twin isn't idle — it's
+   insurance with a sub-second claims process."
+
+JUNIOR'S MISTAKES to dramatise: the bargain 600F (same model or
+nothing), "active-active because we paid for two", and enabling
+override "in the GUI, on one member" (no GUI option exists, and
+override/priority never synchronise).
+
+END with the teaser: the second unit is on a pallet, and tomorrow
+the mentor will explain "the MAC address that does not exist on
+any interface — yet owns all the traffic."
+
+Tone: warm, cinematic, technically precise. Use the analogies
+verbatim. Close with the mentor placing his sombrero on the crate.
+==================================================================

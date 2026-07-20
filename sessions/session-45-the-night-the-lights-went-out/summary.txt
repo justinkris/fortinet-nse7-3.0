@@ -1,0 +1,215 @@
+==================================================================
+SESSION 45 SUMMARY — "THE NIGHT THE LIGHTS WENT OUT"
+Season 4 "Disasters" · Blueprint 1.3 · SG 04 High Availability pp. 84–88
+Topics: FGCP — HA modes, cluster requirements, primary election
+NOTE: Sessions 41–44 (hardware acceleration pp. 286–306 + Cowboy Hat
+"Offload Denied") were SKIPPED at the student's request ("start the
+first session on HA"). They remain ON THE SHELF — the student may
+return to them. Do not assume nTurbo/offloading content was taught.
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Thursday 02:47 AM. CBD substation fault; street dark; HQ runs on
+UPS, runtime gauge falls 41→19→12 minutes. Power returns 03:52 with
+12 min left. At 09:00 Penny, holding an undrunk coffee, asks the
+question that unfreezes the 3-years-deferred HA budget: "What if it
+hadn't?" — one box (the 900G with trading VLAN on X5/X6 in red ink)
+carries everything. Junior proposed instant purchase; Señor forced
+understanding first. Señor collected THREE cold-retrieval debts at
+the door (see below). Teaching ran through requirements, licensing,
+heartbeats/split-brain, election (override off/on), and the a-p vs
+a-a mode decision. Penny got an UNSCAFFOLDED money sentence; board
+call funded the project. 6:00 PM: second 900G arrives on a pallet;
+Señor circles the heartbeat cables on the packing slip. Sombrero
+placed on the crate. Exit line: "Tomorrow we plug her in. Two
+brains become one. And I will tell you about the MAC address that
+does not exist on any interface... yet owns all the traffic."
+
+CHARACTERS: Señor (three cold cards at the door, coffee-down as
+highest ovation), Junior (foil ×3: "second box by Friday", 40%-off
+refurb 600F, "active-active, we paid for two boxes!", Q10 override-
+in-GUI blunder), Penny (unfroze HA budget, board call, 12-min gauge
++ $3.8M anchors), Riley (2:47 AM call, headset at an hour no
+headset should be on).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+Single point of failure at HQ edge exposed by a near-miss power
+event. Answer: FGCP active-passive cluster of two identical 900Gs.
+A-P chosen specifically to protect the S40 NP-Direct latency work
+(a-a adds an inter-chassis hop per load-balanced session — "the
+toll booth in a redundancy costume").
+
+TECHNICAL CONCEPTS COVERED (pp. 84–88)
+------------------------------------------------------------------
+1. FGCP modes: active-passive (one works, one waits) vs
+   active-active (primary load-balances sessions to partner; every
+   packet still hits primary FIRST via vMAC, then extra hop to
+   secondary and back — both directions, life of session).
+2. Cluster REQUIREMENTS — must match or no cluster: same MODEL,
+   same FIRMWARE, same HARD-DRIVE CONFIG, same OPERATING MODE
+   (NAT/transparent of mgmt VDOM). LICENSING mismatch does NOT
+   block formation — cluster drops to LOWEST license level among
+   members ("the cluster runs at the level of its poorest member").
+3. Setup identity: same group-id, group-name, password, hbdev
+   settings. Best practice ≥2 heartbeat interfaces (priority number
+   HIGHER = preferred); direct-connect for 2-member; DHCP/PPPoE →
+   static during initial formation.
+4. Split-brain: silent heartbeat → both members claim primary →
+   duplicate vMAC/IP identity collision. Worst failure mode is not
+   a dead member but two survivors.
+5. PRIMARY ELECTION, override DISABLED (default):
+   (1) connected monitored interfaces (most up wins) →
+   (2) HA uptime (highest wins, only if gap ≥ 5 MINUTES) →
+   (3) priority (highest wins) → (4) serial number (highest).
+   Election stops at first deciding criterion. HA uptime resets to
+   0 on monitored-iface failure or reboot; manual graceful failover
+   = `diagnose sys ha reset-uptime` ON THE PRIMARY (no config
+   change). Standings: `diagnose sys ha dump-by vcluster` —
+   uptime column 0 = the LOWEST-uptime member (relative marker);
+   reset_cnt = number of uptime resets.
+6. Override ENABLED (CLI ONLY): priority jumps ABOVE uptime
+   (monitored → priority → uptime → serial). Guarantees a preferred
+   primary, at the cost of a SECOND failover when the old primary
+   recovers (failback). Flapping member + override = perpetual
+   failovers (student derived this himself in Q9). Override and
+   priority are NOT synchronised — set manually per member.
+7. FGCP Ethernet types (not IP): 0x8890/0x8891 heartbeat/election/
+   failure-detection; 0x8893 config sync. Sniff:
+   `diagnose sniffer packet any "ether proto 0x8890" 4`.
+   Hook coined: "88-90 keeps you alive, 88-93 keeps you identical."
+8. Virtual MAC concept PRE-DERIVED by student ("one VMAC one IP
+   moving as one") — formally taught next session per SG order.
+
+MENTAL MODELS / ANALOGIES (NEW KEEPERS)
+------------------------------------------------------------------
+- "The cluster runs at the level of its poorest member" (licensing).
+- "Facts about now beat preferences from Tuesday" (monitored ifaces
+  outrank priority; election order is a philosophy, not trivia).
+- "Every guarantee has a bill" (override = determinism paid for
+  with a second failover).
+- "Idle silicon isn't idle; it's insurance with a sub-second claims
+  process" (a-p defence vs Junior).
+- "The toll booth in a redundancy costume" (a-a inter-chassis hop
+  vs the S40 ISF war) — links Season 3 to Season 4.
+- "Twins settle it by birth certificate" (serial tiebreaker).
+- Split-brain skull on the whiteboard.
+
+KEY CLI
+------------------------------------------------------------------
+config system ha / set mode a-p / set group-id 10 / set group-name
+  "LOFI-EDGE" / set password / set hbdev "ha1" 50 "ha2" 50
+set override enable   (CLI only; per-member; not synced)
+diagnose sys ha reset-uptime          (on primary; graceful failover)
+diagnose sys ha dump-by vcluster      (uptime/reset_cnt standings)
+diagnose sniffer packet any "ether proto 0x8890" 4
+
+TROUBLESHOOTING APPROACH
+------------------------------------------------------------------
+Derivation-led design session (no fault). Method drilled: kill the
+600F bargain via requirements; walk the failover timeline (10:00
+fail / 10:20 recover) to price override; trace the a-a packet path
+before choosing mode; graceful-failover lever differs by override
+state (uptime reset vs priority change).
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+Second 900G ordered SAME model/firmware/licenses (licensing lesson
+applied). Mode a-p. Group LOFI-EDGE, id 10. Dual dedicated
+heartbeats planned. NP Direct trading path untouched by design.
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+HQ edge: FortiGate 900G ×2, FGCP active-passive, group LOFI-EDGE,
+dual heartbeat links; second unit racked, bring-up pending S46.
+(Red ink.)
+
+COLD RETRIEVALS AT THE DOOR (3 delivered)
+------------------------------------------------------------------
+#1 SCHEDULE CLOCK (S38 miss → S39 scaffold-fail → S45 cold):
+   PASS, instant, zero scaffold — "the root device's time." DEBT
+   PAID. Retire from active queue (one casual confirmation ~S48
+   optional, then retire with honours).
+#2 SP5 ALIAS: PASS PLUS — "SOC5 is the CLI field on the 91G; the
+   SP5's alias is NP7lite." Named the trap before it caught him.
+   Two-strikes protocol CANCELLED. Retire.
+#3 MANUAL QUARANTINE (2nd cold miss): honest "I don't know, keep
+   it in the register." Answer re-anchored: you QUEUE the call on
+   the FortiGate, EMS delivers it — `diagnose endpoint fctems
+   queue-complete-calls Q-<endpoint_ip>`; FortiClient (Linux)
+   excluded. TWO-STRIKES ANCHOR NOW ACTIVE. Retest S46/S47
+   unannounced.
+
+EXAM PERFORMANCE (10-question gauntlet): 5.5/10 strict.
+✓ Q3 full: election order + 5-min rule unprompted.
+✓ Q5 full (credited via Q3 wording).
+✓ Q2 full: lowest-license behaviour; minor note — didn't
+  explicitly answer "does formation fail?" clause.
+✓ Q9 FULL — THE HEADLINE: verdict + unprompted reasoning (pattern
+  from S40-Q8 beaten). Derived the flapping-member asymmetry
+  himself: override→every recovery retakes primary→perpetual
+  failovers; override-off→recovers into standby.
+HALF Q1: ADJACENT ANSWER — listed setup settings (group-id/name/
+  hbdev) instead of member requirements (model/firmware/HDD/
+  op-mode).
+HALF Q4: order perfect; SKIPPED CLAUSE (override = CLI only).
+HALF Q7: reset_cnt=1 read correctly; missed that uptime column 0
+  = relative lowest-uptime marker, not literal zero seconds.
+MISS Q6: reset-uptime command — taught 20 min earlier. RETEST
+  QUEUE.
+MISS Q8: FABRICATED hex "0x0080 81" (CP7 pattern in hex dress).
+  Correct 0x8890/0x8891 + 0x8893. Hook installed. RETEST QUEUE.
+MISS Q10 (honest): override CLI-only + override/priority not
+  synced (Junior set primary-only via nonexistent GUI).
+Shape of the night: ALL reasoning questions full marks; ALL
+label/command questions bled. Concepts ~2 sessions ahead of
+vocabulary — unchanged, but Q9 shows deep habits converting.
+
+MONEY SENTENCE — MILESTONE REACHED
+------------------------------------------------------------------
+FIRST UNSCAFFOLDED clean sentence: indicative mood, zero hedges,
+precise cause ("single point of failure"). Remaining gap: numbers
+— "ultimately the money made" is not a money category. Coached
+rewrite installed the 12-minute gauge + $3.8M account. NEXT
+MILESTONE: unscaffolded WITH self-selected numeric anchors. Then
+retire the drill.
+
+JUNIOR'S MISTAKES & LESSONS
+------------------------------------------------------------------
+(1) "Second box by Friday" → understanding before purchasing.
+(2) 40%-off 600F → same MODEL or no cluster; bargains that can't
+    cluster are expensive. (3) "Active-active, we paid for two!"
+→ a-a's hop tax vs the NP Direct investment. (4) Override via
+GUI on one member → CLI-only + not-synchronised.
+
+STUDENT'S OWN NOTABLE MOVES
+------------------------------------------------------------------
+- Pre-derived FGCP's soul in one breath: "config sync, session
+  sync, one VMAC one IP moving as one" — predicted virtual MACs
+  8 pages early (S40 pattern continuing: model runs ahead of
+  syllabus).
+- "Split-brain" produced in ONE WORD from the heartbeat question.
+- Cold #2 answered by naming the trap AND the right answer.
+- Q9 asymmetry derivation (flapping + override).
+- Honest misses on Q6/Q10/Cold#3 — no bluffing; honesty signal
+  stable.
+- Self-undermining hedge appeared ONCE (licensing "gut feel:
+  throttled") — named immediately, he dropped it. Pattern
+  weakening but present.
+- Restate-first habit still NOT self-starting: guessed around the
+  licensing question twice; when asked to restate, produced a
+  third answer instead. Blunt naming used; keep enforcing.
+
+TEASER DELIVERED FOR SESSION 46 — "HEARTBEATS"
+------------------------------------------------------------------
+FGCP heartbeat & ethertypes deep-dive; virtual clustering; VDOM
+partitioning (SG pp. 89–92, Blueprint 1.3). Story: second 900G
+gets plugged in; "the MAC address that does not exist on any
+interface yet owns all the traffic" (vMAC reveal — hand the
+student his own 'one VMAC moving as one' phrase back as the
+opener, per the S40 technique). Master-plan hook: the new
+cluster's members argue like siblings and Junior can't hear the
+heartbeat — wrong port.
+
+Date and Time completed: Tuesday, 21 July 2026.

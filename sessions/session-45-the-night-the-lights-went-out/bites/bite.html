@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 45 Bite — FGCP Modes, Requirements, Election</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:36px 40px 28px;background:var(--ink-dark);}
+.eyebrow{display:inline-block;border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+h1 em{font-style:italic;color:var(--ink-accent);font-weight:600;}
+main{max-width:920px;margin:0 auto;padding:28px 40px 50px;}
+.section-block{margin-bottom:28px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+h2{font-family:'Playfair Display',serif;font-size:22px;padding-left:12px;border-left:3px solid var(--blue);margin-bottom:10px;}
+p,li{font-size:16px;line-height:1.65;color:var(--text-soft);}
+p strong,li strong{color:var(--text);}
+ul,ol{padding-left:20px;margin-bottom:10px;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15px;line-height:1.6;}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.data-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:8px 12px;text-align:left;}
+.data-table td{font-size:14px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);}
+.data-table td:first-child{font-weight:600;color:var(--text);}
+.code-block{background:var(--ink-dark);border-radius:8px;margin:12px 0;padding:12px 14px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Consolas',monospace;font-size:12px;line-height:1.6;color:#e8efff;white-space:pre;}
+footer{padding:20px 40px;background:var(--ink-dark);color:rgba(251,247,236,0.5);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">SESSION 45 BITE · 5-MINUTE REVISION · BLUEPRINT 1.3</div>
+<h1>FGCP: Modes, Requirements, <em>Election</em></h1>
+</header>
+<main>
+
+<div class="section-block">
+<div class="section-label">One breath</div>
+<h2>What FGCP is</h2>
+<p>Two+ FortiGates as one brain: <strong>config sync + session sync + one virtual identity (vMAC/IP)</strong>. Modes: <strong>a-p</strong> (one works, one waits) or <strong>a-a</strong> (primary load-balances sessions to its partner — every session still hits the primary first, and partner-assigned sessions pay an inter-chassis hop, both directions, for life).</p>
+</div>
+
+<div class="section-block">
+<div class="section-label">Two lists — don't blur them</div>
+<h2>Requirements</h2>
+<table class="data-table">
+<tr><th>Blocks formation if mismatched</th><th>Degrades only</th></tr>
+<tr><td>Model · Firmware · Hard-drive config · Operating mode (mgmt VDOM NAT/transparent)</td><td><strong>Licensing</strong> → cluster runs at the <strong>lowest</strong> license level of any member</td></tr>
+</table>
+<p>Setup identity (must match to pair): group-id, group-name, password, hbdev settings. DHCP/PPPoE → static during initial formation.</p>
+<div class="callout-amber callout">The cluster runs at the level of its poorest member. One unlicensed box refunds the licenses on the other.</div>
+</div>
+
+<div class="section-block">
+<div class="section-label">The pulse</div>
+<h2>Heartbeat</h2>
+<p><strong>≥2 heartbeat links</strong> (higher priority number = preferred; direct-connect a 2-member pair). Why two: silent heartbeat → <strong>split-brain</strong> → both members claim primary → duplicate vMAC/IP collision. Ethertypes (not IP): <strong>0x8890/0x8891</strong> heartbeat/election/failure-detection, <strong>0x8893</strong> config sync. <em>"88-90 keeps you alive, 88-93 keeps you identical."</em></p>
+<div class="code-block"><code>diagnose sniffer packet any "ether proto 0x8890" 4</code></div>
+</div>
+
+<div class="section-block">
+<div class="section-label">Who leads</div>
+<h2>Primary election</h2>
+<p><strong>Override DISABLED (default):</strong> monitored interfaces → HA uptime (wins only if gap ≥ <strong>5 min</strong>) → priority → serial. Stops at first decider.</p>
+<p><strong>Override ENABLED (CLI only):</strong> monitored → <strong>priority</strong> → uptime → serial. Deterministic primary, but the recovered ex-primary takes the role back = <strong>guaranteed second failover</strong> per incident. Flapping member + override = perpetual failovers. Override & priority are <strong>not synchronised</strong> — set on each member.</p>
+<table class="data-table">
+<tr><th>Override</th><th>Graceful failover lever</th></tr>
+<tr><td>Disabled</td><td><code>diagnose sys ha reset-uptime</code> on the primary (no config change)</td></tr>
+<tr><td>Enabled</td><td>Change priorities</td></tr>
+</table>
+<div class="code-block"><code>diagnose sys ha dump-by vcluster
+FGVMxx92: ...uptime/reset_cnt=7814/0   &lt;- 7814s AHEAD
+FGVMxx93: ...uptime/reset_cnt=0/1      &lt;- 0 = LOWEST uptime member; reset once</code></div>
+<p>HA uptime resets to 0 on monitored-interface failure or reboot. It is HA uptime, not system uptime.</p>
+</div>
+
+<div class="section-block">
+<div class="section-label">The decision</div>
+<h2>Why LoFinance chose a-p</h2>
+<div class="callout-green callout">A-A's extra capacity costs an inter-chassis hop per balanced session — the toll booth in a redundancy costume. After spending Season 3 removing the ISF hop for 2.1 ms, a-p keeps the NP Direct path untouched. The passive twin is insurance with a sub-second claims process.</div>
+<div class="code-block"><code>config system ha
+    set mode a-p
+    set group-id 10
+    set group-name "LOFI-EDGE"
+    set password &lt;secret&gt;
+    set hbdev "ha1" 50 "ha2" 50
+end</code></div>
+</div>
+
+</main>
+<footer>LOFINANCE · SESSION 45 BITE · READ BEFORE WORK OR THE EXAM</footer>
+</body>
+</html>

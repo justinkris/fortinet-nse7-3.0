@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 45 Troubleshooting — FGCP Formation & Election</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+header{padding:40px 48px 30px;background:var(--ink-dark);}
+.eyebrow{display:inline-block;border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;}
+h1 em{font-style:italic;color:var(--ink-accent);font-weight:600;}
+header p{font-size:15px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px;}
+main{max-width:1000px;margin:0 auto;padding:30px 48px 56px;}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin:26px 0 6px;}
+h2{font-family:'Playfair Display',serif;font-size:23px;padding-left:12px;border-left:3px solid var(--blue);margin-bottom:10px;}
+p,li{font-size:16px;line-height:1.65;color:var(--text-soft);}
+p strong,li strong,td strong{color:var(--text);}
+ul,ol{padding-left:20px;margin-bottom:10px;}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15px;line-height:1.6;}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+.data-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:8px 12px;text-align:left;}
+.data-table td{font-size:14px;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+.code-block{background:var(--ink-dark);border-radius:8px;margin:12px 0;padding:12px 14px;overflow-x:auto;}
+.code-block code{font-family:'SF Mono','Consolas',monospace;font-size:12px;line-height:1.6;color:#e8efff;white-space:pre;}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:14px 0;}
+.tree .node{font-family:'Outfit',sans-serif;font-size:13px;line-height:2.0;color:var(--text-soft);}
+.tree .node b{color:var(--blue);}
+footer{padding:20px 48px;background:var(--ink-dark);color:rgba(251,247,236,0.5);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">SESSION 45 · TROUBLESHOOTING GUIDE · FGCP</div>
+<h1>When Two Boxes Won't Become <em>One Brain</em></h1>
+<p>Formation failures, wrong-primary mysteries, and failover surprises — how a senior engineer thinks before typing.</p>
+</header>
+<main>
+
+<div class="section-label">Scenario A</div>
+<h2>"The cluster won't form"</h2>
+<p><strong>Symptoms:</strong> both units powered and cabled; each still shows standalone; no sync; second unit invisible in the GUI.</p>
+<p><strong>Questions before commands:</strong> Are these the <em>same model</em>? Same firmware build (not just major version)? Same disk configuration? Same operating mode on the management VDOM? Do group-id, group-name, password and hbdev settings match exactly on both? Are the heartbeat ports actually in the same broadcast domain or directly connected?</p>
+<div class="code-block"><code>get system status                 &lt;- model + firmware on EACH unit
+get system ha status              &lt;- role, members seen, sync state
+diagnose sys ha checksum show     &lt;- config checksums (mismatch = not synced)
+diagnose sniffer packet any "ether proto 0x8890" 4   &lt;- is the pulse even on the wire?</code></pre></div>
+<p><strong>Expected outputs:</strong> matching models/builds; ha status listing BOTH serials; heartbeat frames visible on the hb port. If the sniffer on the hb interface shows nothing, stop theorising about election — you have a layer-1/2 problem or a wrong port.</p>
+<div class="callout-amber callout"><strong>Common dead end:</strong> obsessing over priority and override settings when the units can't even hear each other. Election settings are irrelevant to a cluster that hasn't formed. Pulse first, politics second.</div>
+<div class="callout callout"><strong>Trap:</strong> "The licenses don't match, that must be why it won't form." No — licensing mismatch never blocks formation; it degrades the cluster to the lowest level. If it won't form, the blocker is model/firmware/disk/op-mode or setup identity.</div>
+
+<div class="section-label">Scenario B</div>
+<h2>"The wrong box is primary"</h2>
+<p><strong>Symptoms:</strong> you set priority 200 on FGT-A; FGT-B is primary anyway.</p>
+<p><strong>Think in election order, in order:</strong></p>
+<div class="tree"><div class="node">
+1. <b>Monitored interfaces</b> — does FGT-A have a monitored port down? (Instant disqualifier — check first, always)<br>
+2. <b>HA uptime</b> — is override disabled (default)? Then uptime outranks your priority. Has FGT-A rebooted or had a monitored link flap (uptime reset to 0)? Is FGT-B ≥5 minutes ahead?<br>
+3. <b>Priority</b> — only reached if 1 and 2 tie. Is your 200 actually configured on the box you think (not synced!)?<br>
+4. <b>Serial</b> — the birth-certificate tiebreak.
+</div></div>
+<div class="code-block"><code>get system ha status
+diagnose sys ha dump-by vcluster
+  FGVMxx92: ...uptime/reset_cnt=7814/0    &lt;- 7814s ahead on HA uptime
+  FGVMxx93: ...uptime/reset_cnt=0/1       &lt;- lowest-uptime member; reset once</code></pre></div>
+<p><strong>Likely root causes:</strong> (1) override disabled and the "wrong" box simply has the uptime lead — this is correct behaviour, not a fault; (2) a monitored interface down on your preferred box; (3) priority configured on one member only and never on the other.</p>
+<div class="callout-green callout"><strong>Senior move:</strong> before changing anything, ask "is this actually broken, or is the election working exactly as designed on facts I forgot about?" Most 'wrong primary' tickets close with zero config changes.</div>
+
+<div class="section-label">Scenario C</div>
+<h2>"Failovers keep happening"</h2>
+<p><strong>Symptoms:</strong> repeated role changes; users feel periodic blips; logs full of HA events.</p>
+<p><strong>Hypotheses, cheapest evidence first:</strong></p>
+<ul>
+<li><strong>Override enabled + unstable preferred primary:</strong> every recovery retakes the role → one failover per flap. Evidence: <code>get system ha status</code> role history + <code>show system ha</code> for override.</li>
+<li><strong>Monitored interface flapping:</strong> each flap re-runs the election AND resets that member's uptime. Evidence: interface event logs; reset_cnt climbing in dump-by vcluster.</li>
+<li><strong>Heartbeat starvation:</strong> single hb link congested/dying → missed heartbeats → false failovers, worst case split-brain. Evidence: sniff 0x8890 on the hb port; check hb link errors.</li>
+</ul>
+<div class="callout-amber callout"><strong>Exam trap:</strong> "Enabling override reduces failover events" — FALSE. It guarantees an extra failback failover per incident, and turns a flapping member into a failover generator.</div>
+
+<div class="section-label">Scenario D</div>
+<h2>"Fail over gracefully — now, without breaking config"</h2>
+<table class="data-table">
+<tr><th>Override state</th><th>Lever</th><th>Why it works</th></tr>
+<tr><td><strong>Disabled (default)</strong></td><td><code>diagnose sys ha reset-uptime</code> on the primary</td><td>Uptime outranks priority; resetting the primary's HA uptime to 0 hands the uptime lead — and the role — to the peer. No config touched.</td></tr>
+<tr><td><strong>Enabled</strong></td><td>Raise a secondary's priority or lower the primary's (per member, CLI)</td><td>Priority now outranks uptime, so priorities are the steering wheel.</td></tr>
+</table>
+<p>Verify recovery after either: <code>get system ha status</code> shows the intended roles, traffic passes, and — root cause, not just service — you can explain <em>why</em> the election chose as it did.</p>
+
+<div class="section-label">Method</div>
+<h2>The senior's sequence for any HA ticket</h2>
+<ol>
+<li>Restate the business symptom ("trading blipped at 10:20" ≠ "HA is broken").</li>
+<li>Formed vs elected vs failed-over — decide which layer the fault lives in. Formation problems make election questions meaningless.</li>
+<li>Pulse before politics: confirm heartbeats on the wire before reasoning about roles.</li>
+<li>Walk the election criteria in order against evidence — stop at the first criterion that explains reality.</li>
+<li>Change nothing until the current behaviour is explained. Then change one thing.</li>
+<li>Verify roles, traffic, AND the explanation.</li>
+</ol>
+
+</main>
+<footer>LOFINANCE · SESSION 45 · PULSE FIRST, POLITICS SECOND</footer>
+</body>
+</html>
