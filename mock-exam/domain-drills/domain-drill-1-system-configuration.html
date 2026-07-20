@@ -193,61 +193,61 @@ ex:"On ingress, the NP handles the early, packet-level stages: ACL, host protect
 
 {d:"SC",type:"single",
 q:"In FGCP active-active mode, when the primary decides a session should be inspected by the secondary unit, how does the redistributed traffic reach the secondary?",
-o:["The switch duplicates the frames to both units","Over the HA links — traffic redistribution is one of the functions carried by the cluster's HA communication","Via the management interface","Through a GRE tunnel automatically built over the data interfaces"],
+o:["The switch duplicates the frames to both units","Over the cluster's HA links","Via the management interface","Through a GRE tunnel automatically built over the data interfaces"],
 a:[1],
 ex:"Traffic redistribution appears in the guide's list of functions carried over the cluster's HA communication: after the primary (which owns the virtual MACs and receives all traffic) assigns a session to a secondary, the packets move between members across the HA links. This is another sizing reason to take heartbeat/HA link capacity seriously in A-A designs — those links are part of the data path, not just control plane."},
 
 {d:"SC",type:"single",
 q:"Which statement correctly describes the functions of the FGCP heartbeat link?",
-o:["It is used to discover devices in the same HA group, elect the primary, detect failures, synchronize data, and redistribute traffic","It is used exclusively for firmware synchronization","It carries only a once-per-minute keepalive","It carries user data traffic during normal operation"],
+o:["Member discovery, primary election, failure detection, sync, and traffic redistribution","It is used exclusively for firmware synchronization","It carries only a once-per-minute keepalive confirming each peer is powered on","It carries user data traffic during normal operation"],
 a:[0],
 ex:"The heartbeat link is the cluster's nervous system, and the guide lists its jobs explicitly: discovering members of the same HA group, electing the primary, detecting device failure, synchronizing data, and redistributing traffic. That breadth is why heartbeat design gets so much attention — at least two interfaces, dedicated links where possible, and session sync moved to its own interfaces on busy clusters so the heartbeat functions are never starved."},
 
 {d:"SC",type:"single",
 q:"Which type of traffic can never be offloaded to a network processor, regardless of configuration?",
-o:["Traffic between two VLANs on the same physical interface","Traffic terminating at the FortiGate itself, such as management sessions to the device","IPsec ESP traffic","Long-lived UDP flows"],
+o:["Traffic between two VLANs on the same physical interface","Traffic terminating at the FortiGate itself","IPsec ESP traffic","Long-lived UDP flows"],
 a:[1],
 ex:"NP offload accelerates traffic passing through the FortiGate. Sessions destined to the device itself — administrative HTTPS/SSH, BGP and OSPF sessions, IKE negotiations — must be processed by the CPU because the FortiGate is the endpoint, not a forwarder. IPsec ESP is famously an NP strength, and inter-VLAN traffic offloads normally. Spotting 'to the FortiGate' versus 'through the FortiGate' is the discriminator here."},
 
 {d:"SC",type:"single",
 q:"An FGCP active-passive cluster is configured with <code>set monitor \"port1\" \"port3\"</code>. What happens when port3 fails on the current primary unit while the secondary's interfaces are all healthy?",
-o:["The cluster triggers a new primary election, and the secondary takes over because it has more connected monitored ports","The primary disables port1 as well and waits for an administrator","The cluster splits into two standalone units","Nothing — monitored interfaces only generate log messages"],
+o:["The cluster triggers a new primary election, and the secondary takes over","The primary disables port1 as well and waits for an administrator","The cluster splits into two standalone units","Nothing — monitored interfaces only generate log messages"],
 a:[0],
 ex:"Interface monitoring is the link-failover mechanism: connected monitored ports is the FIRST election criterion regardless of the override setting, so a monitored-port failure on the primary immediately hands the role to the healthier member. That is also why you should only monitor important interfaces and only after the cluster is stable — monitoring a deliberately unused port would cause failovers for no operational reason."},
 
 {d:"SC",type:"single",
 q:"LoFinance's SOC subscribes to a third-party intelligence service that publishes a frequently changing list of malicious IP addresses. The firewall must block these destinations automatically as the list changes. Which Security Fabric feature should be used?",
-o:["An automation stitch that emails the SOC when the list changes","A web rating override for each listed IP","A static address group updated by change request","A Threat Feeds external connector that periodically pulls the list and exposes it as a dynamic object for policies"],
+o:["An automation stitch that emails the SOC when the list changes","A web rating override for each listed IP","A static address group updated by change request","A Threat Feeds connector exposing the list as a dynamic object"],
 a:[3],
 ex:"Threat Feeds are external connectors that fetch externally hosted block lists on a schedule and present them as dynamic objects usable in firewall policies and security profiles — the firewall tracks the list, not the administrators. A static group reintroduces the manual work the requirement forbids, and an automation stitch alerts humans rather than enforcing anything. Distinguish this from SDN connectors, which track your own cloud workloads rather than third-party intelligence."},
 
 {d:"SC",type:"single",
 q:"Entry-level and mid-range FortiGate models, such as the FortiGate 90G, use an SP5 processor. What characterizes the SP family of security processing units?",
-o:["It only accelerates wireless traffic","It replaces the main CPU entirely","It is a dedicated SSL-decryption card","It combines light versions of both NP and CP functions in a single processor"],
+o:["It only accelerates wireless traffic","It replaces the main CPU entirely","It is a dedicated SSL-decryption card fitted only to chassis platforms","It combines light NP and CP functions in one processor"],
 a:[3],
 ex:"The SPU family divides as: NPs at the network/interface level, CPs at the content/application level, and SPs — found in entry-level and mid-range models — combining light versions of NP and CP capabilities in one chip. The high-end platforms carry discrete NP7 and CP10 silicon instead. Matching processor families to platform tiers and to the work they accelerate is a straightforward exam mark."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — HA diagnostics</span>FGT # diagnose sys ha dump-by vcluster\n...\nFGVMxx92: ... uptime/reset_cnt=7814/0\nFGVMxx93: ... uptime/reset_cnt=0/1\n...</div>Override is disabled on this cluster. Based on the exhibit, why is FGVMxx92 currently the primary unit, and what most likely happened on FGVMxx93?",
-o:["FGVMxx92 has a higher priority; uptime is irrelevant with override disabled","The two units are out of sync and election has not completed","FGVMxx92 has the higher HA uptime; an administrator ran <code>diagnose sys ha reset-uptime</code> on FGVMxx93, resetting its uptime to force or maintain the current role","FGVMxx93 has a hardware fault indicated by reset_cnt=1"],
+o:["FGVMxx92 has a higher priority; uptime is irrelevant with override disabled","The two units are out of sync and election has not completed","FGVMxx92 has higher HA uptime; <code>reset-uptime</code> was run on FGVMxx93","FGVMxx93 has a hardware fault indicated by reset_cnt=1"],
 a:[2],
 ex:"With override disabled, HA uptime is compared before priority, and the difference is measured in seconds. In the output, uptime/reset_cnt shows FGVMxx93 with uptime 0 and a reset count of 1 — the fingerprint of diagnose sys ha reset-uptime, the standard way to force a graceful failover (or keep a role) without touching priority or override. reset_cnt counts administrative uptime resets, not hardware crashes."},
 
 {d:"SC",type:"single",
 q:"In a Security Fabric, how does a downstream FortiGate know that it should not create a traffic log for a session already logged by another Fabric member?",
-o:["FortiAnalyzer instructs each device which sessions to skip","The root FortiGate broadcasts a list of logged session IDs every second","Downstream devices never create any logs in a Fabric","Fabric members know the MAC addresses of their upstream and downstream peers; a packet arriving from a peer's MAC indicates another member already handled and logged the session"],
+o:["FortiAnalyzer instructs each device which sessions to skip","The root FortiGate broadcasts a list of logged session IDs every second","Downstream devices never create any logs in a Fabric","It recognizes the packet arrived from a Fabric peer's known MAC address"],
 a:[3],
 ex:"The dedup mechanism is elegantly simple: each Fabric FortiGate learns the MACs of its neighbouring Fabric members, so when a packet arrives sourced from a known peer's MAC, the device knows the session entered the Fabric elsewhere and the first handler owns the traffic log. The device still contributes its own UTM logs where configured — deduplication applies to traffic logs, not to inspection events, which FortiAnalyzer later correlates."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Session diagnostics</span>FGT # diagnose sys session list\n...\nnpu_state=0x000001 no_offload\nno_ofld_reason: disabled-by-policy\n...</div>Traffic matching firewall policy 7 is not being hardware accelerated. Based on the exhibit, what is the cause?",
-o:["The NP7 session table is full","The session is inspected by a proxy-based profile","<code>auto-asic-offload</code> has been disabled in the matching firewall policy","The ingress and egress interfaces are on different NPs"],
+o:["The NP7 session table is full","The session is being inspected by a proxy-based security profile","<code>auto-asic-offload</code> is disabled in the matching policy","The ingress and egress interfaces are on different NPs"],
 a:[2],
 ex:"The session list tells you directly: no_ofld_reason: disabled-by-policy corresponds to set auto-asic-offload disable in the firewall policy. Offloaded sessions instead show an npu info line with offload flags. Reading the no_ofld_reason field is the fastest way to root-cause acceleration problems, and distinguishing 'disabled-by-policy' from other reasons (such as proxy inspection) is exactly the kind of output interpretation the exam presents."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Virtual cluster configuration</span>config system ha\n    set mode a-p\n    set vcluster-status enable\n    config vcluster\n        edit 1\n            set priority 200\n            set vdom \"root\" \"VDOM1\"\n        next\n        edit 2\n            set priority 100\n            set vdom \"VDOM2\"\n        next\n    end\nend</div>In a VDOM partitioning setup, what does the <code>set priority</code> value inside each vcluster entry control?",
-o:["The administrative access level for each VDOM","Which cluster device becomes the primary for the VDOMs in that virtual cluster — the device with the highest priority wins","The bandwidth percentage allocated to each VDOM","The order in which VDOMs boot"],
+o:["The administrative access level for each VDOM","Which device is primary for that virtual cluster's VDOMs","The bandwidth percentage allocated to each VDOM","The order in which VDOMs boot"],
 a:[1],
 ex:"VDOM partitioning assigns VDOMs to virtual clusters, and each device carries a priority per vcluster: the device with the highest priority for a vcluster becomes the primary for those VDOMs. Configure device A higher for vcluster 1 and device B higher for vcluster 2, and each unit actively processes traffic for its VDOMs — active-passive redundancy with both boxes working. During a failover, the surviving device simply takes all VDOMs."},
 
@@ -259,13 +259,13 @@ ex:"A VLAN sub-interface is a logical interface and can be placed in a different
 
 {d:"SC",type:"single",
 q:"In the FortiGate life of a packet, what is the role of session helpers?",
-o:["They keep idle TCP sessions alive by sending keepalives","They inspect control-channel protocols such as FTP or SIP and open the additional pinhole sessions those protocols negotiate dynamically","They accelerate session setup on the NP7","They synchronize sessions between HA members"],
+o:["They keep idle TCP sessions alive by sending keepalives","They open pinholes negotiated by protocols like FTP and SIP","They accelerate session setup on the NP7","They synchronize sessions between HA members"],
 a:[1],
 ex:"Session helpers sit in the kernel stage of the packet flow, right after policy lookup and session management. Protocols like FTP, SIP, and PPTP negotiate secondary connections on dynamic ports inside their control channel; the helper parses that dialogue and opens the expected pinholes so the data channel isn't dropped by stateful inspection. Without the helper (or its ALG equivalent), passive FTP through NAT is the classic casualty."},
 
 {d:"SC",type:"single",
 q:"Which statement about VRRP on FortiGate is true?",
-o:["VRRP can only be enabled on the dedicated HA heartbeat interfaces","VRRP requires both devices to be FortiGates running the same FortiOS version","A FortiGate can join a VRRP group with third-party routers to provide default-gateway redundancy","VRRP synchronizes firewall sessions between group members"],
+o:["VRRP can only be enabled on the dedicated HA heartbeat interfaces","VRRP requires both devices to be FortiGates running the same FortiOS version","A FortiGate can join a VRRP group with third-party routers","VRRP synchronizes firewall sessions between group members"],
 a:[2],
 ex:"VRRP is an open standard (RFC 5798), so a FortiGate can participate in a VRRP group alongside routers from other vendors — this is its key differentiator from FGCP. VRRP provides gateway redundancy only; it does not synchronize sessions or configuration. That is why the study guide positions FGCP for full clustering, FGSP for session sync between standalone units, and VRRP for interoperable gateway failover."},
 
@@ -277,37 +277,37 @@ ex:"With override enabled, the FGCP election order becomes: connected monitored 
 
 {d:"SC",type:"single",
 q:"A firewall policy applies flow-based IPS and application control to traffic. Usual NP offloading cannot be applied to sessions inspected by security profiles. Which mechanism allows this traffic to still be accelerated?",
-o:["NTurbo creates a special data path that redirects traffic from the ingress interface to the IPS engine","Switching the policy to proxy-based inspection mode","Enabling strict-src-check on the ingress interface","The CP9 processor takes over full session forwarding from the NP"],
+o:["NTurbo redirects traffic from the ingress interface to the IPS engine","Switching the policy to proxy-based inspection mode","Enabling strict-src-check on the ingress interface","The CP9 processor takes over full session forwarding from the NP"],
 a:[0],
 ex:"NTurbo is the acceleration path for flow-based inspection: it builds a dedicated data path from the ingress NP to the IPS engine, the IPS engine applies the security actions, and packets are handed back to the NTurbo driver for accelerated egress. Anything handled by the IPS engine (IPS, application control, flow AV) can use NTurbo. Proxy-based inspection cannot be offloaded at all, so option B would make performance worse."},
 
 {d:"SC",type:"single",
 q:"LoFinance hosts workloads in Microsoft Azure where VM IP addresses change frequently. Firewall policies on the FortiGate must automatically follow these workloads without manual address updates. Which Security Fabric feature enables this?",
-o:["A normalized interface mapped to the Azure vNIC","An external threat feed containing the Azure IP ranges","An automation stitch triggered on address change events","An SDN connector with dynamic firewall address objects that resolve cloud resources automatically"],
+o:["A normalized interface mapped to the Azure vNIC","An external threat feed containing the Azure IP ranges","An automation stitch triggered on address change events","An SDN connector with dynamic firewall address objects"],
 a:[3],
 ex:"SDN connectors (public cloud connectors for Azure, AWS, GCP, and private ones such as NSX-T) integrate the Fabric with the platform's API; dynamic address objects then resolve to the current IPs of matching cloud resources — by tag, resource group, and so on — so policies follow the workloads automatically. Threat feeds import static external lists, and automation stitches respond to events; neither tracks cloud objects natively."},
 
 {d:"SC",type:"single",
 q:"In an FGCP active-active cluster, how is traffic initially handled when it arrives from the network?",
-o:["The primary unit receives the traffic first and decides whether to process it or redistribute it to a secondary member","Each member advertises separate virtual MACs so hosts pick a member at random","The secondary unit receives all traffic and offloads inspection to the primary","Traffic is hashed by the switches directly to either member"],
+o:["The primary receives traffic first and redistributes selected sessions","Each member advertises separate virtual MACs so hosts pick a member at random","The secondary unit receives all traffic and offloads inspection to the primary","Traffic is hashed by the switches directly to either member"],
 a:[0],
 ex:"Active-active does not mean the network load-balances to both units — the primary owns the virtual MAC addresses, receives all traffic first, and then decides which sessions to keep and which to redistribute to secondary members for inspection. Understanding that the primary is still the single traffic entry point explains why A-A does not simply double throughput, a common misconception the exam likes to probe."},
 
 {d:"SC",type:"single",
 q:"An architect proposes using FGSP for session redundancy between two data-centre FortiGates while running VRRP on their LAN interfaces for gateway failover. Is this design valid?",
-o:["Yes — FGSP is compatible with FortiGate VRRP, combining session synchronization with standards-based gateway redundancy","No — FGSP and VRRP cannot coexist on the same devices","No — VRRP already synchronizes sessions, making FGSP redundant","Only if both features run in separate VDOMs"],
+o:["Yes — FGSP is compatible with FortiGate VRRP","No — FGSP and VRRP cannot coexist on the same devices","No — VRRP already synchronizes sessions","Only if both features run in separate VDOMs"],
 a:[0],
 ex:"The guide states the compatibility directly: FGSP works alongside FortiGate VRRP. The two solve complementary problems — VRRP moves the gateway address to a surviving device, and FGSP ensures the surviving device already has the session table to keep existing connections alive. VRRP alone provides no session awareness at all, so the combination (or FGCP instead) is what turns gateway failover into hitless failover."},
 
 {d:"SC",type:"single",
 q:"VDOM1 on a FortiGate has no Internet-facing interface, but the root VDOM does. Users behind VDOM1 must reach the Internet through the root VDOM. Which two configuration elements are required for this design to work?",
-o:["Enabling NAT on the inter-VDOM link interface object","An inter-VDOM link between VDOM1 and root, plus firewall policies in both VDOMs allowing the traffic","A physical cable looped between one port of each VDOM — logical links are unsupported","A static route in VDOM1 only; policies are not required on inter-VDOM links"],
+o:["Enabling NAT on the inter-VDOM link interface object","An inter-VDOM link, plus firewall policies in both VDOMs","A physical cable looped between one port of each VDOM","A static route in VDOM1 only; policies are not required on inter-VDOM links"],
 a:[1],
 ex:"This is the study guide's 'Internet access via inter-VDOM routing' use case. The inter-VDOM link provides the logical path, but each VDOM remains an independent firewall — so VDOM1 needs a policy (and a default route toward the link), and root needs a policy allowing the traffic out to the Internet. Traffic over inter-VDOM links is firewalled like any other traffic; forgetting the second VDOM's policy is the classic mistake."},
 
 {d:"SC",type:"single",
 q:"A FortiGate traffic VDOM operates in transparent mode. How do administrators reach this VDOM for management?",
-o:["Through the root VDOM's IP using port forwarding","Through any interface IP in the VDOM — transparent interfaces carry normal IPs","Through the management IP (manageip) configured for the transparent VDOM","Transparent VDOMs can only be managed from the console port"],
+o:["Through the root VDOM's IP using port forwarding","Through any interface IP in the VDOM","Through the transparent VDOM's configured manageip","Transparent VDOMs can only be managed from the console port"],
 a:[2],
 ex:"Transparent-mode interfaces bridge at layer 2 and carry no IP addresses, so the VDOM gets a single management IP instead — set manageip under the VDOM's system settings, reachable through the bridged network. This is one of the defining operational differences from NAT mode, and it appears directly in the VDOM configuration syntax: vdom-type traffic, opmode transparent, manageip."},
 
@@ -319,19 +319,19 @@ ex:"The Security Fabric is built on two pillars tested here: centralized logging
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Session diagnostics</span>FortiGate-901G # diagnose sys session list\n...\nnpu info: flag=0x81/0x91, offload=9/9, ips_offload=0/0,\n epid=128/166, ipid=166/128, vlan=0x0000/0x0000\n...</div>What does <code>offload=9/9</code> indicate about this session?",
-o:["The session is offloaded in both traffic directions, and code 9 identifies the NP7 processor","The session is queued for offload but not yet accelerated","Only 9 percent of the session's packets are accelerated","The session has been dropped 9 times in each direction"],
+o:["Offloaded in both directions; code 9 identifies the NP7","The session is queued for offload but not yet accelerated","Only 9 percent of the session's packets are accelerated","The session has been dropped 9 times in each direction"],
 a:[0],
 ex:"The offload field shows the offload state per direction (origin/reply), and the code identifies the processor type — 9 represents NP7, so 9/9 means both directions are fully accelerated by the NP7. Compare this healthy output with a non-offloaded session, which instead shows npu_state with no_offload and a no_ofld_reason. Reading npu info at a glance is the practical skill behind most hardware-acceleration exhibits."},
 
 {d:"SC",type:"multi",
 q:"Which two statements about NP hardware offloading of a firewall session are true? (Choose two.)",
-o:["Offloading requires disabling NAT on the policy","auto-asic-offload is enabled by default in firewall policies and must remain enabled for sessions to be offloaded","Every packet of an offloaded session, including the first, bypasses the CPU","The first packets of a session are processed in the software path, which then programs the NP to offload the remaining traffic"],
+o:["Offloading requires disabling NAT on the policy","auto-asic-offload is enabled by default in firewall policies and must remain enabled for sessions to be offloaded","Every packet of an offloaded session, including the first, bypasses the CPU","The first packets of a session are processed in the software path"],
 a:[1,3],
 ex:"Offload is set up, not instantaneous: initial packets traverse the normal path (NP ingress checks, kernel session creation, policy lookup), and only then is the established session pushed down to the NP so subsequent packets bypass the CPU. Per-policy this is governed by auto-asic-offload, which defaults to enabled — disabling it produces the no_ofld_reason: disabled-by-policy marker in the session list. NAT is fully compatible with offload."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGSP peer configuration</span>config system standalone-cluster\n    set standalone-group-id 1\n    set group-member-id 1\n    set layer2-connection available\n    set session-sync-dev port1\nend</div>Two FortiGates with this style of configuration handle asymmetric traffic at layer 2. How is security inspection maintained when packets for one session arrive at different peers?",
-o:["Each peer inspects whichever packets it receives independently","The session is reset and forced to re-establish through one peer","Inspection is disabled for asymmetric sessions","All packets for a session are passed back to the device that processed the first packet, which requires layer 2 access between the peers and interfaces in the same subnets"],
+o:["Each peer inspects whichever packets it receives independently","The session is reset and forced to re-establish through one peer","Inspection is disabled for asymmetric sessions","Packets are passed back to the device that processed the first packet"],
 a:[3],
 ex:"In the FGSP layer-2 asymmetric use case, full security inspection is preserved by ensuring one device owns each session: packets that land on the wrong peer are handed back across the layer-2 connection to the device that processed the first packet. That is why the design requires the peers to have layer-2 adjacency and their internal/outgoing interfaces in the same subnets, and why layer2-connection available appears in the standalone-cluster configuration."},
 
@@ -343,19 +343,19 @@ ex:"Virtual clustering with VDOM partitioning is built on active-passive mode: e
 
 {d:"SC",type:"single",
 q:"A FortiGate traffic VDOM operates in transparent mode with several VLANs trunked through it. Broadcast traffic from one VLAN must not leak into another. Which mechanism provides this separation?",
-o:["Enabling STP forwarding on all interfaces","Configuring a manageip per VLAN","Setting all interfaces to sniffer mode","Assigning each VLAN to a separate forwarding domain"],
+o:["Enabling STP forwarding on all of the VDOM's bridged interfaces","Configuring a manageip per VLAN","Setting all interfaces to sniffer mode","Assigning each VLAN to a separate forwarding domain"],
 a:[3],
 ex:"In transparent mode the FortiGate behaves like a layer-2 bridge, and forwarding domains partition that bridge: interfaces (or VLAN sub-interfaces) in the same forwarding domain share a broadcast domain, while different forwarding domains are isolated from each other. This both prevents broadcast leakage and avoids layer-2 loops in multi-VLAN transparent designs — the standard answer whenever 'transparent mode' meets 'VLAN separation'."},
 
 {d:"SC",type:"multi",
 q:"LoFinance has two VDOMs, each carrying high traffic volume, on a two-member FortiGate cluster. Which two statements about distributing this load are true? (Choose two.)",
-o:["Active-passive mode always leaves one device completely idle, with no alternative","In active-active mode, sessions can be load balanced between the two cluster devices","In active-passive mode, virtual clustering with VDOM partitioning can make each device the primary for a different VDOM, so both devices process traffic","VDOM partitioning requires active-active mode"],
+o:["Active-passive mode always leaves one device completely idle, with no alternative","In active-active mode, sessions can be load balanced between the two cluster devices","In active-passive mode, virtual clustering with VDOM partitioning can make each device the primary for a different VDOM","VDOM partitioning requires active-active mode"],
 a:[1,2],
 ex:"There are two legitimate paths to using both devices: A-A load balances sessions across members, while A-P plus virtual clustering achieves distribution differently — VDOM partitioning makes device 1 primary for VDOM A and device 2 primary for VDOM B, each with failover to the other. The two false options are mirror images of the same misconception: A-P is not condemned to an idle standby, and partitioning is an A-P feature, not an A-A one."},
 
 {d:"SC",type:"single",
 q:"Which statement about VRRP operation on a FortiGate is true?",
-o:["The VRRP master periodically sends advertisements; if backups stop receiving them, the highest-priority backup becomes the new master","VRRP members synchronize their session tables through the advertisements","The virtual IP address must be different on every VRRP group member","All VRRP group members forward traffic simultaneously for the virtual IP"],
+o:["Backups take over when the master's advertisements stop arriving","VRRP members synchronize their session tables through the advertisements","The virtual IP address must be different on every VRRP group member","All VRRP group members forward traffic simultaneously for the virtual IP"],
 a:[0],
 ex:"VRRP is advertisement-driven: the master owns the virtual IP/MAC and multicasts advertisements; when backups miss them, the highest-priority backup promotes itself and starts answering for the virtual gateway. There is no session synchronization and only the master forwards for the virtual IP at any moment — which is exactly why the study guide positions VRRP as interoperable gateway redundancy, and FGCP/FGSP as the options when session survival matters."},
 
@@ -375,7 +375,7 @@ ex:"The architecture lesson maps platform tiers to roles: the compact FortiGate 
 
 {d:"SC",type:"single",
 q:"LoFinance must insert a FortiGate for inspection into an acquired branch network within one weekend. Re-addressing servers or changing the default gateway of hosts is not permitted. Which deployment approach fits this constraint?",
-o:["Deploy the FortiGate (or a dedicated VDOM) in transparent mode so it inspects traffic at layer 2 without IP changes","Use a one-arm sniffer policy on a mirrored switch port","Deploy in NAT mode using the same subnet on both interfaces","Deploy in NAT mode and renumber only the server VLAN"],
+o:["Deploy in transparent mode, inspecting at layer 2 without IP changes","Use a one-arm sniffer policy on a mirrored switch port","Deploy in NAT mode using the same subnet on both interfaces","Deploy in NAT mode and renumber only the server VLAN"],
 a:[0],
 ex:"Transparent mode is the insert-without-re-IP answer: the FortiGate bridges traffic at layer 2, hosts keep their addressing and gateway, and full policy inspection still applies. NAT mode requires the FortiGate to be a routed hop, which means addressing or gateway changes. A one-arm sniffer sees a copy of traffic and can detect but not block inline, so it fails the 'inspection firewall' requirement."},
 
@@ -389,25 +389,25 @@ ex:"NPs (such as NP7) work at the interface level: they forward eligible session
 
 {d:"SC",type:"single",
 q:"Two FGSP data centres synchronize sessions across an untrusted WAN link. How can the session synchronization traffic itself be protected?",
-o:["Session sync traffic cannot be encrypted and requires a private line","Manually build a GRE tunnel and policy-route the sync traffic into it","Enable encryption with a pre-shared key under config system standalone-cluster; FortiGate automatically creates the IPsec tunnel and policies for the sync traffic","Enable HTTPS on the session-sync interface"],
+o:["Session sync traffic cannot be encrypted and requires a private line","Manually build a GRE tunnel and policy-route the sync traffic into it","Enable encryption and a psksecret under config system standalone-cluster","Enable HTTPS on the session-sync interface"],
 a:[2],
 ex:"FGSP has this built in: set encryption enable with a psksecret under config system standalone-cluster, and FortiGate automatically creates the IPsec VPN and the firewall policies needed to carry session synchronization inside the tunnel — no manual VPN plumbing. It exists precisely for the inter-data-centre case, where sync data (which describes live sessions) would otherwise cross intermediate networks in the clear."},
 
 {d:"SC",type:"multi",
 q:"Which two statements about FGCP heartbeat and session synchronization traffic are true? (Choose two.)",
-o:["Fortinet recommends configuring at least two heartbeat interfaces for redundancy","Heartbeat interfaces must have IP addresses manually assigned from the data subnets","Session synchronization can never be moved off the heartbeat link","FGCP heartbeat traffic uses its own Ethernet type rather than the IP protocol"],
+o:["Fortinet recommends configuring at least two heartbeat interfaces for redundancy","Heartbeat interfaces must have IP addresses manually assigned from the data subnets","Session synchronization can never be moved off the heartbeat link","FGCP heartbeat traffic uses its own Ethernet type"],
 a:[0,3],
 ex:"FGCP communicates over designated heartbeat links using a distinct Ethernet type — it is not routable IP traffic, so heartbeat interfaces need no manually assigned data-subnet addresses. Best practice is at least two heartbeat interfaces so a single link failure cannot split the cluster. Session synchronization uses the heartbeat link by default but can and should be moved to dedicated sync interfaces on busy clusters, since sync traffic is bandwidth-hungry."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Packet capture</span>FGT # diagnose sniff packet any \"ether proto 0x8890\" 4</div>What traffic is this administrator capturing?",
-o:["Configuration synchronization frames","Gratuitous ARP broadcasts after a failover","LACP negotiation packets","FGCP HA heartbeat packets on a NAT/route mode cluster"],
+o:["Configuration synchronization frames","Gratuitous ARP broadcasts sent by the new primary after a failover","LACP negotiation packets","FGCP HA heartbeat packets on a NAT/route mode cluster"],
 a:[3],
 ex:"FGCP heartbeats are not IP packets — they use their own Ethernet types (0x8890 and 0x8891), so capturing them requires an Ethernet-protocol filter exactly like the exhibit shows for a NAT/route mode cluster. Configuration synchronization travels separately as Ethernet type 0x8893. This capture is the standard verification when heartbeats are suspected of being blocked or lost by intermediate switching."},
 
 {d:"SC",type:"single",
 q:"According to the hardware acceleration best practices, which two-part strategy keeps FortiGate performance high while security inspection is enabled?",
-o:["Disable all inspection on high-volume policies","Offload high-volume firewall traffic to network processors, and use content processors to carry resource-intensive work such as SSL content scanning","Reserve the NP exclusively for management traffic","Move all inspection to proxy mode for accuracy"],
+o:["Disable all inspection on high-volume policies","Offload volume traffic to NPs; use CPs for SSL content scanning","Reserve the network processors exclusively for management-plane traffic","Move all inspection to proxy mode for accuracy"],
 a:[1],
 ex:"The best-practices slide splits the load along processor strengths: NPs absorb the high-volume forwarding work — offloading established firewall sessions from the CPU — while CPs shoulder the resource-intensive content tasks, SSL scanning above all. Combined with scoping deep inspection to where it is needed, this is how a FortiGate sustains both throughput and inspection. Disabling inspection is capitulation, not optimization, and proxy mode raises CPU cost rather than lowering it."},
 
@@ -415,13 +415,13 @@ ex:"The best-practices slide splits the load along processor strengths: NPs abso
 
 {d:"SC",type:"single",
 q:"An administrator enables split-task VDOM mode on a FortiGate. Which statement describes the resulting VDOM structure?",
-o:["A transparent-mode VDOM and a NAT-mode VDOM are created automatically for inline inspection","The administrator can create up to 10 custom VDOMs for different departments","Two VDOMs are created: the root VDOM handles management traffic only, and the FG-traffic VDOM handles network traffic and firewall policies","All interfaces are placed in the root VDOM and must be manually reassigned"],
+o:["A transparent-mode VDOM and a NAT-mode VDOM are created automatically for inline inspection","The administrator can create up to 10 custom VDOMs for different departments","Two fixed VDOMs are created: root for management and FG-traffic for firewall traffic","All interfaces are placed in the root VDOM and must be manually reassigned"],
 a:[2],
 ex:"Split-task VDOM mode creates exactly two fixed VDOMs: root, which is dedicated to management, and FG-traffic, which carries user traffic and firewall policies. Creating arbitrary numbers of custom VDOMs requires multi-VDOM mode. This is a favourite exam distinction because both modes are enabled with the same 'config system global' VDOM setting but behave very differently."},
 
 {d:"SC",type:"single",
 q:"LoFinance's compliance team must administer only the DMZ VDOM, with no visibility of other VDOMs or global settings. How is this achieved?",
-o:["Create a separate FortiGate for the compliance team","Create an administrator account restricted to the DMZ VDOM with a non-global administrator profile","Enable split-task VDOM mode","Give them the super_admin profile but ask them to only open the DMZ VDOM"],
+o:["Create a separate FortiGate for the compliance team","An administrator account scoped to the DMZ VDOM with a non-global profile","Enable split-task VDOM mode","Give them the super_admin profile but ask them to only open the DMZ VDOM"],
 a:[1],
 ex:"Per-VDOM administration is a core reason VDOMs exist: an administrator account is scoped to one or more VDOMs and paired with an admin profile defining permissions within that scope, so the compliance team sees and touches only the DMZ VDOM. super_admin is inherently global, making option D a policy-by-politeness anti-pattern. This administrative separation is what makes VDOMs suitable for multi-tenant and audited environments."}
 ];

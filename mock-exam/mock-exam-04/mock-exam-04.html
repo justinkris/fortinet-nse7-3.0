@@ -188,31 +188,31 @@ const DOMAINS = {
 const Q = [
 {d:"CM",type:"single",
 q:"On FortiManager, what does the <b>Retrieve</b> operation do for a managed FortiGate?",
-o:["It re-imports the policy package from the ADOM","It captures the FortiGate's current running configuration and saves it into the device database as a new revision","It pushes the latest device database revision to the FortiGate","It downloads the latest firmware image for the device model"],
+o:["It re-imports the policy package from the ADOM","It saves the current device configuration as a new revision","It pushes the latest device database revision to the FortiGate","It downloads the latest firmware image for the device model"],
 a:[1],
 ex:"Retrieve pulls configuration FROM the device INTO FortiManager, recording it as a new revision in that device's database — the tool for reconciling after local changes or capturing a baseline (Auto-Retrieve does it automatically). Its mirror image is installation, which pushes FROM FortiManager TO the device. Every FortiManager status question becomes easy once you track which direction the configuration is flowing."},
 
 {d:"SP",type:"multi",
 q:"Which two statements accurately compare proxy-based and flow-based inspection on FortiGate? (Choose two.)",
-o:["Flow-based inspection supports every feature that proxy-based inspection supports","Proxy-based inspection collects more data points and supports features such as web category usage quotas and web-profile overrides","Flow-based inspection generally offers better performance because traffic is examined as it passes, without full buffering","Proxy-based sessions can be offloaded to NPs using NTurbo"],
+o:["Flow-based inspection supports every feature that proxy-based inspection supports","Proxy-based inspection collects more data points and supports features such as web category usage quotas and web-profile overrides","Flow-based inspection generally offers better performance","Proxy-based sessions can be offloaded to NPs using NTurbo"],
 a:[1,2],
 ex:"The trade-off is thoroughness versus speed: the proxy buffers and fully reconstructs content, enabling richer features — category usage quotas and web-profile override among them — while flow-based inspection scans in transit via the IPS engine for higher throughput, with NTurbo acceleration available. The feature sets are not equal (several proxy features have no flow equivalent), and proxy sessions can never be hardware-offloaded, which is why inspection mode is also a capacity decision."},
 
 {d:"SC",type:"single",
 q:"In an FGCP active-active cluster, how is traffic initially handled when it arrives from the network?",
-o:["The secondary unit receives all traffic and offloads inspection to the primary","The primary unit receives the traffic first and decides whether to process it or redistribute it to a secondary member","Traffic is hashed by the switches directly to either member","Each member advertises separate virtual MACs so hosts pick a member at random"],
+o:["The secondary unit receives all traffic and offloads inspection to the primary","The primary receives traffic first and redistributes selected sessions","Traffic is hashed by the switches directly to either member","Each member advertises separate virtual MACs so hosts pick a member at random"],
 a:[1],
 ex:"Active-active does not mean the network load-balances to both units — the primary owns the virtual MAC addresses, receives all traffic first, and then decides which sessions to keep and which to redistribute to secondary members for inspection. Understanding that the primary is still the single traffic entry point explains why A-A does not simply double throughput, a common misconception the exam likes to probe."},
 
 {d:"SP",type:"single",
 q:"An IPS sensor blocks a signature that keeps falsely triggering on traffic from one internal monitoring server, but the signature must remain active for the rest of the network. What should the administrator configure?",
-o:["An IP exemption on that signature entry for the monitoring server's address","Set the entire signature's action to Monitor","Lower the sensor's overall severity threshold","Remove the IPS sensor from the firewall policy"],
+o:["An IP exemption on that signature for the monitoring server","Set the entire signature's action to Monitor across the sensor","Lower the sensor's overall severity threshold","Remove the IPS sensor from the firewall policy"],
 a:[0],
 ex:"IPS signature entries support IP exemptions precisely for this: the exempted source (or source/destination pair) bypasses that one signature while every other host remains protected. Setting the action to Monitor or removing the sensor sacrifices protection network-wide to fix a single false positive — the disproportionate responses that exam distractors love. Targeted exemption is the least-privilege fix."},
 
 {d:"VPN",type:"single",
 q:"In classic ADVPN, the hub detects spoke-to-spoke traffic and sends a shortcut offer to Spoke 1. What happens next in the shortcut message exchange?",
-o:["Spoke 2 immediately initiates an IKE session to Spoke 1's protected subnet address","Spoke 1 acknowledges the offer and sends a shortcut query, which is forwarded toward Spoke 2 so the peers can exchange the information needed to build the direct tunnel","Spoke 1 sends a gratuitous ARP announcing its tunnel IP","The hub builds the tunnel on behalf of both spokes and hands over the SAs"],
+o:["Spoke 2 immediately initiates an IKE session to Spoke 1's protected subnet address","Spoke 1 acknowledges the offer and sends a shortcut query","Spoke 1 sends a gratuitous ARP announcing its tunnel IP","The hub builds the tunnel on behalf of both spokes and hands over the SAs"],
 a:[1],
 ex:"The sequence is: hub sends a shortcut offer to the initiating spoke; the spoke acknowledges and issues a shortcut query; the query travels via the hub to the other spoke, and the reply gives the initiator what it needs (including public addressing) to bring up the direct IKE/IPsec shortcut. The hub brokers the introduction but never builds or owns the spoke-to-spoke SAs — after convergence, traffic bypasses it entirely."},
 
@@ -224,7 +224,7 @@ ex:"Session pickup is disabled by default because synchronization consumes clust
 
 {d:"SC",type:"single",
 q:"An FGCP cluster uses default settings (override disabled). The long-time primary unit reboots after a power fault and rejoins the cluster with a higher priority than the current primary. What happens?",
-o:["It remains secondary, because with override disabled the cluster compares HA uptime before priority, and the rebooted unit's uptime is lower","It immediately reclaims the primary role because priority is evaluated first","It forms a separate cluster until an administrator intervenes","It reclaims the primary role only if its serial number is higher"],
+o:["It remains secondary — uptime is compared before priority","It immediately reclaims the primary role","It forms a separate cluster until an administrator intervenes","It reclaims the primary role only if its serial number is higher"],
 a:[0],
 ex:"With override disabled the election order is: connected monitored ports → HA uptime → priority → serial number. The rebooted unit's HA uptime restarted from zero, so it loses at the uptime step and priority is never consulted — deliberate behaviour that prevents a flapping device from repeatedly seizing the primary role and causing extra failovers. Enabling override moves priority ahead of uptime for designs where a preferred unit must always lead."},
 
@@ -254,19 +254,19 @@ ex:"The AS relationship defines the type: different AS = EBGP, same AS = IBGP. B
 
 {d:"VPN",type:"single",
 q:"LoFinance runs ADVPN with IBGP between the hub and 30 spokes. Spokes must learn each other's routes through the hub without configuring BGP sessions between every pair of spokes. Which configuration on the hub achieves this?",
-o:["Enable ebgp-multihop on all spoke sessions","Lower the BGP keepalive timers on the hub","Redistribute connected routes into BGP on every spoke","Configure the spoke neighbor-group as a route-reflector client on the hub"],
+o:["Enable ebgp-multihop on all spoke sessions","Lower the BGP keepalive timers on the hub","Redistribute connected routes into BGP on every spoke and the hub","Make the spoke neighbor-group a route-reflector client on the hub"],
 a:[3],
 ex:"IBGP does not re-advertise routes between IBGP peers, so without help the spokes would never learn each other's prefixes through the hub. Making the hub a route reflector — applied to the spoke neighbor-group in the study guide's design — lets it reflect spoke routes to other spokes, avoiding a full mesh of 435 sessions. ebgp-multihop is irrelevant here because all sessions are IBGP within one AS."},
 
 {d:"CM",type:"single",
 q:"LoFinance manages 40 branch FortiGates of mixed models from a single policy package. Most branches use identical port naming, but two branches use a different WAN port. How should normalized interfaces be configured?",
-o:["A separate policy package for each hardware model","Per-platform mapping for the standard branches, with per-device mapping overrides for the two exceptions","Per-device mapping for every branch to guarantee consistency","Rename the physical ports on the two exception FortiGates via CLI script"],
+o:["A separate policy package for each hardware model","Per-platform mapping, with per-device overrides for the two exceptions","Per-device mapping for every branch to guarantee consistency","Rename the physical ports on the two exception FortiGates via CLI script"],
 a:[1],
 ex:"Normalized interfaces support exactly this dual-layer approach: per-platform mappings apply uniform settings across similar models, and per-device mappings override for individual needs. Creating 40 per-device mappings or model-specific packages defeats the purpose of central management, and renaming physical ports on FortiGate is not how the FortiManager abstraction is designed to work."},
 
 {d:"SP",type:"single",
 q:"The FortiGuard category 'Information Technology' is blocked for standard users, but the service desk needs access to one specific vendor support site in that category. What is the cleanest solution?",
-o:["Disable FortiGuard web filtering for the service desk subnet","Add the site's IP address to a VIP object","Create a web rating override that assigns the site to an allowed local category","Move the entire Information Technology category to Allow"],
+o:["Disable FortiGuard web filtering for the service desk subnet","Add the site's IP address to a VIP object","A web rating override assigning the site to an allowed local category","Move the entire Information Technology category to Allow"],
 a:[2],
 ex:"Web rating overrides re-categorize a specific URL — typically into a custom local category that the profile allows — so the single site opens while the rest of the category stays blocked. Allowing the whole category or disabling filtering for a subnet massively over-grants relative to the requirement, which is the pattern to reject in least-privilege scenario questions. A VIP is a destination-NAT object and has nothing to do with web filtering."},
 
@@ -284,13 +284,13 @@ ex:"FortiGate supports three DPD modes with distinct fits: on-demand probes in r
 
 {d:"SC",type:"multi",
 q:"Which two statements about NP hardware offloading of a firewall session are true? (Choose two.)",
-o:["Offloading requires disabling NAT on the policy","The first packets of a session are processed in the software path, which then programs the NP to offload the remaining traffic","Every packet of an offloaded session, including the first, bypasses the CPU","auto-asic-offload is enabled by default in firewall policies and must remain enabled for sessions to be offloaded"],
+o:["Offloading requires disabling NAT on the policy","The first packets of a session are processed in the software path","Every packet of an offloaded session, including the first, bypasses the CPU","auto-asic-offload is enabled by default in firewall policies and must remain enabled for sessions to be offloaded"],
 a:[1,3],
 ex:"Offload is set up, not instantaneous: initial packets traverse the normal path (NP ingress checks, kernel session creation, policy lookup), and only then is the established session pushed down to the NP so subsequent packets bypass the CPU. Per-policy this is governed by auto-asic-offload, which defaults to enabled — disabling it produces the no_ofld_reason: disabled-by-policy marker in the session list. NAT is fully compatible with offload."},
 
 {d:"SC",type:"single",
 q:"LoFinance's compliance team must administer only the DMZ VDOM, with no visibility of other VDOMs or global settings. How is this achieved?",
-o:["Give them the super_admin profile but ask them to only open the DMZ VDOM","Enable split-task VDOM mode","Create an administrator account restricted to the DMZ VDOM with a non-global administrator profile","Create a separate FortiGate for the compliance team"],
+o:["Give them the super_admin profile but ask them to only open the DMZ VDOM","Enable split-task VDOM mode","An administrator account scoped to the DMZ VDOM with a non-global profile","Create a separate FortiGate for the compliance team"],
 a:[2],
 ex:"Per-VDOM administration is a core reason VDOMs exist: an administrator account is scoped to one or more VDOMs and paired with an admin profile defining permissions within that scope, so the compliance team sees and touches only the DMZ VDOM. super_admin is inherently global, making option A a policy-by-politeness anti-pattern. This administrative separation is what makes VDOMs suitable for multi-tenant and audited environments."},
 
@@ -298,7 +298,7 @@ ex:"Per-VDOM administration is a core reason VDOMs exist: an administrator accou
 
 {d:"SC",type:"single",
 q:"An FGCP active-passive cluster is configured with <code>set monitor \"port1\" \"port3\"</code>. What happens when port3 fails on the current primary unit while the secondary's interfaces are all healthy?",
-o:["The primary disables port1 as well and waits for an administrator","Nothing — monitored interfaces only generate log messages","The cluster splits into two standalone units","The cluster triggers a new primary election, and the secondary takes over because it has more connected monitored ports"],
+o:["The primary disables port1 as well and waits for an administrator","Nothing — monitored interfaces only generate log messages","The cluster splits into two standalone units","The cluster triggers a new primary election, and the secondary takes over"],
 a:[3],
 ex:"Interface monitoring is the link-failover mechanism: connected monitored ports is the FIRST election criterion regardless of the override setting, so a monitored-port failure on the primary immediately hands the role to the healthier member. That is also why you should only monitor important interfaces and only after the cluster is stable — monitoring a deliberately unused port would cause failovers for no operational reason."},
 
@@ -310,13 +310,13 @@ ex:"FGCP members must match on model, firmware, hard drive configuration, and op
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — RR configuration</span>config router bgp\n    config neighbor\n        edit \"100.64.1.254\"\n            set next-hop-self enable\n            set route-reflector-client enable\n        next\n    end\nend</div>The route reflector learns routes from an EBGP peer and reflects them to this IBGP client. What problem does <code>set next-hop-self enable</code> solve?",
-o:["It forces the client to send all traffic through the route reflector for inspection","Without it, reflected routes keep the external peer's address as next hop, which the client may not be able to resolve, leaving the routes unusable","It converts the session from IBGP to EBGP","It hides the client's address from the external AS"],
+o:["It forces the client to send all traffic through the route reflector for inspection","Without it, reflected routes keep the external peer's address as next hop","It converts the session from IBGP to EBGP","It hides the client's address from the external AS"],
 a:[1],
 ex:"BGP does not change the next hop when advertising into IBGP, so EBGP-learned routes arrive at internal clients still pointing at the external neighbour's address — unknown to the client's routing table, making the routes valid but unresolvable. next-hop-self rewrites the next hop to the advertising router's own address, which the IGP can reach. It changes route resolution only; actual traffic follows the routed path, and the session type is untouched."},
 
 {d:"SC",type:"multi",
 q:"A financial data centre routes traffic asymmetrically through two standalone FortiGate devices that are NOT members of an FGCP cluster. The design must ensure that firewall sessions survive if either unit fails. Which two statements about FGSP are true? (Choose two.)",
-o:["FGSP synchronizes sessions between standalone FortiGate devices so that asymmetric or failover traffic is not dropped","FGSP automatically synchronizes the full configuration of all peers by default","FGSP elects a primary unit that owns a virtual MAC address on each interface","FGSP relies on external routers or load balancers to distribute and redirect traffic between the peers"],
+o:["FGSP synchronizes sessions between standalone FortiGate devices","FGSP automatically synchronizes the full configuration of all peers by default","FGSP elects a primary unit that owns a virtual MAC address on each interface","FGSP relies on external routers or load balancers to distribute and redirect traffic between the peers"],
 a:[0,3],
 ex:"FGSP is a peer-to-peer protocol that synchronizes session tables between standalone FortiGates, which is exactly what asymmetric data-centre designs need. FGSP performs no primary election and does not manage traffic distribution — upstream/downstream routers or load balancers handle that. Virtual MAC ownership and automatic full-config sync are FGCP behaviours (FGSP has only an optional standalone-config-sync feature, disabled by default)."},
 
@@ -328,7 +328,7 @@ ex:"ADVPN 2.0's headline changes are edge discovery — spokes obtain and refres
 
 {d:"SC",type:"single",
 q:"LoFinance's SOC subscribes to a third-party intelligence service that publishes a frequently changing list of malicious IP addresses. The firewall must block these destinations automatically as the list changes. Which Security Fabric feature should be used?",
-o:["A static address group updated by change request","A Threat Feeds external connector that periodically pulls the list and exposes it as a dynamic object for policies","An automation stitch that emails the SOC when the list changes","A web rating override for each listed IP"],
+o:["A static address group updated by change request","A Threat Feeds connector exposing the list as a dynamic object","An automation stitch that emails the SOC when the list changes","A web rating override for each listed IP"],
 a:[1],
 ex:"Threat Feeds are external connectors that fetch externally hosted block lists on a schedule and present them as dynamic objects usable in firewall policies and security profiles — the firewall tracks the list, not the administrators. A static group reintroduces the manual work the requirement forbids, and an automation stitch alerts humans rather than enforcing anything. Distinguish this from SDN connectors, which track your own cloud workloads rather than third-party intelligence."},
 
@@ -352,25 +352,25 @@ ex:"CPs are application-focused: they accelerate resource-intensive content work
 
 {d:"RT",type:"single",
 q:"A FortiGate has 60 static routes but only 12 of them, tagged for the WAN, should be redistributed into OSPF. What is the correct approach?",
-o:["Advertise the 12 prefixes using network statements in area 0","Enable redistribution of static routes with a route map that matches and permits only the 12 desired routes","Convert the 12 routes to connected routes","Redistribute all static routes; OSPF automatically filters irrelevant ones"],
+o:["Advertise the 12 prefixes using network statements in area 0","Redistribute static routes with a route map permitting only the 12","Convert the 12 routes to connected routes","Redistribute all static routes; OSPF automatically filters irrelevant ones"],
 a:[1],
 ex:"Redistribution on FortiGate is controlled per source protocol, and attaching a route map gives selective control — match the intended prefixes (via prefix list or access list) and permit only those, with everything else implicitly denied. Redistributing everything floods the domain with unnecessary external LSAs, and network statements advertise interfaces the router owns, which is not what redistributed statics are. 'Redistribute + route map' is the standard filtering idiom."},
 
 {d:"SC",type:"single",
 q:"An administrator adds interfaces port4, port5, and port6 to a zone named 'Internal' and enables intra-zone traffic blocking. Which statement is true?",
-o:["The interfaces keep appearing in policies individually alongside the zone","Firewall policies can now reference the zone, but the member interfaces can no longer be selected individually in policies","Zones can only contain VLAN sub-interfaces","Traffic between port4 and port5 is allowed automatically because they share the zone"],
+o:["The interfaces keep appearing in policies individually alongside the zone","Policies reference the zone; members can no longer be selected individually","Zones can only contain VLAN sub-interfaces","Traffic between port4 and port5 is allowed automatically"],
 a:[1],
 ex:"Zones simplify policy design by grouping interfaces into one logical object — but once an interface is a zone member, policies must reference the zone, not the individual port. With intra-zone blocking enabled, traffic between members (port4 to port5) also requires an explicit policy. Zones reduce policy count dramatically in multi-interface enterprises, which is why they appear throughout the course topologies."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Session diagnostics</span>FGT # diagnose sys session list\n...\nnpu_state=0x000001 no_offload\nno_ofld_reason: disabled-by-policy\n...</div>Traffic matching firewall policy 7 is not being hardware accelerated. Based on the exhibit, what is the cause?",
-o:["<code>auto-asic-offload</code> has been disabled in the matching firewall policy","The NP7 session table is full","The session is inspected by a proxy-based profile","The ingress and egress interfaces are on different NPs"],
+o:["<code>auto-asic-offload</code> is disabled in the matching policy","The NP7 session table is full","The session is being inspected by a proxy-based security profile","The ingress and egress interfaces are on different NPs"],
 a:[0],
 ex:"The session list tells you directly: no_ofld_reason: disabled-by-policy corresponds to set auto-asic-offload disable in the firewall policy. Offloaded sessions instead show an npu info line with offload flags. Reading the no_ofld_reason field is the fastest way to root-cause acceleration problems, and distinguishing 'disabled-by-policy' from other reasons (such as proxy inspection) is exactly the kind of output interpretation the exam presents."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Session diagnostics</span>FortiGate-901G # diagnose sys session list\n...\nnpu info: flag=0x81/0x91, offload=9/9, ips_offload=0/0,\n epid=128/166, ipid=166/128, vlan=0x0000/0x0000\n...</div>What does <code>offload=9/9</code> indicate about this session?",
-o:["Only 9 percent of the session's packets are accelerated","The session is queued for offload but not yet accelerated","The session is offloaded in both traffic directions, and code 9 identifies the NP7 processor","The session has been dropped 9 times in each direction"],
+o:["Only 9 percent of the session's packets are accelerated","The session is queued for offload but not yet accelerated","Offloaded in both directions; code 9 identifies the NP7","The session has been dropped 9 times in each direction"],
 a:[2],
 ex:"The offload field shows the offload state per direction (origin/reply), and the code identifies the processor type — 9 represents NP7, so 9/9 means both directions are fully accelerated by the NP7. Compare this healthy output with a non-offloaded session, which instead shows npu_state with no_offload and a no_ofld_reason. Reading npu info at a glance is the practical skill behind most hardware-acceleration exhibits."},
 
@@ -402,7 +402,7 @@ ex:"Despite its optimistic name, Active means BGP is still trying (and failing) 
 
 {d:"SC",type:"single",
 q:"An administrator creates a VDOM with <code>set vdom-type admin</code>. What is the characteristic of this VDOM type?",
-o:["It automatically operates in transparent mode","It can only be managed from the CLI","It is used for administrative purposes and does not carry firewall traffic","It is reserved for FortiManager's FGFM tunnel"],
+o:["It automatically operates in transparent mode","It can only be managed from the CLI","Administrative use only — it carries no firewall traffic","It is reserved exclusively for terminating FortiManager's FGFM tunnel"],
 a:[2],
 ex:"FortiOS distinguishes admin VDOMs from traffic VDOMs: an admin VDOM exists for management and administrative separation and does not process user traffic, while traffic VDOMs carry data and can each run in NAT or transparent operation mode (transparent traffic VDOMs get a manageip). Knowing that operation mode is now a per-traffic-VDOM property is one of the small 7.x details the exam checks."},
 
@@ -420,7 +420,7 @@ ex:"FGFM — the FortiGate-to-FortiManager protocol — maintains the persistent
 
 {d:"VPN",type:"single",
 q:"On a route-based IPsec VPN between two FortiGates, phase 2 selectors are left at their default of 0.0.0.0/0 for both source and destination. How is traffic steered into the tunnel?",
-o:["Traffic cannot flow until specific selectors are configured","The firewall policy's NAT setting selects the traffic","All traffic on the FortiGate is forced into the tunnel","By the routing table — routes pointing at the virtual tunnel interface decide which traffic is encrypted"],
+o:["Traffic cannot flow until specific selectors are configured","The firewall policy's NAT setting selects the traffic","All traffic on the FortiGate is forced into the tunnel","By the routing table — routes pointing at the tunnel interface"],
 a:[3],
 ex:"Route-based VPN separates concerns: wide-open 0.0.0.0/0 selectors let the SA carry anything, and the routing table (static routes or a dynamic protocol over the tunnel interface) decides what actually enters — with firewall policies on the tunnel interface still controlling permission. This is what makes route-based VPNs composable with OSPF, BGP, ADVPN, and SD-WAN, whereas narrow selectors are chiefly needed for interoperability with policy-based third-party peers."},
 
@@ -432,7 +432,7 @@ ex:"NPs (such as NP7) work at the interface level: they forward eligible session
 
 {d:"CM",type:"single",
 q:"LoFinance's branch FortiGates are not permitted direct Internet access to Fortinet's update servers. How can FortiManager solve this?",
-o:["FortiManager can act as a local FortiGuard distribution server, serving updates and rating queries to managed devices","Branches must use an HTTP proxy; FortiManager has no FortiGuard role","FortiManager can disable FortiGuard services on all managed devices","FortiManager tunnels each FortiGate's queries individually over FGFM in real time only"],
+o:["FortiManager can act as a local FortiGuard distribution server","Branches must use an HTTP proxy; FortiManager has no FortiGuard role","FortiManager can disable FortiGuard services on all managed devices","FortiManager tunnels each FortiGate's queries individually over FGFM in real time only"],
 a:[0],
 ex:"FortiManager includes a built-in FortiGuard Distribution Server: it downloads packages and databases from Fortinet once, then serves antivirus/IPS updates and web-filter rating queries locally to managed devices. This is the standard design for closed or bandwidth-constrained networks and is exactly the pattern the Central Management lesson highlights."},
 
@@ -440,7 +440,7 @@ ex:"FortiManager includes a built-in FortiGuard Distribution Server: it download
 
 {d:"VPN",type:"single",
 q:"An IPsec tunnel to a partner fails during negotiation. The administrator needs to watch the IKE negotiation in real time on the CLI to see which payload or proposal is being rejected. Which command set is appropriate?",
-o:["diagnose sys session list","get router info routing-table all","execute ping-options repeat 100","diagnose debug application ike -1 combined with diagnose debug enable"],
+o:["diagnose sys session list","get router info routing-table all","execute ping-options repeat 100","diagnose debug application ike -1"],
 a:[3],
 ex:"IKE negotiation problems are diagnosed at the IKE daemon: diagnose debug application ike -1 (with debug enabled, and ideally a filter on the peer's address) streams the live exchange, showing proposal mismatches, failed authentication, selector disagreements, and NAT-T decisions. The other commands examine routing, established sessions, or reachability — useful context, but none of them can show why phase 1 or phase 2 is being rejected."},
 
@@ -452,7 +452,7 @@ ex:"EBGP assumes the peer is directly connected. When peering between loopbacks,
 
 {d:"CM",type:"single",
 q:"Which statement correctly describes the relationship between the device layer and the policy layer on FortiManager?",
-o:["Policies must be configured in each device's database; the policy layer is only a reporting view","The device layer stores policies and the policy layer stores objects","Device-level settings such as interfaces, routing, and VPN belong to the device layer, while firewall policies are managed in policy packages in the policy layer","Both layers are identical copies kept for redundancy"],
+o:["Policies must be configured in each device's database; the policy layer is only a reporting view","The device layer stores policies and the policy layer stores objects","Device settings live in the device layer; policies in policy packages","Both layers are identical copies kept for redundancy"],
 a:[2],
 ex:"FortiManager splits management into a device layer — a per-FortiGate device database (with its own revision history) holding network, VPN, system, and log settings — and a policy layer holding policy packages and shared objects. Configuring policies in the device layer is possible but explicitly not recommended; keeping the split clean is what makes central management scale. Most FortiManager exam scenarios hinge on knowing which layer a change lives in."},
 
@@ -464,7 +464,7 @@ ex:"Timers, area, and authentication mismatches all prevent the neighbour from e
 
 {d:"SP",type:"single",
 q:"In an SSL/SSH inspection profile performing full inspection, how does FortiGate handle problematic server certificates, such as expired or untrusted ones?",
-o:["The administrator can configure a separate action (such as allow, block, or ignore) for each certificate condition, including expired, revoked, and untrusted","FortiGate silently replaces problematic certificates with valid ones so users never see errors","All problematic certificates are always blocked and this cannot be changed","Problematic certificates automatically bypass inspection"],
+o:["Separate configurable actions per condition: expired, revoked, and untrusted","FortiGate silently replaces problematic certificates with valid ones so users never see errors","All problematic certificates are always blocked and this cannot be changed","Problematic certificates automatically bypass inspection"],
 a:[0],
 ex:"The profile exposes per-condition handling: expired, revoked, untrusted/unknown-CA (and related) certificate states each carry their own configurable action. This lets a security team block untrusted issuers while, say, permitting an internal legacy server with an expired certificate during remediation. Understanding that FortiGate validates the real server certificate before re-signing — and acts on the validation result — is the concept behind this question."},
 
@@ -472,7 +472,7 @@ ex:"The profile exposes per-condition handling: expired, revoked, untrusted/unkn
 
 {d:"CM",type:"single",
 q:"LoFinance's security team must enforce a small set of mandatory firewall rules (such as blocking known-bad destinations) at the top of every policy package across all ADOMs. Which FortiManager feature is designed for this?",
-o:["Global ADOM header and footer policies assigned to the individual ADOMs","ADOM revisions locked by the security team","A CLI template repeated in every ADOM","Per-device mapping on normalized interfaces"],
+o:["Global ADOM header and footer policies","ADOM revisions locked by the security team","A CLI template repeated in every ADOM","Per-device mapping on normalized interfaces"],
 a:[0],
 ex:"The Global ADOM sits above the regular ADOMs and lets you define global objects and header/footer policies: header rules are inserted above, and footer rules below, each local policy package when assigned to ADOMs. This guarantees corporate-mandated rules are enforced everywhere while local teams keep autonomy over their own packages — precisely the multi-ADOM governance model the Central Management lesson describes."},
 
@@ -480,25 +480,25 @@ ex:"The Global ADOM sits above the regular ADOMs and lets you define global obje
 
 {d:"CM",type:"single",
 q:"Why does the study guide recommend administrators learn which object types are eligible for per-device mapping before importing devices into FortiManager?",
-o:["Per-device mapping objects consume additional licenses","Objects without per-device mapping cannot be used in any policy package","Importing objects that the policy layer cannot map per-device causes conflicts and duplicate objects in the ADOM","Per-device mapping is required for all interface objects"],
+o:["Per-device mapping objects consume additional licenses","Objects without per-device mapping cannot be used in any policy package","Unsupported objects cause conflicts and duplicates in the ADOM","Per-device mapping is required for all interface objects"],
 a:[2],
 ex:"Some object types (many profile and server objects, for example) do not support per-device mapping. If several devices are imported each carrying its own local value of such an object, FortiManager cannot represent the differences as mappings — it must either force a single value or create duplicates, producing conflicts. Knowing the eligible list ahead of time lets you normalize objects before import instead of untangling duplicates afterwards."},
 
 {d:"SP",type:"single",
 q:"A policy must allow employees to browse Facebook but block Facebook Chat. Application control signatures exist for both 'Facebook' (parent) and 'Facebook_Chat' (child). Which configuration achieves the goal?",
-o:["In the application control profile, set the Facebook parent signature to Allow/Monitor and the Facebook_Chat child signature to Block, with SSL deep inspection enabled on the policy","Block the Facebook parent signature; child functions are then evaluated individually","Use a static URL filter for chat.facebook.com with certificate inspection","Set the application category Social.Media to Block and add Facebook to the URL exemption list"],
+o:["Allow the Facebook parent signature and block the Facebook_Chat child, with deep inspection","Block the Facebook parent signature; child functions are then evaluated individually","Use a static URL filter for chat.facebook.com with certificate inspection","Set the application category Social.Media to Block and add Facebook to the URL exemption list"],
 a:[0],
 ex:"Granular in-app control uses the parent/child signature hierarchy: allow (or monitor) the parent so the platform loads, and block the specific child function. Blocking the parent would kill everything, including the allowed browsing. Deep inspection is required because the chat function is distinguished inside the encrypted payload — certificate inspection's SNI visibility can identify 'Facebook' but not which feature is being used within it."},
 
 {d:"SP",type:"single",
 q:"A firewall policy uses an SSL/SSH inspection profile set to <b>certificate-inspection</b>. Which security function can still be performed on HTTPS traffic?",
-o:["DLP inspection of uploaded documents","Antivirus scanning of downloaded files","IPS detection of exploits inside the encrypted payload","FortiGuard category-based web filtering using the SNI and server certificate"],
+o:["DLP inspection of uploaded documents","Antivirus scanning of downloaded files","IPS detection of exploits inside the encrypted payload","FortiGuard category-based web filtering"],
 a:[3],
 ex:"Certificate inspection reads the unencrypted parts of the TLS handshake — SNI parsing, server certificate validation, and URL extraction from the SNI/certificate — which is enough for category-based web filtering and application control. It never decrypts the payload, so antivirus, DLP, and payload-level IPS all require full (deep) inspection. Trading visibility for CPU/RAM savings is the core design decision in this profile."},
 
 {d:"SP",type:"single",
 q:"In a deep-inspection SSL profile, why do categories such as Finance and Banking or Health and Wellness appear in the exemption list by default?",
-o:["Decrypting them exceeds FortiGate hardware capability","They are exempted for privacy and regulatory reasons, so their traffic is not decrypted","FortiGuard cannot categorize encrypted financial traffic","Those sites use certificate pinning that FortiGate cannot process at all"],
+o:["Decrypting them exceeds FortiGate hardware capability","They are exempted for privacy and regulatory reasons","FortiGuard cannot categorize encrypted financial traffic","Those sites use certificate pinning that FortiGate cannot process at all"],
 a:[1],
 ex:"Fortinet ships privacy-sensitive categories pre-exempted so that personal banking and health sessions are not decrypted — a regulatory and privacy consideration, not a technical limitation. (Certificate pinning is a genuine operational reason to exempt specific applications, but it is not why these categories are exempt by default.) Expect scenario questions about deciding what to exempt and why."},
 
@@ -506,13 +506,13 @@ ex:"Fortinet ships privacy-sensitive categories pre-exempted so that personal ba
 
 {d:"CM",type:"single",
 q:"A single CLI template must configure a syslog server on 40 branch FortiGates, but each branch uses a different source IP for logging. How should this be implemented on FortiManager?",
-o:["Use metadata variables in the CLI template, with a per-device value defined for each FortiGate","Create 40 separate CLI templates","Use a policy package installation target filter","Hard-code the most common IP and fix the exceptions manually on each device"],
+o:["Use metadata variables in the CLI template","Create 40 separate CLI templates","Use a policy package installation target filter","Hard-code the most common IP and fix the exceptions manually on each device"],
 a:[0],
 ex:"Metadata variables are exactly this mechanism: the template references a variable, and each managed device carries its own value, so one template scales to the whole estate while producing device-specific CLI. CLI templates also support Jinja syntax for conditional logic. Forty near-identical templates — or hand-edits after install — recreate the drift problem central management exists to eliminate."},
 
 {d:"SC",type:"single",
 q:"LoFinance must insert a FortiGate for inspection into an acquired branch network within one weekend. Re-addressing servers or changing the default gateway of hosts is not permitted. Which deployment approach fits this constraint?",
-o:["Deploy in NAT mode and renumber only the server VLAN","Deploy in NAT mode using the same subnet on both interfaces","Use a one-arm sniffer policy on a mirrored switch port","Deploy the FortiGate (or a dedicated VDOM) in transparent mode so it inspects traffic at layer 2 without IP changes"],
+o:["Deploy in NAT mode and renumber only the server VLAN","Deploy in NAT mode using the same subnet on both interfaces","Use a one-arm sniffer policy on a mirrored switch port","Deploy in transparent mode, inspecting at layer 2 without IP changes"],
 a:[3],
 ex:"Transparent mode is the insert-without-re-IP answer: the FortiGate bridges traffic at layer 2, hosts keep their addressing and gateway, and full policy inspection still applies. NAT mode requires the FortiGate to be a routed hop, which means addressing or gateway changes. A one-arm sniffer sees a copy of traffic and can detect but not block inline, so it fails the 'inspection firewall' requirement."},
 
@@ -520,13 +520,13 @@ ex:"Transparent mode is the insert-without-re-IP answer: the FortiGate bridges t
 
 {d:"SC",type:"single",
 q:"An administrator enables split-task VDOM mode on a FortiGate. Which statement describes the resulting VDOM structure?",
-o:["All interfaces are placed in the root VDOM and must be manually reassigned","A transparent-mode VDOM and a NAT-mode VDOM are created automatically for inline inspection","The administrator can create up to 10 custom VDOMs for different departments","Two VDOMs are created: the root VDOM handles management traffic only, and the FG-traffic VDOM handles network traffic and firewall policies"],
+o:["All interfaces are placed in the root VDOM and must be manually reassigned","A transparent-mode VDOM and a NAT-mode VDOM are created automatically for inline inspection","The administrator can create up to 10 custom VDOMs for different departments","Two fixed VDOMs are created: root for management and FG-traffic for firewall traffic"],
 a:[3],
 ex:"Split-task VDOM mode creates exactly two fixed VDOMs: root, which is dedicated to management, and FG-traffic, which carries user traffic and firewall policies. Creating arbitrary numbers of custom VDOMs requires multi-VDOM mode. This is a favourite exam distinction because both modes are enabled with the same 'config system global' VDOM setting but behave very differently."},
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-EDGE</span>FGT-EDGE # get router info bgp summary\nBGP router identifier 172.20.1.1, local AS number 65100\nNeighbor      V   AS      MsgRcvd  MsgSent  Up/Down    State/PfxRcd\n203.0.113.9   4   65200   1841     1799     1d02h15m   12</div>How should the State/PfxRcd value of <b>12</b> be interpreted?",
-o:["The session has been down 12 times","12 prefixes were filtered out by inbound policy","The session is Established, and 12 prefixes have been received from this neighbour","The neighbour is stuck in state 12 of the BGP finite state machine"],
+o:["The session has been down 12 times","12 prefixes were filtered out by inbound policy","Established, with 12 prefixes received from this neighbour","The neighbour is stuck in state 12 of the BGP finite state machine"],
 a:[2],
 ex:"The State/PfxRcd column is dual-purpose: while a session is not established it shows the state name (Idle, Active, OpenSent...), and once Established it switches to showing the count of prefixes received. A number there is therefore itself the confirmation of health — combined with the 1d02h15m uptime, this peering is up and delivering 12 routes. Zero in that column with a long uptime tells a different story: established but empty, pointing at advertisement or policy issues."},
 
@@ -544,7 +544,7 @@ ex:"CREATE_CHILD_SA is IKEv2's maintenance workhorse: it establishes additional 
 
 {d:"RT",type:"single",
 q:"A FortiGate redistributes static routes into OSPF using the default settings. How do other routers see these routes, and how is their metric calculated?",
-o:["As Type 7 routes in every area of the network","As Type 1 external (E1) routes whose metric grows with internal path cost","As Type 2 external (E2) routes whose metric remains fixed at the redistributed value, regardless of internal path cost","As inter-area (IA) routes summarized by the nearest ABR"],
+o:["As Type 7 routes in every area of the network","As Type 1 external (E1) routes whose metric grows with internal path cost","As E2 routes whose metric stays fixed at the redistributed value","As inter-area (IA) routes summarized by the nearest ABR"],
 a:[2],
 ex:"OSPF redistribution defaults to external Type 2: the metric stays at the value set at redistribution and internal topology cost is ignored, so every router sees the same cost to the external destination. E1 is the opt-in alternative that adds internal cost, useful when multiple ASBRs advertise the same prefix and you want the closest exit to win. Type 7 only exists inside NSSAs."},
 
@@ -556,7 +556,7 @@ ex:"IKE_SA_INIT negotiates cryptographic algorithms and performs the Diffie-Hell
 
 {d:"SC",type:"single",
 q:"VDOM1 on a FortiGate has no Internet-facing interface, but the root VDOM does. Users behind VDOM1 must reach the Internet through the root VDOM. Which two configuration elements are required for this design to work?",
-o:["A static route in VDOM1 only; policies are not required on inter-VDOM links","An inter-VDOM link between VDOM1 and root, plus firewall policies in both VDOMs allowing the traffic","Enabling NAT on the inter-VDOM link interface object","A physical cable looped between one port of each VDOM — logical links are unsupported"],
+o:["A static route in VDOM1 only; policies are not required on inter-VDOM links","An inter-VDOM link, plus firewall policies in both VDOMs","Enabling NAT on the inter-VDOM link interface object","A physical cable looped between one port of each VDOM"],
 a:[1],
 ex:"This is the study guide's 'Internet access via inter-VDOM routing' use case. The inter-VDOM link provides the logical path, but each VDOM remains an independent firewall — so VDOM1 needs a policy (and a default route toward the link), and root needs a policy allowing the traffic out to the Internet. Traffic over inter-VDOM links is firewalled like any other traffic; forgetting the second VDOM's policy is the classic mistake."},
 
@@ -568,7 +568,7 @@ ex:"Install Preview generates the precise CLI diff that will be pushed to each d
 
 {d:"RT",type:"single",
 q:"OSPF between two data centres converges too slowly when a middle transit link fails, because the failure is only noticed when the dead timer expires. Which feature provides sub-second failure detection without aggressively shrinking OSPF timers?",
-o:["OSPF graceful restart","Bidirectional Forwarding Detection (BFD) associated with the OSPF neighbours","Enabling ECMP across both data-centre links","Type 3 LSA filtering on the ABR"],
+o:["OSPF graceful restart","BFD associated with the OSPF neighbours","Enabling ECMP across both data-centre links","Type 3 LSA filtering on the ABR"],
 a:[1],
 ex:"BFD runs a lightweight, high-frequency hello exchange between forwarding planes and signals the routing protocol the instant the path dies — sub-second detection without loading the OSPF process with aggressive hellos. Graceful restart is the opposite philosophy: it hides a control-plane restart to keep forwarding stable. Pairing 'fast failure detection' with BFD and 'survive a restart/failover' with graceful restart resolves both exam variants."},
 
@@ -582,37 +582,37 @@ ex:"diagnose sys ha checksum cluster is the standard tool for verifying configur
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-HUB</span>FGT-HUB # get router info ospf neighbor\nOSPF process 0, VRF 0:\nNeighbor ID   Pri  State      Dead Time  Address       Interface\n10.0.0.2      0    Full/ -    00:00:35   172.16.10.2   ToBranch1</div>What does the state <code>Full/ -</code> indicate about this neighbour relationship?",
-o:["The neighbour is stuck exchanging its link-state database","The neighbour is the DR and this FortiGate is the BDR","The adjacency failed and is being retried","A full adjacency has formed on a network type with no DR/BDR election, such as point-to-point"],
+o:["The neighbour is stuck exchanging its link-state database","The neighbour is the DR and this FortiGate is the BDR","The adjacency failed and is being retried","A full adjacency on a point-to-point-style network with no DR/BDR"],
 a:[3],
 ex:"Full means the link-state databases are fully synchronized — the adjacency is healthy. The dash after the slash shows there is no DR/BDR role, which happens on network types without an election, such as point-to-point (typical for OSPF over IPsec interfaces). On a broadcast segment the same column would read DR, BDR, or DROther. Reading both halves of this field is a frequent exhibit question."},
 
 {d:"SP",type:"single",
 q:"Which statement about application control on FortiOS 7.6 is true?",
-o:["Application control is performed by the IPS engine using flow-based scanning, even when the firewall policy operates in proxy mode","Application signatures are updated only with firmware upgrades","Application control cannot detect applications inside HTTPS without any SSL inspection profile","Application control requires proxy-based inspection to identify applications"],
+o:["The IPS engine performs it with flow-based scanning, even on proxy-mode policies","Application signatures are updated only with firmware upgrades","Application control cannot detect applications inside HTTPS without any SSL inspection profile","Application control requires proxy-based inspection to identify applications"],
 a:[0],
 ex:"Application control is implemented as signatures evaluated by the IPS engine and always scans flow-based — even on proxy-mode policies. Signatures are updated continuously through FortiGuard, independent of firmware. Many applications can be identified with just certificate inspection (via SNI), so 'cannot detect without any SSL inspection' overstates the dependency — full deep inspection is only needed to see inside the payload."},
 
 {d:"RT",type:"single",
 q:"Four OSPF routers share a broadcast network segment. R1 has priority 0, R2 has priority 1 and router ID 10.0.0.9, R3 has priority 1 and router ID 10.0.0.4, R4 has priority 255 but joined the segment last, after the others had already formed adjacencies. Which statement is true?",
-o:["R4 immediately preempts and becomes the DR because it has the highest priority","R3 becomes the DR because it has the lowest router ID","R2 remains the DR; OSPF DR election is non-preemptive, and R2 won on highest router ID at priority 1","R1 becomes the BDR because it has the lowest priority"],
+o:["R4 immediately preempts and becomes the DR","R3 becomes the DR because it has the lowest router ID","R2 remains the DR — the election is non-preemptive","R1 becomes the BDR because it has the lowest priority"],
 a:[2],
 ex:"Two rules decide this: highest priority wins, ties broken by highest router ID — and the election is non-preemptive, so a later-arriving router does not displace an existing DR regardless of priority. R2 beat R3 on router ID (10.0.0.9 > 10.0.0.4). Priority 0 (R1) means the router never participates in DR/BDR election at all. The non-preemption behaviour is the detail this question type hinges on."},
 
 {d:"SC",type:"single",
 q:"Which statement about VRRP on FortiGate is true?",
-o:["VRRP synchronizes firewall sessions between group members","VRRP can only be enabled on the dedicated HA heartbeat interfaces","A FortiGate can join a VRRP group with third-party routers to provide default-gateway redundancy","VRRP requires both devices to be FortiGates running the same FortiOS version"],
+o:["VRRP synchronizes firewall sessions between group members","VRRP can only be enabled on the dedicated HA heartbeat interfaces","A FortiGate can join a VRRP group with third-party routers","VRRP requires both devices to be FortiGates running the same FortiOS version"],
 a:[2],
 ex:"VRRP is an open standard (RFC 5798), so a FortiGate can participate in a VRRP group alongside routers from other vendors — this is its key differentiator from FGCP. VRRP provides gateway redundancy only; it does not synchronize sessions or configuration. That is why the study guide positions FGCP for full clustering, FGSP for session sync between standalone units, and VRRP for interoperable gateway failover."},
 
 {d:"RT",type:"single",
 q:"In a multi-area OSPF design, which statement describes an Area Border Router (ABR)?",
-o:["A router with interfaces in area 0 and at least one other area, which generates Type 3 summary LSAs between them","The router with the highest router ID in the autonomous system","Any router that redistributes static routes into OSPF","A router that connects OSPF to a different routing protocol"],
+o:["A router with interfaces in area 0 and at least one other area","The router with the highest router ID in the autonomous system","Any router that redistributes static routes into OSPF","A router that connects OSPF to a different routing protocol"],
 a:[0],
 ex:"An ABR sits on the boundary between the backbone (area 0) and one or more other areas, maintaining a separate link-state database per area and advertising Type 3 summary LSAs between them. Redistributing external routes — whether static or from another protocol — is the job of an ASBR, which generates Type 5 LSAs. Confusing ABR with ASBR is one of the most common OSPF exam slips."},
 
 {d:"VPN",type:"multi",
 q:"Which two statements accurately describe advantages of IKEv2 over IKEv1? (Choose two.)",
-o:["IKEv2 natively supports EAP for user authentication","IKEv2 establishes the IKE SA with fewer messages — a four-message initial exchange instead of main mode's six","IKEv2 requires a separate NAT-T add-on licence","IKEv2 retains both main mode and aggressive mode for backwards compatibility"],
+o:["IKEv2 natively supports EAP for user authentication","IKEv2 establishes the IKE SA with fewer messages","IKEv2 requires a separate NAT-T add-on licence","IKEv2 retains both main mode and aggressive mode for backwards compatibility"],
 a:[0,1],
 ex:"IKEv2 completes the initial negotiation in four messages (IKE_SA_INIT + IKE_AUTH) versus IKEv1 main mode's six, and it adds native EAP support — important for remote access and integration with authentication servers. IKEv2 deliberately eliminated the main/aggressive mode split, and NAT traversal is built into the protocol, not licensed. Remember: v2 = simpler exchanges, built-in NAT-T, EAP, and reliable (acknowledged) messaging."},
 
@@ -624,37 +624,37 @@ ex:"With override enabled, the FGCP election order becomes: connected monitored 
 
 {d:"SP",type:"single",
 q:"LoFinance wants to allow video streaming applications but restrict them to 2 Mbps per session during business hours, identified by application rather than port. Which combination achieves this?",
-o:["A web filter local category with a quota","An ISDB destination object with a schedule","An IPS rate-based signature set to 2 Mbps","A traffic shaping policy that matches the streaming applications via application control"],
+o:["A web filter local category with a quota","An ISDB destination object combined with a recurring schedule object","An IPS rate-based signature set to 2 Mbps","A shaping policy matching the apps via application control"],
 a:[3],
 ex:"The comparison slide notes that application control — unlike web filter — can be referenced in traffic shaping policies: the application signatures identify the traffic, and the shaping policy applies the bandwidth limit and schedule. ISDB matches by IP/port without inspecting content, web-filter quotas limit browsing time by category rather than bandwidth by application, and IPS rate-based signatures count events for attack detection, not throughput control."},
 
 {d:"CM",type:"single",
 q:"Which statement best describes the purpose of ADOMs on FortiManager?",
-o:["ADOMs are read-only snapshots of device configurations used for rollback","ADOMs replicate the FortiManager configuration to a disaster-recovery peer","ADOMs synchronize firmware images between FortiGates","ADOMs group managed devices into independent administrative domains, each with its own device and policy layer"],
+o:["ADOMs are read-only snapshots of device configurations used for rollback","ADOMs replicate the FortiManager configuration to a disaster-recovery peer","ADOMs synchronize firmware images between FortiGates","Independent administrative domains, each with its own device and policy layer"],
 a:[3],
 ex:"An ADOM is an administrative container: devices grouped by function, customer, or FortiOS version, each ADOM carrying its own device layer (device databases) and policy layer (policy packages and objects). This separation lets different admin teams manage different device sets without touching each other's policies. Rollback snapshots are ADOM/device revisions, and firmware distribution is a separate FortiManager function."},
 
 {d:"SC",type:"multi",
 q:"Which two statements about FGCP heartbeat and session synchronization traffic are true? (Choose two.)",
-o:["Fortinet recommends configuring at least two heartbeat interfaces for redundancy","FGCP heartbeat traffic uses its own Ethernet type rather than the IP protocol","Heartbeat interfaces must have IP addresses manually assigned from the data subnets","Session synchronization can never be moved off the heartbeat link"],
+o:["Fortinet recommends configuring at least two heartbeat interfaces for redundancy","FGCP heartbeat traffic uses its own Ethernet type","Heartbeat interfaces must have IP addresses manually assigned from the data subnets","Session synchronization can never be moved off the heartbeat link"],
 a:[0,1],
 ex:"FGCP communicates over designated heartbeat links using a distinct Ethernet type — it is not routable IP traffic, so heartbeat interfaces need no manually assigned data-subnet addresses. Best practice is at least two heartbeat interfaces so a single link failure cannot split the cluster. Session synchronization uses the heartbeat link by default but can and should be moved to dedicated sync interfaces on busy clusters, since sync traffic is bandwidth-hungry."},
 
 {d:"VPN",type:"single",
 q:"Beyond the auto-discovery IPsec settings, what else is required for ADVPN spokes to reach each other's protected networks through dynamically created shortcuts?",
-o:["Policy routes on the hub redirecting spoke traffic","Nothing further; shortcut tunnels carry their own routing automatically","Static routes on every spoke pointing at every other spoke's tunnel","A dynamic routing protocol (such as BGP or OSPF) running over the VPN so spokes learn routes to each other's subnets"],
+o:["Policy routes on the hub redirecting spoke traffic","Nothing further; shortcut tunnels carry their own routing automatically","Static routes on every spoke pointing at every other spoke's tunnel","A dynamic routing protocol running over the VPN tunnels"],
 a:[3],
 ex:"Classic ADVPN relies on a dynamic routing protocol — BGP, OSPF, or RIP — running over the tunnels so each spoke learns the prefixes behind the other spokes; when a shortcut forms, routing converges onto the direct path. Static routes to every peer would recreate the full-mesh administration problem ADVPN exists to remove. (Note that shortcut traffic still needs to match firewall policy on the spokes.)"},
 
 {d:"SP",type:"single",
 q:"A web filter profile contains a static URL filter entry set to Allow for a specific site, while that site's FortiGuard category is set to Block in the same profile. What happens when a user visits the site?",
-o:["The profile is invalid and cannot be saved","Access is blocked — FortiGuard categories always take precedence","Access is allowed — the static URL filter is evaluated before the FortiGuard category filter","Both filters trigger and the user sees two block pages"],
+o:["The profile is invalid and cannot be saved","Access is blocked — FortiGuard categories always take precedence","Allowed — the URL filter is evaluated before the category filter","Both filters trigger and the user sees two block pages"],
 a:[2],
 ex:"Web filtering evaluates in a fixed order: static URL filter first, then FortiGuard category filtering, then content-based inspection. An Allow (or Exempt) match in the URL filter is honoured before the category verdict is ever consulted, which is precisely how administrators build surgical exceptions to blocked categories. Reversing this order in your head leads to both wrong exam answers and mysterious 'why is this still blocked' tickets."},
 
 {d:"CM",type:"single",
 q:"After an administrator edits several rules in a policy package that is assigned to twelve FortiGates, what does the package's per-device status indicate until the next installation?",
-o:["Conflict — the devices reject the pending changes","Imported — the changes came from the devices","Modified — the package differs from what was last installed on the devices","Auto-update — FortiGate pulls the changes automatically"],
+o:["Conflict — the devices reject the pending changes","Imported — the changes came from the devices","Modified — the package differs from what was last installed","Auto-update — FortiGate pulls the changes automatically"],
 a:[2],
 ex:"Editing a policy package changes only FortiManager's policy layer; the devices continue running the previously installed rules. The status therefore shows Modified until an Install pushes the package, at which point it returns to a synchronized state. Contrast this with Auto-update, which flows the other way — a local change on the FortiGate being retrieved into the device layer. Knowing the direction of each status is a reliable exam mark."},
 
@@ -666,13 +666,13 @@ ex:"A VLAN sub-interface is a logical interface and can be placed in a different
 
 {d:"SP",type:"single",
 q:"After enabling full SSL inspection, users report browser certificate warnings on every HTTPS site. What is the correct resolution?",
-o:["Change the profile's untrusted certificate action to Allow","Exempt all web categories from inspection","Downgrade the profile to certificate-inspection mode","Deploy the FortiGate's SSL inspection CA certificate to the trusted root store of all client devices"],
+o:["Change the profile's untrusted certificate action to Allow","Exempt all web categories from inspection","Downgrade the profile to certificate-inspection mode","Install the FortiGate's inspection CA in clients' trusted root stores"],
 a:[3],
 ex:"With deep inspection the FortiGate acts as a man-in-the-middle and re-signs server certificates with its own CA. Browsers warn because that CA is not trusted — the fix is to distribute the CA certificate to clients (typically via GPO or MDM). Allowing untrusted certificates or disabling inspection removes the warnings by removing the security, which is the trap in the other options."},
 
 {d:"SP",type:"single",
 q:"The marketing team is blocked from a website by the web filter, but a small set of authorized users must be able to proceed past the block page using their credentials. Which feature enables this?",
-o:["An application control exemption","Disabling the block page replacement message","Web profile override, which lets authorized users bypass the blocking profile after authenticating","A DNS filter allowlist"],
+o:["An application control exemption","Disabling the block page replacement message for those users","Web profile override for authorized, authenticated users","A DNS filter allowlist"],
 a:[2],
 ex:"Web profile override is a proxy-based web filter feature: designated users or groups can authenticate at the block page and continue under an alternative (more permissive) profile, usually for a limited time. It is the audited, user-scoped escape hatch, as opposed to a rating override, which recategorizes a site for everyone. Note the dependency — this is one of the features that requires proxy-based inspection, tying back to the inspection-mode trade-off."},
 
@@ -680,7 +680,7 @@ ex:"Web profile override is a proxy-based web filter feature: designated users o
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — R2 configuration</span>config router ospf\n    set router-id 2.2.2.2\n    config area\n        edit 0.0.0.3\n            config virtual-link\n                edit \"VLINK_area\"\n                    set peer 4.4.4.4\n                next\n            end\n        next\n    end\nend</div>What problem does this virtual-link configuration solve?",
-o:["It load-balances OSPF traffic across two physical links","It encrypts OSPF traffic between R2 and R4","It allows two backbone areas to run different SPF algorithms","It connects an OSPF area that has no direct physical connection to the backbone, by tunnelling area 0 adjacency through transit area 0.0.0.3"],
+o:["It load-balances OSPF traffic across two physical links","It encrypts OSPF traffic between R2 and R4","It allows two backbone areas to run different SPF algorithms","It extends the backbone to an area lacking a direct area 0 connection"],
 a:[3],
 ex:"OSPF's design rule is that every area must touch area 0. When a new area (say 0.0.0.10 behind R4) has no physical backbone connection, a virtual link through a transit area — 0.0.0.3 here, configured between the two ABRs' router IDs (2.2.2.2 and 4.4.4.4) — logically extends the backbone so inter-area routing works. It is a topology repair tool, commonly seen after mergers, not an encryption or load-balancing feature."}
 ];

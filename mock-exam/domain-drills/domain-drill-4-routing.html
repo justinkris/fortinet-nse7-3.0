@@ -181,7 +181,7 @@ const DOMAINS = {
 const Q = [
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — RR configuration</span>config router bgp\n    config neighbor\n        edit \"100.64.1.254\"\n            set next-hop-self enable\n            set route-reflector-client enable\n        next\n    end\nend</div>The route reflector learns routes from an EBGP peer and reflects them to this IBGP client. What problem does <code>set next-hop-self enable</code> solve?",
-o:["It converts the session from IBGP to EBGP","Without it, reflected routes keep the external peer's address as next hop, which the client may not be able to resolve, leaving the routes unusable","It forces the client to send all traffic through the route reflector for inspection","It hides the client's address from the external AS"],
+o:["It converts the session from IBGP to EBGP","Without it, reflected routes keep the external peer's address as next hop","It forces the client to send all traffic through the route reflector for inspection","It hides the client's address from the external AS"],
 a:[1],
 ex:"BGP does not change the next hop when advertising into IBGP, so EBGP-learned routes arrive at internal clients still pointing at the external neighbour's address — unknown to the client's routing table, making the routes valid but unresolvable. next-hop-self rewrites the next hop to the advertising router's own address, which the IGP can reach. It changes route resolution only; actual traffic follows the routed path, and the session type is untouched."},
 
@@ -193,7 +193,7 @@ ex:"The OSPF command set maps cleanly to questions: get router info ospf status 
 
 {d:"RT",type:"single",
 q:"During the kernel stage of packet processing, FortiGate performs a reverse path forwarding (RPF) check together with the routing lookup. What is the purpose of the RPF check?",
-o:["To pre-compute the return route for the reply traffic","To verify the packet's TTL is greater than 1","To confirm the destination has a valid MAC address","To verify the packet's source address is reachable through the interface it arrived on, protecting against spoofed source addresses"],
+o:["To pre-compute and cache the return route for the session's reply traffic","To verify the packet's TTL is greater than 1","To confirm the destination has a valid MAC address","To verify the source address is routable via the arrival interface"],
 a:[3],
 ex:"RPF is anti-spoofing at the routing layer: for the first packet of a session, FortiGate checks that a route back to the source exists via the arrival interface — if the source would never legitimately appear there, the packet is dropped. It runs in the kernel alongside routing and SD-WAN evaluation. RPF is also the classic troubleshooting suspect in asymmetric routing designs, where legitimate traffic arrives on an interface the routing table doesn't associate with its source."},
 
@@ -201,7 +201,7 @@ ex:"RPF is anti-spoofing at the routing layer: for the first packet of a session
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Interface OSPF settings</span>FGT-A port2:  hello-interval 10, dead-interval 40\nFGT-B port1:  hello-interval 30, dead-interval 120</div>These two FortiGates are connected on the same subnet and configured for the same OSPF area, but never list each other as neighbours. Why?",
-o:["The hello and dead intervals do not match — mismatched timers cause hello packets to be rejected, so no neighbour relationship forms","FGT-B's timers exceed the OSPF maximum","The dead interval must always be exactly ten times the hello interval","OSPF requires identical interface names on both peers"],
+o:["The hello and dead intervals do not match","FGT-B's timers exceed the OSPF maximum","The dead interval must always be exactly ten times the hello interval","OSPF requires identical interface names on both peers"],
 a:[0],
 ex:"Hello and dead intervals are part of the hello packet's validation set: if they differ between peers, each router rejects the other's hellos and no neighbour entry is ever created — the same 'never appears' signature as an authentication or area mismatch. The conventional dead interval is four times hello (10/40), not a mandated ratio of ten. When neighbours are absent entirely, audit the hello-validated parameters; when they are stuck mid-state, look at MTU."},
 
@@ -213,7 +213,7 @@ ex:"Despite its optimistic name, Active means BGP is still trying (and failing) 
 
 {d:"RT",type:"single",
 q:"A FortiGate redistributes static routes into OSPF using the default settings. How do other routers see these routes, and how is their metric calculated?",
-o:["As inter-area (IA) routes summarized by the nearest ABR","As Type 1 external (E1) routes whose metric grows with internal path cost","As Type 2 external (E2) routes whose metric remains fixed at the redistributed value, regardless of internal path cost","As Type 7 routes in every area of the network"],
+o:["As inter-area (IA) routes summarized by the nearest ABR","As Type 1 external (E1) routes whose metric grows with internal path cost","As E2 routes whose metric stays fixed at the redistributed value","As Type 7 routes in every area of the network"],
 a:[2],
 ex:"OSPF redistribution defaults to external Type 2: the metric stays at the value set at redistribution and internal topology cost is ignored, so every router sees the same cost to the external destination. E1 is the opt-in alternative that adds internal cost, useful when multiple ASBRs advertise the same prefix and you want the closest exit to win. Type 7 only exists inside NSSAs."},
 
@@ -225,31 +225,31 @@ ex:"The AS relationship defines the type: different AS = EBGP, same AS = IBGP. B
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-HUB</span>FGT-HUB # get router info ospf neighbor\nOSPF process 0, VRF 0:\nNeighbor ID   Pri  State      Dead Time  Address       Interface\n10.0.0.2      0    Full/ -    00:00:35   172.16.10.2   ToBranch1</div>What does the state <code>Full/ -</code> indicate about this neighbour relationship?",
-o:["A full adjacency has formed on a network type with no DR/BDR election, such as point-to-point","The adjacency failed and is being retried","The neighbour is stuck exchanging its link-state database","The neighbour is the DR and this FortiGate is the BDR"],
+o:["A full adjacency on a point-to-point-style network with no DR/BDR","The adjacency failed and is being retried","The neighbour is stuck exchanging its link-state database","The neighbour is the DR and this FortiGate is the BDR"],
 a:[0],
 ex:"Full means the link-state databases are fully synchronized — the adjacency is healthy. The dash after the slash shows there is no DR/BDR role, which happens on network types without an election, such as point-to-point (typical for OSPF over IPsec interfaces). On a broadcast segment the same column would read DR, BDR, or DROther. Reading both halves of this field is a frequent exhibit question."},
 
 {d:"RT",type:"single",
 q:"On a FortiGate BGP neighbour, where are the <code>route-map-in</code> and <code>route-map-out</code> parameters applied?",
-o:["route-map-in processes routes received from that neighbour; route-map-out processes routes advertised to that neighbour","route-map-in applies to IBGP peers and route-map-out to EBGP peers","Both apply only to routes redistributed from other protocols","They apply globally to all neighbours at once"],
+o:["route-map-in applies to received routes; route-map-out to advertised routes","route-map-in applies to IBGP peers and route-map-out to EBGP peers","Both apply only to routes redistributed from other protocols","They apply globally to all neighbours at once"],
 a:[0],
 ex:"The naming is directional from the FortiGate's perspective: route-map-in filters and manipulates what you accept from a neighbour (injecting into your BGP table), route-map-out shapes what you advertise to that neighbour. They are configured per neighbour, which is what enables different policies per peer — accept everything from the primary ISP, prepend on advertisements to the backup. Redistribution from other protocols is a separate route-map attachment point under config redistribute."},
 
 {d:"RT",type:"single",
 q:"LoFinance wants to signal to its directly connected partner AS which of two links the partner should prefer when sending traffic INTO LoFinance's AS. Which BGP attribute is designed for this, and how does it work?",
-o:["Weight — exchanged between the autonomous systems","Local Preference — advertised to the neighbouring AS, higher preferred","MED — advertised to the neighbouring AS, with the lower value marking the preferred entry point","Router ID — the partner prefers the higher router ID"],
+o:["Weight — exchanged between the autonomous systems","Local Preference — advertised to the neighbouring AS, higher preferred","MED — advertised to the neighbouring AS; lower is preferred","Router ID — the partner prefers the higher router ID"],
 a:[2],
 ex:"MED (the multi-exit discriminator) is the polite suggestion between adjacent autonomous systems: you advertise different MED values on your two links, and the neighbouring AS — if it honours MED — sends traffic into the lower-MED entry point. Its scope is exactly one AS hop, and it is advisory. Local Preference is its inward-facing mirror (never leaves your AS, higher wins), and weight never leaves the local router. Sorting these three by scope and direction resolves most BGP attribute questions."},
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — R2 configuration</span>config router ospf\n    set router-id 2.2.2.2\n    config area\n        edit 0.0.0.3\n            config virtual-link\n                edit \"VLINK_area\"\n                    set peer 4.4.4.4\n                next\n            end\n        next\n    end\nend</div>What problem does this virtual-link configuration solve?",
-o:["It load-balances OSPF traffic across two physical links","It allows two backbone areas to run different SPF algorithms","It encrypts OSPF traffic between R2 and R4","It connects an OSPF area that has no direct physical connection to the backbone, by tunnelling area 0 adjacency through transit area 0.0.0.3"],
+o:["It load-balances OSPF traffic across two physical links","It allows two backbone areas to run different SPF algorithms","It encrypts OSPF traffic between R2 and R4","It extends the backbone to an area lacking a direct area 0 connection"],
 a:[3],
 ex:"OSPF's design rule is that every area must touch area 0. When a new area (say 0.0.0.10 behind R4) has no physical backbone connection, a virtual link through a transit area — 0.0.0.3 here, configured between the two ABRs' router IDs (2.2.2.2 and 4.4.4.4) — logically extends the backbone so inter-area routing works. It is a topology repair tool, commonly seen after mergers, not an encryption or load-balancing feature."},
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-EDGE</span>FGT-EDGE # get router info bgp summary\nBGP router identifier 172.20.1.1, local AS number 65100\nNeighbor      V   AS      MsgRcvd  MsgSent  Up/Down    State/PfxRcd\n203.0.113.9   4   65200   1841     1799     1d02h15m   12</div>How should the State/PfxRcd value of <b>12</b> be interpreted?",
-o:["12 prefixes were filtered out by inbound policy","The neighbour is stuck in state 12 of the BGP finite state machine","The session is Established, and 12 prefixes have been received from this neighbour","The session has been down 12 times"],
+o:["12 prefixes were filtered out by inbound policy","The neighbour is stuck in state 12 of the BGP finite state machine","Established, with 12 prefixes received from this neighbour","The session has been down 12 times"],
 a:[2],
 ex:"The State/PfxRcd column is dual-purpose: while a session is not established it shows the state name (Idle, Active, OpenSent...), and once Established it switches to showing the count of prefixes received. A number there is therefore itself the confirmation of health — combined with the 1d02h15m uptime, this peering is up and delivering 12 routes. Zero in that column with a long uptime tells a different story: established but empty, pointing at advertisement or policy issues."},
 
@@ -261,19 +261,19 @@ ex:"BFD is a protocol-agnostic liveness check: a rapid, lightweight exchange tha
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — R2</span>R2 # config router ospf\n    set rfc1583-compatible enable\nend\n\nR2 # get router info routing-table all\n...\nO E2 10.2.0.0/24 [110/10] via 10.1.1.100, port4, 00:00:21, [1/0]\n                 [110/10] via 10.1.0.1, port3, 00:00:21, [1/0]\n...</div>What has this configuration enabled on R2?",
-o:["Automatic summarization of external routes","OSPF authentication compatibility with legacy routers","Conversion of E2 routes to E1","OSPF ECMP for external routes — both equal-cost paths to the external prefix are installed in the routing table"],
+o:["Automatic summarization of external routes","OSPF authentication compatibility with legacy routers","Conversion of E2 routes to E1","OSPF ECMP for external routes"],
 a:[3],
 ex:"The exhibit shows one external (E2) prefix installed with two next hops — equal-cost multipath. For external OSPF routes, enabling rfc1583-compatible allows FortiGate to install multiple same-cost external paths in the routing database, load-sharing across them. The routing table itself is the evidence: same prefix, same [110/10] cost, two via lines. Without ECMP, only the single best path would appear."},
 
 {d:"RT",type:"single",
 q:"On a FortiGate, OSPF assigns a cost of 1 to both a 1 Gbps interface and a 10 Gbps interface, causing suboptimal path selection. What is the cause, and the standard remedy?",
-o:["The interfaces are in different areas, which forces equal cost","The default reference bandwidth makes all high-speed links cost the same; raise the auto-cost reference bandwidth (or set interface costs manually) so faster links get lower costs","SPF must be restarted to re-read interface speeds","OSPF ignores bandwidth entirely; only hop count matters"],
+o:["The interfaces are in different areas","The default reference bandwidth floors both costs at 1; raise it","SPF must be restarted to re-read interface speeds","OSPF ignores bandwidth entirely; only hop count matters"],
 a:[1],
 ex:"OSPF cost is reference bandwidth divided by interface bandwidth, and with the classic default reference of 100 Mbps, anything at or above 100 Mbps floors at cost 1 — so 1G and 10G look identical. Raising the reference bandwidth consistently across the OSPF domain (or pinning per-interface costs) restores meaningful differentiation. The domain-wide consistency requirement is the detail that separates a good answer from an outage."},
 
 {d:"RT",type:"single",
 q:"An administrator wants a specific prefix advertised to BGP peers, but only when that exact route is present in the FortiGate's routing table. Which advertising method has this behaviour?",
-o:["Setting default-originate on the neighbour","Static route with a lower administrative distance","Redistributing connected routes","A network statement under config router bgp — the prefix is advertised only if a matching route exists in the routing table"],
+o:["Setting default-originate on the neighbour","Static route with a lower administrative distance","Redistributing connected routes","A network statement under config router bgp"],
 a:[3],
 ex:"The BGP network statement carries a built-in condition: it advertises the prefix only while a matching route is present in the routing table, making the advertisement self-withdrawing if the underlying route disappears. Redistribution advertises whatever the source protocol currently holds (shaped by route maps), a different control model. This conditional behaviour is why network statements are preferred for deliberately curated advertisements like your public ranges."},
 
@@ -291,7 +291,7 @@ ex:"The command hierarchy narrows progressively: database brief lists the whole 
 
 {d:"RT",type:"single",
 q:"Four OSPF routers share a broadcast network segment. R1 has priority 0, R2 has priority 1 and router ID 10.0.0.9, R3 has priority 1 and router ID 10.0.0.4, R4 has priority 255 but joined the segment last, after the others had already formed adjacencies. Which statement is true?",
-o:["R3 becomes the DR because it has the lowest router ID","R1 becomes the BDR because it has the lowest priority","R2 remains the DR; OSPF DR election is non-preemptive, and R2 won on highest router ID at priority 1","R4 immediately preempts and becomes the DR because it has the highest priority"],
+o:["R3 becomes the DR because it has the lowest router ID","R1 becomes the BDR because it has the lowest priority","R2 remains the DR — the election is non-preemptive","R4 immediately preempts and becomes the DR"],
 a:[2],
 ex:"Two rules decide this: highest priority wins, ties broken by highest router ID — and the election is non-preemptive, so a later-arriving router does not displace an existing DR regardless of priority. R2 beat R3 on router ID (10.0.0.9 > 10.0.0.4). Priority 0 (R1) means the router never participates in DR/BDR election at all. The non-preemption behaviour is the detail this question type hinges on."},
 
@@ -303,19 +303,19 @@ ex:"The adjacency checklist from the routing supplement: peer addresses in the s
 
 {d:"RT",type:"single",
 q:"Which statement about the OSPF cost metric is true?",
-o:["Cost is only compared for routes within the same area","Cost is a 16-bit value from 1 to 65,535, and a route's total cost is the sum of the costs of all interfaces along the path to the destination","Cost is measured in hops, with a maximum of 15","Lower bandwidth interfaces automatically get lower costs"],
+o:["Cost is only compared for routes within the same area","A 16-bit value (1–65,535), summed across interfaces along the path","Cost is measured in hops, with a maximum of 15","Lower bandwidth interfaces automatically get lower costs"],
 a:[1],
 ex:"OSPF's metric is cost: a 16-bit positive value (1–65,535) per interface, with a path's metric being the sum of interface costs along the way and the lowest total winning. Hop counting is RIP's world, and the bandwidth relationship runs the other way — higher bandwidth yields lower cost via the reference-bandwidth formula. The 'sum along the path' behaviour is what makes a single mis-costed transit link poison end-to-end path selection."},
 
 {d:"RT",type:"single",
 q:"A hub FortiGate terminates dial-up IPsec from 25 spokes on a single tunnel interface (net-device disabled) and runs OSPF over the VPN. Only one spoke ever forms an OSPF adjacency with the hub. What is the fix?",
-o:["Enable a virtual link from each spoke to the hub","Increase the hello interval on all spokes","Change the OSPF network type on the hub's tunnel interface to point-to-multipoint","Configure the spokes as stub routers"],
+o:["Enable a virtual link from each spoke through the hub's transit area","Increase the hello interval on all spokes","Set the hub tunnel interface's network type to point-to-multipoint","Configure the spokes as stub routers"],
 a:[2],
 ex:"On FortiGate, OSPF interfaces default to the point-to-point network type — which by definition supports exactly one neighbour, so the first spoke to form an adjacency wins and the rest fail. With many spokes sharing one hub tunnel interface (net-device disabled), the hub's interface must be set to point-to-multipoint under config ospf-interface. This default-network-type trap is one of the most tested OSPF-over-IPsec details."},
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-BRANCH</span>FGT-BRANCH # get router info routing-table ospf\nO*E2  0.0.0.0/0 [110/10] via 10.20.0.1, port3\nO IA  10.50.1.0/24 [110/25] via 10.20.0.1, port3\nO     10.20.5.0/24 [110/2] via 10.20.0.5, port3</div>What does the entry flagged <code>O IA</code> indicate?",
-o:["A route to a destination in a different OSPF area, learned via a Type 3 summary LSA from an ABR","An external route redistributed into OSPF from another protocol","A route that is inactive and held for backup","An intra-area route with an inflated administrative distance"],
+o:["A destination in another area, learned from an ABR's Type 3 summary LSA","An external route redistributed into OSPF from another protocol","A route that is inactive and held for backup","An intra-area route with an inflated administrative distance"],
 a:[0],
 ex:"The routing-table codes decode the OSPF LSA origin: plain O is intra-area, O IA is inter-area (a Type 3 summary crossing an ABR), and O E1/E2 are external routes — with the asterisk on O*E2 marking a candidate default route. Reading these codes at a glance turns exhibit questions into quick marks and, in real troubleshooting, immediately tells you which part of the OSPF domain a path came from."},
 
@@ -333,7 +333,7 @@ ex:"Failure detection speed is governed by how quickly a dead peer is noticed: B
 
 {d:"RT",type:"single",
 q:"LoFinance is dual-homed to two ISPs and wants most inbound Internet traffic to arrive via ISP-A, keeping ISP-B as backup. Which BGP technique influences how external networks choose their path toward LoFinance?",
-o:["Increasing Local Preference on routes learned from ISP-A","Prepending LoFinance's AS number multiple times on advertisements sent to ISP-B","Lowering the weight of ISP-B's routes","Setting a higher MED on routes received from ISP-B"],
+o:["Increasing Local Preference on routes learned from ISP-A","Prepending LoFinance's AS on advertisements sent to ISP-B","Lowering the weight of ISP-B's routes","Setting a higher MED on routes received from ISP-B"],
 a:[1],
 ex:"Direction is everything in BGP questions. Local Preference and weight shape your own outbound decisions — the Internet never sees them. To influence inbound traffic you must make one of your advertisements less attractive to others: prepending your AS on the updates sent toward ISP-B lengthens the AS-path the world sees via that link, steering traffic to ISP-A. (MED is also outbound-influencing but only advisory between the specific neighbouring AS pair, and it is set on routes you send, not received.)"},
 
@@ -347,13 +347,13 @@ ex:"Graceful restart tells peers to keep the stale routes in the forwarding plan
 
 {d:"RT",type:"single",
 q:"On a broadcast OSPF segment with a DR and BDR elected, two DROther routers show each other in state <b>2-Way/DROther</b>. Is this a problem?",
-o:["Yes — every OSPF neighbour pair must reach Full state","No — but only if BFD is enabled between them","Yes — 2-Way indicates an MTU mismatch","No — DROther routers form full adjacencies only with the DR and BDR; 2-Way between two DROthers is normal and expected"],
+o:["Yes — every OSPF neighbour pair must reach Full state","No — but only if BFD is enabled between them","Yes — 2-Way indicates an MTU mismatch","No — DROthers only form full adjacencies with the DR and BDR"],
 a:[3],
 ex:"On multiaccess networks the DR/BDR exist precisely to avoid a full mesh of adjacencies: DROthers synchronize their databases with the DR and BDR only, and remain in 2-Way with each other — neighbours, but deliberately not adjacent. Expecting Full everywhere is the misreading this question punishes; MTU mismatches show up as ExStart/ExChange problems, an entirely different signature. 2-Way/DROther is the network working as designed."},
 
 {d:"RT",type:"single",
 q:"In LoFinance's SD-WAN design, BGP sessions between hub and spokes are established between loopback interfaces rather than the physical WAN addresses. What is the main benefit of this design?",
-o:["The BGP session survives an individual underlay link failure, as long as any path to the peer's loopback remains, so routing does not flap per-link","Loopbacks allow BGP to run without TCP","Loopback peering doubles the available BGP bandwidth","It removes the need for the update-source setting"],
+o:["The session survives individual underlay link failures","Loopbacks allow BGP to run without TCP","Loopback peering doubles the available BGP bandwidth","It removes the need for the update-source setting"],
 a:[0],
 ex:"A loopback is never 'down', so anchoring the session to it decouples BGP stability from any single physical link: when one underlay fails, the session simply rides another path to the same loopback, avoiding session resets, RIB churn, and CPU load from flapping. The costs of this design are the extra pieces it requires — update-source pointing at the loopback, a route to the peer's loopback, and (for EBGP) multihop enforcement."},
 
@@ -361,25 +361,25 @@ ex:"A loopback is never 'down', so anchoring the session to it decouples BGP sta
 
 {d:"RT",type:"single",
 q:"In a multi-area OSPF design, which statement describes an Area Border Router (ABR)?",
-o:["Any router that redistributes static routes into OSPF","A router with interfaces in area 0 and at least one other area, which generates Type 3 summary LSAs between them","The router with the highest router ID in the autonomous system","A router that connects OSPF to a different routing protocol"],
+o:["Any router that redistributes static routes into OSPF","A router with interfaces in area 0 and at least one other area","The router with the highest router ID in the autonomous system","A router that connects OSPF to a different routing protocol"],
 a:[1],
 ex:"An ABR sits on the boundary between the backbone (area 0) and one or more other areas, maintaining a separate link-state database per area and advertising Type 3 summary LSAs between them. Redistributing external routes — whether static or from another protocol — is the job of an ASBR, which generates Type 5 LSAs. Confusing ABR with ASBR is one of the most common OSPF exam slips."},
 
 {d:"RT",type:"single",
 q:"A firewall policy uses a VIP that maps public address 203.0.113.10 to internal server 10.1.1.10. When a packet arrives for 203.0.113.10, which address does the FortiGate's routing lookup use?",
-o:["The MAC address of the ingress interface decides","10.1.1.10 — destination NAT is applied at the start of kernel processing, before the routing lookup","Both addresses are looked up and compared","203.0.113.10 — routing always happens before any NAT"],
+o:["The MAC address of the ingress interface decides","10.1.1.10 — DNAT runs before the routing lookup","Both addresses are looked up and compared","203.0.113.10 — routing always happens before any NAT"],
 a:[1],
 ex:"The kernel order settles this permanently: destination NAT runs first, then routing (with RPF and SD-WAN), then policy lookup. So for VIP traffic, the routing decision is made on the translated, real destination — which is why the route to the internal server, not the public address, determines the egress interface. Source NAT is the opposite: applied at egress after forwarding. DNAT-early, SNAT-late explains most NAT-plus-routing behaviour questions."},
 
 {d:"RT",type:"single",
 q:"An administrator must filter incoming BGP routes AND modify their attributes (for example, setting local preference on selected prefixes). Which filtering tool is required?",
-o:["An access list alone","A route map, which can match on access or prefix lists and modify BGP attributes","The distribute-list-in parameter","A prefix list alone"],
+o:["An access list alone","A route map","The distribute-list-in parameter","A prefix list alone"],
 a:[1],
 ex:"The three BGP filtering tools form a capability ladder: access lists match simply on prefixes, prefix lists add ge/le granularity, and route maps sit on top — they can use access and prefix lists as match objects and, uniquely, modify BGP attributes such as local preference, MED, or communities. Any requirement containing the word 'modify' or 'set' eliminates the pure filters immediately; only a route map can change what it matches."},
 
 {d:"RT",type:"single",
 q:"OSPF between two data centres converges too slowly when a middle transit link fails, because the failure is only noticed when the dead timer expires. Which feature provides sub-second failure detection without aggressively shrinking OSPF timers?",
-o:["Type 3 LSA filtering on the ABR","OSPF graceful restart","Enabling ECMP across both data-centre links","Bidirectional Forwarding Detection (BFD) associated with the OSPF neighbours"],
+o:["Type 3 LSA filtering on the ABR","OSPF graceful restart","Enabling ECMP across both data-centre links","BFD associated with the OSPF neighbours"],
 a:[3],
 ex:"BFD runs a lightweight, high-frequency hello exchange between forwarding planes and signals the routing protocol the instant the path dies — sub-second detection without loading the OSPF process with aggressive hellos. Graceful restart is the opposite philosophy: it hides a control-plane restart to keep forwarding stable. Pairing 'fast failure detection' with BFD and 'survive a restart/failover' with graceful restart resolves both exam variants."},
 
@@ -393,7 +393,7 @@ ex:"Local Preference is the intra-AS exit-selection attribute: it is carried onl
 
 {d:"RT",type:"single",
 q:"Two OSPF routers in the same area were accidentally configured with the same router ID. What is the correct remediation?",
-o:["Move one router to a stub area","Nothing — OSPF tolerates duplicate router IDs within an area","Increase the dead interval to give the LSDB time to converge","Assign a unique router ID to one of them with set router-id, since unique router IDs are a requirement for correct OSPF operation"],
+o:["Move one router to a stub area","Nothing — OSPF tolerates duplicate router IDs within an area","Increase the dead interval to give the LSDB time to converge","Assign a unique router ID to one of them with set router-id"],
 a:[3],
 ex:"A unique router ID appears explicitly in the adjacency requirements list, and for good reason: the router ID keys every LSA a router originates, so duplicates make two routers' advertisements collide in the LSDB, producing flapping routes and adjacency instability that no timer tuning can fix. The remedy is administrative — set router-id explicitly (best practice on every router regardless, so IDs never depend on interface address selection)."},
 
@@ -407,19 +407,19 @@ ex:"Timers, area, and authentication mismatches all prevent the neighbour from e
 
 {d:"RT",type:"single",
 q:"A FortiGate has 60 static routes but only 12 of them, tagged for the WAN, should be redistributed into OSPF. What is the correct approach?",
-o:["Enable redistribution of static routes with a route map that matches and permits only the 12 desired routes","Advertise the 12 prefixes using network statements in area 0","Redistribute all static routes; OSPF automatically filters irrelevant ones","Convert the 12 routes to connected routes"],
+o:["Redistribute static routes with a route map permitting only the 12","Advertise the 12 prefixes using network statements in area 0","Redistribute all static routes; OSPF automatically filters irrelevant ones","Convert the 12 routes to connected routes"],
 a:[0],
 ex:"Redistribution on FortiGate is controlled per source protocol, and attaching a route map gives selective control — match the intended prefixes (via prefix list or access list) and permit only those, with everything else implicitly denied. Redistributing everything floods the domain with unnecessary external LSAs, and network statements advertise interfaces the router owns, which is not what redistributed statics are. 'Redistribute + route map' is the standard filtering idiom."},
 
 {d:"RT",type:"single",
 q:"Two FortiGates should form an OSPF adjacency, but neither device lists the other in <code>get router info ospf neighbor</code> at all. Packet capture shows hello packets arriving from the peer. Which cause is consistent with these symptoms?",
-o:["A duplicate router ID causing an LSDB conflict","Mismatched OSPF authentication settings, causing each router to reject the peer's hellos","An MTU mismatch between the interfaces","The dead timer is set too high on both sides"],
+o:["A duplicate router ID causing an LSDB conflict","Mismatched OSPF authentication, so hellos are rejected","An MTU mismatch between the interfaces","The dead timer is set too high on both sides"],
 a:[1],
 ex:"Hello validation happens before a neighbour entry is ever created: mismatched authentication (or area, timers, network mask) means arriving hellos are silently discarded, so the peer never appears. Contrast this with an MTU mismatch, which lets the neighbour appear and then strands the adjacency at ExStart/ExChange. Mapping 'no neighbour at all' versus 'stuck mid-state' to their respective causes is a core NSE7 diagnostic pattern."},
 
 {d:"RT",type:"single",
 q:"An administrator configures a branch OSPF area as a stub area. What is the effect on the LSAs received by routers inside that area?",
-o:["All Type 3 summary LSAs are blocked, isolating the area completely","Type 1 and Type 2 LSAs are compressed into a single LSA","Type 7 LSAs are converted to Type 5 at the ABR","Type 5 external LSAs are blocked; external reachability is provided by a default route from the ABR"],
+o:["All Type 3 summary LSAs are blocked, isolating the area completely","Type 1 and Type 2 LSAs are compressed into a single LSA","Type 7 LSAs are converted to Type 5 at the ABR","Type 5 LSAs are blocked and replaced by a default route from the ABR"],
 a:[3],
 ex:"A stub area filters Type 5 (external) LSAs and the ABR injects a default route in their place, shrinking the LSDB and routing table on branch routers. Type 3 summaries still enter a stub area — blocking those as well is the totally stubby variant. Type 7-to-5 translation describes an NSSA, which exists to let a stub-like area still inject its own external routes."},
 

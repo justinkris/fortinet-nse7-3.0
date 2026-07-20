@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoFinance Home Lab — Proxmox Build &amp; Lab Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;max-width:760px;}
+
+  .motivation-banner{padding:22px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  nav.toc{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 40px;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;color:var(--text-muted);text-decoration:none;padding:12px 16px;border-bottom:2px solid transparent;white-space:nowrap;}
+  .nav-tab:hover{color:var(--text);border-bottom-color:var(--blue-dim);}
+
+  main{max-width:1200px;margin:0 auto;}
+  .main-content{padding:36px 60px 60px;}
+  .section-block{margin-bottom:52px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);margin:24px 0 10px;}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:6px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .data-table code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12px;background:var(--surface-2);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  p code, li code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:13px;background:var(--surface-2);padding:1px 6px;border-radius:4px;border:1px solid var(--border-dim);color:var(--blue-deep);}
+
+  .lab-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:22px 26px;margin:18px 0;}
+  .lab-card-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
+  .lab-num{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;color:#fffdf5;background:var(--blue);padding:4px 12px;border-radius:12px;text-transform:uppercase;}
+  .lab-card h3{margin:0;font-size:21px;}
+  .lab-tag{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--amber);background:var(--amber-light);border:1px solid var(--amber-border);padding:3px 10px;border-radius:10px;text-transform:uppercase;}
+  .lab-tag.story{color:var(--green);background:var(--green-light);border-color:var(--green-border);}
+
+  .diagram-wrap{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:20px;margin:20px 0;overflow-x:auto;}
+  .diagram-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:10px;font-style:italic;}
+
+  footer{padding:32px 60px;border-top:1px solid var(--border);text-align:center;font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);}
+
+  @media (max-width:760px){
+    header{padding:36px 24px 28px;}
+    header h1{font-size:32px;}
+    .motivation-banner{padding:18px 24px;}
+    .main-content{padding:28px 20px 48px;}
+    nav.toc{padding:0 12px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">LOFINANCE ENGINEERING · LAB INFRASTRUCTURE</div>
+  <h1>The LoFinance Home Lab — <em>Proxmox Build Guide</em></h1>
+  <p>Three FortiGates. One FortiManager. One hypervisor. Everything Señor makes you do at LoFinance, you can now break — and fix — on your own hardware. This guide takes you from an empty Proxmox node to a running miniature of the LoFinance network, then hands you a lab series mapped to the NSE7 Enterprise Firewall 7.6 blueprint.</p>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">"Reading about a tunnel is not the same as watching one <em>refuse to come up</em>." — Señor</div>
+  <div class="motivation-sub">The exam tests output recognition and troubleshooting instinct. Both are built in a lab, not a PDF.</div>
+</div>
+
+<nav class="toc">
+  <a class="nav-tab" href="#overview">Overview</a>
+  <a class="nav-tab" href="#topology">Topology</a>
+  <a class="nav-tab" href="#addressing">IP Plan</a>
+  <a class="nav-tab" href="#proxmox">Proxmox Setup</a>
+  <a class="nav-tab" href="#fgt-vms">FortiGate VMs</a>
+  <a class="nav-tab" href="#fmg-vm">FortiManager VM</a>
+  <a class="nav-tab" href="#baseline">Baseline Config</a>
+  <a class="nav-tab" href="#clients">Test Clients</a>
+  <a class="nav-tab" href="#labs">The Lab Series</a>
+  <a class="nav-tab" href="#hygiene">Lab Hygiene</a>
+</nav>
+
+<main><div class="main-content">
+
+<!-- ══════════════ 01 OVERVIEW ══════════════ -->
+<section class="section-block" id="overview">
+  <div class="section-label">01 · What You're Building</div>
+  <h2>A Miniature LoFinance</h2>
+  <p>You have <strong>3 FortiGate-VMs and 1 FortiManager-VM</strong>. That maps perfectly onto the core of the LoFinance story: the <strong>Sydney HQ hub</strong>, the <strong>Parramatta branch</strong>, the <strong>DR site</strong>, and central management. Chatswood is the one site we can't afford a chassis for — which is fine, because everything Chatswood taught (dial-up spokes) can be practised with FGT-DR wearing a different hat for an afternoon.</p>
+
+  <table class="data-table">
+    <tr><th>VM</th><th>Hostname</th><th>Role in the story</th><th>Role in the lab</th></tr>
+    <tr><td>FortiGate #1</td><td><code>FGT-HQ</code></td><td>Sydney HQ edge — NGFW, OSPF hub, VPN hub</td><td>Hub for every VPN/routing lab; security-profile labs run here</td></tr>
+    <tr><td>FortiGate #2</td><td><code>FGT-PARRA</code></td><td>Parramatta branch — spoke, dual-ISP site</td><td>Primary spoke; ADVPN shortcut endpoint</td></tr>
+    <tr><td>FortiGate #3</td><td><code>FGT-DR</code></td><td>DR site — spoke, legacy mgmt subnet</td><td>Second spoke; redistribution &amp; filtering labs; occasional "Chatswood stand-in"</td></tr>
+    <tr><td>FortiManager</td><td><code>FMG-LOFI</code></td><td>Central management, local FDS</td><td>ADOMs, policy packages, install wizard, revision history, scripts</td></tr>
+  </table>
+
+  <div class="callout callout-green"><strong>Licensing:</strong> both FortiGate-VM and FortiManager-VM offer a <strong>free evaluation license</strong> (register on <code>support.fortinet.com</code>, download the KVM images). The FortiGate eval caps you at roughly 1 vCPU / 2 GB RAM per VM and limited crypto — completely fine for these labs. The FortiManager eval supports a small number of managed devices — enough for our three. Size the VMs to the eval limits and the lab runs happily on a modest node (~10–12 GB RAM total including clients).</div>
+</section>
+
+<!-- ══════════════ 02 TOPOLOGY ══════════════ -->
+<section class="section-block" id="topology">
+  <div class="section-label">02 · The Map</div>
+  <h2>Lab Topology</h2>
+  <div class="diagram-wrap">
+  <svg viewBox="0 0 960 560" width="100%" style="min-width:820px" xmlns="http://www.w3.org/2000/svg">
+    <!-- Internet bridge -->
+    <rect x="60" y="30" width="840" height="64" rx="12" fill="#eff4fc" stroke="#b8cce8" stroke-width="1.5"/>
+    <text x="480" y="56" text-anchor="middle" font-size="14" font-weight="700" fill="#0c1f5c" font-family="sans-serif">vmbr0 — "THE INTERNET" (your home LAN → real internet)</text>
+    <text x="480" y="76" text-anchor="middle" font-size="11" fill="#6b7794" font-family="sans-serif">All wan1 (port1) interfaces live here · DHCP or static from your home range</text>
+
+    <!-- HQ -->
+    <rect x="90" y="180" width="240" height="120" rx="12" fill="#fffdf5" stroke="#d4c89a" stroke-width="1.5"/>
+    <rect x="90" y="180" width="240" height="36" rx="12" fill="#0d1a3a"/>
+    <rect x="90" y="204" width="240" height="12" fill="#0d1a3a"/>
+    <text x="110" y="203" font-size="13" font-weight="700" fill="#fbf7ec" font-family="sans-serif">FGT-HQ</text>
+    <text x="106" y="236" font-size="11" fill="#1e40af" font-weight="700" font-family="sans-serif">VPN HUB · OSPF HUB · UTM</text>
+    <text x="106" y="254" font-size="11" fill="#1e2f5a" font-family="sans-serif">port1 → vmbr0 (WAN)</text>
+    <text x="106" y="270" font-size="11" fill="#1e2f5a" font-family="sans-serif">port2 → vmbr2 · 10.1.0.1/24</text>
+    <text x="106" y="286" font-size="11" fill="#1e2f5a" font-family="sans-serif">port3 → vmbr1 · 10.0.99.1/24</text>
+
+    <!-- PARRA -->
+    <rect x="380" y="180" width="240" height="120" rx="12" fill="#fffdf5" stroke="#d4c89a" stroke-width="1.5"/>
+    <rect x="380" y="180" width="240" height="36" rx="12" fill="#0d1a3a"/>
+    <rect x="380" y="204" width="240" height="12" fill="#0d1a3a"/>
+    <text x="400" y="203" font-size="13" font-weight="700" fill="#fbf7ec" font-family="sans-serif">FGT-PARRA</text>
+    <text x="396" y="236" font-size="11" fill="#1a7c4a" font-weight="700" font-family="sans-serif">SPOKE · BRANCH</text>
+    <text x="396" y="254" font-size="11" fill="#1e2f5a" font-family="sans-serif">port1 → vmbr0 (WAN)</text>
+    <text x="396" y="270" font-size="11" fill="#1e2f5a" font-family="sans-serif">port2 → vmbr3 · 10.2.0.1/24</text>
+    <text x="396" y="286" font-size="11" fill="#1e2f5a" font-family="sans-serif">port3 → vmbr1 · 10.0.99.2/24</text>
+
+    <!-- DR -->
+    <rect x="670" y="180" width="240" height="120" rx="12" fill="#fffdf5" stroke="#d4c89a" stroke-width="1.5"/>
+    <rect x="670" y="180" width="240" height="36" rx="12" fill="#0d1a3a"/>
+    <rect x="670" y="204" width="240" height="12" fill="#0d1a3a"/>
+    <text x="690" y="203" font-size="13" font-weight="700" fill="#fbf7ec" font-family="sans-serif">FGT-DR</text>
+    <text x="686" y="236" font-size="11" fill="#1a7c4a" font-weight="700" font-family="sans-serif">SPOKE · DR SITE</text>
+    <text x="686" y="254" font-size="11" fill="#1e2f5a" font-family="sans-serif">port1 → vmbr0 (WAN)</text>
+    <text x="686" y="270" font-size="11" fill="#1e2f5a" font-family="sans-serif">port2 → vmbr4 · 10.3.0.1/24</text>
+    <text x="686" y="286" font-size="11" fill="#1e2f5a" font-family="sans-serif">port3 → vmbr1 · 10.0.99.3/24</text>
+
+    <!-- WAN uplinks -->
+    <line x1="210" y1="94" x2="210" y2="180" stroke="#1e40af" stroke-width="2.5"/>
+    <line x1="500" y1="94" x2="500" y2="180" stroke="#1e40af" stroke-width="2.5"/>
+    <line x1="790" y1="94" x2="790" y2="180" stroke="#1e40af" stroke-width="2.5"/>
+
+    <!-- Tunnels (dashed arcs) -->
+    <path d="M 330 240 C 355 210 355 210 380 240" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="7 5"/>
+    <path d="M 330 260 C 480 340 620 340 670 260" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="500" y="330" text-anchor="middle" font-size="10.5" fill="#b45309" font-family="sans-serif" font-weight="600">IPsec tunnels (Labs 4+): HQ↔PARRA · HQ↔DR · later ADVPN shortcut PARRA↔DR</text>
+
+    <!-- LAN bridges -->
+    <rect x="90" y="360" width="240" height="52" rx="10" fill="#f5eed9" stroke="#ebe1c2"/>
+    <text x="210" y="381" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0a1838" font-family="sans-serif">vmbr2 · HQ-LAN 10.1.0.0/24</text>
+    <text x="210" y="399" text-anchor="middle" font-size="10.5" fill="#6b7794" font-family="sans-serif">client: lofi-hq-pc · 10.1.0.10</text>
+    <rect x="380" y="360" width="240" height="52" rx="10" fill="#f5eed9" stroke="#ebe1c2"/>
+    <text x="500" y="381" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0a1838" font-family="sans-serif">vmbr3 · PARRA-LAN 10.2.0.0/24</text>
+    <text x="500" y="399" text-anchor="middle" font-size="10.5" fill="#6b7794" font-family="sans-serif">client: lofi-parra-pc · 10.2.0.10</text>
+    <rect x="670" y="360" width="240" height="52" rx="10" fill="#f5eed9" stroke="#ebe1c2"/>
+    <text x="790" y="381" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0a1838" font-family="sans-serif">vmbr4 · DR-LAN 10.3.0.0/24</text>
+    <text x="790" y="399" text-anchor="middle" font-size="10.5" fill="#6b7794" font-family="sans-serif">client: lofi-dr-pc · 10.3.0.10</text>
+    <line x1="210" y1="300" x2="210" y2="360" stroke="#6b7794" stroke-width="2"/>
+    <line x1="500" y1="300" x2="500" y2="360" stroke="#6b7794" stroke-width="2"/>
+    <line x1="790" y1="300" x2="790" y2="360" stroke="#6b7794" stroke-width="2"/>
+
+    <!-- Mgmt bridge -->
+    <rect x="60" y="460" width="840" height="70" rx="12" fill="rgba(26,124,74,0.05)" stroke="#a7d8b0" stroke-dasharray="4 4"/>
+    <text x="480" y="486" text-anchor="middle" font-size="13" font-weight="700" fill="#1a7c4a" font-family="sans-serif">vmbr1 — LAB-MGMT 10.0.99.0/24 (out-of-band management)</text>
+    <text x="480" y="508" text-anchor="middle" font-size="11" fill="#1e2f5a" font-family="sans-serif">FMG-LOFI 10.0.99.10 · FGT-HQ .1 · FGT-PARRA .2 · FGT-DR .3 · your admin PC/VM here too</text>
+    <line x1="150" y1="300" x2="130" y2="460" stroke="#1a7c4a" stroke-width="1.5" stroke-dasharray="2 5"/>
+    <line x1="440" y1="300" x2="430" y2="460" stroke="#1a7c4a" stroke-width="1.5" stroke-dasharray="2 5"/>
+    <line x1="730" y1="300" x2="720" y2="460" stroke="#1a7c4a" stroke-width="1.5" stroke-dasharray="2 5"/>
+  </svg>
+  <div class="diagram-caption">Solid blue = WAN uplinks · amber dashes = IPsec overlay (built in the labs) · green dashes = out-of-band management. Nothing here needs VLANs on Proxmox — one bridge per network keeps it simple.</div>
+  </div>
+
+  <div class="callout"><strong>Design decision worth noticing:</strong> the tunnels run <em>over vmbr0</em>, exactly like the real LoFinance tunnels run over the internet. Your home LAN plays the role of every ISP at once. This means IKE, NAT-T, and "the internet is up but the tunnel is down" troubleshooting all behave realistically.</div>
+</section>
+
+<!-- ══════════════ 03 ADDRESSING ══════════════ -->
+<section class="section-block" id="addressing">
+  <div class="section-label">03 · The Numbers</div>
+  <h2>Canonical IP &amp; Hostname Plan</h2>
+  <p>These mirror the as-built LoFinance addressing where possible (HQ <code>10.1.0.0/24</code>, Parramatta <code>10.2.0.0/24</code> are canon from Season 1). Print this table; every lab refers back to it.</p>
+
+  <table class="data-table">
+    <tr><th>Device</th><th>Interface</th><th>Bridge</th><th>IP address</th><th>Purpose</th></tr>
+    <tr><td>FGT-HQ</td><td>port1 (WAN)</td><td>vmbr0</td><td>DHCP <em>or</em> static from home LAN</td><td>Internet + tunnel underlay</td></tr>
+    <tr><td>FGT-HQ</td><td>port2 (LAN)</td><td>vmbr2</td><td><code>10.1.0.1/24</code></td><td>HQ LAN gateway</td></tr>
+    <tr><td>FGT-HQ</td><td>port3 (MGMT)</td><td>vmbr1</td><td><code>10.0.99.1/24</code></td><td>GUI/SSH/FMG</td></tr>
+    <tr><td>FGT-PARRA</td><td>port1 (WAN)</td><td>vmbr0</td><td>DHCP or static</td><td>Internet + underlay</td></tr>
+    <tr><td>FGT-PARRA</td><td>port2 (LAN)</td><td>vmbr3</td><td><code>10.2.0.1/24</code></td><td>Branch LAN gateway</td></tr>
+    <tr><td>FGT-PARRA</td><td>port3 (MGMT)</td><td>vmbr1</td><td><code>10.0.99.2/24</code></td><td>GUI/SSH/FMG</td></tr>
+    <tr><td>FGT-DR</td><td>port1 (WAN)</td><td>vmbr0</td><td>DHCP or static</td><td>Internet + underlay</td></tr>
+    <tr><td>FGT-DR</td><td>port2 (LAN)</td><td>vmbr4</td><td><code>10.3.0.1/24</code></td><td>DR LAN gateway</td></tr>
+    <tr><td>FGT-DR</td><td>port3 (MGMT)</td><td>vmbr1</td><td><code>10.0.99.3/24</code></td><td>GUI/SSH/FMG</td></tr>
+    <tr><td>FMG-LOFI</td><td>port1</td><td>vmbr0</td><td>DHCP or static</td><td>FortiGuard/FDS internet access</td></tr>
+    <tr><td>FMG-LOFI</td><td>port2</td><td>vmbr1</td><td><code>10.0.99.10/24</code></td><td>Device management plane</td></tr>
+    <tr><td>lofi-hq-pc</td><td>eth0</td><td>vmbr2</td><td><code>10.1.0.10/24</code> gw <code>.1</code></td><td>Test client</td></tr>
+    <tr><td>lofi-parra-pc</td><td>eth0</td><td>vmbr3</td><td><code>10.2.0.10/24</code> gw <code>.1</code></td><td>Test client</td></tr>
+    <tr><td>lofi-dr-pc</td><td>eth0</td><td>vmbr4</td><td><code>10.3.0.10/24</code> gw <code>.1</code></td><td>Test client</td></tr>
+  </table>
+
+  <div class="callout callout-amber"><strong>Reserved for later labs:</strong> <code>10.99.50.0/24</code> — the DR "legacy management" subnet from Session 15. You'll create it as a loopback on FGT-DR when we redo the redistribution-and-filtering lab. Tunnel interfaces will use <code>10.255.x.x/30</code> ranges, assigned inside each lab.</div>
+</section>
+
+<!-- ══════════════ 04 PROXMOX ══════════════ -->
+<section class="section-block" id="proxmox">
+  <div class="section-label">04 · Getting Started</div>
+  <h2>Proxmox Preparation</h2>
+  <p>Everything below assumes a working Proxmox VE node where <code>vmbr0</code> already exists and gives VMs internet access (the default installer setup). You'll add four <strong>isolated internal bridges</strong> — no physical NIC attached, no IP on the host needed.</p>
+
+  <h3>Step 1 — Create the internal bridges</h3>
+  <p>GUI path: <em>Datacenter → your node → System → Network → Create → Linux Bridge</em>. Create each with <strong>no ports/slaves and no IP</strong>, then click <em>Apply Configuration</em>. Or do all four in one shot from the node's shell:</p>
+  <div class="code-block"><div class="code-label">Proxmox node shell — /etc/network/interfaces additions</div><pre><code>auto vmbr1
+iface vmbr1 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+# LAB-MGMT 10.0.99.0/24
+
+auto vmbr2
+iface vmbr2 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+# HQ-LAN 10.1.0.0/24
+
+auto vmbr3
+iface vmbr3 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+# PARRA-LAN 10.2.0.0/24
+
+auto vmbr4
+iface vmbr4 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+# DR-LAN 10.3.0.0/24</code></pre></div>
+  <p>Then apply: <code>ifreload -a</code></p>
+
+  <h3>Step 2 — Download the images</h3>
+  <ul>
+    <li>Create a free account at <code>support.fortinet.com</code> → <em>Support → Firmware Download</em>.</li>
+    <li><strong>FortiGate:</strong> product <em>FortiGate</em> → version 7.6.x → file like <code>FGT_VM64_KVM-v7.6.x…out.kvm.zip</code>. Unzip → you get <code>fortios.qcow2</code>.</li>
+    <li><strong>FortiManager:</strong> product <em>FortiManager</em> → 7.6.x → <code>FMG_VM64_KVM…out.kvm.zip</code>. Unzip → <code>fmg.qcow2</code>.</li>
+    <li>Copy both qcow2 files to the Proxmox node (e.g. <code>scp fortios.qcow2 root@pve:/root/</code>).</li>
+  </ul>
+
+  <div class="callout"><strong>Why KVM images?</strong> Proxmox <em>is</em> KVM/QEMU under the hood. The FortiGate KVM image boots natively — no conversion needed, just an import.</div>
+</section>
+
+<!-- ══════════════ 05 FGT VMS ══════════════ -->
+<section class="section-block" id="fgt-vms">
+  <div class="section-label">05 · Build</div>
+  <h2>Creating the Three FortiGate VMs</h2>
+  <p>We'll build <code>FGT-HQ</code> as VM ID <strong>101</strong>, then repeat for <strong>102</strong> (PARRA) and <strong>103</strong> (DR) — only the LAN bridge changes. Eval-license sizing: <strong>1 core, 2048 MB</strong>.</p>
+
+  <div class="code-block"><div class="code-label">Proxmox node shell — FGT-HQ (VM 101)</div><pre><code># 1. Create the VM shell with three virtio NICs
+qm create 101 --name FGT-HQ --memory 2048 --cores 1 --ostype l26 \
+  --net0 virtio,bridge=vmbr0 \
+  --net1 virtio,bridge=vmbr2 \
+  --net2 virtio,bridge=vmbr1
+
+# 2. Import the FortiOS disk (adjust storage name if not local-lvm)
+qm importdisk 101 /root/fortios.qcow2 local-lvm
+
+# 3. Attach it as virtio0 and make it the boot disk
+qm set 101 --virtio0 local-lvm:vm-101-disk-0
+qm set 101 --boot order=virtio0
+
+# 4. Add a 30 GB log disk (FortiOS formats it on first use)
+qm set 101 --virtio1 local-lvm:30
+
+# 5. Serial console works best for FortiOS first-boot
+qm set 101 --serial0 socket
+
+# 6. Start it
+qm start 101</code></pre></div>
+
+  <p>Now the other two — identical except the name and the LAN bridge on <code>net1</code>:</p>
+  <div class="code-block"><div class="code-label">Proxmox node shell — FGT-PARRA (102) and FGT-DR (103)</div><pre><code>qm create 102 --name FGT-PARRA --memory 2048 --cores 1 --ostype l26 \
+  --net0 virtio,bridge=vmbr0 --net1 virtio,bridge=vmbr3 --net2 virtio,bridge=vmbr1
+qm importdisk 102 /root/fortios.qcow2 local-lvm
+qm set 102 --virtio0 local-lvm:vm-102-disk-0 --boot order=virtio0
+qm set 102 --virtio1 local-lvm:30 --serial0 socket
+qm start 102
+
+qm create 103 --name FGT-DR --memory 2048 --cores 1 --ostype l26 \
+  --net0 virtio,bridge=vmbr0 --net1 virtio,bridge=vmbr4 --net2 virtio,bridge=vmbr1
+qm importdisk 103 /root/fortios.qcow2 local-lvm
+qm set 103 --virtio0 local-lvm:vm-103-disk-0 --boot order=virtio0
+qm set 103 --virtio1 local-lvm:30 --serial0 socket
+qm start 103</code></pre></div>
+
+  <div class="callout callout-green"><strong>NIC ordering matters:</strong> Proxmox <code>net0</code> → FortiOS <code>port1</code>, <code>net1</code> → <code>port2</code>, <code>net2</code> → <code>port3</code>. That's why every device gets WAN on net0, LAN on net1, MGMT on net2 — the config below assumes this order.</div>
+
+  <p>Open each VM's console (the <em>xterm.js</em> serial console works well), log in as <code>admin</code> with a <strong>blank password</strong>, and set a new password when prompted. Then apply the baseline config in section 07.</p>
+</section>
+
+<!-- ══════════════ 06 FMG VM ══════════════ -->
+<section class="section-block" id="fmg-vm">
+  <div class="section-label">06 · Build</div>
+  <h2>Creating the FortiManager VM</h2>
+  <div class="code-block"><div class="code-label">Proxmox node shell — FMG-LOFI (VM 110)</div><pre><code>qm create 110 --name FMG-LOFI --memory 8192 --cores 2 --ostype l26 \
+  --net0 virtio,bridge=vmbr0 \
+  --net1 virtio,bridge=vmbr1
+
+qm importdisk 110 /root/fmg.qcow2 local-lvm
+qm set 110 --virtio0 local-lvm:vm-110-disk-0
+qm set 110 --boot order=virtio0
+
+# FortiManager REQUIRES a second data disk for its database/logs (80 GB min)
+qm set 110 --virtio1 local-lvm:80
+
+qm set 110 --serial0 socket
+qm start 110</code></pre></div>
+  <p>If your node is tight on RAM, FMG will limp along on 4 GB for a 3-device lab, but 8 GB is much smoother. Log in on the console (<code>admin</code>, blank password), then:</p>
+  <div class="code-block"><div class="code-label">FMG-LOFI console — initial network</div><pre><code>config system interface
+    edit port1
+        set mode dhcp        # internet-facing, for FortiGuard
+        set allowaccess ping https ssh
+    next
+    edit port2
+        set ip 10.0.99.10 255.255.255.0
+        set allowaccess ping https ssh
+    next
+end
+
+config system global
+    set hostname FMG-LOFI
+end</code></pre></div>
+  <p>Browse to <code>https://10.0.99.10</code> from a machine on vmbr1 (see section 08 for the admin VM), or temporarily to port1's DHCP address from your home LAN. Complete the setup wizard and activate the evaluation license when prompted.</p>
+</section>
+
+<!-- ══════════════ 07 BASELINE ══════════════ -->
+<section class="section-block" id="baseline">
+  <div class="section-label">07 · First Boot</div>
+  <h2>Baseline Config — Every FortiGate</h2>
+  <p>Paste this into each console, changing only the <strong>hostname</strong> and the two <strong>IP addresses</strong> per the plan in section 03. Shown here for FGT-HQ:</p>
+
+  <div class="code-block"><div class="code-label">FGT-HQ console — baseline</div><pre><code>config system global
+    set hostname FGT-HQ
+    set timezone "Australia/Sydney"
+end
+
+config system interface
+    edit port1
+        set alias WAN
+        set mode dhcp
+        set allowaccess ping
+    next
+    edit port2
+        set alias LAN
+        set ip 10.1.0.1 255.255.255.0        # PARRA: 10.2.0.1 · DR: 10.3.0.1
+        set allowaccess ping
+    next
+    edit port3
+        set alias MGMT
+        set ip 10.0.99.1 255.255.255.0       # PARRA: .2 · DR: .3
+        set allowaccess ping https ssh fgfm  # fgfm = FortiManager protocol
+    next
+end
+
+# Basic LAN → internet policy so clients can browse
+config firewall policy
+    edit 1
+        set name "LAN-to-Internet"
+        set srcintf port2
+        set dstintf port1
+        set srcaddr all
+        set dstaddr all
+        set action accept
+        set schedule always
+        set service ALL
+        set nat enable
+    next
+end</code></pre></div>
+
+  <div class="callout"><strong>Sanity checks before moving on</strong> — on each FortiGate:<br>
+  <code>get system status</code> (hostname, version, eval license) ·
+  <code>get router info routing-table all</code> (default route learned via DHCP on port1) ·
+  <code>execute ping 8.8.8.8</code> ·
+  <code>execute ping 10.0.99.10</code> (FMG reachable on the mgmt plane).</div>
+
+  <h3>Register the three FortiGates to FMG-LOFI</h3>
+  <ol>
+    <li>On each FortiGate: <code>config system central-management</code> → <code>set type fortimanager</code> → <code>set fmg 10.0.99.10</code> → <code>end</code>.</li>
+    <li>On FMG-LOFI: <em>Device Manager → Unauthorized Devices</em> → authorize all three into an ADOM named <code>LoFinance</code>.</li>
+    <li>Verify tunnel state on a FortiGate: <code>diagnose fdsm central-mgmt-status</code> — you want the FGFM tunnel <em>up</em>.</li>
+  </ol>
+  <p>That's the whole build. From here on, everything is a lab.</p>
+</section>
+
+<!-- ══════════════ 08 CLIENTS ══════════════ -->
+<section class="section-block" id="clients">
+  <div class="section-label">08 · Traffic Generators</div>
+  <h2>Test Clients (Cheap Ones)</h2>
+  <p>You need something behind each firewall to generate traffic and prove policies. LXC containers are perfect — a Debian container idles at ~50 MB RAM. Create three via <em>local → CT Templates → download debian-12-standard</em>, then:</p>
+  <div class="code-block"><div class="code-label">Proxmox node shell — one client per LAN</div><pre><code>pct create 201 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname lofi-hq-pc --memory 512 --cores 1 \
+  --net0 name=eth0,bridge=vmbr2,ip=10.1.0.10/24,gw=10.1.0.1
+
+pct create 202 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname lofi-parra-pc --memory 512 --cores 1 \
+  --net0 name=eth0,bridge=vmbr3,ip=10.2.0.10/24,gw=10.2.0.1
+
+pct create 203 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname lofi-dr-pc --memory 512 --cores 1 \
+  --net0 name=eth0,bridge=vmbr4,ip=10.3.0.10/24,gw=10.3.0.1
+
+pct start 201 &amp;&amp; pct start 202 &amp;&amp; pct start 203</code></pre></div>
+  <p>Optionally add a fourth container or small desktop VM on <strong>vmbr1</strong> (e.g. <code>10.0.99.50</code>) as your <em>admin workstation</em> — this is where you open the FortiGate GUIs and FMG in a browser, exactly like sitting in the LoFinance NOC. Alternatively, temporarily enable <code>https</code> on each port1 and manage from your home LAN — less tidy, but it works.</p>
+</section>
+
+<!-- ══════════════ 09 LABS ══════════════ -->
+<section class="section-block" id="labs">
+  <div class="section-label">09 · The Curriculum</div>
+  <h2>The Lab Series — <em>Mapped to the NSE7 Blueprint</em></h2>
+  <p>Run these in order. Each lab states its goal, tasks, and — most importantly — the <strong>verification and diagnostic commands</strong>, because the exam shows you outputs and asks what they mean. Take a snapshot of all four VMs before every lab (section 10).</p>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 1</span><h3>Build Verification &amp; System Fundamentals</h3><span class="lab-tag">Blueprint: System &amp; Session Mgmt</span></div>
+    <p><strong>Goal:</strong> prove the build, and learn to read the tools you'll use in every later lab.</p>
+    <ul>
+      <li>From <code>lofi-hq-pc</code>, browse the internet through FGT-HQ. Watch the session appear: <code>diagnose sys session list</code> — find your session, identify NAT, timers, state.</li>
+      <li>Run the packet sniffer while pinging: <code>diagnose sniffer packet any 'icmp' 4</code> — learn verbosity levels 3, 4, 6.</li>
+      <li>Run debug flow for one ping: <code>diagnose debug flow filter addr 8.8.8.8</code> → <code>diagnose debug flow trace start 10</code> → <code>diagnose debug enable</code>. Read every line: ingress, route lookup, policy match, NAT.</li>
+      <li>Explore <code>get system performance status</code> and <code>diagnose hardware sysinfo memory</code> (conserve-mode thresholds are exam material).</li>
+    </ul>
+    <p><em>Done when:</em> you can narrate a packet's full path through the FortiGate from a debug-flow output without looking anything up.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 2</span><h3>FortiManager Foundations</h3><span class="lab-tag">Blueprint: Central Management</span></div>
+    <p><strong>Goal:</strong> stop configuring devices directly; manage them the enterprise way.</p>
+    <ul>
+      <li>Create the <code>LoFinance</code> ADOM (7.6), authorize all three FortiGates into it.</li>
+      <li>Import each device's existing policy into a <strong>policy package</strong> per site. Understand what the import wizard does with objects and interface mappings.</li>
+      <li>Make a policy change in FMG, use the <strong>Install Wizard</strong>, and read the install preview diff <em>before</em> pushing.</li>
+      <li>Break it on purpose: change something directly on FGT-DR, then observe the <strong>out-of-sync</strong> status in FMG. Practise both resolutions (retrieve vs. re-install).</li>
+      <li>Explore revision history and revert one change.</li>
+    </ul>
+    <p><em>Verify:</em> <code>diagnose dvm device list</code> (FMG) · <code>diagnose fdsm central-mgmt-status</code> (FGT) · config status <em>Synchronized</em> for all three.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 3</span><h3>Hub-and-Spoke IPsec</h3><span class="lab-tag">Blueprint: VPN</span></div>
+    <p><strong>Goal:</strong> rebuild the LoFinance overlay — HQ as hub, PARRA and DR as spokes — using route-based IKEv2 tunnels over vmbr0.</p>
+    <ul>
+      <li>Tunnel addressing: HQ↔PARRA <code>10.255.1.1/.2 /30</code>, HQ↔DR <code>10.255.2.1/.2 /30</code>. Static routes to remote LANs via tunnel interfaces, plus policies both directions.</li>
+      <li>Deliberately mismatch a phase-2 selector first and watch it fail — <em>then</em> fix it. The failure output is worth more than the success.</li>
+      <li>Test: <code>lofi-parra-pc</code> pings <code>lofi-hq-pc</code>; then PARRA→DR <em>through the hub</em> (this needs routes and policies on HQ — think about why).</li>
+    </ul>
+    <p><em>Verify &amp; diagnose:</em> <code>get vpn ipsec tunnel summary</code> · <code>diagnose vpn ike gateway list</code> · <code>diagnose vpn tunnel list</code> · IKE debug: <code>diagnose vpn ike log-filter dst-addr4 x.x.x.x</code> → <code>diagnose debug application ike -1</code>.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 4</span><h3>OSPF Over the Overlay</h3><span class="lab-tag">Blueprint: Routing</span></div>
+    <p><strong>Goal:</strong> replace Lab 3's static routes with OSPF Area 0 across the tunnels — the Season 1 finale, rebuilt with your own hands.</p>
+    <ul>
+      <li>Advertise each LAN; set <code>network-type point-to-multipoint</code> on the hub-side tunnel interface(s) and watch what changes in the neighbor table.</li>
+      <li>Confirm the fingerprint: neighbors show <code>Full/ -</code> — no DR/BDR on p2mp. Know why.</li>
+      <li>Create loopback <code>10.99.50.1/24</code> on FGT-DR as a static/connected "legacy subnet," redistribute it, then <strong>filter</strong> the redistribution with an access-list + route-map so only that prefix leaks (Session 15's MGMT-ONLY lesson).</li>
+      <li>Stretch: adjust OSPF cost to prefer one path, and reason about symmetry before you commit (Session 16's asymmetric-cost trap).</li>
+    </ul>
+    <p><em>Verify:</em> <code>get router info ospf neighbor</code> · <code>get router info routing-table ospf</code> · <code>get router info ospf database brief</code> · <code>diagnose ip rtcache list</code>.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 5</span><h3>ADVPN — Shortcuts Between Spokes</h3><span class="lab-tag">Blueprint: VPN</span></div>
+    <p><strong>Goal:</strong> spoke-to-spoke traffic currently hairpins through HQ. Enable ADVPN so PARRA↔DR builds a dynamic shortcut.</p>
+    <ul>
+      <li>Convert the hub to a dynamic (dial-up) phase 1 with <code>auto-discovery-sender enable</code>; spokes get <code>auto-discovery-receiver enable</code>.</li>
+      <li>Start a PARRA→DR ping, then watch the shortcut appear: <code>diagnose vpn tunnel list</code> — look for the child tunnel and the shortcut flag.</li>
+      <li>Understand the routing requirement that makes shortcuts usable (this is where Lab 4's OSPF pays rent).</li>
+    </ul>
+    <p><em>Verify:</em> traceroute from lofi-parra-pc to 10.3.0.10 — before: two hops through HQ; after: direct. <code>get router info routing-table all</code> on a spoke while the shortcut is up.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 6</span><h3>BGP Fundamentals</h3><span class="lab-tag">Blueprint: Routing</span></div>
+    <p><strong>Goal:</strong> run iBGP between HQ and the spokes over the tunnels (own AS, e.g. 65001), alongside or instead of OSPF.</p>
+    <ul>
+      <li>Peer HQ↔PARRA and HQ↔DR; advertise the LANs via <code>network</code> statements.</li>
+      <li>HQ as <strong>route reflector</strong> so the spokes learn each other's routes — observe what breaks without it (iBGP split-horizon, a classic exam distractor).</li>
+      <li>Apply a route-map on one peer to set local-preference and watch path selection change.</li>
+    </ul>
+    <p><em>Verify:</em> <code>get router info bgp summary</code> · <code>get router info bgp network</code> · <code>get router info routing-table bgp</code> — and be able to say which route wins when OSPF and BGP both offer one (administrative distance).</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 7</span><h3>SSL Inspection, IPS &amp; Web Filtering at HQ</h3><span class="lab-tag">Blueprint: Security Profiles</span></div>
+    <p><strong>Goal:</strong> rebuild the Season 2 inspection layer on FGT-HQ's LAN→WAN policy.</p>
+    <ul>
+      <li>Clone <code>deep-inspection</code> → <code>LoFinance-deep-inspection</code>; export the CA cert and install it on lofi-hq-pc so HTTPS inspection works cleanly (<code>curl -v https://…</code> shows the FortiGate-signed chain).</li>
+      <li>Add a web filter profile; block a category; verify the block page and the log entry.</li>
+      <li>Enable an IPS sensor in <strong>monitor</strong> first, review logs, then switch to block — the monitor-first discipline from the trading-API story.</li>
+      <li>Test detection safely with the EICAR test file (AV) and <code>curl</code> against a known IPS test signature if available.</li>
+    </ul>
+    <p><em>Verify:</em> <code>diagnose test application ipsmonitor 1</code> (engine status) · forward-traffic logs with security events · <code>diagnose debug flow</code> showing the session offloaded to inspection.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 8</span><h3>FortiManager as Local FDS</h3><span class="lab-tag">Blueprint: Central Management</span></div>
+    <p><strong>Goal:</strong> the Session 23 build — FortiGates rate URLs and pull updates from FMG-LOFI instead of public FortiGuard.</p>
+    <ul>
+      <li>Enable FortiGuard services on FMG (<em>FortiGuard → Settings</em>), let it download packages via port1.</li>
+      <li>Point each FortiGate's FortiGuard config at <code>10.0.99.10</code>; disable public fallback and understand the risk of doing so.</li>
+      <li>Break it: shut FMG's port1 and observe what happens to web-filter ratings on the FortiGates. Fix, and articulate the failure domain you just created.</li>
+    </ul>
+    <p><em>Verify:</em> <code>diagnose debug rating</code> on a FortiGate (server list should show 10.0.99.10) · FMG's FortiGuard download status page.</p>
+  </div>
+
+  <div class="lab-card">
+    <div class="lab-card-head"><span class="lab-num">Lab 9</span><h3>The Troubleshooting Gauntlet</h3><span class="lab-tag story">Cowboy Hat</span></div>
+    <p><strong>Goal:</strong> break/fix under exam-realistic conditions. Snapshot everything first. Then, for each fault: restate the symptom → define scope → build the expected packet path → gather evidence → one hypothesis at a time → verify recovery <em>and</em> root cause.</p>
+    <p>Faults to plant (do one per sitting; better yet, apply one blind via FMG script a day in advance so you genuinely don't remember):</p>
+    <ul>
+      <li>Wrong phase-2 selector on one spoke tunnel.</li>
+      <li>OSPF network-type mismatch on one side (p2p vs p2mp) — neighbors stuck.</li>
+      <li>Missing return-path route on HQ for spoke-to-spoke traffic.</li>
+      <li>A policy above the intended one silently matching first.</li>
+      <li>MTU-induced failure: small pings pass, HTTPS hangs (clamp MSS to fix — Parramatta's open item).</li>
+      <li>FGFM tunnel down: FGT unreachable from FMG — find why.</li>
+    </ul>
+    <p><em>Done when:</em> you solve a fault you didn't plant that session, using ≤3 diagnostic commands before your first hypothesis — evidence before assumption.</p>
+  </div>
+
+  <div class="callout callout-green"><strong>Blueprint coverage check:</strong> Labs 1 &amp; 9 → system/sessions/diagnostics · Labs 2 &amp; 8 → central management · Labs 4 &amp; 6 → routing (OSPF + BGP) · Labs 3 &amp; 5 → VPN incl. ADVPN · Lab 7 → security profiles. Every NSE7 EF domain gets hands-on time on this hardware.</div>
+</section>
+
+<!-- ══════════════ 10 HYGIENE ══════════════ -->
+<section class="section-block" id="hygiene">
+  <div class="section-label">10 · Lab Hygiene</div>
+  <h2>Snapshots, Resets &amp; Habits</h2>
+  <ul>
+    <li><strong>Golden snapshot:</strong> the moment section 07 is verified and all devices are registered to FMG, snapshot all four VMs: <code>qm snapshot 101 golden-baseline</code> (repeat for 102, 103, 110). Every lab starts from here or from the previous lab's end-state snapshot.</li>
+    <li><strong>Name snapshots by lab:</strong> <code>lab3-complete</code>, <code>lab4-complete</code>… Rolling back is one command: <code>qm rollback 101 lab3-complete</code>.</li>
+    <li><strong>Backup configs too:</strong> <code>execute backup config flash</code> on each FortiGate, and use FMG revision history — restoring a config is itself exam-relevant practice.</li>
+    <li><strong>One change at a time.</strong> The lab is where the habit is built. If you changed two things and it works, you learned nothing about either.</li>
+    <li><strong>Keep a lab journal:</strong> for each fault fixed, write the symptom, the evidence, the root cause, and the one command that revealed it. This becomes personal exam-prep gold.</li>
+  </ul>
+  <div class="callout callout-amber"><strong>Resource note:</strong> full build ≈ 3×2 GB (FGT) + 8 GB (FMG) + ~1.5 GB (clients) ≈ 12 GB RAM. If tight: FMG at 4 GB, run only the two FortiGates a lab needs, or stop the clients you're not using.</div>
+</section>
+
+</div></main>
+
+<footer>LoFinance Home Lab · Proxmox VE · FortiOS 7.6 · FortiManager 7.6 — "Three firewalls, one manager, zero excuses." </footer>
+
+<!-- image-swap:v1 -->
+<style>
+  /* image-swap: hide placeholder chrome + metadata once the real PNG loads */
+  .image-placeholder.img-loaded,
+  .imgph.img-loaded,
+  .ip-container.img-loaded {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .image-placeholder.img-loaded > :not(img):not(picture):not(figure),
+  .imgph.img-loaded > :not(img):not(picture):not(figure),
+  .ip-container.img-loaded > :not(img):not(picture):not(figure) {
+    display: none !important;
+  }
+</style>
+<script>
+  (function () {
+    var SEL = '.image-placeholder, .imgph, .ip-container';
+    function mark(wrap, img) {
+      if (img.complete && img.naturalWidth > 0) {
+        wrap.classList.add('img-loaded');
+      }
+    }
+    function scan() {
+      document.querySelectorAll(SEL).forEach(function (wrap) {
+        var img = wrap.querySelector('img[src]');
+        if (!img) return;
+        if (img.complete) {
+          mark(wrap, img);
+        } else {
+          img.addEventListener('load', function () { mark(wrap, img); });
+        }
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', scan);
+    } else {
+      scan();
+    }
+  })();
+</script>
+<!-- /image-swap:v1 -->
+
+</body>
+</html>

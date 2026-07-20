@@ -194,13 +194,13 @@ ex:"FGSP's coverage-and-limits table sets the ground rules: same model, firmware
 
 {d:"SC",type:"single",
 q:"Which statement correctly describes the functions of the FGCP heartbeat link?",
-o:["It is used exclusively for firmware synchronization","It carries user data traffic during normal operation","It carries only a once-per-minute keepalive","It is used to discover devices in the same HA group, elect the primary, detect failures, synchronize data, and redistribute traffic"],
+o:["It is used exclusively for firmware synchronization","It carries user data traffic during normal operation","It carries only a once-per-minute keepalive confirming each peer is powered on","Member discovery, primary election, failure detection, sync, and traffic redistribution"],
 a:[3],
 ex:"The heartbeat link is the cluster's nervous system, and the guide lists its jobs explicitly: discovering members of the same HA group, electing the primary, detecting device failure, synchronizing data, and redistributing traffic. That breadth is why heartbeat design gets so much attention — at least two interfaces, dedicated links where possible, and session sync moved to its own interfaces on busy clusters so the heartbeat functions are never starved."},
 
 {d:"SC",type:"multi",
 q:"LoFinance has two VDOMs, each carrying high traffic volume, on a two-member FortiGate cluster. Which two statements about distributing this load are true? (Choose two.)",
-o:["In active-active mode, sessions can be load balanced between the two cluster devices","In active-passive mode, virtual clustering with VDOM partitioning can make each device the primary for a different VDOM, so both devices process traffic","VDOM partitioning requires active-active mode","Active-passive mode always leaves one device completely idle, with no alternative"],
+o:["In active-active mode, sessions can be load balanced between the two cluster devices","In active-passive mode, virtual clustering with VDOM partitioning can make each device the primary for a different VDOM","VDOM partitioning requires active-active mode","Active-passive mode always leaves one device completely idle, with no alternative"],
 a:[0,1],
 ex:"There are two legitimate paths to using both devices: A-A load balances sessions across members, while A-P plus virtual clustering achieves distribution differently — VDOM partitioning makes device 1 primary for VDOM A and device 2 primary for VDOM B, each with failover to the other. The two false options are mirror images of the same misconception: A-P is not condemned to an idle standby, and partitioning is an A-P feature, not an A-A one."},
 
@@ -212,55 +212,55 @@ ex:"Partitioning is a peacetime optimization: in normal operation each device is
 
 {d:"SC",type:"single",
 q:"In the FortiGate life of a packet, at which point is source NAT (SNAT) applied to a transiting packet?",
-o:["During the UTM inspection stage","Inside the NP before any kernel processing","Immediately on ingress, before the routing lookup","At kernel egress, after the forwarding decision, just before the packet leaves"],
+o:["During the UTM inspection stage","Inside the NP before any kernel processing","Immediately on ingress, before the routing lookup","At kernel egress, after the forwarding decision"],
 a:[3],
 ex:"The egress kernel stage runs forwarding first, then source NAT — the packet's source is rewritten on the way out, after routing and inspection are complete. Its counterpart, destination NAT, runs at the start of kernel processing before the routing lookup (so routing acts on the real destination). Keeping the two NAT points straight — DNAT early, SNAT late — is fundamental to reading debug output and predicting what addresses each stage sees."},
 
 {d:"SC",type:"single",
 q:"In a Security Fabric, how does a downstream FortiGate know that it should not create a traffic log for a session already logged by another Fabric member?",
-o:["Fabric members know the MAC addresses of their upstream and downstream peers; a packet arriving from a peer's MAC indicates another member already handled and logged the session","Downstream devices never create any logs in a Fabric","The root FortiGate broadcasts a list of logged session IDs every second","FortiAnalyzer instructs each device which sessions to skip"],
+o:["It recognizes the packet arrived from a Fabric peer's known MAC address","Downstream devices never create any logs in a Fabric","The root FortiGate broadcasts a list of logged session IDs every second","FortiAnalyzer instructs each device which sessions to skip"],
 a:[0],
 ex:"The dedup mechanism is elegantly simple: each Fabric FortiGate learns the MACs of its neighbouring Fabric members, so when a packet arrives sourced from a known peer's MAC, the device knows the session entered the Fabric elsewhere and the first handler owns the traffic log. The device still contributes its own UTM logs where configured — deduplication applies to traffic logs, not to inspection events, which FortiAnalyzer later correlates."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — FGSP configuration</span>config system standalone-cluster\n    set standalone-group-id 1\n    set group-member-id 1\n    set layer2-connection available\n    set session-sync-dev port5 port6\nend</div>What is the purpose of the <code>standalone-group-id</code> and <code>group-member-id</code> settings?",
-o:["They configure the VRRP group and virtual router ID","They define which VDOMs participate in synchronization","The group ID identifies the FGSP group the device belongs to, and the member ID uniquely identifies this device within that group","They set the FGCP cluster priority and serial number"],
+o:["They configure the VRRP group and virtual router ID","They define which VDOMs participate in synchronization","The FGSP group, and this device's unique identity within it","They set the FGCP cluster priority and serial number"],
 a:[2],
 ex:"FGSP peers coordinate through group membership: standalone-group-id names the synchronization group (all peers share it), and group-member-id gives each device its unique identity inside the group. session-sync-dev then nominates the interfaces carrying synchronization traffic. None of this creates an FGCP cluster — the devices remain standalone — which is exactly the distinction the exhibit is testing."},
 
 {d:"SC",type:"single",
 q:"A FortiGate traffic VDOM operates in transparent mode. How do administrators reach this VDOM for management?",
-o:["Through any interface IP in the VDOM — transparent interfaces carry normal IPs","Through the management IP (manageip) configured for the transparent VDOM","Transparent VDOMs can only be managed from the console port","Through the root VDOM's IP using port forwarding"],
+o:["Through any interface IP in the VDOM","Through the transparent VDOM's configured manageip","Transparent VDOMs can only be managed from the console port","Through the root VDOM's IP using port forwarding"],
 a:[1],
 ex:"Transparent-mode interfaces bridge at layer 2 and carry no IP addresses, so the VDOM gets a single management IP instead — set manageip under the VDOM's system settings, reachable through the bridged network. This is one of the defining operational differences from NAT mode, and it appears directly in the VDOM configuration syntax: vdom-type traffic, opmode transparent, manageip."},
 
 {d:"SC",type:"single",
 q:"An FGCP cluster synchronizes a large volume of sessions, and the administrator is concerned the heartbeat interfaces are becoming congested. Which configuration addresses this?",
-o:["Increase the heartbeat interval so fewer packets are sent","set session-sync-dev with one or more dedicated interfaces, moving session synchronization off the heartbeat links","Disable session-pickup permanently","Add the heartbeat interfaces to a zone"],
+o:["Increase the heartbeat interval so fewer packets are sent","Dedicated sync interfaces via set session-sync-dev","Disable session-pickup permanently","Add the heartbeat interfaces to a zone"],
 a:[1],
 ex:"Session synchronization shares the heartbeat links by default, and on busy clusters it can crowd out the heartbeat's other duties (election, failure detection). set session-sync-dev nominates dedicated interfaces for sync traffic, isolating the two functions. Stretching the heartbeat interval attacks the wrong problem and slows failure detection; disabling session-pickup sacrifices the failover behaviour the cluster exists to provide."},
 
 {d:"SC",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Packet capture</span>FGT # diagnose sniff packet any \"ether proto 0x8890\" 4</div>What traffic is this administrator capturing?",
-o:["Configuration synchronization frames","FGCP HA heartbeat packets on a NAT/route mode cluster","Gratuitous ARP broadcasts after a failover","LACP negotiation packets"],
+o:["Configuration synchronization frames","FGCP HA heartbeat packets on a NAT/route mode cluster","Gratuitous ARP broadcasts sent by the new primary after a failover","LACP negotiation packets"],
 a:[1],
 ex:"FGCP heartbeats are not IP packets — they use their own Ethernet types (0x8890 and 0x8891), so capturing them requires an Ethernet-protocol filter exactly like the exhibit shows for a NAT/route mode cluster. Configuration synchronization travels separately as Ethernet type 0x8893. This capture is the standard verification when heartbeats are suspected of being blocked or lost by intermediate switching."},
 
 {d:"SC",type:"single",
 q:"An architect proposes using FGSP for session redundancy between two data-centre FortiGates while running VRRP on their LAN interfaces for gateway failover. Is this design valid?",
-o:["Only if both features run in separate VDOMs","Yes — FGSP is compatible with FortiGate VRRP, combining session synchronization with standards-based gateway redundancy","No — VRRP already synchronizes sessions, making FGSP redundant","No — FGSP and VRRP cannot coexist on the same devices"],
+o:["Only if both features run in separate VDOMs","Yes — FGSP is compatible with FortiGate VRRP","No — VRRP already synchronizes sessions","No — FGSP and VRRP cannot coexist on the same devices"],
 a:[1],
 ex:"The guide states the compatibility directly: FGSP works alongside FortiGate VRRP. The two solve complementary problems — VRRP moves the gateway address to a surviving device, and FGSP ensures the surviving device already has the session table to keep existing connections alive. VRRP alone provides no session awareness at all, so the combination (or FGCP instead) is what turns gateway failover into hitless failover."},
 
 {d:"SC",type:"single",
 q:"In FGCP active-active mode, when the primary decides a session should be inspected by the secondary unit, how does the redistributed traffic reach the secondary?",
-o:["Via the management interface","Through a GRE tunnel automatically built over the data interfaces","Over the HA links — traffic redistribution is one of the functions carried by the cluster's HA communication","The switch duplicates the frames to both units"],
+o:["Via the management interface","Through a GRE tunnel automatically built over the data interfaces","Over the cluster's HA links","The switch duplicates the frames to both units"],
 a:[2],
 ex:"Traffic redistribution appears in the guide's list of functions carried over the cluster's HA communication: after the primary (which owns the virtual MACs and receives all traffic) assigns a session to a secondary, the packets move between members across the HA links. This is another sizing reason to take heartbeat/HA link capacity seriously in A-A designs — those links are part of the data path, not just control plane."},
 
 {d:"SC",type:"single",
 q:"According to the hardware acceleration best practices, which two-part strategy keeps FortiGate performance high while security inspection is enabled?",
-o:["Move all inspection to proxy mode for accuracy","Disable all inspection on high-volume policies","Reserve the NP exclusively for management traffic","Offload high-volume firewall traffic to network processors, and use content processors to carry resource-intensive work such as SSL content scanning"],
+o:["Move all inspection to proxy mode for accuracy","Disable all inspection on high-volume policies","Reserve the network processors exclusively for management-plane traffic","Offload volume traffic to NPs; use CPs for SSL content scanning"],
 a:[3],
 ex:"The best-practices slide splits the load along processor strengths: NPs absorb the high-volume forwarding work — offloading established firewall sessions from the CPU — while CPs shoulder the resource-intensive content tasks, SSL scanning above all. Combined with scoping deep inspection to where it is needed, this is how a FortiGate sustains both throughput and inspection. Disabling inspection is capitulation, not optimization, and proxy mode raises CPU cost rather than lowering it."},
 
@@ -272,19 +272,19 @@ ex:"The distinction is persistence: a CLI template is an assignment — it stays
 
 {d:"CM",type:"single",
 q:"On FortiManager, a managed device's configuration status shows <b>Modified</b> at the device-settings level. What does this mean?",
-o:["The device is unreachable over FGFM","The policy package failed to install","The FortiGate was changed locally and FortiManager has not noticed","The device database contains changes that have not yet been installed to the FortiGate"],
+o:["The device is unreachable over FGFM","The policy package failed to install","The FortiGate was changed locally and FortiManager has not noticed","The device database holds changes not yet installed to the FortiGate"],
 a:[3],
 ex:"At the device level, Modified means FortiManager's copy is ahead: the device database holds edits (templates applied, settings changed, scripts run against the DB) that have not been pushed yet — resolved by Install Device Settings or Quick Install. The reverse situation, where the FortiGate was changed locally, surfaces through the auto-update/retrieve mechanisms instead. Direction of drift determines the remedy, so always establish which side is ahead first."},
 
 {d:"CM",type:"single",
 q:"A policy package contains 200 rules shared by all branches, but three specific rules must only be installed on two particular FortiGates. How is this achieved within a single policy package?",
-o:["Mark the three rules as disabled everywhere else","Set the Install On field of those three rules to the two specific devices, while the rest of the package uses the default installation targets","Move the three rules to the Global ADOM","Duplicate the entire package for the two devices"],
+o:["Mark the three rules as disabled everywhere else","Set those rules' Install On field to the two devices","Move the three rules to the Global ADOM","Duplicate the entire package for the two devices"],
 a:[1],
 ex:"Per-policy installation targets are the surgical tool: the package as a whole is assigned to all branches, but individual rules can carry an Install On scope limiting them to specific devices or groups. This keeps one package as the single source of truth while accommodating site exceptions. Duplicating packages forks your policy estate permanently — the maintenance cost that central management exists to avoid — and the Global ADOM is for organization-wide mandates, not site exceptions."},
 
 {d:"CM",type:"single",
 q:"What does an ADOM revision on FortiManager capture?",
-o:["A snapshot of the ADOM's policy layer — policy packages and objects — that can be restored later","The firmware images of all devices in the ADOM","The FortiManager system configuration","Only the device databases, not the policies"],
+o:["A snapshot of the ADOM's policy layer","The firmware images of all devices in the ADOM","The FortiManager system configuration","Only the device databases, not the policies"],
 a:[0],
 ex:"Revisions exist at two levels and it pays to keep them apart: each device has its own revision history capturing device-database states, while an ADOM revision snapshots the policy layer — the packages and objects — so a bad policy change can be rolled back cleanly. Taking an ADOM revision before major policy work is the FortiManager equivalent of a pre-change backup, and restoring one affects the policy layer, not the devices, until the next install."},
 
@@ -296,13 +296,13 @@ ex:"Discovery is not trust: a FortiGate that reaches out over FGFM appears as an
 
 {d:"CM",type:"single",
 q:"After FortiManager installs a policy package to a FortiGate, which record allows the administrator to see exactly what configuration was sent, for audit purposes?",
-o:["Only the FortiGate's local event log records the change","Installation details are not retained after success","A new revision is recorded in the device's revision history, capturing the installed configuration","The FGFM tunnel log stores the full configuration"],
+o:["Only the FortiGate's local event log records the change","Installation details are not retained after success","A new revision is recorded in the device's revision history","The FGFM tunnel log stores the full configuration"],
 a:[2],
 ex:"Installations, like retrieves, write to the device's revision history — so the exact configuration state after each push is preserved and can be compared against earlier revisions. Combined with Install Preview before the change and the revision diff after it, FortiManager gives a complete before/approve/after audit chain. This chain is a compliance requirement in most financial environments, which is why the workflow questions keep circling back to it."},
 
 {d:"SP",type:"single",
 q:"Which statement about the relationship between the TCP and TLS handshakes is true?",
-o:["TLS and TCP handshakes are interleaved packet by packet","The TLS handshake replaces the TCP handshake on port 443","The TCP three-way handshake must complete before the TLS handshake can begin","TLS 1.3 removes the need for any TCP connection"],
+o:["TLS and TCP handshakes are interleaved packet by packet","The TLS handshake replaces the TCP handshake on port 443","The TCP three-way handshake completes first, then TLS begins","TLS 1.3 removes the need for any TCP connection"],
 a:[2],
 ex:"Classic HTTPS layers strictly: TCP's SYN, SYN-ACK, ACK establishes the transport first, and only then do Client Hello and the rest of the TLS handshake negotiate security on top — visible plainly in any packet capture. This serialized setup is precisely the latency that HTTP/3 attacks by moving to UDP with TLS 1.3 integrated, collapsing the two handshakes. Understanding the layering is also the foundation for reading SSL inspection debugs."},
 
@@ -314,7 +314,7 @@ ex:"The allowed TLS versions for administrative HTTPS are set globally with admi
 
 {d:"SP",type:"single",
 q:"LoFinance relies on application-based SD-WAN steering and application control profiles. FortiGuard updates have been failing for three weeks. What is the expected impact?",
-o:["No impact; application signatures are built into the firmware","The FortiGate blocks all traffic as a precaution","Only web filtering is affected by FortiGuard failures","Application detection degrades as definitions go stale — new or updated applications are misidentified, so both the profiles and the SD-WAN application rules start misbehaving"],
+o:["No impact; application signatures are built into the firmware","The FortiGate blocks all traffic as a precaution","Only web filtering is affected by FortiGuard failures","Application detection degrades as definitions go stale"],
 a:[3],
 ex:"The guide is blunt: for application-based features to work properly, all FortiGuard updates must be applied — otherwise expect malfunction. Application definitions evolve constantly as vendors change their traffic patterns, so a stale database progressively misclassifies exactly the modern SaaS applications SD-WAN steering cares about. The verification step is diagnose autoupdate versions, checking the Application Definitions section's version and last update result."},
 
@@ -332,19 +332,19 @@ ex:"The profile's exemption list works on two axes: FortiGuard web categories (h
 
 {d:"SP",type:"single",
 q:"A Linux host uses hping3 to send a burst of ICMP packets with a size of 654,001 bytes — far exceeding the MTU and causing heavy fragmentation — toward a Windows PC behind a FortiGate. The Windows PC never receives them. According to the enterprise use case, why?",
-o:["The FortiGate's session table overflowed","The Windows firewall silently dropped the fragments","The FortiGate identified the oversized/anomalous ICMP traffic as risky and blocked it according to the IPS profile assigned to the policy","ICMP cannot be fragmented, so the network discarded the packets"],
+o:["The FortiGate's session table overflowed","The Windows firewall silently dropped the oversized fragments before delivery","The policy's IPS profile classified the traffic as risky and blocked it","ICMP cannot be fragmented, so the network discarded the packets"],
 a:[2],
 ex:"This is the study guide's IPS use case: deliberately oversized ICMP (654,001 bytes, forcing fragmentation) is classic anomalous traffic, and the FortiGate, perceiving possible risky traffic, blocks it according to the assigned IPS profile. The scenario illustrates IPS earning its place on internal segmentation policies, not just the Internet edge — anomaly-shaped attacks like fragmentation abuse originate inside networks too. ICMP can absolutely be fragmented; that premise in option D is false."},
 
 {d:"SP",type:"single",
 q:"An administrator enables an antivirus profile on a firewall policy in the GUI. What else does the GUI require on that policy?",
-o:["An SSL inspection profile must be selected — at minimum certificate inspection","A second, identical policy for return traffic","An IPS sensor must also be enabled","Proxy-based inspection mode"],
+o:["An SSL inspection profile must be selected","A second, identical policy for return traffic","An IPS sensor must also be enabled","Proxy-based inspection mode"],
 a:[0],
 ex:"Enabling any security profile on a policy forces the selection of an SSL/SSH inspection profile, because so much traffic is TLS that inspection settings without an SSL decision would be half-defined. Certificate inspection is the minimum (metadata visibility); deep inspection is required for the profiles to see inside encrypted payloads. There is no requirement to stack other profiles or duplicate policies — return traffic is handled by the same stateful session."},
 
 {d:"RT",type:"single",
 q:"A firewall policy uses a VIP that maps public address 203.0.113.10 to internal server 10.1.1.10. When a packet arrives for 203.0.113.10, which address does the FortiGate's routing lookup use?",
-o:["203.0.113.10 — routing always happens before any NAT","10.1.1.10 — destination NAT is applied at the start of kernel processing, before the routing lookup","The MAC address of the ingress interface decides","Both addresses are looked up and compared"],
+o:["203.0.113.10 — routing always happens before any NAT","10.1.1.10 — DNAT runs before the routing lookup","The MAC address of the ingress interface decides","Both addresses are looked up and compared"],
 a:[1],
 ex:"The kernel order settles this permanently: destination NAT runs first, then routing (with RPF and SD-WAN), then policy lookup. So for VIP traffic, the routing decision is made on the translated, real destination — which is why the route to the internal server, not the public address, determines the egress interface. Source NAT is the opposite: applied at egress after forwarding. DNAT-early, SNAT-late explains most NAT-plus-routing behaviour questions."},
 
@@ -356,25 +356,25 @@ ex:"The command hierarchy narrows progressively: database brief lists the whole 
 
 {d:"RT",type:"single",
 q:"On a broadcast OSPF segment with a DR and BDR elected, two DROther routers show each other in state <b>2-Way/DROther</b>. Is this a problem?",
-o:["No — but only if BFD is enabled between them","Yes — every OSPF neighbour pair must reach Full state","No — DROther routers form full adjacencies only with the DR and BDR; 2-Way between two DROthers is normal and expected","Yes — 2-Way indicates an MTU mismatch"],
+o:["No — but only if BFD is enabled between them","Yes — every OSPF neighbour pair must reach Full state","No — DROthers only form full adjacencies with the DR and BDR","Yes — 2-Way indicates an MTU mismatch"],
 a:[2],
 ex:"On multiaccess networks the DR/BDR exist precisely to avoid a full mesh of adjacencies: DROthers synchronize their databases with the DR and BDR only, and remain in 2-Way with each other — neighbours, but deliberately not adjacent. Expecting Full everywhere is the misreading this question punishes; MTU mismatches show up as ExStart/ExChange problems, an entirely different signature. 2-Way/DROther is the network working as designed."},
 
 {d:"RT",type:"single",
 q:"<div class='exhibit'><span class='lbl'>Exhibit — Interface OSPF settings</span>FGT-A port2:  hello-interval 10, dead-interval 40\nFGT-B port1:  hello-interval 30, dead-interval 120</div>These two FortiGates are connected on the same subnet and configured for the same OSPF area, but never list each other as neighbours. Why?",
-o:["The hello and dead intervals do not match — mismatched timers cause hello packets to be rejected, so no neighbour relationship forms","OSPF requires identical interface names on both peers","FGT-B's timers exceed the OSPF maximum","The dead interval must always be exactly ten times the hello interval"],
+o:["The hello and dead intervals do not match","OSPF requires identical interface names on both peers","FGT-B's timers exceed the OSPF maximum","The dead interval must always be exactly ten times the hello interval"],
 a:[0],
 ex:"Hello and dead intervals are part of the hello packet's validation set: if they differ between peers, each router rejects the other's hellos and no neighbour entry is ever created — the same 'never appears' signature as an authentication or area mismatch. The conventional dead interval is four times hello (10/40), not a mandated ratio of ten. When neighbours are absent entirely, audit the hello-validated parameters; when they are stuck mid-state, look at MTU."},
 
 {d:"RT",type:"single",
 q:"LoFinance wants to signal to its directly connected partner AS which of two links the partner should prefer when sending traffic INTO LoFinance's AS. Which BGP attribute is designed for this, and how does it work?",
-o:["Local Preference — advertised to the neighbouring AS, higher preferred","Weight — exchanged between the autonomous systems","Router ID — the partner prefers the higher router ID","MED — advertised to the neighbouring AS, with the lower value marking the preferred entry point"],
+o:["Local Preference — advertised to the neighbouring AS, higher preferred","Weight — exchanged between the autonomous systems","Router ID — the partner prefers the higher router ID","MED — advertised to the neighbouring AS; lower is preferred"],
 a:[3],
 ex:"MED (the multi-exit discriminator) is the polite suggestion between adjacent autonomous systems: you advertise different MED values on your two links, and the neighbouring AS — if it honours MED — sends traffic into the lower-MED entry point. Its scope is exactly one AS hop, and it is advisory. Local Preference is its inward-facing mirror (never leaves your AS, higher wins), and weight never leaves the local router. Sorting these three by scope and direction resolves most BGP attribute questions."},
 
 {d:"RT",type:"single",
 q:"An administrator wants a specific prefix advertised to BGP peers, but only when that exact route is present in the FortiGate's routing table. Which advertising method has this behaviour?",
-o:["A network statement under config router bgp — the prefix is advertised only if a matching route exists in the routing table","Setting default-originate on the neighbour","Static route with a lower administrative distance","Redistributing connected routes"],
+o:["A network statement under config router bgp","Setting default-originate on the neighbour","Static route with a lower administrative distance","Redistributing connected routes"],
 a:[0],
 ex:"The BGP network statement carries a built-in condition: it advertises the prefix only while a matching route is present in the routing table, making the advertisement self-withdrawing if the underlying route disappears. Redistribution advertises whatever the source protocol currently holds (shaped by route maps), a different control model. This conditional behaviour is why network statements are preferred for deliberately curated advertisements like your public ranges."},
 
@@ -386,25 +386,25 @@ ex:"BFD is a protocol-agnostic liveness check: a rapid, lightweight exchange tha
 
 {d:"RT",type:"single",
 q:"Two OSPF routers in the same area were accidentally configured with the same router ID. What is the correct remediation?",
-o:["Increase the dead interval to give the LSDB time to converge","Assign a unique router ID to one of them with set router-id, since unique router IDs are a requirement for correct OSPF operation","Move one router to a stub area","Nothing — OSPF tolerates duplicate router IDs within an area"],
+o:["Increase the dead interval to give the LSDB time to converge","Assign a unique router ID to one of them with set router-id","Move one router to a stub area","Nothing — OSPF tolerates duplicate router IDs within an area"],
 a:[1],
 ex:"A unique router ID appears explicitly in the adjacency requirements list, and for good reason: the router ID keys every LSA a router originates, so duplicates make two routers' advertisements collide in the LSDB, producing flapping routes and adjacency instability that no timer tuning can fix. The remedy is administrative — set router-id explicitly (best practice on every router regardless, so IDs never depend on interface address selection)."},
 
 {d:"VPN",type:"single",
 q:"Which statement correctly maps IPsec negotiation phases to their security associations?",
-o:["Phase 1 establishes the IKE SA protecting the negotiation channel; phase 2 establishes the IPsec SAs — a pair of unidirectional SAs — that protect the actual data","Both phases create a single shared bidirectional SA","Phase 2 only runs when NAT-T is detected","Phase 1 creates the data-plane SAs; phase 2 secures the control channel"],
+o:["Phase 1 creates the IKE SA; phase 2 creates the paired unidirectional IPsec SAs","Both phases create a single shared bidirectional SA","Phase 2 only runs when NAT-T is detected","Phase 1 creates the data-plane SAs; phase 2 secures the control channel"],
 a:[0],
 ex:"The two phases divide control from data: phase 1 produces the IKE SA — the encrypted, authenticated channel the peers negotiate through — and phase 2 (CREATE_CHILD_SA in IKEv2 terms) produces the IPsec SAs carrying user traffic, as a pair because each SA is unidirectional (one inbound, one outbound). This is why the npu_flag tracks two SA copies for offload, and why 'phase 1 up, phase 2 down' cleanly means the channel works but the traffic definition doesn't."},
 
 {d:"VPN",type:"single",
 q:"On an ADVPN or dial-up VPN hub, the phase 1 interface is configured with <code>set type dynamic</code>. Why?",
-o:["The spokes' public IP addresses are unknown or change, so the hub must accept IKE negotiations from any source address","It allows the hub to operate without a WAN IP address","It enables the tunnel to change encryption algorithms dynamically","It makes the tunnel interface disappear when idle"],
+o:["The spokes' public IP addresses are unknown or change","It allows the hub to operate without a WAN IP address","It enables the tunnel to change encryption algorithms dynamically","It makes the tunnel interface disappear when idle"],
 a:[0],
 ex:"type dynamic makes the hub a listener: rather than defining a fixed remote gateway, it accepts IKE negotiations from peers whose addresses it cannot know in advance — branch spokes on DHCP or LTE, roaming clients, ADVPN members. Each connecting spoke is matched to the dial-up phase 1 (with network-id disambiguating when several exist). The setting concerns peer addressing only; algorithms and the hub's own addressing are configured elsewhere."},
 
 {d:"VPN",type:"single",
 q:"In an ADVPN topology, which statement about tunnel lifecycle is true?",
-o:["Shortcuts remain up permanently once created","All tunnels, including spoke-to-hub, are created on demand","Spoke-to-hub tunnels are persistent, while spoke-to-spoke shortcuts are created on demand and torn down when idle","The hub tears down its spoke tunnels whenever a shortcut forms"],
+o:["Shortcuts remain up permanently once created","All tunnels, including spoke-to-hub, are created on demand","Hub tunnels are persistent; shortcuts are on-demand and removed when idle","The hub tears down its spoke tunnels whenever a shortcut forms"],
 a:[2],
 ex:"ADVPN's economy comes from this asymmetry: the spoke-to-hub overlay is the permanent skeleton (carrying routing and the shortcut signalling), while spoke-to-spoke shortcuts exist only while traffic justifies them — created on demand when the hub brokers an introduction, removed after idling. The parent tunnels are never sacrificed for shortcuts; they are what makes future shortcuts (and fallback through the hub) possible."},
 
@@ -416,13 +416,13 @@ ex:"Two facts frame IPsec offload: it is on by default where supported (per-tunn
 
 {d:"VPN",type:"single",
 q:"LoFinance is replacing pre-shared keys with digital certificates for IPsec peer authentication on its site-to-site tunnels. What is the principal security benefit?",
-o:["No shared secret needs to be distributed and stored on every peer — each device proves its identity with its own private key and a verifiable certificate","Certificates encrypt the data traffic more strongly than PSKs","Certificates make the tunnel immune to man-in-the-middle attacks at the ESP layer","Certificate authentication removes the need for phase 1 entirely"],
+o:["No shared secret needs to be distributed and stored on every peer","Certificates encrypt the data traffic more strongly than PSKs","Certificates make the tunnel immune to man-in-the-middle attacks at the ESP layer","Certificate authentication removes the need for phase 1 entirely"],
 a:[0],
 ex:"PSK weaknesses are operational: the same secret sits on both (or many) devices, must be distributed somehow, and rarely gets rotated. Signature-based authentication replaces that with per-device key pairs — the private key never leaves the device, identity is verified against a CA, and revocation gives you per-peer control. Data encryption strength is unchanged: authentication method and ESP cipher are independent choices, which is the trap in option B."},
 
 {d:"VPN",type:"single",
 q:"Which statement about route-based IPsec VPNs on FortiGate is true?",
-o:["Each tunnel is represented by a virtual tunnel interface, and traffic is directed into the VPN by routes, with firewall policies referencing the tunnel interface","Traffic selection is performed exclusively by the phase 2 selectors, with no routing involvement","Route-based VPNs cannot participate in dynamic routing protocols","A route-based VPN requires one firewall policy per remote subnet"],
+o:["Each tunnel is a virtual interface; routes steer traffic and policies reference it","Traffic selection is performed exclusively by the phase 2 selectors, with no routing involvement","Route-based VPNs cannot participate in dynamic routing protocols","A route-based VPN requires one firewall policy per remote subnet"],
 a:[0],
 ex:"Route-based is FortiGate's native model: the phase 1 creates a virtual interface, routes decide what enters the tunnel, and policies to/from that interface authorize it — three separable controls. That interface is exactly what lets OSPF and BGP run over the VPN, which in turn is what ADVPN and SD-WAN build on. Policies scale by interface and zone, not per remote subnet; and selectors, in this model, usually stay at 0.0.0.0/0 as capability rather than steering."}
 ];

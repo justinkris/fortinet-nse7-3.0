@@ -181,13 +181,13 @@ const DOMAINS = {
 const Q = [
 {d:"SP",type:"single",
 q:"After enabling SSL deep inspection, a business-critical application stops connecting. Investigation shows the application uses certificate pinning and rejects the FortiGate's re-signed certificate. What is the recommended resolution?",
-o:["Replace the FortiGate CA certificate with a public CA certificate","Exempt the application's destinations from SSL inspection so its traffic is not decrypted","Lower the SSL cipher suite requirements in the profile","Instruct users to accept the certificate warning"],
+o:["Replace the FortiGate CA certificate with a public CA certificate","Exempt the application's destinations from SSL inspection","Lower the SSL cipher suite requirements in the profile","Instruct users to accept the certificate warning"],
 a:[1],
 ex:"A pinned application validates the exact server certificate or key, so any man-in-the-middle re-signing breaks it by design — no CA distribution can fix that. The study guide's best practice is to apply deep inspection only where needed and exempt known, trusted traffic; adding the application's destinations to the profile's exemption list restores service while keeping decryption elsewhere. Public CAs will not issue a re-signing CA, making option A impossible as well as wrong."},
 
 {d:"SP",type:"single",
 q:"A web filter profile contains a static URL filter entry set to Allow for a specific site, while that site's FortiGuard category is set to Block in the same profile. What happens when a user visits the site?",
-o:["The profile is invalid and cannot be saved","Access is blocked — FortiGuard categories always take precedence","Access is allowed — the static URL filter is evaluated before the FortiGuard category filter","Both filters trigger and the user sees two block pages"],
+o:["The profile is invalid and cannot be saved","Access is blocked — FortiGuard categories always take precedence","Allowed — the URL filter is evaluated before the category filter","Both filters trigger and the user sees two block pages"],
 a:[2],
 ex:"Web filtering evaluates in a fixed order: static URL filter first, then FortiGuard category filtering, then content-based inspection. An Allow (or Exempt) match in the URL filter is honoured before the category verdict is ever consulted, which is precisely how administrators build surgical exceptions to blocked categories. Reversing this order in your head leads to both wrong exam answers and mysterious 'why is this still blocked' tickets."},
 
@@ -199,7 +199,7 @@ ex:"A TLS 1.2 cipher suite reads left to right: protocol (TLS), key exchange (EC
 
 {d:"SP",type:"single",
 q:"In an SSL/SSH inspection profile performing full inspection, how does FortiGate handle problematic server certificates, such as expired or untrusted ones?",
-o:["Problematic certificates automatically bypass inspection","FortiGate silently replaces problematic certificates with valid ones so users never see errors","All problematic certificates are always blocked and this cannot be changed","The administrator can configure a separate action (such as allow, block, or ignore) for each certificate condition, including expired, revoked, and untrusted"],
+o:["Problematic certificates automatically bypass inspection","FortiGate silently replaces problematic certificates with valid ones so users never see errors","All problematic certificates are always blocked and this cannot be changed","Separate configurable actions per condition: expired, revoked, and untrusted"],
 a:[3],
 ex:"The profile exposes per-condition handling: expired, revoked, untrusted/unknown-CA (and related) certificate states each carry their own configurable action. This lets a security team block untrusted issuers while, say, permitting an internal legacy server with an expired certificate during remediation. Understanding that FortiGate validates the real server certificate before re-signing — and acts on the validation result — is the concept behind this question."},
 
@@ -213,13 +213,13 @@ ex:"diagnose autoupdate versions lists every FortiGuard-delivered database with 
 
 {d:"SP",type:"single",
 q:"An IPS sensor must block a specific set of vulnerabilities affecting Windows servers, while only logging everything else. What is the correct way to build the sensor?",
-o:["Set the sensor to block malicious URLs","Create rate-based signatures for the Windows entries","Enable all signatures with action Default and rely on severity","Create one IPS filter matching Windows/server signatures with action Block, and a second broader filter with action Monitor"],
+o:["Set the sensor to block malicious URLs","Create rate-based signatures for the Windows entries","Enable all signatures with action Default and rely on severity","A Block filter for the Windows signatures, plus a broader Monitor filter"],
 a:[3],
 ex:"IPS sensors are built from filters (matching signatures by OS, application, severity, target, and so on) and individual signature entries, each with its own action — and entries are evaluated so specific matches take their configured action while the broader filter handles the rest. Leaving everything on Default just inherits each signature's built-in action, which does not implement the stated policy. Filter + action design is the practical IPS skill the blueprint tests."},
 
 {d:"SP",type:"single",
 q:"Which statement about the relationship between the TCP and TLS handshakes is true?",
-o:["TLS and TCP handshakes are interleaved packet by packet","The TLS handshake replaces the TCP handshake on port 443","The TCP three-way handshake must complete before the TLS handshake can begin","TLS 1.3 removes the need for any TCP connection"],
+o:["TLS and TCP handshakes are interleaved packet by packet","The TLS handshake replaces the TCP handshake on port 443","The TCP three-way handshake completes first, then TLS begins","TLS 1.3 removes the need for any TCP connection"],
 a:[2],
 ex:"Classic HTTPS layers strictly: TCP's SYN, SYN-ACK, ACK establishes the transport first, and only then do Client Hello and the rest of the TLS handshake negotiate security on top — visible plainly in any packet capture. This serialized setup is precisely the latency that HTTP/3 attacks by moving to UDP with TLS 1.3 integrated, collapsing the two handshakes. Understanding the layering is also the foundation for reading SSL inspection debugs."},
 
@@ -231,31 +231,31 @@ ex:"The comparison slide is the anchor here: ISDB is a policy/object tool — la
 
 {d:"SP",type:"multi",
 q:"Which two statements accurately compare proxy-based and flow-based inspection on FortiGate? (Choose two.)",
-o:["Proxy-based inspection collects more data points and supports features such as web category usage quotas and web-profile overrides","Flow-based inspection generally offers better performance because traffic is examined as it passes, without full buffering","Flow-based inspection supports every feature that proxy-based inspection supports","Proxy-based sessions can be offloaded to NPs using NTurbo"],
+o:["Proxy-based inspection collects more data points and supports features such as web category usage quotas and web-profile overrides","Flow-based inspection generally offers better performance","Flow-based inspection supports every feature that proxy-based inspection supports","Proxy-based sessions can be offloaded to NPs using NTurbo"],
 a:[0,1],
 ex:"The trade-off is thoroughness versus speed: the proxy buffers and fully reconstructs content, enabling richer features — category usage quotas and web-profile override among them — while flow-based inspection scans in transit via the IPS engine for higher throughput, with NTurbo acceleration available. The feature sets are not equal (several proxy features have no flow equivalent), and proxy sessions can never be hardware-offloaded, which is why inspection mode is also a capacity decision."},
 
 {d:"SP",type:"single",
 q:"A policy must allow employees to browse Facebook but block Facebook Chat. Application control signatures exist for both 'Facebook' (parent) and 'Facebook_Chat' (child). Which configuration achieves the goal?",
-o:["Block the Facebook parent signature; child functions are then evaluated individually","Use a static URL filter for chat.facebook.com with certificate inspection","Set the application category Social.Media to Block and add Facebook to the URL exemption list","In the application control profile, set the Facebook parent signature to Allow/Monitor and the Facebook_Chat child signature to Block, with SSL deep inspection enabled on the policy"],
+o:["Block the Facebook parent signature; child functions are then evaluated individually","Use a static URL filter for chat.facebook.com with certificate inspection","Set the application category Social.Media to Block and add Facebook to the URL exemption list","Allow the Facebook parent signature and block the Facebook_Chat child, with deep inspection"],
 a:[3],
 ex:"Granular in-app control uses the parent/child signature hierarchy: allow (or monitor) the parent so the platform loads, and block the specific child function. Blocking the parent would kill everything, including the allowed browsing. Deep inspection is required because the chat function is distinguished inside the encrypted payload — certificate inspection's SNI visibility can identify 'Facebook' but not which feature is being used within it."},
 
 {d:"SP",type:"single",
 q:"In an IPS sensor, a signature entry's action is left as <b>Default</b>. What does this mean?",
-o:["All traffic matching the signature is silently dropped","The signature uses the action recommended by FortiGuard within the signature's own definition","The signature is disabled until an explicit action is chosen","The action is inherited from the firewall policy's deny action"],
+o:["All traffic matching the signature is silently dropped","The action recommended within the signature's FortiGuard definition","The signature is disabled until an explicit action is chosen","The action is inherited from the firewall policy's deny action"],
 a:[1],
 ex:"Default delegates the decision to the signature itself: each FortiGuard signature ships with a recommended action (pass or block) chosen by Fortinet based on the signature's confidence and severity. Leaving Default is a sensible baseline, and explicit Monitor/Block overrides are for where your risk assessment differs. Nothing about Default disables a signature — that is what the enable/disable status is for."},
 
 {d:"SP",type:"single",
 q:"An IPS sensor blocks a signature that keeps falsely triggering on traffic from one internal monitoring server, but the signature must remain active for the rest of the network. What should the administrator configure?",
-o:["Set the entire signature's action to Monitor","Remove the IPS sensor from the firewall policy","An IP exemption on that signature entry for the monitoring server's address","Lower the sensor's overall severity threshold"],
+o:["Set the entire signature's action to Monitor across the sensor","Remove the IPS sensor from the firewall policy","An IP exemption on that signature for the monitoring server","Lower the sensor's overall severity threshold"],
 a:[2],
 ex:"IPS signature entries support IP exemptions precisely for this: the exempted source (or source/destination pair) bypasses that one signature while every other host remains protected. Setting the action to Monitor or removing the sensor sacrifices protection network-wide to fix a single false positive — the disproportionate responses that exam distractors love. Targeted exemption is the least-privilege fix."},
 
 {d:"SP",type:"single",
 q:"By default, an SSL/SSH inspection profile inspects protocols on their standard ports (HTTPS on 443, and so on). A security team worries about encrypted services running on non-standard ports. Which profile capability addresses this?",
-o:["Enabling NTurbo on the policy","Adding a static route for the non-standard ports","Enabling inspection on all ports for the protocol, instead of only the standard port mapping","Raising the profile's untrusted-certificate action to block"],
+o:["Enabling NTurbo on the policy","Adding a static route for the non-standard ports","Enabling inspection on all ports for the protocol","Raising the profile's untrusted-certificate action to block"],
 a:[2],
 ex:"The profile's protocol-port mapping decides where FortiGate looks for each protocol; the inspect-all-ports option widens that from the well-known port to any port, catching HTTPS deliberately moved to 8443 or anywhere else. The cost is inspection effort across far more traffic, which is the usual trade-off conversation. Certificate actions and routing settings do nothing for traffic the profile never examines in the first place."},
 
@@ -275,7 +275,7 @@ ex:"The IPS fail-open setting controls behaviour when the IPS engine is overwhel
 
 {d:"SP",type:"single",
 q:"The SOC subscribes to an external feed of malicious URLs (not IPs). How can this feed be enforced in web filtering?",
-o:["Add the feed as a URL-list threat feed connector, which appears as a remote category that the web filter profile can set to Block","External feeds only work in firewall policies, not web filtering","Convert the URLs to IP addresses in an address group","Paste the URLs into the static URL filter weekly"],
+o:["Add the feed as a URL-list threat feed connector","External feeds only work in firewall policies, not web filtering","Convert the URLs to IP addresses in an address group","Paste the URLs into the static URL filter weekly"],
 a:[0],
 ex:"Threat feeds come in types matched to their consumers: IP-list feeds become dynamic address objects for policies, while URL-list feeds surface as remote categories inside web filtering — assign the category an action (Block) in the profile, and the externally maintained list is enforced and refreshed automatically. Manual pasting recreates the maintenance burden feeds exist to remove, and collapsing URLs to IPs both over-blocks shared hosting and under-blocks path-specific threats."},
 
@@ -283,25 +283,25 @@ ex:"Threat feeds come in types matched to their consumers: IP-list feeds become 
 
 {d:"SP",type:"single",
 q:"Which statement correctly describes HTTP/3 compared to HTTP/2?",
-o:["HTTP/3 uses TCP with mandatory TLS 1.0","HTTP/3 is identical to HTTP/2 except for larger headers","HTTP/3 runs over UDP with TLS 1.3 integrated by default, achieving faster connection setup than HTTP/2 over TCP","HTTP/3 removed encryption to improve performance"],
+o:["HTTP/3 uses TCP with mandatory TLS 1.0","HTTP/3 is identical to HTTP/2 except for larger headers","HTTP/3 runs over UDP with TLS 1.3 integrated by default","HTTP/3 removed encryption to improve performance"],
 a:[2],
 ex:"The protocol stack shifted: HTTP/2 rides TCP with TLS 1.2 or 1.3 layered on top, while HTTP/3 moves to UDP transport with TLS 1.3 integrated by default — collapsing the separate TCP and TLS handshakes into a faster combined setup. For a firewall engineer this matters because HTTP/3 traffic looks like UDP/443, not TCP/443, which affects how policies and inspection profiles see modern web traffic."},
 
 {d:"SP",type:"single",
 q:"A firewall policy uses an SSL/SSH inspection profile set to <b>certificate-inspection</b>. Which security function can still be performed on HTTPS traffic?",
-o:["Antivirus scanning of downloaded files","FortiGuard category-based web filtering using the SNI and server certificate","DLP inspection of uploaded documents","IPS detection of exploits inside the encrypted payload"],
+o:["Antivirus scanning of downloaded files","FortiGuard category-based web filtering","DLP inspection of uploaded documents","IPS detection of exploits inside the encrypted payload"],
 a:[1],
 ex:"Certificate inspection reads the unencrypted parts of the TLS handshake — SNI parsing, server certificate validation, and URL extraction from the SNI/certificate — which is enough for category-based web filtering and application control. It never decrypts the payload, so antivirus, DLP, and payload-level IPS all require full (deep) inspection. Trading visibility for CPU/RAM savings is the core design decision in this profile."},
 
 {d:"SP",type:"single",
 q:"During its UTM inspection stage, FortiGate can check whether outbound connections are destined for known command-and-control infrastructure. Which feature provides this?",
-o:["The RPF check in the kernel","DNS translation in the firewall policy","The botnet check, which compares outbound connections against the FortiGuard botnet C&C database","GeoIP blocking of high-risk countries"],
+o:["The RPF check in the kernel","DNS translation in the firewall policy","The botnet check against the FortiGuard C&C database","GeoIP blocking of connections to high-risk countries and regions"],
 a:[2],
 ex:"The botnet check appears in the UTM/NGFW stage of the life of a packet: outbound connections are matched against FortiGuard's continuously updated botnet and C&C database, catching infected internal hosts phoning home even when the malware itself slipped past. GeoIP is a blunt location filter and RPF is an anti-spoofing sanity check — neither knows anything about C&C infrastructure."},
 
 {d:"SP",type:"single",
 q:"A web filter profile sets the Social Media category to <b>Warning</b>. What is the user experience when browsing a site in that category?",
-o:["The site loads normally but is logged as a violation","The site is silently blocked","A warning page is displayed; the user can acknowledge it and proceed to the site","The user must enter administrator credentials to continue"],
+o:["The site loads normally but is logged as a violation","The site is silently blocked","A warning page appears; the user may acknowledge it and proceed","The user must enter administrator credentials to continue"],
 a:[2],
 ex:"The web filter category actions form a spectrum: Allow, Monitor (allow and log), Warning (interrupt with a page the user can click through, with the acknowledgement logged), Authenticate (proceed only after valid credentials of an authorized group), and Block. Warning implements 'discourage but permit' policies — common for categories that are unproductive rather than dangerous — and the acknowledgement trail is often the real point for HR and compliance."},
 
@@ -309,7 +309,7 @@ ex:"The web filter category actions form a spectrum: Allow, Monitor (allow and l
 
 {d:"SP",type:"single",
 q:"LoFinance wants SD-WAN rules that steer traffic based on the application (for example, routing Microsoft 365 out a specific link). What must be enabled before application control can be used inside SD-WAN rules?",
-o:["Proxy-based inspection mode on the FortiGate","The Application Detection-Based SD-WAN feature under System > Feature Visibility","A dedicated ISDB license","Deep SSL inspection on every policy"],
+o:["Proxy-based inspection mode enabled on all SD-WAN member policies","Application Detection-Based SD-WAN under Feature Visibility","A dedicated ISDB license","Deep SSL inspection on every policy"],
 a:[1],
 ex:"Application-based steering is gated behind a feature toggle: Application Detection-Based SD-WAN under System > Feature Visibility. Once enabled, SD-WAN rules can match applications — with the usual caveat that FortiGuard application definitions must be up to date, or detection (and therefore steering) misbehaves. ISDB-based rules, by contrast, work from the downloaded IP/port database and need no such toggle."},
 
@@ -321,25 +321,25 @@ ex:"The FortiGuard dependency works differently per feature: web filtering rates
 
 {d:"SP",type:"single",
 q:"Which statement about application control on FortiOS 7.6 is true?",
-o:["Application signatures are updated only with firmware upgrades","Application control cannot detect applications inside HTTPS without any SSL inspection profile","Application control is performed by the IPS engine using flow-based scanning, even when the firewall policy operates in proxy mode","Application control requires proxy-based inspection to identify applications"],
+o:["Application signatures are updated only with firmware upgrades","Application control cannot detect applications inside HTTPS without any SSL inspection profile","The IPS engine performs it with flow-based scanning, even on proxy-mode policies","Application control requires proxy-based inspection to identify applications"],
 a:[2],
 ex:"Application control is implemented as signatures evaluated by the IPS engine and always scans flow-based — even on proxy-mode policies. Signatures are updated continuously through FortiGuard, independent of firmware. Many applications can be identified with just certificate inspection (via SNI), so 'cannot detect without any SSL inspection' overstates the dependency — full deep inspection is only needed to see inside the payload."},
 
 {d:"SP",type:"single",
 q:"The FortiGuard category 'Information Technology' is blocked for standard users, but the service desk needs access to one specific vendor support site in that category. What is the cleanest solution?",
-o:["Create a web rating override that assigns the site to an allowed local category","Move the entire Information Technology category to Allow","Add the site's IP address to a VIP object","Disable FortiGuard web filtering for the service desk subnet"],
+o:["A web rating override assigning the site to an allowed local category","Move the entire Information Technology category to Allow","Add the site's IP address to a VIP object","Disable FortiGuard web filtering for the service desk subnet"],
 a:[0],
 ex:"Web rating overrides re-categorize a specific URL — typically into a custom local category that the profile allows — so the single site opens while the rest of the category stays blocked. Allowing the whole category or disabling filtering for a subnet massively over-grants relative to the requirement, which is the pattern to reject in least-privilege scenario questions. A VIP is a destination-NAT object and has nothing to do with web filtering."},
 
 {d:"SP",type:"single",
 q:"Which IPS capability is designed to detect a brute-force login attack, where individual packets are legitimate but the volume of attempts within a time window is anomalous?",
-o:["SSL certificate inspection","Rate-based signatures that trigger when a threshold is exceeded within a defined period","Protocol decoders","Signature severity filtering"],
+o:["SSL certificate inspection","Rate-based signatures with a threshold over a time window","Protocol decoders that validate each login attempt's packet format","Signature severity filtering"],
 a:[1],
 ex:"Each single login attempt is protocol-valid, so ordinary pattern-matching signatures see nothing wrong; rate-based signatures add the missing dimension by counting matches per source over time and acting when a threshold is crossed. This is how FortiGate IPS addresses brute force and similar abuse patterns, and it is the standard answer whenever the question emphasizes 'volume' or 'frequency' rather than packet content."},
 
 {d:"SP",type:"single",
 q:"When comparing where features are configured on FortiGate, which statement is true?",
-o:["ISDB is a security profile; web filter is a firewall object","Web filter and application control are security profiles applied to policies, while ISDB entries are objects selected directly in the policy's destination field","Application control is configured per interface rather than per policy","All three are configured as security profiles"],
+o:["ISDB is a security profile; web filter is a firewall object","The profiles inspect; ISDB entries are policy destination objects","Application control is configured per interface","All three are configured as security profiles"],
 a:[1],
 ex:"Web filter and application control are inspection features — security profiles attached to a firewall policy. ISDB is not an inspection feature at all: Internet Service entries live with firewall addresses as policy objects and are chosen as the destination (replacing address and service). This placement difference is also functional — ISDB decides whether traffic matches a policy, while the profiles decide what inspection happens to traffic that already matched."},
 
@@ -353,13 +353,13 @@ ex:"The IPS engine is the workhorse of flow-based inspection: it evaluates IPS s
 
 {d:"SP",type:"single",
 q:"LoFinance wants to allow video streaming applications but restrict them to 2 Mbps per session during business hours, identified by application rather than port. Which combination achieves this?",
-o:["A traffic shaping policy that matches the streaming applications via application control","A web filter local category with a quota","An ISDB destination object with a schedule","An IPS rate-based signature set to 2 Mbps"],
+o:["A shaping policy matching the apps via application control","A web filter local category with a quota","An ISDB destination object combined with a recurring schedule object","An IPS rate-based signature set to 2 Mbps"],
 a:[0],
 ex:"The comparison slide notes that application control — unlike web filter — can be referenced in traffic shaping policies: the application signatures identify the traffic, and the shaping policy applies the bandwidth limit and schedule. ISDB matches by IP/port without inspecting content, web-filter quotas limit browsing time by category rather than bandwidth by application, and IPS rate-based signatures count events for attack detection, not throughput control."},
 
 {d:"SP",type:"single",
 q:"In a deep-inspection SSL profile, why do categories such as Finance and Banking or Health and Wellness appear in the exemption list by default?",
-o:["Decrypting them exceeds FortiGate hardware capability","FortiGuard cannot categorize encrypted financial traffic","Those sites use certificate pinning that FortiGate cannot process at all","They are exempted for privacy and regulatory reasons, so their traffic is not decrypted"],
+o:["Decrypting them exceeds FortiGate hardware capability","FortiGuard cannot categorize encrypted financial traffic","Those sites use certificate pinning that FortiGate cannot process at all","They are exempted for privacy and regulatory reasons"],
 a:[3],
 ex:"Fortinet ships privacy-sensitive categories pre-exempted so that personal banking and health sessions are not decrypted — a regulatory and privacy consideration, not a technical limitation. (Certificate pinning is a genuine operational reason to exempt specific applications, but it is not why these categories are exempt by default.) Expect scenario questions about deciding what to exempt and why."},
 
@@ -379,13 +379,13 @@ ex:"The profile's exemption list works on two axes: FortiGuard web categories (h
 
 {d:"SP",type:"single",
 q:"After enabling full SSL inspection, users report browser certificate warnings on every HTTPS site. What is the correct resolution?",
-o:["Change the profile's untrusted certificate action to Allow","Deploy the FortiGate's SSL inspection CA certificate to the trusted root store of all client devices","Downgrade the profile to certificate-inspection mode","Exempt all web categories from inspection"],
+o:["Change the profile's untrusted certificate action to Allow","Install the FortiGate's inspection CA in clients' trusted root stores","Downgrade the profile to certificate-inspection mode","Exempt all web categories from inspection"],
 a:[1],
 ex:"With deep inspection the FortiGate acts as a man-in-the-middle and re-signs server certificates with its own CA. Browsers warn because that CA is not trusted — the fix is to distribute the CA certificate to clients (typically via GPO or MDM). Allowing untrusted certificates or disabling inspection removes the warnings by removing the security, which is the trap in the other options."},
 
 {d:"SP",type:"single",
 q:"On FortiOS 7.6, where is the inspection mode (flow-based or proxy-based) selected?",
-o:["Per firewall policy — each policy chooses flow or proxy, and the attached profiles operate accordingly","Globally for the entire FortiGate, requiring a reboot to change","Per VDOM only, fixed at VDOM creation","Inside each security profile individually"],
+o:["Per firewall policy","Globally for the entire FortiGate, requiring a reboot to change","Per VDOM only, fixed at VDOM creation","Inside each security profile individually"],
 a:[0],
 ex:"Inspection mode is a per-policy decision: most policies run flow-based for performance, while the specific policies needing proxy-only features (usage quotas, web profile override, deeper content handling) are set to proxy — on the same FortiGate, side by side. This granularity is what makes the flow-versus-proxy trade-off a policy design question rather than a platform decision, and it is why exam scenarios name the policy, not the device, when asking which mode fits."},
 
@@ -393,19 +393,19 @@ ex:"Inspection mode is a per-policy decision: most policies run flow-based for p
 
 {d:"SP",type:"single",
 q:"LoFinance relies on application-based SD-WAN steering and application control profiles. FortiGuard updates have been failing for three weeks. What is the expected impact?",
-o:["No impact; application signatures are built into the firmware","The FortiGate blocks all traffic as a precaution","Application detection degrades as definitions go stale — new or updated applications are misidentified, so both the profiles and the SD-WAN application rules start misbehaving","Only web filtering is affected by FortiGuard failures"],
+o:["No impact; application signatures are built into the firmware","The FortiGate blocks all traffic as a precaution","Application detection degrades as definitions go stale","Only web filtering is affected by FortiGuard failures"],
 a:[2],
 ex:"The guide is blunt: for application-based features to work properly, all FortiGuard updates must be applied — otherwise expect malfunction. Application definitions evolve constantly as vendors change their traffic patterns, so a stale database progressively misclassifies exactly the modern SaaS applications SD-WAN steering cares about. The verification step is diagnose autoupdate versions, checking the Application Definitions section's version and last update result."},
 
 {d:"SP",type:"single",
 q:"When rolling out SSL deep inspection across LoFinance, which practice does Fortinet recommend to limit the performance impact?",
-o:["Reduce the FortiGate session TTL","Enable deep inspection on all policies simultaneously to keep configuration consistent","Disable web filtering while deep inspection is enabled","Deploy gradually — limit the number of policies allowing encrypted traffic and apply deep inspection only where needed, exempting known trusted traffic"],
+o:["Reduce the FortiGate session TTL","Enable deep inspection on all policies simultaneously to keep configuration consistent","Disable web filtering while deep inspection is enabled","Deploy gradually and exempt known trusted traffic"],
 a:[3],
 ex:"Deep inspection means decrypt, inspect, and re-encrypt for every matched flow, so the guide's best practices are about scoping: roll it out policy by policy, apply it only where the risk requires it, exempt known and trusted destinations, and let a content processor carry the decryption load. The all-at-once approach maximizes the performance hit and the operational blast radius on day one — the opposite of controlled deployment."},
 
 {d:"SP",type:"single",
 q:"LoFinance's acceptable-use policy requires that image and video results on public search engines are filtered for all staff. Which web filter feature enforces this on the FortiGate?",
-o:["Safe search enforcement, which rewrites or requires the search engines' safe-search parameters","Blocking the Search Engines category entirely","An application control signature for image files","A rating override for each search engine"],
+o:["Safe search enforcement in the web filter profile","Blocking the Search Engines category entirely","An application control signature for image files","A rating override for each search engine"],
 a:[0],
 ex:"Safe search enforcement makes the FortiGate append or require the safe-search flags that major search engines already support, so filtered results are enforced network-wide regardless of each user's browser settings. Blocking the whole category is the sledgehammer that also removes legitimate search. Note the inspection dependency: since search engines are HTTPS, enforcing parameters in the request requires deep inspection on that traffic."},
 
@@ -413,7 +413,7 @@ ex:"Safe search enforcement makes the FortiGate append or require the safe-searc
 
 {d:"SP",type:"single",
 q:"An administrator enables an antivirus profile on a firewall policy in the GUI. What else does the GUI require on that policy?",
-o:["Proxy-based inspection mode","An SSL inspection profile must be selected — at minimum certificate inspection","An IPS sensor must also be enabled","A second, identical policy for return traffic"],
+o:["Proxy-based inspection mode","An SSL inspection profile must be selected","An IPS sensor must also be enabled","A second, identical policy for return traffic"],
 a:[1],
 ex:"Enabling any security profile on a policy forces the selection of an SSL/SSH inspection profile, because so much traffic is TLS that inspection settings without an SSL decision would be half-defined. Certificate inspection is the minimum (metadata visibility); deep inspection is required for the profiles to see inside encrypted payloads. There is no requirement to stack other profiles or duplicate policies — return traffic is handled by the same stateful session."},
 
@@ -421,19 +421,19 @@ ex:"Enabling any security profile on a policy forces the selection of an SSL/SSH
 
 {d:"SP",type:"single",
 q:"An administrator wants a firewall policy that allows outbound traffic only to Microsoft Office 365 services without maintaining address or port lists manually. Which feature accomplishes this?",
-o:["An Internet Service Database (ISDB) object applied as the policy destination","A wildcard FQDN address for *.microsoft.com","GeoIP addressing scoped to Microsoft's home country","A custom application control signature"],
+o:["An ISDB Internet Service object as the policy destination","A wildcard FQDN address for *.microsoft.com","GeoIP addressing scoped to Microsoft's home country","A custom application control signature"],
 a:[0],
 ex:"ISDB objects bundle Fortinet-maintained IP, protocol, and port data for well-known services, and they are selected as the destination of the policy — replacing both destination address and service fields. Fortinet updates the entries via FortiGuard, so there is no manual list maintenance. Wildcard FQDNs depend on observed DNS and would not cover the full service footprint; GeoIP is far too broad."},
 
 {d:"SP",type:"single",
 q:"A Linux host uses hping3 to send a burst of ICMP packets with a size of 654,001 bytes — far exceeding the MTU and causing heavy fragmentation — toward a Windows PC behind a FortiGate. The Windows PC never receives them. According to the enterprise use case, why?",
-o:["The FortiGate identified the oversized/anomalous ICMP traffic as risky and blocked it according to the IPS profile assigned to the policy","The FortiGate's session table overflowed","ICMP cannot be fragmented, so the network discarded the packets","The Windows firewall silently dropped the fragments"],
+o:["The policy's IPS profile classified the traffic as risky and blocked it","The FortiGate's session table overflowed","ICMP cannot be fragmented, so the network discarded the packets","The Windows firewall silently dropped the oversized fragments before delivery"],
 a:[0],
 ex:"This is the study guide's IPS use case: deliberately oversized ICMP (654,001 bytes, forcing fragmentation) is classic anomalous traffic, and the FortiGate, perceiving possible risky traffic, blocks it according to the assigned IPS profile. The scenario illustrates IPS earning its place on internal segmentation policies, not just the Internet edge — anomaly-shaped attacks like fragmentation abuse originate inside networks too. ICMP can absolutely be fragmented; that premise in option C is false."},
 
 {d:"SP",type:"single",
 q:"The marketing team is blocked from a website by the web filter, but a small set of authorized users must be able to proceed past the block page using their credentials. Which feature enables this?",
-o:["A DNS filter allowlist","Web profile override, which lets authorized users bypass the blocking profile after authenticating","An application control exemption","Disabling the block page replacement message"],
+o:["A DNS filter allowlist","Web profile override for authorized, authenticated users","An application control exemption","Disabling the block page replacement message for those users"],
 a:[1],
 ex:"Web profile override is a proxy-based web filter feature: designated users or groups can authenticate at the block page and continue under an alternative (more permissive) profile, usually for a limited time. It is the audited, user-scoped escape hatch, as opposed to a rating override, which recategorizes a site for everyone. Note the dependency — this is one of the features that requires proxy-based inspection, tying back to the inspection-mode trade-off."}
 ];
