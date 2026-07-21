@@ -4,7 +4,7 @@
 <script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chapter 09 — Security Fabric</title>
+<title>Chapter 04 — High Availability</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -160,16 +160,16 @@
 
 <header>
   <div class="header-left">
-    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 09</span></div>
-    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 09 · NSE7 EF 7.6</div>
-    <h1>Many products, one <em>coordinated response</em></h1>
-    <p>Connectors, correlated logs, and automation stitches turn separate Fortinet devices into a single reactive system.</p>
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">Enterprise Firewall</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 04</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 04 · NSE7 EF 7.6</div>
+    <h1>Two Boxes, <em>One Shared Heartbeat</em></h1>
+    <p>How FortiGate turns a pair of firewalls into a single fault-tolerant identity using FGCP, FGSP, and VRRP.</p>
   </div>
 </header>
 
 <div class="motivation-banner">
-  <div class="motivation-text">The Security Fabric is not a product — it's the <em>wiring</em> that lets your products act as one.</div>
-  <p class="motivation-sub">Broad reach, integrated operation, and automated response — three ideas that make an enterprise defence self-healing.</p>
+  <div class="motivation-text">High availability is not a product — it is a <em>promise the network keeps to itself</em>.</div>
+  <p class="motivation-sub">Cluster election, virtual MAC addresses, session sync — every mechanism exists so a failure never becomes an outage.</p>
 </div>
 
 <div class="top-panels">
@@ -194,27 +194,28 @@
 </div>
 
 <nav class="section-nav" id="section-nav">
-  <a class="nav-tab active" href="#section-connectors">Fabric vs. External Connectors</a>
-  <a class="nav-tab" href="#section-logging">Correlated Logging</a>
-  <a class="nav-tab" href="#section-integrations">FortiNDR, FortiNAC, SAML SSO</a>
-  <a class="nav-tab" href="#section-stitches">Automation Stitches</a>
-  <a class="nav-tab" href="#section-quarantine">IoC &amp; Automated Quarantine</a>
+  <a class="nav-tab active" href="#section-fgcp-fundamentals">FGCP Fundamentals</a>
+  <a class="nav-tab" href="#section-election-and-vmac">Election &amp; vMAC</a>
+  <a class="nav-tab" href="#section-active-active">Active-Active Flow</a>
+  <a class="nav-tab" href="#section-fgsp">FGSP</a>
+  <a class="nav-tab" href="#section-vrrp-comparison">VRRP &amp; Comparison</a>
 </nav>
 
 <main>
   <div class="main-content">
 
+    <!-- SECTION 1: FGCP fundamentals -->
     <div class="socratic-block">
       <div class="socratic-header">
         <span class="socratic-icon">💭</span>
-        <span class="socratic-label">THINK FIRST · FABRIC VS. EXTERNAL CONNECTORS</span>
+        <span class="socratic-label">THINK FIRST · FGCP FUNDAMENTALS</span>
       </div>
-      <p class="socratic-insight">The Security Fabric distinguishes two categories of connector — <em>fabric</em> and <em>external</em> — and the distinction is not cosmetic. One glues Fortinet products together with shared identity and configuration; the other imports data or telemetry from the outside world. Confuse the two and you either miss integrations you already own or spend effort on integrations that don't exist.</p>
+      <p class="socratic-insight">Two identical FortiGates sit side by side. Before they can behave like one logical firewall, they must agree on identity, verify they are eligible to cluster, and continually reassure each other that they are alive. Every setting in this section — group ID, heartbeat, licensing — exists to make that agreement possible.</p>
       <ul class="socratic-questions">
-        <li>Where in the GUI do fabric connectors and external connectors live, and what's the operational difference?</li>
-        <li>Why is an SDN connector for AWS classed as <em>external</em> rather than <em>fabric</em>?</li>
+        <li>Why must every FGCP member share the same model, firmware, and licensing — what breaks if they do not?</li>
+        <li>What is the practical difference between active-passive and active-active mode, and when does either actually help you?</li>
       </ul>
-      <div class="answer-area" data-section="connectors">
+      <div class="answer-area" data-section="fgcp-fundamentals">
         <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
         <div class="answer-buttons">
           <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
@@ -223,222 +224,52 @@
         <div class="model-answers" style="display:none;">
           <div class="model-answer-item">
             <div class="model-answer-q">Q1 — MODEL ANSWER</div>
-            <div class="model-answer-text">Fabric connectors are configured under Security Fabric &gt; Fabric Connectors and target Fortinet products (FortiGate, FortiAnalyzer, FortiClient EMS, plus additional Fortinet devices like FortiNAC and FortiMail). External connectors live under Security Fabric &gt; External Connectors and target non-Fortinet ecosystems (SDN, endpoint/identity, threat feeds).</div>
+            <div class="model-answer-text">Cluster members must be identical because FGCP synchronizes configuration, sessions, and hardware-dependent state between them. Different models have different ASICs, interface counts, and capacities. Different firmware means different feature schemas. Mismatched licensing forces the cluster to fall back to the lowest common denominator — if only one member has FortiGuard Web Filtering, none of them will use it. Same hard drive layout and same operating mode (NAT vs. transparent) round out the requirement so no member has a hidden capability the others cannot match.</div>
           </div>
           <div class="model-answer-item">
             <div class="model-answer-q">Q2 — MODEL ANSWER</div>
-            <div class="model-answer-text">AWS is not a Fortinet product. The SDN connector reads attribute changes — like an address object's IP range — from a public cloud environment using AWS APIs. That makes it a bridge to a multi-vendor ecosystem, which is the external connector's role.</div>
+            <div class="model-answer-text">In active-passive mode one FortiGate carries all traffic while the other stands by, ready to take over on failure. It is simple and predictable. Active-active leverages the CPU and memory of the secondary by having the primary distribute proxy-inspected sessions to it. The goal is not really load balancing — the primary still receives all inbound traffic — it is to make use of otherwise-idle hardware for CPU-heavy inspection work.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="section-block" id="section-connectors">
+    <div class="section-block" id="section-fgcp-fundamentals">
       <div class="section-label">SECTION 01</div>
-      <h2>Fabric connectors, external connectors, and <em>where each belongs</em></h2>
-      <p>The Fortinet Security Fabric is a cybersecurity mesh built on three ideas: <strong>broad</strong> — detect threats and enforce security everywhere; <strong>integrated</strong> — close security gaps and reduce complexity; <strong>automated</strong> — enable faster time-to-prevention and efficient operations. It is powered by FortiOS and it is deliberately open, so the same Fabric can talk to third-party devices through connectors.</p>
-      <p>FortiOS splits those connectors into two families, each with a different job. <strong>Fabric connectors</strong> — Security Fabric &gt; Fabric Connectors on the root FortiGate — link Fortinet products together. Core network security connectors cover FortiGate, FortiAnalyzer, and FortiClient EMS. Security fabric connectors extend to central management, sandbox, and additional supported Fortinet devices such as FortiDeceptor, FortiMail, FortiMonitor, FortiNAC, FortiNDR, FortiPolicy, FortiTester, FortiVoice, and FortiWeb. EMS connectors, for example, enable automatic actions like endpoint quarantine.</p>
-      <p><strong>External connectors</strong> — Security Fabric &gt; External Connectors — reach out to the rest of the world. Public SDN (AWS, GCP) and private SDN (Kubernetes, VMware, SAP) connectors update FortiGate about attribute changes so address objects follow the cloud environment. Endpoint/identity connectors (FSSO, RADIUS) push credentials once. Threat feed connectors import FortiGuard categories, IP addresses, domain names, MAC addresses, or malware hashes as dynamic lists that firewall policies can reference by name.</p>
-      <p>External feeds come in two update flavours: <em>external feed</em> pulls from a URL over HTTP, HTTPS, or STIX; <em>push API</em> receives webhook updates directly into the FortiGate REST API. Both create a dynamic resource object you can use as source or destination in a policy — no policy edit required when the list itself changes.</p>
-      <div class="callout"><strong>Design cue:</strong> if you're integrating a Fortinet product, look under Fabric Connectors first. If you're integrating a cloud, an IdP, or a threat feed, external connectors is the place.</div>
-      <div class="mental-note-block">
-        <div class="mental-note-block-icon">🧠</div>
-        <div class="mental-note-block-inner">
-          <div class="mental-note-block-label">MENTAL NOTE</div>
-          <div class="mental-note-block-text">Fabric connectors bind Fortinet products; external connectors bring in everyone else — and both feed automation stitches downstream.</div>
-        </div>
-      </div>
-    </div>
+      <h2>FGCP — the shared identity of <em>two peers</em></h2>
 
-    <div class="lesson-tools">
-      <div class="lesson-tools-grid">
-        <div>
-          <div class="tool-label">ASK A QUESTION</div>
-          <textarea class="tool-textarea" id="q-section-connectors" placeholder="What are you unsure about in this section?" rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-connectors','Fabric vs. External Connectors')">Add Question</button></div>
-        </div>
-        <div>
-          <div class="tool-label">ADD A NOTE</div>
-          <textarea class="tool-textarea" id="note-section-connectors" placeholder="Write a note about this section..." rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-connectors')">+ Add Note</button></div>
-        </div>
-      </div>
-    </div>
+      <p>The <strong>FortiGate Clustering Protocol (FGCP)</strong> is Fortinet's native HA solution. It lets two to four FortiGate devices operate as a single logical unit, sharing configuration, sessions, and — most visibly to the outside network — MAC addresses. FGCP supports two operating modes: <em>active-passive</em>, where one member forwards traffic while the others stand by, and <em>active-active</em>, where the primary distributes proxy-inspected sessions to secondary members to spread CPU load.</p>
 
-    <div class="socratic-block">
-      <div class="socratic-header">
-        <span class="socratic-icon">💭</span>
-        <span class="socratic-label">THINK FIRST · CORRELATED LOGGING</span>
-      </div>
-      <p class="socratic-insight">Chain three FortiGate devices in a Security Fabric and every packet potentially traverses all of them. If each device logs the flow, FortiAnalyzer receives three copies of the same session — a nightmare for reporting and a waste of storage. The Fabric solves that with an unusual rule: the <em>first FortiGate that handles the session</em> is the only one that logs the traffic.</p>
-      <ul class="socratic-questions">
-        <li>When does an upstream FortiGate <em>break</em> the "only the first one logs it" rule?</li>
-        <li>What happens to logging if the root FortiGate goes offline?</li>
-      </ul>
-      <div class="answer-area" data-section="logging">
-        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
-        <div class="answer-buttons">
-          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
-          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
-        </div>
-        <div class="model-answers" style="display:none;">
-          <div class="model-answer-item">
-            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
-            <div class="model-answer-text">The upstream FortiGate generates another traffic log if it performs NAT — because the translated port and address need to be captured. Additionally, upstream FortiGates still generate UTM logs (web filtering, IPS) whenever their configured profiles apply, regardless of whether the traffic log itself was suppressed.</div>
-          </div>
-          <div class="model-answer-item">
-            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
-            <div class="model-answer-text">Each FortiGate in the Fabric logs directly to FortiAnalyzer, independent of the root. If the root goes down, leaf devices keep sending logs to FortiAnalyzer without interruption — the root is a coordination point, not a logging proxy.</div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <p>Every member of the cluster must be functionally identical. That means the same hardware model (or VM model), the same firmware version, the same licensing, the same drive layout, and the same operating mode for the management VDOM. If licensing differs, the cluster gracefully degrades to the <strong>lowest license level</strong> present — buy FortiGuard Web Filtering for only one member and none of them will use it. On the configuration side, every member must share the same HA group ID, group name, password, and heartbeat interface settings before FGCP will even form the cluster.</p>
 
-    <div class="section-block" id="section-logging">
-      <div class="section-label">SECTION 02</div>
-      <h2>Correlated logging on <em>FortiAnalyzer</em></h2>
-      <p>The FortiAnalyzer Fabric connector consolidates traffic logs across every FortiGate in the Security Fabric. Its cornerstone rule is that a session is logged <strong>only by the first FortiGate that handles it</strong>. Every downstream (upstream in Fabric terms) member of the Fabric knows the MAC addresses of its Fabric peers. When it receives a packet whose source MAC belongs to another Fabric member, it does not duplicate the traffic log — that log already exists.</p>
-      <p>There are two important exceptions. First, if an upstream FortiGate <strong>performs NAT</strong>, it emits a second traffic log so the translated addresses and ports are captured. Second, upstream FortiGates still produce <strong>UTM logs</strong> — web filtering, IPS, DLP — whenever their profiles inspect the traffic. Traffic logs are deduplicated; UTM logs are additive because each UTM engine's verdict is independent.</p>
-      <p>FortiAnalyzer correlates all these logs automatically. For a three-device Fabric with an <em>ISFW</em> (internal segmentation firewall) at the access layer, an <em>NGFW</em> at the edge, and a <em>DCFW</em> protecting the data centre, a single client's web session generates: one traffic log from the ISFW (first to see the flow), one NAT log from the NGFW, and any web-filter or IPS logs from the NGFW/DCFW that apply. FortiAnalyzer stitches them into one coherent view of the client's activity — no configuration required.</p>
-      <p>Importantly, each FortiGate logs to FortiAnalyzer independently of the root or the other leaves. If the root FortiGate fails, log flow from every remaining device to FortiAnalyzer continues without interruption. The root is a coordination point for policy and topology, not a logging proxy.</p>
+      <p>Two best practices are worth internalizing early. First, always define <em>at least two heartbeat interfaces</em> so that a single link failure cannot fracture the cluster — FGCP will use the next-highest-priority heartbeat when the first fails. Second, if you are cabling DHCP or PPPoE interfaces into the cluster, temporarily switch them to static addresses during initial setup to prevent address-assignment races, then revert once the cluster is formed.</p>
+
       <ul>
-        <li><strong>Traffic logs:</strong> emitted once, by the first Fabric FortiGate that sees the session.</li>
-        <li><strong>NAT logs:</strong> additional log written by any Fabric FortiGate that performs NAT.</li>
-        <li><strong>UTM logs:</strong> emitted independently by every Fabric FortiGate whose security profiles inspect the session.</li>
+        <li><strong>HA group ID:</strong> A discriminator, 0–255 (up to 1023 with logic 4). Two clusters in the same broadcast domain must use different IDs to avoid vMAC collisions.</li>
+        <li><strong>Heartbeat Ethernet types:</strong> FGCP uses <em>0x8890</em> and <em>0x8891</em> for elections, sync, and failover detection; <em>0x8893</em> is reserved for configuration synchronization.</li>
+        <li><strong>Session-sync interfaces:</strong> Configured with <em>set session-sync-dev</em>, they offload session-sync traffic from the heartbeat link so heartbeats are never starved during high session churn.</li>
+        <li><strong>Virtual clustering:</strong> Extends FGCP to multi-VDOM active-passive setups (up to 30 virtual clusters), and via <em>VDOM partitioning</em> lets each physical unit be the primary for a different VDOM.</li>
       </ul>
-      <div class="mental-note-block">
-        <div class="mental-note-block-icon">🧠</div>
-        <div class="mental-note-block-inner">
-          <div class="mental-note-block-label">MENTAL NOTE</div>
-          <div class="mental-note-block-text">One traffic log per session, extra logs only for NAT or UTM — the Fabric fights log noise so FortiAnalyzer can correlate real events.</div>
-        </div>
-      </div>
-    </div>
 
-    <div class="lesson-tools">
-      <div class="lesson-tools-grid">
-        <div>
-          <div class="tool-label">ASK A QUESTION</div>
-          <textarea class="tool-textarea" id="q-section-logging" placeholder="What are you unsure about in this section?" rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-logging','Correlated Logging')">Add Question</button></div>
-        </div>
-        <div>
-          <div class="tool-label">ADD A NOTE</div>
-          <textarea class="tool-textarea" id="note-section-logging" placeholder="Write a note about this section..." rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-logging')">+ Add Note</button></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="socratic-block">
-      <div class="socratic-header">
-        <span class="socratic-icon">💭</span>
-        <span class="socratic-label">THINK FIRST · FORTINDR, FORTINAC, SAML SSO</span>
-      </div>
-      <p class="socratic-insight">Adding a Fortinet product to the Fabric is not just a matter of pointing it at the root. Each integration exchanges a specific artefact: FortiNDR sends malware verdicts about held files; FortiNAC pushes dynamic firewall addresses tied to authenticated users; SAML SSO lets admins hop between Fabric UIs without re-authenticating. Understanding what each exchanges tells you what breaks if the link is misconfigured.</p>
-      <ul class="socratic-questions">
-        <li>How does FortiNDR block malware that FortiGate's antivirus signatures miss?</li>
-        <li>Why does FortiNAC need two user login events before its dynamic firewall address is usable?</li>
-      </ul>
-      <div class="answer-area" data-section="integrations">
-        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
-        <div class="answer-buttons">
-          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
-          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
-        </div>
-        <div class="model-answers" style="display:none;">
-          <div class="model-answer-item">
-            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
-            <div class="model-answer-text">In inline blocking mode, FortiGate first runs the file against its antivirus database. On a miss, it holds the user session, forwards the file to FortiNDR, and waits for a verdict. FortiNDR applies machine learning and artificial neural network analysis and returns clean or malicious within seconds. Malicious files are dropped; clean ones are released to the user.</div>
-          </div>
-          <div class="model-answer-item">
-            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
-            <div class="model-answer-text">The first login teaches FortiNAC the user–device–IP mapping; the second login triggers the REST API push of a dynamic firewall address to FortiGate. The FortiGate then treats that address as an SSO source in policies. The second event is what closes the loop and lets the user's IP appear in the FortiNAC Tag (IP Address) section of Policy &amp; Objects &gt; Addresses.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-block" id="section-integrations">
-      <div class="section-label">SECTION 03</div>
-      <h2>FortiNDR, FortiNAC, and <em>SAML SSO in the Fabric</em></h2>
-      <p><strong>FortiNDR</strong> extends antivirus with machine-learning and artificial-neural-network analysis of files that don't match a signature. When you enable Security Fabric on FortiNDR, it submits a connection request that appears as an authorisation notification on the root FortiGate. Once accepted, FortiNDR joins the Fabric and appears in both the Logical Topology and Physical Topology views. FortiGates in the Fabric can then submit files to FortiNDR for verdict.</p>
-      <p>In <em>inline blocking mode</em>, when a file matches an antivirus signature FortiGate blocks it outright and FortiNDR is not involved. If it does not match, FortiGate temporarily holds the user session, sends the file to FortiNDR, and awaits a verdict of clean or malicious. FortiGate then either releases the file to the user or terminates the session. On the root device, the Detection Statistics (24 Hours) and Network Anomalies (24 Hours) widgets show FortiNDR activity.</p>
-      <p><strong>FortiNAC</strong> collects information from switches, autonomous APs, wireless controllers, and other infrastructure to know which devices are connecting. When a user logs in to FortiNAC, the REST API pushes the device IP, FortiNAC firewall tags, and FortiNAC group names to the root FortiGate. FortiGate creates a dynamic firewall address object that follows the user, enabling SSO-style access control. Two user login events are required before this dynamic address becomes usable — it appears in Policy &amp; Objects &gt; Addresses under the <em>FortiNAC Tag (IP Address)</em> section, ready to be used as source or destination in a policy.</p>
-      <p>Finally, <strong>SAML SSO</strong> lets an administrator authenticate once to the root FortiGate (which acts as identity provider) and then jump to downstream FortiGates, FortiAnalyzer, or FortiManager (each acting as service provider) without logging in again — as long as it's inside the same browser session. Only the root FortiGate can be the IdP; every other Fabric device is registered as an SP.</p>
-      <div class="callout callout-green"><strong>Design tip:</strong> reserve SAML SSO for administrator workflows across the Fabric. It's not designed to replace SSL VPN or FSSO for end users — those still go through their own connectors.</div>
-      <div class="mental-note-block">
-        <div class="mental-note-block-icon">🧠</div>
-        <div class="mental-note-block-inner">
-          <div class="mental-note-block-label">MENTAL NOTE</div>
-          <div class="mental-note-block-text">FortiNDR catches what signatures miss, FortiNAC turns identity into dynamic firewall addresses, and SAML SSO lets one admin login unlock the whole Fabric.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="lesson-tools">
-      <div class="lesson-tools-grid">
-        <div>
-          <div class="tool-label">ASK A QUESTION</div>
-          <textarea class="tool-textarea" id="q-section-integrations" placeholder="What are you unsure about in this section?" rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-integrations','FortiNDR, FortiNAC, SAML SSO')">Add Question</button></div>
-        </div>
-        <div>
-          <div class="tool-label">ADD A NOTE</div>
-          <textarea class="tool-textarea" id="note-section-integrations" placeholder="Write a note about this section..." rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-integrations')">+ Add Note</button></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="socratic-block">
-      <div class="socratic-header">
-        <span class="socratic-icon">💭</span>
-        <span class="socratic-label">THINK FIRST · AUTOMATION STITCHES</span>
-      </div>
-      <p class="socratic-insight">Manual response is slow and forgetful. Automation stitches let you say "if X happens, do Y" once and let FortiOS remember. But a stitch has three parts — trigger, action, and the stitch itself — and getting the sequencing right is what turns a stitch from a nice idea into a working defence.</p>
-      <ul class="socratic-questions">
-        <li>What is the difference between a stitch trigger, an action, and the stitch itself?</li>
-        <li>When would you choose <em>sequential</em> action execution over <em>parallel</em>?</li>
-      </ul>
-      <div class="answer-area" data-section="stitches">
-        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
-        <div class="answer-buttons">
-          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
-          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
-        </div>
-        <div class="model-answers" style="display:none;">
-          <div class="model-answer-item">
-            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
-            <div class="model-answer-text">A trigger defines the event to watch — high CPU, compromised host, schedule, HA failover, security-rating summary, etc. An action defines what to do — run a CLI script, send an email, quarantine an endpoint. A stitch pairs one trigger with one or more actions, sets execution mode (sequential or parallel), and targets specific FortiGate devices.</div>
-          </div>
-          <div class="model-answer-item">
-            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
-            <div class="model-answer-text">Sequential is right when a later action needs the output of an earlier one — for example, run a diagnostic CLI script, wait 30 seconds for it to finish, then email the output via <code>%%results%%</code>. Parallel is fine when actions are independent — send an email and quarantine an endpoint at the same time.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-block" id="section-stitches">
-      <div class="section-label">SECTION 04</div>
-      <h2>Automation stitches — <em>if this, then that</em></h2>
-      <p>An automation stitch is an if/then workflow that runs inside FortiOS. Stitches are configured on the root FortiGate and pushed to the relevant leaf devices. They do not require the Security Fabric to work — a standalone FortiGate can use stitches — but Fabric membership lets you fire them from Fabric-wide events (compromised host, HA failover, security-rating summary) and target them at any subset of Fabric FortiGates. Once configured, stitches keep running on the leaves even if the root FortiGate is down.</p>
-      <p>Every stitch has three ingredients. A <strong>trigger</strong> defines the event to watch: preconfigured options include Compromised Host, FortiOS Event Log, HA Failover, Incoming Webhook, License Expiry, Reboot, Security Rating Summary, High CPU, and Schedule. An <strong>action</strong> defines the response: preconfigured options include CLI Script, Email, and vendor-specific integrations like FortiClient Quarantine. A <strong>stitch</strong> ties one trigger to one or more actions and picks how they run.</p>
-      <p><strong>Use case 1 — high CPU with CLI scripts.</strong> The trigger fires when CPU usage crosses a threshold (default 90%, set via <code>set cpu-use-threshold 90</code>). Two custom actions are wired in sequence: <em>Collect_Diagnostics_Action</em> runs a CLI script gathering <code>get system status</code>, <code>get system performance status</code>, and <code>diagnose sys top</code> output; a 30-second delay lets those commands complete; then <em>Email_Diagnostics_Action</em> emails the output as the message body using the <code>%%results%%</code> placeholder. Sequential execution is essential here — the email needs the earlier script's output.</p>
-      <p><strong>Use case 2 — scheduled configuration backup.</strong> A <em>Schedule</em> trigger fires once, hourly, daily, weekly, or monthly. The action is the preconfigured <em>Automatic Backup</em>. The result appears under Configuration &gt; Revisions as <em>Autod backup config by stitch: Backup_Stitch</em>. You can target all Fabric FortiGates or a specific subset, giving you an audit trail you can roll back from without any manual intervention.</p>
       <div class="code-block">
-        <div class="code-label">FortiOS CLI · tune the High CPU trigger threshold</div>
-        <pre><code>config system global
-  set cpu-use-threshold 90
+        <div class="code-label">FortiOS CLI — Minimal FGCP configuration</div>
+<pre><code>config system ha
+    set mode a-p
+    set group-id 10
+    set group-name "Training"
+    set password &lt;password&gt;
+    set hbdev "port3" 10 "port4" 20
+    set session-sync-dev port5
 end</code></pre>
       </div>
-      <div class="callout"><strong>Sequential vs. parallel:</strong> pick sequential when one action's output feeds the next. Pick parallel when the actions are independent — for example, send an email and quarantine an endpoint at the same instant.</div>
+
+      <div class="callout"><strong>Exam tip:</strong> The heartbeat priority number after each hbdev entry is a preference — <em>higher wins</em>. Make sure the number matches your physical cabling; the intuitive "50" you might expect for the primary link is fine as long as the other link's value is lower.</div>
+
       <div class="mental-note-block">
         <div class="mental-note-block-icon">🧠</div>
         <div class="mental-note-block-inner">
           <div class="mental-note-block-label">MENTAL NOTE</div>
-          <div class="mental-note-block-text">Trigger + action + stitch is the whole vocabulary — memorising those three words unlocks every Fabric automation workflow.</div>
+          <div class="mental-note-block-text">FGCP is a strict club — same model, same firmware, same license, same everything. Different anywhere and the cluster either refuses to form or silently drops to the lowest common level.</div>
         </div>
       </div>
     </div>
@@ -447,28 +278,29 @@ end</code></pre>
       <div class="lesson-tools-grid">
         <div>
           <div class="tool-label">ASK A QUESTION</div>
-          <textarea class="tool-textarea" id="q-section-stitches" placeholder="What are you unsure about in this section?" rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-stitches','Automation Stitches')">Add Question</button></div>
+          <textarea class="tool-textarea" id="q-section-fgcp-fundamentals" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-fgcp-fundamentals','FGCP Fundamentals')">Add Question</button></div>
         </div>
         <div>
           <div class="tool-label">ADD A NOTE</div>
-          <textarea class="tool-textarea" id="note-section-stitches" placeholder="Write a note about this section..." rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-stitches')">+ Add Note</button></div>
+          <textarea class="tool-textarea" id="note-section-fgcp-fundamentals" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-fgcp-fundamentals')">+ Add Note</button></div>
         </div>
       </div>
     </div>
 
+    <!-- SECTION 2: Election & vMAC -->
     <div class="socratic-block">
       <div class="socratic-header">
         <span class="socratic-icon">💭</span>
-        <span class="socratic-label">THINK FIRST · IoC &amp; AUTOMATED QUARANTINE</span>
+        <span class="socratic-label">THINK FIRST · ELECTION &amp; VMAC</span>
       </div>
-      <p class="socratic-insight">A compromised host is only useful to know about if you can act on it fast. The full-loop IoC pipeline chains FortiClient, FortiAnalyzer, FortiGate, and FortiClient EMS so that the moment a suspicious behaviour is detected, the endpoint is isolated at the network layer without a human clicking anything. Understanding which device does which step tells you exactly what to check when the loop breaks.</p>
+      <p class="socratic-insight">Two peers boot at nearly the same time. Someone must be the primary — and the network downstream has to keep talking to the same MAC address after failover, or every switch will have to relearn its forwarding tables. FortiGate solves both problems with a strict election order and a set of virtual MAC address logics.</p>
       <ul class="socratic-questions">
-        <li>Trace the five-step IoC quarantine flow — which device triggers each step?</li>
-        <li>What does the <code>diagnose endpoint fctems queue-complete-calls Q-&lt;ip&gt;</code> command do?</li>
+        <li>With HA override disabled (default), which criterion actually decides the primary — and why is uptime prioritized over priority?</li>
+        <li>After a failover, why does the new primary adopt the old primary's virtual MAC addresses instead of using its own hardware MACs?</li>
       </ul>
-      <div class="answer-area" data-section="quarantine">
+      <div class="answer-area" data-section="election-and-vmac">
         <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
         <div class="answer-buttons">
           <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
@@ -477,39 +309,45 @@ end</code></pre>
         <div class="model-answers" style="display:none;">
           <div class="model-answer-item">
             <div class="model-answer-q">Q1 — MODEL ANSWER</div>
-            <div class="model-answer-text">1) FortiClient detects a malicious site and sends logs to FortiAnalyzer. 2) FortiAnalyzer discovers the IoC pattern in the logs and notifies FortiGate. 3) FortiGate confirms that FortiClient is connected and that it has credentials for the associated FortiClient EMS, then sends a notification to EMS. 4) FortiClient EMS locates the endpoint and pushes a quarantine message. 5) The endpoint quarantines itself, blocking network traffic, and reports the status change to both FortiGate and EMS.</div>
+            <div class="model-answer-text">With override disabled, FortiGate evaluates connected monitored ports first, then HA uptime, then priority, then serial number — stopping at the first criterion that produces a winner. Uptime is prioritized over priority so a healthy running primary keeps its role even if a peer boots with a higher priority; this prevents needless failovers during maintenance windows. To force a manual failover you run <em>diagnose sys ha reset-uptime</em> on the current primary to zero its uptime.</div>
           </div>
           <div class="model-answer-item">
             <div class="model-answer-q">Q2 — MODEL ANSWER</div>
-            <div class="model-answer-text">It's the CLI trigger for quarantining an endpoint at a specific IP address. FortiGate uses it to push the quarantine action into the FortiClient EMS queue, which then propagates the message to the endpoint. It's not supported on FortiClient (Linux).</div>
+            <div class="model-answer-text">Downstream switches learn MACs, not identities. If the new primary used its own hardware MAC after failover, every switch would keep sending traffic to the dead primary's port until its MAC table aged out. By adopting the old primary's virtual MAC and broadcasting a gratuitous ARP, the newly elected primary essentially says "I'm still here, just on a different port" — and switches update their forwarding tables in one packet.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="section-block" id="section-quarantine">
-      <div class="section-label">SECTION 05</div>
-      <h2>IoC detection and <em>automated quarantine</em></h2>
-      <p>The IoC quarantine use case combines Fabric connectors and stitches into a full detection-to-response loop. It requires four devices: FortiGate, FortiAnalyzer, FortiClient EMS, and FortiClient itself. FortiClient must be connected to both EMS and FortiGate, and both FortiGate and FortiClient must send logs to FortiAnalyzer. On FortiGate you configure the EMS IP address plus administrator login credentials so it can call the EMS REST API on your behalf.</p>
-      <p>The flow has five well-defined steps. First, FortiClient detects a malicious site (an IoC) and sends the log to FortiAnalyzer. Second, FortiAnalyzer discovers the IoC pattern in the aggregated logs and notifies FortiGate. Third, FortiGate identifies whether FortiClient is connected and whether the local admin has EMS credentials; with that confirmed, it sends a notification to FortiClient EMS. Fourth, EMS searches for the endpoint and pushes a quarantine message. Fifth, FortiClient quarantines itself — blocking all network traffic — and notifies both FortiGate and EMS of the status change.</p>
-      <p>Under the hood, the trigger is the preconfigured Compromised Host trigger and the action is FortiClient Quarantine. FortiGate uses the CLI command <code>diagnose endpoint fctems queue-complete-calls Q-&lt;endpoint_ip_address&gt;</code> to inject the quarantine action into the EMS queue. This particular quarantine flow is not supported on FortiClient for Linux — a limitation worth remembering.</p>
-      <p>The whole thing is a stitch: Compromised Host trigger paired with FortiClient Quarantine action. Once configured on the root FortiGate, it will fire against any endpoint FortiAnalyzer flags as compromised, on any FortiGate in the Fabric that has EMS reachability — no daily babysitting required.</p>
+    <div class="section-block" id="section-election-and-vmac">
+      <div class="section-label">SECTION 02</div>
+      <h2>Election, override, and the <em>virtual MAC illusion</em></h2>
+
+      <p>When FGCP boots or a failover event fires, members negotiate to choose a single primary. With the default of <strong>override disabled</strong>, the criteria — evaluated in order, stopping at the first winner — are: (1) most connected monitored ports, (2) highest HA uptime, (3) highest priority, and (4) highest serial number. Uptime coming before priority is deliberate: it prevents a peer that just rebooted with a slightly higher priority from stealing the primary role from a healthy device.</p>
+
+      <p>Enable <strong>override</strong> (CLI only, via <em>config system ha / set override enable</em>) and priority moves ahead of uptime. Now the device you configure with the highest priority will always take the primary role whenever it is available — including yanking the role back after a reboot. The trade-off is more failover events; the win is deterministic role assignment. Note that override and priority are <em>not</em> synchronized between members — you must enable them per device.</p>
+
+      <p>To force a failover you have two clean options. If override is disabled, run <em>diagnose sys ha reset-uptime</em> on the current primary; that command zeroes HA uptime (not system uptime) and the other member's uptime advantage takes over. If override is enabled, change the priority. The command <em>diagnose sys ha dump-by vcluster</em> shows the uptime difference in seconds and the reset counter for each member.</p>
+
+      <p>Every interface on the primary — except heartbeat and reserved-management interfaces — is assigned a <em>virtual MAC address</em>. When a failover occurs, the new primary <strong>adopts the same virtual MACs</strong> so downstream switches do not have to relearn anything. A gratuitous ARP is broadcast so switches update their forwarding tables. On stubborn high-end switches, you can also enable <em>set link-failed-signal enable</em> to briefly shut down the former primary's interfaces during failover, forcing switches to see a link event and flush their MAC tables.</p>
+
       <table class="data-table">
-        <thead><tr><th>Step</th><th>Device</th><th>What happens</th></tr></thead>
+        <thead><tr><th>Logic</th><th>Vcluster ID</th><th>Group ID</th><th>Physical Index</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td>FortiClient</td><td>Malicious site detected; log sent to FortiAnalyzer.</td></tr>
-          <tr><td>2</td><td>FortiAnalyzer</td><td>IoC discovered in logs; notify FortiGate.</td></tr>
-          <tr><td>3</td><td>FortiGate</td><td>Verify FortiClient + EMS credentials; notify EMS.</td></tr>
-          <tr><td>4</td><td>FortiClient EMS</td><td>Locate endpoint; push quarantine message.</td></tr>
-          <tr><td>5</td><td>FortiClient</td><td>Self-quarantine; block network traffic; report to FortiGate + EMS.</td></tr>
+          <tr><td>Logic 1</td><td>0 or 1</td><td>Greater than 255</td><td>Less than 128</td></tr>
+          <tr><td>Logic 2</td><td>0 or 1</td><td>Less than 256</td><td>Less than 128</td></tr>
+          <tr><td>Logic 3</td><td>0 or 1</td><td>Less than 256</td><td>Greater than 127</td></tr>
+          <tr><td>Logic 4</td><td>Greater than 1</td><td>0–7</td><td>Less than 1024</td></tr>
         </tbody>
       </table>
-      <div class="callout callout-amber"><strong>Linux caveat:</strong> automated FortiClient Quarantine is not supported on the FortiClient Linux agent. Windows and macOS work; Linux endpoints need a different response pattern.</div>
+
+      <div class="callout callout-amber"><strong>Common trap:</strong> Two HA clusters in the same LAN segment using the same group ID will produce colliding virtual MACs and unpredictable forwarding. Assign a unique HA group ID per cluster before you cable them into a shared broadcast domain.</div>
+
       <div class="mental-note-block">
         <div class="mental-note-block-icon">🧠</div>
         <div class="mental-note-block-inner">
           <div class="mental-note-block-label">MENTAL NOTE</div>
-          <div class="mental-note-block-text">FortiClient sees it, FortiAnalyzer names it, FortiGate coordinates it, EMS orders it, and FortiClient obeys — five devices, one quiet quarantine.</div>
+          <div class="mental-note-block-text">Override disabled = "stability first" (uptime wins). Override enabled = "the device I chose is always primary" (priority wins). The virtual MAC is what makes the outside world blind to the swap.</div>
         </div>
       </div>
     </div>
@@ -518,13 +356,270 @@ end</code></pre>
       <div class="lesson-tools-grid">
         <div>
           <div class="tool-label">ASK A QUESTION</div>
-          <textarea class="tool-textarea" id="q-section-quarantine" placeholder="What are you unsure about in this section?" rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-quarantine','IoC &amp; Automated Quarantine')">Add Question</button></div>
+          <textarea class="tool-textarea" id="q-section-election-and-vmac" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-election-and-vmac','Election &amp; vMAC')">Add Question</button></div>
         </div>
         <div>
           <div class="tool-label">ADD A NOTE</div>
-          <textarea class="tool-textarea" id="note-section-quarantine" placeholder="Write a note about this section..." rows="3"></textarea>
-          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-quarantine')">+ Add Note</button></div>
+          <textarea class="tool-textarea" id="note-section-election-and-vmac" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-election-and-vmac')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Active-active traffic flow -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · ACTIVE-ACTIVE FLOW</span>
+      </div>
+      <p class="socratic-insight">In active-active mode the primary receives every incoming packet — traffic always arrives at the primary virtual MAC. But some sessions are distributed to secondaries for inspection. Which ones, how, and why does the return path get routed the way it does?</p>
+      <ul class="socratic-questions">
+        <li>Which traffic is distributed to secondaries by default, and what does the <em>load-balance-all</em> setting change?</li>
+        <li>Why does the secondary source its outbound traffic from its own physical MAC address instead of the primary's virtual MAC?</li>
+      </ul>
+      <div class="answer-area" data-section="active-active">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">By default only sessions subject to proxy inspection are distributed to secondaries — because proxy inspection is CPU-heavy and benefits most from spreading load. Enabling <em>load-balance-all</em> extends the distribution to flow-inspected and uninspected sessions as well. Together with the <em>schedule</em> setting (round-robin, ip, ipport, weight-round-robin, etc.), that determines how sessions are handed out.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Return traffic from a session distributed to a secondary is sourced from that secondary's egress port — but that port is not the vMAC owner, so it uses its physical MAC. If it tried to use the primary's vMAC it would create a MAC address conflict on the LAN. The primary's vMAC is only for traffic that egresses the primary itself.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-active-active">
+      <div class="section-label">SECTION 03</div>
+      <h2>Active-active — inspection load spread across <em>otherwise-idle CPUs</em></h2>
+
+      <p>The goal of FGCP active-active is not to double throughput — it is to make use of secondary devices' CPU and memory for inspection-heavy sessions. All external traffic arrives at the primary's virtual MAC. The primary then decides whether to keep a session or distribute it to a secondary. By default, only <strong>proxy-inspected sessions</strong> are distributed. To distribute flow-inspected or uninspected sessions as well, enable <em>load-balance-all</em>.</p>
+
+      <p>For a distributed proxy session the primary encapsulates the first packet inside an <em>0x8891</em> Ethernet frame so the secondary gets both the packet and the session metadata it needs to process the flow. Subsequent packets are simply MAC-rewritten: source becomes the primary's physical MAC, destination becomes the secondary's physical MAC. On the return path from server to client, the secondary sources the reply from its own physical MAC — because it does not own the primary's vMAC and using it would create conflicts.</p>
+
+      <p>A hard limitation to remember: <strong>FGCP active-active cannot load balance traffic that traverses inter-VDOM links</strong>. If your architecture uses inter-VDOM routing, that traffic will pin to the primary regardless.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Schedule Method</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td>none</td><td>Primary handles all sessions — load balancing off.</td></tr>
+          <tr><td>leastconnection</td><td>Sessions go to the member with the fewest current sessions.</td></tr>
+          <tr><td>round-robin</td><td>Default. Sessions distributed equally across members.</td></tr>
+          <tr><td>weight-round-robin</td><td>Higher member weight = more sessions.</td></tr>
+          <tr><td>random</td><td>Sessions distributed randomly.</td></tr>
+          <tr><td>ip</td><td>Same src/dst IP pair always to the same member (session affinity by IP).</td></tr>
+          <tr><td>ipport</td><td>Same 4-tuple to the same member (session affinity by 4-tuple).</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Reality check:</strong> Because all inbound traffic still arrives at the primary, you almost always see more load on the primary than on any secondary. Active-active spreads inspection cost, not ingress cost.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Active-active in FGCP is a CPU-sharing arrangement, not a doubling of throughput. The primary is always the receptionist; secondaries are the inspection room.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-active-active" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-active-active','Active-Active Flow')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-active-active" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-active-active')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: FGSP -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · FGSP</span>
+      </div>
+      <p class="socratic-insight">FGCP requires a primary and load balances internally. But what if your network already has external load balancers distributing traffic to firewalls — and you just want the firewalls to share sessions so any of them can handle a return packet?</p>
+      <ul class="socratic-questions">
+        <li>How is FGSP fundamentally different from FGCP in terms of who does the load balancing and how sessions are shared?</li>
+        <li>What session types does FGSP synchronize by default, and what configuration is needed for the rest?</li>
+      </ul>
+      <div class="answer-area" data-section="fgsp">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">FGCP is a full HA solution with a primary that owns virtual MACs and distributes traffic internally. FGSP is only about sharing sessions between peer devices — there is no primary, no vMAC. External load balancers are responsible for directing traffic. If those balancers send all traffic to one peer, FGSP feels active-passive; if they spread traffic across peers, it feels active-active. The peers exchange session state so failover is seamless.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">By default FGSP synchronizes IPv4 and IPv6 TCP sessions plus IPsec tunnels. To sync UDP, ICMP, expectation (SIP/FTP pinholes), NAT, or SCTP sessions, you must enable the corresponding <em>session-pickup-*</em> flag under <em>config system ha</em>. You can also filter which sessions to synchronize using <em>config session-syn-filter</em> — matching by source or destination interface, subnet, or IPv6 range.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-fgsp">
+      <div class="section-label">SECTION 04</div>
+      <h2>FGSP — session sharing among <em>independent peers</em></h2>
+
+      <p><strong>FortiGate Session Life Support Protocol (FGSP)</strong> is fundamentally different from FGCP: it is a session-sharing HA solution, not a clustering one. FGSP peers can be standalone FortiGates or existing FGCP clusters. There is no primary election; there are no virtual MACs. External load balancers distribute traffic, and FGSP simply ensures every peer knows about every session so failover is transparent.</p>
+
+      <p>An FGSP deployment can include 2–16 standalone FortiGates or 2–16 FGCP clusters of two members each. More peers means more synchronization traffic and more memory to keep tables aligned. If the upstream balancer directs all sessions to one peer, the deployment behaves like active-passive; if it spreads them, it behaves like active-active. The rule is that any given session's packets — including return packets — should ideally hit the same peer.</p>
+
+      <p>By default FGSP synchronizes <em>IPv4 and IPv6 TCP sessions</em> and <em>IPsec tunnels</em>. To include other session types you enable them explicitly:</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI — Extending FGSP session sync</div>
+<pre><code>config system ha
+    set session-pickup enable
+    set session-pickup-connectionless enable   # UDP, ICMP
+    set session-pickup-expectation enable      # SIP/FTP pinholes
+    set session-pickup-nat enable              # NAT sessions
+end</code></pre>
+      </div>
+
+      <p>FGSP peers can also do <strong>standalone configuration synchronization</strong>, effectively giving you the FGCP config-sync feature between devices that are not in an FGCP cluster. You enable this by setting <em>mode standalone</em> and <em>standalone-config-sync enable</em>. Layer-2 adjacency is required for config sync but not for session sync alone.</p>
+
+      <p>Three use cases worth remembering:</p>
+      <ul>
+        <li><strong>Encrypted session sync:</strong> Enable <em>encryption</em> and set a <em>psksecret</em> under <em>config system standalone-cluster</em>; FGSP auto-creates an IPsec tunnel plus supporting policies. Layer-3 only.</li>
+        <li><strong>Layer-2 asymmetric inspection:</strong> Set <em>layer2-connection available</em> when peers share a subnet on internal and outgoing interfaces. Return traffic that lands on the wrong peer is bounced back at Layer 2 to the session owner.</li>
+        <li><strong>Layer-3 asymmetric inspection (cloud):</strong> When no Layer 2 exists (public cloud), leave <em>layer2-connection unavailable</em>; peers tunnel misrouted return traffic to each other over UDP.</li>
+      </ul>
+
+      <div class="callout callout-green"><strong>Remember:</strong> FGSP does not do load balancing itself. The upstream balancer decides; FGSP just makes sure any peer can process any packet in a session.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">FGCP is one firewall pretending to be two. FGSP is many firewalls agreeing to share what they know, so an external load balancer can send any packet to any of them.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-fgsp" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-fgsp','FGSP')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-fgsp" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-fgsp')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: VRRP & Comparison -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · VRRP &amp; COMPARISON</span>
+      </div>
+      <p class="socratic-insight">Not every environment uses Fortinet-only devices. VRRP is the open-standard alternative — the one you reach for when the peer might be a Cisco router or another vendor. Knowing when to pick FGCP, FGSP, or VRRP is a strategic call that shapes the rest of your architecture.</p>
+      <ul class="socratic-questions">
+        <li>How does a VRRP backup know when the primary has failed, and how can you tie that decision to a remote reachability check?</li>
+        <li>You need session synchronization AND you want to load balance between peers. Which HA protocol is the right fit?</li>
+      </ul>
+      <div class="answer-area" data-section="vrrp-comparison">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">VRRP routers periodically send VRRP advertisements. The primary has the highest priority. If backups stop receiving advertisements — either because the primary died or because it stopped sending — the highest-priority backup takes over. You can tie the primary's advertisement to remote reachability by configuring up to two destination IPs (e.g. 8.8.8.8). If the primary cannot reach the monitored destination, it stops advertising, triggering failover even though it's still alive on the LAN.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">FGSP is the answer. FGCP in active-passive mode has no load balancing (VDOM partitioning gives you load sharing but not load balancing). FGCP active-active is not really about balancing traffic either. VRRP has neither session sync nor load balancing. FGSP paired with external load balancers gives you both: the balancers spread traffic and FGSP shares sessions so any peer can pick up any packet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-vrrp-comparison">
+      <div class="section-label">SECTION 05</div>
+      <h2>VRRP and the <em>right-tool-for-the-job</em> comparison</h2>
+
+      <p>The <strong>Virtual Router Redundancy Protocol (VRRP)</strong> is an open standard, which is what makes it interesting: FortiGate can join a VRRP domain that includes non-Fortinet routers. FortiOS supports both VRRP v2 and v3, IPv4 and IPv6, and you can add multiple virtual routers to the same physical or VLAN interface.</p>
+
+      <p>VRRP works through periodic advertisements. The device with the highest priority becomes primary and sends VRRP advertisements to peers. If the backup with the next-highest priority stops receiving those advertisements for the timeout period, it becomes the new primary. FortiOS extends the standard by letting you monitor up to two remote destinations (e.g. <em>8.8.8.8</em>) — if the primary loses connectivity to the monitored destination, it stops advertising, deliberately triggering failover even though the LAN interface is up.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI — VRRP with remote destination monitoring</div>
+<pre><code>config system interface
+  edit port10
+    config vrrp
+      edit 200
+        set vrip 10.10.101.250
+        set priority 200
+        set adv-interval 250
+        set vrdst 8.8.8.8
+        set vrdst-priority 30
+      next
+    end
+  next
+end</code></pre>
+      </div>
+
+      <p>Choosing between FGCP, FGSP, and VRRP is a deliberate architectural decision. FGCP is native, gives you redundancy, load sharing, session sync, and configuration sync — but only among 2–4 identical FortiGates. FGSP is redundancy plus session and config sync between standalone units or between clusters, requiring an external load balancer for actual distribution. VRRP is the cross-vendor open-standard fallback: unlimited scale in principle, but no session sync, no load balancing, no config sync.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Feature</th><th>FGCP</th><th>FGSP</th><th>VRRP</th></tr></thead>
+        <tbody>
+          <tr><td>Redundancy capacity</td><td>2–4 FortiGates</td><td>2–16 standalone or FGCP clusters</td><td>Unlimited (VRRP-compliant devices)</td></tr>
+          <tr><td>Load balancing</td><td>Native active-active</td><td>External load balancer</td><td>Not available</td></tr>
+          <tr><td>Session sync</td><td>Optional (configurable)</td><td>Optional (configurable)</td><td>Not available</td></tr>
+          <tr><td>Configuration sync</td><td>Native</td><td>Available if enabled</td><td>Not available</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-green"><strong>Decision heuristic:</strong> All Fortinet, want everything → <em>FGCP</em>. Fortinet plus external load balancers or cloud → <em>FGSP</em>. Mixed vendor environment or minimal redundancy need → <em>VRRP</em>.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">FGCP for a Fortinet-only fortress. FGSP for a farm with external balancers. VRRP for a network where the neighbor might not speak your dialect.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-vrrp-comparison" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-vrrp-comparison','VRRP &amp; Comparison')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-vrrp-comparison" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-vrrp-comparison')">+ Add Note</button></div>
         </div>
       </div>
     </div>
@@ -533,29 +628,29 @@ end</code></pre>
 </main>
 
 <div class="page-nav">
-  <a class="page-nav-btn page-nav-prev" href="chapter-08-advpn.html">
+  <a class="page-nav-btn page-nav-prev" href="chapter-03-vlans-vdoms.html">
     <span class="page-nav-label">← PREVIOUS</span>
-    <span class="page-nav-title">Chapter 08 · Auto-Discovery VPN</span>
+    <span class="page-nav-title">Chapter 03 — VLANs &amp; VDOMs</span>
   </a>
-  <a class="page-nav-btn page-nav-next" href="chapter-10-hardware-acceleration.html">
+  <a class="page-nav-btn page-nav-next" href="chapter-05-dynamic-routing.html">
     <span class="page-nav-label">NEXT →</span>
-    <span class="page-nav-title">Chapter 10 · Hardware Acceleration</span>
+    <span class="page-nav-title">Chapter 05 — Dynamic Routing Protocols</span>
   </a>
 </div>
 
 <footer>
-  Vaultline Financial<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Full Study Guide · Chapter 09
+  Vaultline Financial<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Chapter 04 — High Availability
 </footer>
 
 <script>
-const PAGE_KEY = 'nse7-fullguide-ch09-security-fabric';
+const PAGE_KEY = 'nse7-fullguide-ch04-high-availability';
 
 const SECTIONS = {
-  'section-connectors': 'Fabric vs. External Connectors',
-  'section-logging': 'Correlated Logging',
-  'section-integrations': 'FortiNDR, FortiNAC, SAML SSO',
-  'section-stitches': 'Automation Stitches',
-  'section-quarantine': 'IoC &amp; Automated Quarantine',
+  'section-fgcp-fundamentals': 'FGCP Fundamentals',
+  'section-election-and-vmac': 'Election & vMAC',
+  'section-active-active': 'Active-Active Flow',
+  'section-fgsp': 'FGSP',
+  'section-vrrp-comparison': 'VRRP & Comparison',
 };
 
 document.querySelectorAll('.socratic-header').forEach(function(h) {
