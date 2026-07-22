@@ -1,0 +1,202 @@
+==================================================================
+SESSION 39 — COMBINED REVISION PACK
+"Rating Day" — Security Fabric hardening: Security Rating, review & verification
+SG 09 Security Fabric, pp. 274–278
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (ONE PAGE)
+------------------------------------------------------------------
+The Security Rating audits the entire fabric. Each fabric member
+self-checks its own configuration against Fortinet best-practice
+checks; results roll up to the ROOT, which compiles one unified
+score and grade. This is the same architectural pattern already
+seen in stitches (authored on root, executed on leaves) and fabric
+logging (each member logs independently to FAZ): distribute the
+work, centralise the verdict.
+
+A bare score is trivia. Two context layers make it board-usable:
+TREND (the rating re-runs automatically on a schedule, so a history
+exists) and INDUSTRY PERCENTILE (compared to similar-sized orgs in
+your sector). Both the full check set and the percentile comparison
+require a FortiGuard Security Rating subscription — without it, the
+report degrades, echoing the FortiGuard-dependency pattern from the
+Session 23 web-filter outage. The rating can also be triggered
+ON DEMAND from the GUI, not just on its schedule.
+
+Findings should be triaged on three lenses, not severity alone:
+EXPOSURE (who can attempt it, with what precondition?), BLAST
+RADIUS (what does a win hand the attacker?), and COST TO FIX
+(instant CLI change vs. needs a change window). Broad "all/all"
+firewall policies cannot be safely tightened from config alone —
+pull FortiAnalyzer traffic logs first, over a window wide enough to
+catch rare/periodic legitimate flows.
+
+The Schedule automation trigger offers five frequencies: Once,
+Hourly, Daily, Weekly, Monthly — there is no "Now" option — and the
+schedule runs on the ROOT FortiGate's system clock, because stitches
+are authored on the root. Config-backup results land in
+Configuration > Revisions. Manual endpoint quarantine uses
+`diagnose endpoint fctems queue-complete-calls Q-<ip>`, unsupported
+on FortiClient (Linux).
+
+Business resolution: a two-stakeholder custody conflict over the
+same report was resolved by splitting the artefact by AUDIENCE —
+derived metrics (score/trend/percentile) to the board; raw findings
+kept internal — and by closing the cheapest, highest-value findings
+BEFORE the deadline so the presented number itself improved.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+GUI PATHS
+- Security Fabric > Security Rating           (score, grade, trend,
+  percentile, ranked findings, on-demand re-run, inline fixes)
+- Security Fabric > Automation > Trigger       (Schedule config)
+- Configuration > Revisions                    (config-backup proof
+  / rollback point)
+
+CLI
+- diagnose autoupdate versions                 (FortiGuard contract/
+  subscription paperwork check)
+- diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>
+                                                (manual quarantine)
+
+SCHEDULE TRIGGER FREQUENCIES
+Once · Hourly · Daily · Weekly · Monthly
+(NOT "Now" — no instant-execution option)
+Clock reference = ROOT FortiGate's system time.
+
+DEFAULTS / KEY BEHAVIOURS
+- Rating re-runs automatically on a schedule AND can be triggered
+  on demand.
+- Full check set + industry percentile require a FortiGuard
+  Security Rating subscription.
+- Each fabric member self-audits; root compiles the unified score.
+- FortiClient (Linux) does not support remote quarantine.
+
+DESIGN RULES
+- Triage findings by exposure > blast radius > cost-to-fix, not
+  raw severity order alone.
+- Never tighten a broad "all/all" policy from config alone — pull
+  FAZ traffic logs first, over a wide-enough window.
+- Split board-facing artefacts by audience/purpose, not by picking
+  a side in a stakeholder conflict.
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: Where does the Security Rating's compiled score come from?
+A: Each fabric member self-audits its own config; root compiles all
+   results into one unified score/grade.
+
+Q: What two context layers turn a bare rating score into something
+   a board can act on?
+A: Trend (score over time) and industry percentile (vs. similar-
+   sized orgs).
+
+Q: What does a FortiGuard Security Rating subscription unlock?
+A: The full check set and the industry percentile comparison.
+
+Q: Command to check FortiGuard contract/subscription state without
+   changing anything?
+A: diagnose autoupdate versions
+
+Q: Three lenses for triaging rating findings beyond severity?
+A: Exposure, blast radius, cost to fix.
+
+Q: Why can't you safely tighten an "all/all" policy from config
+   alone?
+A: Config shows what's permitted, not what's actually used — pull
+   FortiAnalyzer traffic logs first, over a window wide enough to
+   catch rare/periodic flows.
+
+Q: Five Schedule trigger frequency options?
+A: Once, Hourly, Daily, Weekly, Monthly (no "Now").
+
+Q: Whose system clock governs the Schedule trigger's timing?
+A: The ROOT FortiGate's — stitches are authored on root and pushed
+   to leaves.
+
+Q: Where do Schedule-triggered config backups appear in the GUI?
+A: Configuration > Revisions.
+
+Q: CLI command for manual endpoint quarantine via EMS?
+A: diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>
+
+Q: Which FortiClient platform does NOT support quarantine?
+A: Linux.
+
+Q: In the fabric's SAML SSO relationship, who is the sole IdP, and
+   who are the SPs?
+A: Root = IdP. Downstream FortiGates, FortiAnalyzer, FortiManager =
+   SPs. (FortiAuthenticator is a separate standalone product, not
+   part of this fabric relationship.)
+
+Q: Where do downstream fabric members' files go for FortiNDR
+   analysis, and what happens to the user's session while pending?
+A: Files transit THROUGH THE ROOT. The user's session is HELD —
+   nothing is delivered — until FortiNDR returns a verdict.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "THE PACKET PATH", EPISODE 39
+------------------------------------------------------------------
+Generate a podcast episode for "The Packet Path" titled "Rating
+Day." Two hosts, warm and conversational, discussing enterprise
+network security with a light narrative frame. Structure:
+
+1. COLD OPEN: Set the scene — a fictional but relatable company,
+   LoFinance, has two department heads in conflict over one
+   security report. One wants a number for a board presentation.
+   The other is protective of what the report reveals about the
+   company's weaknesses. Frame this as a familiar tension anyone
+   in security operations has felt.
+
+2. THE CORE CONCEPT: Explain how Fortinet's Security Fabric
+   computes a "security rating" — each firewall in a corporate
+   network audits ITSELF against best-practice checks, and a
+   central "root" device compiles everyone's results into one
+   score. Use the analogy: "everyone marks their own homework,
+   but with a rulebook they can't edit." Explain why a bare score
+   is nearly useless without two things: a TREND over time (is it
+   getting better?) and an INDUSTRY COMPARISON (how do we stack up
+   against similar companies?).
+
+3. THE TRIAGE LESSON: Walk through why a security engineer doesn't
+   just fix problems in order of "how scary they sound." Introduce
+   three questions: who can even attempt this attack (exposure)?
+   what do they get if they succeed (blast radius)? and how
+   disruptive is the fix (cost)? Use a concrete example: an admin
+   login exposed to the whole internet is fixed immediately because
+   literally anyone can try it — versus a firmware update that gets
+   scheduled for a weekend because it requires a system reboot.
+
+4. THE EVIDENCE PRINCIPLE: Explain why you should never guess when
+   tightening an overly broad security rule — you have to look at
+   actual traffic logs first, and look far enough back in time to
+   catch rare but legitimate business processes (like a monthly
+   report job) that would otherwise get accidentally blocked.
+
+5. JUNIOR'S MISTAKE: Include a moment where a junior engineer
+   suggests just waiting for the automatic weekly report to update
+   itself before a Thursday deadline — and gets gently corrected:
+   these systems usually let you trigger an on-demand refresh
+   instead of waiting on a schedule. Frame this as a broader life
+   lesson about not waiting on a timer when a button exists.
+
+6. THE RESOLUTION: The two department heads both get what they
+   actually needed once someone realized the report could be split
+   into two different documents for two different audiences — a
+   simple trend line for leadership, and the detailed findings kept
+   internal for the security team.
+
+7. TEASER FOR NEXT EPISODE: End with an exciting hook about how
+   milliseconds of network delay can cost a financial trading firm
+   real money, and next time the show will explore specialized
+   hardware chips that firewalls use to process traffic faster than
+   software alone ever could.
+
+Tone: curious, warm, a little wry humor, accessible to a general
+technical audience without requiring firewall expertise. Keep
+technical terms explained in plain language the first time they're
+used. Target length: 12-15 minutes of spoken content.

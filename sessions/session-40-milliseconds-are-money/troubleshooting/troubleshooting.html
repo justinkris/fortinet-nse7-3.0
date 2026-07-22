@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 40 Troubleshooting — Where Do the Milliseconds Die?</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#b02a2a;--red-light:#fbe6e6;--red-border:#e8b0b0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text)}
+header{padding:40px 44px 30px;background:var(--ink-dark)}
+.eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec;line-height:1.1}
+h1 em{font-style:italic;font-weight:500;color:var(--ink-accent)}
+header p{font-size:14px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px}
+main{max-width:980px;margin:0 auto;padding:32px 44px 54px}
+.block{margin-bottom:34px}
+.label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+h2{font-family:'Playfair Display',serif;font-size:24px;padding-left:12px;border-left:3px solid var(--blue);margin-bottom:12px}
+p,li{font-size:16px;line-height:1.65;color:var(--text-soft)}
+strong{color:var(--text)}
+ul,ol{padding-left:20px;margin-bottom:10px}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15px;line-height:1.6}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light)}
+.callout-red{border-left-color:var(--red-border);background:var(--red-light)}
+.code{background:var(--ink-dark);border-radius:8px;padding:12px 14px;margin:10px 0;font-family:'SF Mono','Consolas',monospace;font-size:12px;line-height:1.6;color:#e8efff;overflow-x:auto;white-space:pre}
+.tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;font-family:'Outfit',sans-serif;font-size:13px;line-height:2;color:var(--text-soft)}
+.tree strong{color:var(--blue)}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:8px 12px;text-align:left}
+td{font-size:14px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-soft);vertical-align:top}
+td:first-child{color:var(--text);font-weight:600}
+footer{padding:16px 44px;background:var(--ink-dark);color:rgba(251,247,236,0.4);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase}
+@media(max-width:700px){main,header{padding-left:20px;padding-right:20px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 40 TROUBLESHOOTING GUIDE · SPU ARCHITECTURE</div>
+  <h1>Where Do the <em>Milliseconds Die?</em></h1>
+  <p>How a senior engineer triages a hardware-acceleration latency complaint — thinking first, commands second.</p>
+</header>
+<main>
+
+<div class="block">
+  <div class="label">Symptoms</div>
+  <h2>What Walks In the Door</h2>
+  <ul>
+    <li>"Traffic through the firewall is slower than the same path used to be" — or slower than an identical box elsewhere.</li>
+    <li>Latency-sensitive traffic (trading, VoIP, storage replication) shows a consistent fixed-cost delay per hop.</li>
+    <li>Latency is fine at low load but a <strong>second, taller hump</strong> appears on the latency histogram at peak — a bimodal distribution.</li>
+    <li>CPU utilisation climbs with traffic that "should be offloaded."</li>
+    <li>Performance changed after a physical re-cable, with a <strong>clean config diff</strong>.</li>
+  </ul>
+</div>
+
+<div class="block">
+  <div class="label">First Discipline</div>
+  <h2>Locate Before You Diagnose</h2>
+  <p>Señor's opening move: rule out the WAN with arithmetic (40m of fibre ≈ 200ns) before opening the firewall. Bound the search space with numbers you already know — link lengths, serialisation delays, published port-to-port latencies — so the suspect list shrinks to boxes you own. <strong>Diagnosis precedes procurement.</strong></p>
+</div>
+
+<div class="block">
+  <div class="label">Questions to Ask</div>
+  <h2>Before Touching a Keyboard</h2>
+  <ol>
+    <li><strong>Is the delay fixed-cost or load-dependent?</strong> Fixed per-packet cost points at path architecture (ISF hops, extra processing stages). Load-dependent points at a capacity limit being crossed (session table full, CPU overflow).</li>
+    <li><strong>Is it all traffic or some traffic?</strong> A bimodal latency profile means two populations — some sessions riding fast silicon, some not. Ask what distinguishes them.</li>
+    <li><strong>What silicon is actually in this box?</strong> Never assume from the model name on the bezel.</li>
+    <li><strong>Which physical ports does the affected traffic use — and which NP owns them?</strong> On multi-NP and NP-Direct hardware, cabling is part of the design.</li>
+    <li><strong>What changed?</strong> Config diffs won't show a patch-cable change. Ask the humans, check the DC access log, look at interface counters moving between ports.</li>
+  </ol>
+</div>
+
+<div class="block">
+  <div class="label">Verification</div>
+  <h2>Commands and Expected Output</h2>
+  <div class="code"># diagnose hardware lspci | grep 1a29
+9b:00.0 Class 1000: Device 1a29:4e37
+  → 1a29 = Fortinet vendor ID
+  → 4e36 = NP6 · 4e37 = NP7
+
+# get hardware status
+Model name: FortiGate-900G
+ASIC version: CP9        ← CP generation
+(ASIC version: SOC5 on an SP5/branch box)</div>
+  <p>These two commands answer "what am I actually working with" — the mandatory first evidence on any acceleration case. Deeper NPU counters (<code>diagnose npu np7 ...</code>) belong to later sessions; do not guess at their output.</p>
+</div>
+
+<div class="block">
+  <div class="label">Decision Tree</div>
+  <h2>The Two-Diagnosis Fork</h2>
+  <div class="tree">
+Latency complaint on a FortiGate path
+├── Fixed-cost, affects ALL packets on the path equally
+│     └── <strong>Architecture question:</strong> is traffic crossing the ISF?
+│           ├── Ultralow-latency / NP-Direct ports available (X5–X8, 900G-class)?
+│           │     ├── YES → verify ingress AND egress are on the SAME NP's
+│           │     │        direct ports. If not → re-cable. (The fix is physical.)
+│           │     └── NO  → this hop's floor latency is what it is; escalate to
+│           │              hardware selection, not configuration.
+│           └── Already on NP-Direct ports? → check one interface didn't get
+│                 "tidied" onto a normal ISF port. Config diff will be CLEAN.
+└── Load-dependent, bimodal, appears at peak
+      └── <strong>Capacity question:</strong> is an NP session table overflowing?
+            ├── Are all busy links cabled to ports of ONE NP while a
+            │     sibling NP sits idle? → redistribute cabling across NPs.
+            └── Total sessions genuinely exceed per-chip capacity even when
+                  distributed? → sizing problem, not a cabling problem.</div>
+</div>
+
+<div class="block">
+  <div class="label">Common Dead Ends</div>
+  <h2>Where Time Gets Wasted</h2>
+  <table>
+    <tr><th>Dead End</th><th>Why It Fails</th></tr>
+    <tr><td>Staring at the config</td><td>The two classic faults here — mis-cabled NP-Direct egress and busy-links-on-one-NP — are committed with patch cables. The config is innocent and the diff is clean.</td></tr>
+    <tr><td>"Buy a faster circuit"</td><td>If the delay is inside the box, the WAN upgrade buys nothing. Locate first.</td></tr>
+    <tr><td>Treating session capacity as per-box</td><td>12M is per NP7 chip. A two-chip box mis-cabled is a 12M box with a paperweight.</td></tr>
+    <tr><td>Conflating the two diagnoses</td><td>NP Direct fixes ISF-hop latency; traffic distribution fixes overflow latency. Applying the wrong fix "does something" and changes nothing.</td></tr>
+    <tr><td>Trusting the bezel</td><td>Model names don't tell you NP6 vs NP7 vs SoC. Two commands do.</td></tr>
+  </table>
+</div>
+
+<div class="block">
+  <div class="label">Likely Root Causes</div>
+  <h2>Ranked by Frequency of Embarrassment</h2>
+  <ol>
+    <li><strong>Traffic not on the low-latency ports it was designed for</strong> — a re-patch, a "tidy-up," a port swap during maintenance.</li>
+    <li><strong>Ingress and egress on different NPs</strong> where NP Direct is in use — breaks the same-chip requirement.</li>
+    <li><strong>Session concentration on one NP</strong> — overflow to CPU at peak while a sibling NP idles.</li>
+    <li><strong>Wrong-tier hardware for the workload</strong> — an SoC/SP5 branch box asked to do a datacentre job, or an NP-only expectation applied to a CP workload (SSL deep inspection).</li>
+  </ol>
+</div>
+
+<div class="block">
+  <div class="label">Exam Traps</div>
+  <h2>How the NSE7 Will Test This</h2>
+  <div class="callout-amber callout"><strong>Trap 1:</strong> an <code>lspci</code> output showing <code>1a29:4e36</code> with an answer option saying "NP7." 4e36 is NP6. Read the hex, not your hope.</div>
+  <div class="callout-amber callout"><strong>Trap 2:</strong> "What limits NP7 sessions?" with distractors like licensing or interface count. It's <strong>processor memory</strong> — and the overflow destination is the <strong>CPU</strong>.</div>
+  <div class="callout-amber callout"><strong>Trap 3:</strong> an NP-Direct scenario where traffic enters X5 and exits a port on a <em>different</em> NP — the requirement is same-NP in and out.</div>
+  <div class="callout-red callout"><strong>Trap 4:</strong> job-to-chip mismatches: SSL deep-inspect crypto assigned to the NP, or IPsec denied to the NP. NP does IPsec; CP does SSL (and IPsec for supported algorithms); flow pattern matching is CP work.</div>
+</div>
+
+<div class="block">
+  <div class="label">The Point</div>
+  <h2>Thinking, Not Memorising</h2>
+  <p>Every fault in this chapter reduces to one of two questions: <strong>"is the path longer than it needs to be?"</strong> (architecture) or <strong>"did a table fill up?"</strong> (capacity). Classify the symptom into one of those before running a single command, and the command list picks itself.</p>
+</div>
+
+</main>
+<footer>LOFINANCE · SESSION 40 TROUBLESHOOTING · WHERE DO THE MILLISECONDS DIE?</footer>
+</body>
+</html>

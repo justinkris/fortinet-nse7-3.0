@@ -1,0 +1,202 @@
+==================================================================
+SESSION 41 REVISION PACK — "THE FAST PATH"
+Session offloading: requirements + life of an offloaded packet
+NSE7 EF 7.6 · Study Guide ch. 10, pp. 286–291 · Blueprint 1.2
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+The NP6/NP7 is a forwarding replayer — it executes decisions at
+wire speed but never makes them. Policy, routing, and session
+creation are CPU/kernel work, so the CPU always processes the
+start of every session: the ENTIRE TCP three-way handshake, or
+the FIRST UDP packet. If the session qualifies, the CPU installs
+a SESSION KEY in the NP — the pre-computed answer to routing +
+policy. From then on packets skip routing, skip the kernel, and
+never touch the CPU (fast path). FIN/RST always return to the
+CPU because teardown = kernel state deletion + NP key removal.
+
+FOUR DISQUALIFIERS (sessions stay on the CPU when):
+ 1. auto-asic-offload disable on the firewall policy (default:
+    enable).
+ 2. Proxy-based security profiles — and a MIXED flow+proxy
+    policy offloads NOTHING (one proxy profile poisons the whole
+    policy).
+ 3. The session needs a FortiOS session helper (FTP classic).
+ 4. Tunnelling (SSL VPN, GRE, ...) — EXCEPT IPsec, which NP6/NP7
+    handle natively.
+
+EVIDENCE: diagnose sys session list →
+  npu info: offload=9/9   (9 = NP7; slash = originate/reply;
+                           9/0 = asymmetric, replies on CPU)
+  no_ofld_reason: disabled-by-policy   (FortiOS confessing)
+
+THE TRAP: offload is decided ONCE at session creation. Existing
+sessions never re-qualify after a config fix. Remediate with
+diagnose sys session filter + diagnose sys session clear, let
+clients reconnect, then VERIFY offload=X/X.
+
+LIFE OF AN OFFLOADED NON-UTM PACKET: NP ingress → IP integrity
+check → (IPsec decrypt) → skip routing/kernel/CPU → (shaping) →
+(IPsec encrypt) → egress.
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+COMMANDS
+  diagnose sys session list          → npu info / no_ofld_reason
+  diagnose sys session filter dstip <ip>
+  diagnose sys session clear         → force re-qualification
+  config firewall policy > edit <id> >
+    set auto-asic-offload {enable|disable}   [default: enable]
+
+GUI PATH
+  Policy & Objects > Firewall Policy (auto-asic-offload is
+  CLI-visible; verify offload state via CLI session list).
+
+DEFAULTS
+  auto-asic-offload: enable (per firewall policy)
+
+KEY BEHAVIOURS
+  TCP  : full 3-way handshake via CPU, then offload.
+  UDP  : first packet via CPU, then offload.
+  FIN/RST: always CPU (session teardown).
+  Mixed flow+proxy policy: NEVER offloads any traffic.
+  Tunnels: no offload — EXCEPT IPsec (native ESP on NP6/NP7).
+  Offload decision: once, at session creation, never revisited.
+
+DESIGN RULES
+  - Diagnostic settings are temporary by contract — add reverts
+    to the change checklist.
+  - Verify with the session table, never the checkbox.
+  - Identical boxes, different behaviour = different state.
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: For TCP, what must transit the CPU before offload?
+A: The entire three-way handshake (SYN, SYN/ACK, ACK).
+
+Q: For UDP, how many packets take the slow path?
+A: One — only the first packet.
+
+Q: Why do FIN/RST always go to the CPU?
+A: The CPU owns session state; teardown deletes the kernel entry
+   and uninstalls the NP session key.
+
+Q: Name the four conditions that prevent NP offload.
+A: (1) auto-asic-offload disabled on the policy, (2) proxy-based
+   profiles, (3) session helper required, (4) tunnelling — except
+   IPsec.
+
+Q: A policy has flow-based AV and proxy-based web filter. What
+   offloads?
+A: Nothing. A mixed flow+proxy policy never offloads any traffic.
+
+Q: Which tunnel type CAN offload to the NP?
+A: IPsec — NP6/NP7 encrypt/decrypt ESP natively.
+
+Q: In offload=9/9, what is the 9 and what is the slash?
+A: 9 = NP7 as the offloading processor; slash separates
+   originate/reply directions (each needs its own key).
+
+Q: What does offload=9/0 tell you?
+A: Asymmetric offload — originate direction accelerated, replies
+   processed by the CPU.
+
+Q: What setting causes no_ofld_reason: disabled-by-policy, and
+   where does it live? Default?
+A: set auto-asic-offload disable — inside config firewall policy.
+   Default is enable.
+
+Q: You fix a policy so traffic qualifies, but existing sessions
+   still show no_offload. Why, and what do you run?
+A: Offload is decided once at session creation; existing sessions
+   are never re-evaluated. Run diagnose sys session filter <...>
+   then diagnose sys session clear; clients reconnect and the new
+   handshake qualifies.
+
+Q: Two stages an offloaded non-UTM packet skips entirely, and
+   one optional stage the NP still performs?
+A: Skips routing and kernel/CPU processing. NP can still perform
+   traffic shaping (or IPsec encryption/decryption).
+
+Q: What does "the session key" actually contain, conceptually?
+A: The pre-computed answer to routing + policy for that session,
+   replayed by the NP per packet.
+
+Q: (Retrieval) SP5's alias in CLI output?
+A: NP7lite. ("SP5 is a little NP7 → NP7-LITE.")
+
+Q: (Retrieval) Manual IoC quarantine — where do you type it, who
+   delivers it, which OS is excluded?
+A: Typed on the FortiGate CLI (diagnose endpoint fctems
+   queue-complete-calls Q-<ip>); EMS delivers it; FortiClient for
+   Linux is excluded.
+
+Q: (Retrieval) Why does NP Direct require 2+ NP6 processors?
+A: The ISF lets many ports share one NP; removing it hard-wires
+   ports to chips, so a single-NP box would strand most ports.
+   Trade = flexibility for latency.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "THE PACKET PATH" · EPISODE 41
+------------------------------------------------------------------
+Generate a 10–14 minute episode of the tech-story podcast "The
+Packet Path" with two hosts (one narrator-storyteller, one
+technical explainer). Warm, wry tone; the story carries the
+teaching.
+
+EPISODE TITLE: "The Fast Path"
+
+COLD OPEN: Two identical FortiGate 900Gs on the LoFinance trading
+floor. FW-TRADE-01 forwards orders at 40 microseconds. Its
+identical twin, FW-TRADE-02, takes 800 — twenty times slower —
+and its CPU graph looks like a heart attack. Penny's line: "Same
+box. Same config. Same money. Why is one of them slow?"
+
+ACT 1 — THE CONFESSION: The engineer doesn't guess. One command —
+diagnose sys session list — and FortiOS literally confesses:
+no_ofld_reason: disabled-by-policy. Junior had disabled hardware
+offload (auto-asic-offload) on a policy for Friday packet
+sniffing and forgot to turn it back on. Explain the big idea: the
+NP7 chip is a forwarding REPLAYER. It can execute a decision
+millions of times a second but can never MAKE one. So the CPU
+witnesses the start of every conversation — the whole TCP
+three-way handshake, or the first UDP packet — checks policy and
+routing, then installs a "session key" in the chip: the
+pre-computed answer, replayed per packet. Use the mantra: "The
+CPU witnesses the birth, the NP carries the life, the CPU handles
+the death" (FIN and RST always come back to the CPU for
+teardown).
+
+ACT 2 — THE FOUR DISQUALIFIERS: Walk the list conversationally:
+(1) offload disabled on the policy, (2) proxy-based security
+profiles — with the sharp edge that ONE proxy profile poisons the
+WHOLE policy, nothing offloads on a mixed policy, (3) session
+helpers like FTP that must read payload, (4) tunnels like SSL VPN
+and GRE — EXCEPT IPsec, "a forwarding job in a trench coat,"
+because the NP can take the coat off itself.
+
+ACT 3 — JUNIOR'S SECOND MISTAKE (the good one): They re-enable
+offload... and nothing improves. The grin unloads. Twist: the
+offload decision is made ONCE, at session birth. Sessions born
+under the old config carry their verdict for life. "Config
+describes the future; the session table describes the present."
+The fix: filter and clear the stale sessions, let clients
+reconnect, watch offload=9/9 appear (9 means NP7, the slash means
+both directions), latency falls off a cliff to 40 microseconds.
+Penny, deadpan: "So it was the same box after all. Good."
+
+REINFORCE: quick-fire recap of TCP/UDP/FIN rules, the four
+disqualifiers with the IPsec exception, reading offload=9/9 vs
+9/0, and the session-clear remediation.
+
+TEASER: Cipher arrives with a compliance memo — IPS required on
+the trading VLAN. Junior panics: "Security profiles kill the
+offload!" Señor smiles: "Does it, chico? Or is there a way to
+inspect a packet without ever slowing it down?" Two words on the
+whiteboard: NTurbo. IPSA. Next episode: "Inspection at Wire
+Speed."
+==================================================================

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomy of the Heartbeat — Session 47</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:36px 48px 28px;background:var(--ink-dark);}
+  header .eyebrow{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:.14em;color:var(--ink-accent);text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:#fbf7ec;}
+  header p{font-size:15px;font-style:italic;color:rgba(251,247,236,.6);margin-top:6px;}
+  main{max-width:900px;margin:0 auto;padding:40px 32px 60px;}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:28px;}
+  .lane{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--border-dim);padding:16px 0;}
+  .lane:last-child{border-bottom:none;}
+  .lane-label{flex:0 0 150px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--text-soft);letter-spacing:.03em;display:flex;align-items:center;}
+  .lane-body{flex:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .pkt{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid;white-space:nowrap;}
+  .pkt-hb{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue);}
+  .pkt-cfg{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+  .pkt-arrow{color:var(--text-muted);font-size:14px;}
+  .tag{font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);}
+  h2{font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin:32px 0 12px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+  .card h3{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:.05em;color:var(--blue);text-transform:uppercase;margin-bottom:8px;}
+  .card p{font-size:16px;line-height:1.55;color:var(--text-soft);}
+  .card code{font-family:monospace;background:var(--surface-2);padding:1px 6px;border-radius:4px;font-size:14px;}
+  .trigger-row{display:flex;gap:12px;margin-top:18px;}
+  .trigger{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
+  .trigger .icon{font-size:26px;margin-bottom:6px;}
+  .trigger h4{font-family:'Outfit',sans-serif;font-size:13px;color:var(--text);margin-bottom:6px;}
+  .trigger p{font-size:14px;color:var(--text-muted);line-height:1.5;}
+  .footer-note{margin-top:32px;padding:16px 20px;background:var(--green-light);border:1px solid var(--green-border);border-radius:10px;font-size:15px;color:var(--text-soft);}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Session 47 · The Understudy · Mid-lesson visual</div>
+  <h1>Anatomy of the Heartbeat</h1>
+  <p>What actually travels between two FortiGates in an HA cluster — and what each frame is for.</p>
+</header>
+<main>
+
+  <div class="diagram">
+    <div class="lane">
+      <div class="lane-label">hbdev (dedicated)</div>
+      <div class="lane-body">
+        <span class="pkt pkt-hb">0x8890</span><span class="tag">NAT/route mode</span>
+        <span class="pkt-arrow">⇄</span>
+        <span class="pkt pkt-hb">0x8891</span><span class="tag">transparent mode</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-label">Carries</div>
+      <div class="lane-body">
+        <span class="tag">neighbour discovery · primary election · failure detection · traffic redistribution</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-label">Also on hbdev</div>
+      <div class="lane-body">
+        <span class="pkt pkt-cfg">0x8893</span><span class="tag">configuration sync</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-label">Sniff command</div>
+      <div class="lane-body">
+        <span class="tag" style="font-family:monospace;font-size:13px;">diagnose sniffer packet &lt;hbdev&gt; "ether proto 0x8890" 4</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>What the frame itself looks like</h2>
+  <div class="diagram" style="padding:22px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;font-family:'Outfit',sans-serif;">
+      <div style="flex:2;min-width:130px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 10px;text-align:center;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">Destination MAC</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">6 bytes — the partner's <em>physical</em> hbdev MAC (heartbeat ports never get a vMAC)</div>
+      </div>
+      <div style="flex:2;min-width:130px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 10px;text-align:center;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">Source MAC</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">6 bytes — the sender's physical hbdev MAC</div>
+      </div>
+      <div style="flex:1.5;min-width:110px;background:var(--blue-light);border:2px solid var(--blue);border-radius:8px;padding:12px 10px;text-align:center;">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);">EtherType</div>
+        <div style="font-size:11px;color:var(--blue);margin-top:4px;">2 bytes — <strong>0x8890 / 0x8891 / 0x8893</strong> instead of 0x0800 (IPv4)</div>
+      </div>
+      <div style="flex:3;min-width:160px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 10px;text-align:center;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">FGCP Payload</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Proprietary Fortinet data: hello/election state, monitored-interface tallies, sync data. No IP header inside.</div>
+      </div>
+      <div style="flex:1;min-width:70px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 10px;text-align:center;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">FCS</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">4 bytes — checksum</div>
+      </div>
+    </div>
+    <p style="font-size:14px;color:var(--text-muted);margin-top:14px;font-style:italic;">The key observation: where an ordinary frame says "0x0800 — an IP packet lives inside me," an FGCP frame says "0x8890 — Fortinet cluster business, nothing above layer 2." That's why <code style="font-family:monospace;background:var(--surface-2);padding:1px 5px;border-radius:4px;">diagnose sniffer packet</code> needs the <code style="font-family:monospace;background:var(--surface-2);padding:1px 5px;border-radius:4px;">"ether proto 0x8890"</code> filter — an IP-based filter would never match it.</p>
+  </div>
+
+  <h2>Inside the FGCP payload</h2>
+  <div class="diagram" style="padding:22px;">
+    <div style="background:var(--amber-light);border:1px solid var(--amber-border);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--amber);">
+      ⚠ Honest caveat: FGCP is proprietary — Fortinet does not publish the byte-level layout of the payload, and neither the study guide nor the exam tests its internal structure. What we <em>can</em> map confidently is <strong>what information rides inside it</strong>, based on the functions the guide attributes to each ethertype.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-family:'Outfit',sans-serif;">
+      <div style="background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">0x8890 / 0x8891 — heartbeat payload carries:</div>
+        <ul style="font-size:12px;color:var(--text-soft);line-height:1.7;padding-left:18px;">
+          <li><strong>Cluster identity</strong> — group ID, group name hash, password verification (so strangers can't join)</li>
+          <li><strong>Hello / liveness</strong> — "I'm still here" at a regular interval; absence = device failover</li>
+          <li><strong>Election parameters</strong> — monitored-interface up-count, HA uptime, priority, serial number (the four criteria, carried so both members can run the same election and agree)</li>
+          <li><strong>Failure &amp; redistribution signals</strong> — role changes, traffic redistribution coordination</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;">0x8893 — config-sync payload carries:</div>
+        <ul style="font-size:12px;color:var(--text-soft);line-height:1.7;padding-left:18px;">
+          <li><strong>Configuration checksums</strong> — how members detect in-sync vs out-of-sync</li>
+          <li><strong>Configuration deltas</strong> — the actual settings pushed primary → secondary</li>
+          <li><strong>External files</strong> — certificates and similar objects that must match across members</li>
+        </ul>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:10px;font-style:italic;">Session-table sync also rides the hbdev by default — unless session-sync-dev moves it to its own lane.</div>
+      </div>
+    </div>
+    <p style="font-size:14px;color:var(--text-muted);margin-top:14px;font-style:italic;">Mental model: the payload is the cluster's <strong>ballot paper plus pulse</strong> — every frame re-states "who I am, that I'm alive, and how electable I currently am." The election never really ends; it's continuously re-run with fresh facts.</p>
+  </div>
+
+  <h2>Why Ethernet-typed, not IP</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>No IP stack needed</h3>
+      <p>FGCP frames don't need routing, ARP resolution, or an IP address on the hbdev to function — they operate one layer below all of that. The cluster can talk before "networking" in the usual sense even exists on that link.</p>
+    </div>
+    <div class="card">
+      <h3>Isolation from data traffic</h3>
+      <p>Because it's a distinct <code>ethertype</code>, ordinary IP traffic and tooling never accidentally intercepts or is confused with heartbeat frames — and you can filter for it precisely with a sniffer.</p>
+    </div>
+  </div>
+
+  <h2>The two failure signals it produces</h2>
+  <div class="trigger-row">
+    <div class="trigger">
+      <div class="icon">🖤</div>
+      <h4>Device Failover</h4>
+      <p>Heartbeat frames stop arriving entirely. Partner is presumed gone. Whole box changes role.</p>
+    </div>
+    <div class="trigger">
+      <div class="icon">🔌</div>
+      <h4>Link Failover</h4>
+      <p>Heartbeat is fine — but the monitored-interface tally carried inside it changes. Re-election runs anyway.</p>
+    </div>
+  </div>
+
+  <h2>What rides along separately</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Session sync — default path</h3>
+      <p>By default, session-table data shares this same hbdev link. Under heavy load, that bulk data can crowd out the small, latency-critical heartbeat frames — the false-failover trap from Session 46.</p>
+    </div>
+    <div class="card">
+      <h3>Session sync — dedicated path</h3>
+      <p>Configuring <code>session-sync-dev</code> moves the bulk traffic off the heartbeat entirely. If those dedicated links all fail, sync quietly falls back to the hbdev — no alarm raised.</p>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <strong>One-line anchor:</strong> the heartbeat is a narrow, dedicated nervous system (0x8890/91/93) — thin, fast, and easily drowned out by anything bulky sharing its lane. That's why Fortinet gives you the option to give it a lane of its own.
+  </div>
+
+</main>
+</body>
+</html>

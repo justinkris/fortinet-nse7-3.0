@@ -1,0 +1,206 @@
+==================================================================
+SESSION 41 SUMMARY — "THE FAST PATH"
+Session offloading — requirements and the life of an offloaded
+packet (Study Guide ch. 10, pp. 286–291) — Blueprint 1.2
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Two identical FortiGate 900Gs on the trading floor: FW-TRADE-01
+flat at 40 µs order-path latency; FW-TRADE-02 spiking to 800 µs
+(20x) with a CPU graph "like a heart attack." Same model, same
+firmware, same FMG-pushed policy package. Penny: "Same box. Same
+config. Same money. Why is one of them slow?"
+
+Riley pulled `diagnose sys session list` on TRADE-02 and found
+FortiOS confessing directly:
+  npu_state=0x000001 no_offload
+  no_ofld_reason: disabled-by-policy
+Root cause: Junior had set `auto-asic-offload disable` on a
+firewall policy while sniffing traffic the previous Friday and
+forgot to re-enable it. Riley re-enabled it — latency did NOT
+recover, because the long-lived trading sessions were born under
+the old config and offload qualification is decided ONCE at
+session creation. Student derived the fix live (Session 8 callback
+— OpsBridge stale-session lesson): filter + `diagnose sys session
+clear`, clients reconnect, new handshakes qualify, offload=9/9,
+latency drops to 40 µs, twin-identical. Penny, dry: "So it was the
+same box after all. Good."
+
+CHARACTERS: Señor (sombrero, "before we start" finger, retrieval
+debts collected at the door), Junior (Friday sniffing mistake +
+premature victory grin), Riley (dashboard + session list), Penny
+(one-line business framing), Cipher (end-of-day IPS compliance
+memo = S42 hook).
+
+STUDENT REQUEST THIS SESSION: faster pace, fewer hints, straight
+to the point. This was honoured and it WORKED — keep this pace as
+the new default unless he struggles (see learning notes).
+
+TECHNICAL CONCEPTS COVERED
+------------------------------------------------------------------
+1. Slow path vs fast path. CPU always processes: TCP = full
+   three-way handshake; UDP = first packet only. CPU performs
+   policy/routing/session creation, then installs the session key
+   in the NP. Subsequent packets skip routing + kernel + CPU.
+2. FIN/RST always punted to CPU — CPU owns session state;
+   teardown = delete kernel entry + uninstall NP key.
+   Keeper phrase (mine, adopted by student): "CPU witnesses the
+   birth, NP carries the life, CPU handles the death."
+3. Four offload disqualifiers (exam list):
+   (1) NP acceleration disabled on the policy
+       (`set auto-asic-offload disable`, per-policy, default
+       enable),
+   (2) proxy-based security profiles — and a MIXED flow+proxy
+       policy NEVER offloads ANY of its traffic (one proxy profile
+       poisons the whole policy),
+   (3) session requires a FortiOS session helper (FTP classic),
+   (4) tunnelling (SSL VPN, GRE, ...) EXCEPT IPsec — NP6/NP7
+       handle ESP natively ("forwarding job in a trench coat").
+4. Session-list evidence: `npu info: flag=0x81/0x91, offload=9/9,
+   ips_offload=0/0, epid/ipid...` — code 9 = NP7; slash =
+   originate/reply directions; each direction needs its own key;
+   9/0 = asymmetric offload (replies on CPU). Student read the
+   9/0 asymmetry correctly unprompted.
+5. Offload decision is made ONCE at session creation; existing
+   sessions never re-evaluated after config change. Remediation:
+   `diagnose sys session filter dstip <x>` then `diagnose sys
+   session clear`.
+6. Life of an offloaded non-UTM packet: NP ingress → IP integrity
+   check → (IPsec decrypt) → SKIP routing/kernel/CPU → optional
+   traffic shaping → (IPsec encrypt) → egress. Session key = the
+   pre-computed answer to routing+policy, replayed per packet.
+7. Parked for S42 (did not leak, not taught): NTurbo, IPSA,
+   flow-vs-proxy UTM acceleration.
+
+MENTAL MODELS / ANALOGIES (new keepers)
+------------------------------------------------------------------
+- "CPU witnesses the birth, NP carries the life, CPU handles the
+  death."
+- "no_ofld_reason is FortiOS confessing" — read the confession
+  before hypothesising.
+- "Config describes the future; the session table describes the
+  present." (Bridges S8 stale-session lesson to offload.)
+- "One proxy profile poisons the whole policy."
+- Reused: trench coat (IPsec on NP); session key installed in
+  hardware (student's own S40 invention — opened the session,
+  paid off completely).
+
+KEY CLI DISCUSSED
+------------------------------------------------------------------
+diagnose sys session list  → npu_state / no_ofld_reason lines;
+  npu info: flag, offload=X/Y (9=NP7), ips_offload, epid/ipid
+config firewall policy → set auto-asic-offload {enable|disable}
+  (default enable)
+diagnose sys session filter dstip <ip> / diagnose sys session
+  clear (S8 reuse, now tied to offload re-qualification)
+diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>
+  (retrieval correction — typed ON FortiGate; EMS delivers;
+  Linux FortiClient excluded)
+
+TROUBLESHOOTING APPROACH TAUGHT
+------------------------------------------------------------------
+Identical boxes behaving differently = different STATE, not
+different hardware. Sequence: read no_ofld_reason (the confession)
+→ fix config → VERIFY sessions actually offloaded (offload=X/X
+both directions) → if stale sessions persist, filter + clear →
+re-verify. Student went "state not hardware" at minute one.
+
+RETRIEVAL RESULTS THIS SESSION
+------------------------------------------------------------------
+PAID/RETIRED:
+- Schedule-clock (S38/S39 debt): PASSED COLD, zero scaffold —
+  "root device's time, NTP." RETIRED with honours.
+- NP-only-vs-SSL reasoning (S40 Q8 debt): PASSED with full
+  reasoning clause in gauntlet Q9. RETIRED.
+MISSED (re-queue for S42, cold):
+- SP5 alias: SECOND MISS ("not sure, remind me"). Anchor issued:
+  "SP5 is a little NP7 → NP7-LITE." Two-strikes protocol now
+  ACTIVE — ambush repeatedly until clean.
+- Manual quarantine: SAME miss as S40 Cold #2 — answered EMS
+  again (who acts, not where you type). Anchor re-issued: "you
+  QUEUE the call on the FortiGate; EMS delivers it." Command +
+  Linux exclusion re-taught. THIRD attempt due S42.
+- Why 2+ NP6 for NP Direct: "not sure" — full re-teach given
+  (ISF sharing → removal strands ports → 2+ chips required;
+  trade = flexibility for latency). Retest S42.
+NOT TESTED (still held): Firmware & Registration confirmation;
+  FMG reinstall-keeps-mapping final pass. Carry to S42/S43.
+
+EXAM GAUNTLET: 5/10 STRICT (10 questions per new standing rule)
+------------------------------------------------------------------
+Q1 auto-asic-offload setting/scope: HALF (knew behaviour, not
+   exact setting+scope+default).
+Q2 UDP first packet: RIGHT; TCP clause SKIPPED (skipped-clause
+   pattern named again).
+Q3 mixed flow+proxy: MISS — answered "flow based only"; the
+   poison rule taught 40 min earlier didn't retrieve. Classic
+   exam distractor. REGISTER.
+Q4 offload eligibility: (d) right, (b) SSL VPN wrongly included
+   (tunnel-exception trap), (c) IPsec MISSED despite trench-coat
+   being his own callback. REGISTER.
+Q5 offload=9/9 meaning: FULL.
+Q6 stale sessions after fix: MISS as exam question — despite
+   deriving it perfectly live an hour earlier ("restart the
+   sessions"). Consolidation gap, not reasoning gap.
+Q7 FIN/RST to CPU: FULL (verdict-only; mechanism clause added
+   by mentor — keep pushing mechanism sentences).
+Q8 skipped stages + optional stage: "I don't know" — pure
+   diagram-replay retention miss.
+Q9 NP-only vs SSL: FULL with reasoning. Debt retired.
+Q10 money sentence (unscaffolded): MISS — adjacent-answer AGAIN,
+   answered an HA question nobody asked. Named bluntly. Model
+   sentence provided (cause=offload disabled → CPU path;
+   anchor=$3.8M/yr slippage; action=checklist added).
+
+HEADLINE DIAGNOSTIC: live derivation near-senior (handshake, FIN,
+9/0 asymmetry, stale-session fix ALL derived, several
+pre-teaching) but SAME-DAY retention of those derivations ran
+~50%. Reasoning: senior. Consolidation: THE gap. Study Bite
+explicitly prescribed as non-optional this week.
+
+JUNIOR'S MISTAKE AND WHAT IT TAUGHT
+------------------------------------------------------------------
+Left auto-asic-offload disabled after Friday troubleshooting →
+taught: diagnostic settings are temporary by contract; and taught
+the deeper lesson that re-enabling did NOT fix live sessions
+(offload decided once at birth). Also premature victory grin →
+verify in the session table before declaring recovery.
+
+CONFIGURATION DECISIONS / BUSINESS OUTCOME
+------------------------------------------------------------------
+auto-asic-offload re-enabled on the affected policy; stale
+sessions cleared; both firewalls verified offload=9/9 at 40 µs.
+"auto-asic-offload audit" added to the change checklist.
+Business outcome: latency parity restored; ~$3.8M/yr slippage
+exposure closed (S40 anchor number).
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+None physical. As-built annotation: FW-TRADE-01/02 "NP7 fast path
+verified — auto-asic-offload audit added to change checklist."
+
+EXAM-RELEVANT NOTES
+------------------------------------------------------------------
+- TCP: whole 3WH via CPU; UDP: first packet only; FIN/RST to CPU.
+- Four no-offload reasons; mixed flow+proxy never offloads.
+- Tunnels don't offload EXCEPT IPsec.
+- auto-asic-offload: per firewall policy, default enable.
+- no_ofld_reason: disabled-by-policy string recognition.
+- offload=9/9: 9=NP7, slash=per-direction keys; 9/0=asymmetric.
+- Session clear required after enabling offload on live sessions.
+- Offloaded non-UTM packet skips routing+kernel+CPU; NP can still
+  do IP integrity, shaping, IPsec crypto.
+
+TEASER DELIVERED FOR SESSION 42 — "INSPECTION AT WIRE SPEED"
+------------------------------------------------------------------
+Cipher's compliance memo: IPS required on the trading VLAN.
+Junior panics ("security profiles kill the offload!"). Señor:
+"Does it, chico? Or is there a way to inspect a packet without
+ever slowing it down?" Whiteboard: NTurbo. IPSA. Open S42 by
+resolving Junior's panic — the student already knows flow-based
+profiles disqualify plain NP offload is FALSE as stated (it's
+proxy that hard-kills; flow-based is exactly what NTurbo
+accelerates) — let him find the crack in Junior's claim.
+
+Date and Time completed: Tuesday, 21 July 2026.

@@ -1,0 +1,206 @@
+==================================================================
+SESSION 40 SUMMARY — "MILLISECONDS ARE MONEY"
+Season 4 · Blueprint 1.2 · SG 10 Hardware Acceleration pp. 280–285
+Topics: SPU architecture — NP6/NP7, CP8/CP9/CP10, SoC/SP5, NP Direct
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Tuesday 07:58 AM. Whiteboard reads only "2.1 ms". Rival Meridian
+Capital's execution desk hits the exchange 2.1ms faster than
+LoFinance; the biggest algo client measured both side-by-side and
+will move its order flow ($3.8M/year in execution fees) at quarter
+end unless the gap closes. Junior proposed "buy faster internet";
+Señor: the exchange cross-connect is 40m of fibre (~200ns) — the
+milliseconds are dying INSIDE HQ-NGFW, "a box we own." Señor handed
+the student the marker before allowing the word "chip": understand
+what the chips are FOR before buying silicon. Session ended with
+trading VLAN re-cabled onto 900G ultralow-latency ports X5/X6
+(same NP7, NP Direct, no ISF), Penny's board sentence delivered,
+change documented in red ink on the topology wall. Señor's exit
+line: "The chips were the easy part. Tomorrow we find out which
+packets are WORTHY of them." Cactus advanced another centimetre.
+
+CHARACTERS: Señor (mentor, sombrero, coffee-sip-as-ovation, two
+cold questions at the door), Junior (foil: "buy faster internet";
+"isn't the branch box just as good?"; hypothetically cables all
+busy links to one NP7), Penny (2.1ms/$3.8M business driver, wants
+one indicative-mood sentence), Riley (future-ticket joke re:
+patch-cable slow-path mystery), Meridian Capital (rival).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+Close a 2.1ms execution-latency gap vs a rival or lose a $3.8M/yr
+account. Answer: hardware CAN buy it back — NP Direct/ultralow-
+latency ports remove the ISF hop — but only with correct physical
+cabling (same-NP in/out). Cabling is capacity planning.
+
+TECHNICAL CONCEPTS COVERED (pp. 280–285)
+------------------------------------------------------------------
+1. SPU = Fortinet ASIC umbrella term; an SPU can be an NP, a CP,
+   or both; offloads resource-intensive work from main CPU.
+2. NP (latest NP7): works at the INTERFACE LEVEL; offloads/
+   accelerates traffic; IPsec encrypt/decrypt for supported algos;
+   IP integrity header check + early inspections (ACL/HPE handled
+   at NP per life-of-packet, taught lightly). "Stationed at the
+   ports."
+3. CP (latest CP10; 900G carries CP9): "coprocessor for the CPU" —
+   never in the packet path alone; pattern matching for flow-based
+   UTM/IPS/app-ID/AV, SSL/TLS encrypt-decrypt for deep inspection,
+   IPsec for supported algos. "Chained to the CPU's desk."
+4. NP7 session limit: up to 12 MILLION sessions, limited by
+   PROCESSOR MEMORY. Over-limit sessions go to the CPU (slow
+   path). Ports are wired to SPECIFIC NP7s; tables are per-chip
+   not per-box → must know interface-to-NP mapping and distribute
+   incoming traffic across NP7s.
+5. NP DIRECT architecture: removes the ISF (internal switch
+   fabric — the hardware switch gluing front ports to
+   processors); interfaces connect DIRECTLY to the NP; lowest
+   forwarding latency. Availability: NP6 boxes with 2+ NP6
+   (200E/2000E/2500E); NP7 boxes with ultralow-latency interfaces
+   (400F/600F/900G — ports X5–X8 direct to NP7).
+   REQUIREMENT: offloaded traffic must ENTER AND EXIT through
+   interfaces on the SAME NP6/NP7. Student's rack-tape rule:
+   "Same chip in, same chip out — there is no bridge anymore."
+6. SoC/SP family: entry/mid-range; combines light NP + light CP
+   on one chip with LOWER THROUGHPUT. Latest SoC4 and SP5; SP5
+   alias = NP7lite (appears in CLI). 91G shows SOC5 in ASIC field.
+7. Identification CLI:
+   - diagnose hardware lspci | grep 1a29 → 1a29 = Fortinet vendor
+     ID; NPID 4e36 = NP6, 4e37 = NP7.
+   - get hardware status → ASIC version field = CP generation
+     (e.g. CP9 on 900G) or SOC5 (confirms SP5) on branch boxes.
+8. Distinction drilled: ISF-latency vs CPU-overflow-latency are
+   DIFFERENT diagnoses with different fixes.
+
+MENTAL MODELS / ANALOGIES (NEW KEEPERS)
+------------------------------------------------------------------
+- "Sort by the SHAPE of the problem": forwarding (repetitive,
+  decided-once, per-packet) vs content (search inside payloads).
+  Student made this cut himself, pre-teaching, incl. switch-ASIC
+  analogy AND independently invented "session key installed in
+  hardware" (S41's whole subject — reference it back).
+- "NP stationed at the ports; CP chained to the CPU's desk."
+- "IPsec is a forwarding job wearing a trench coat" (why NP does
+  plain IPsec, answering pre-reading Q1).
+- "Cabling is capacity planning" — per-chip session tables.
+- ISF = toll booth paid twice per packet; NP Direct = remove the
+  stop entirely. Student initially re-invented the ISF as the
+  solution ("bridge between all of them") — good teaching moment.
+- "Expensive paperweight": the idle NP7 while its sibling
+  overflows to CPU.
+- Failure-with-a-patch-cable: nothing misconfigured, config diff
+  clean, days to find.
+
+KEY CLI
+------------------------------------------------------------------
+diagnose hardware lspci | grep 1a29   (4e36=NP6, 4e37=NP7)
+get hardware status                    (ASIC version: CP9 / SOC5)
+(Parked student question: enumerating multiple NP7s + port-to-NP
+mapping = diagnose npu np7 territory, outside today's pages.)
+
+TROUBLESHOOTING APPROACH
+------------------------------------------------------------------
+Latency archaeology: locate WHERE the milliseconds die before
+buying anything (ruled out WAN — 40m fibre = 200ns). Distinguish
+ISF-hop latency from CPU-overflow latency. Verify silicon actually
+in the rack (lspci/get hardware status) before trusting a quote.
+Mystery-box exercise: 2500E showing 1a29:4e36 + CP9 → NP6+CP9;
+student initially misread 4e36 as NP7 and tried to "move on";
+corrected — senior follow-up = count NP6 chips (2500E is an
+NP-Direct-capable NP6 chassis if 2+).
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+No logical config change. Physical change: trading VLAN ingress
+X5 / egress X6 on HQ-NGFW 900G — both ultralow-latency ports on
+the same NP7 → full NP Direct path. All other VLANs stay on
+ISF-switched ports. Patch-panel owner formally a stakeholder.
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+HQ-NGFW (FortiGate 900G, NP7 + CP9): trading VLAN on X5/X6
+ultralow-latency (NP Direct, no ISF). Documented in red ink.
+
+EXAM PERFORMANCE (10-question gauntlet): 7.5/10 strict — SEASON
+BEST.
+HALF Q1: perfect NP/CP split concept; invented label "CP7" (no
+  such part — CP8/9/10). Vendor-label pattern.
+✓ Q2: 4e37=NP7 — clean, notable because he misread 4e36 as NP7
+  mid-session then held the mapping cold 20 min later.
+✓ Q3: full — CPU spill + idle sibling NP7 both named.
+✓ Q4: ISF removed, port-direct-to-NP.
+✓ Q5: same-NP in/out rule held.
+✓ Q6: SOC5=combined chip vs CP9=dedicated, read from CLI field.
+MISS Q7: answered "SOC5" for SP5's alias; correct = NP7lite.
+  Nearest-label-in-memory reach. Retest queue.
+HALF Q8: "False" correct but NO reasoning given (question demanded
+  it): SSL deep-inspect crypto is CP work; NP-only box dumps it on
+  CPU. Skipped-sub-question pattern.
+✓ Q9: memory limit + CPU overflow — derived earlier, held cold.
+HALF Q10 (stretch): answered WHAT NP Direct removes (=Q4) instead
+  of WHY 2+ NP6 required. Adjacent-question pattern. Answer: ISF
+  lets many ports share one NP; removing it on a single-NP box
+  strands most ports; multiple NPs = enough direct-attach silicon
+  to afford the flexibility-for-latency trade.
+
+BOARDROOM SENTENCE DRILL (the #1 growth edge): MAJOR PROGRESS.
+First attempt still hedged ("could potentially make more money").
+Given the scaffold (gap→cause→fix→consequence, indicative mood,
+supplied $3.8M anchor) he produced: "Our 2.1ms gap is caused by
+traffic being processed by the CPU; moving the trading VLAN onto
+our dedicated network chips closes it, which keeps the $3.8M
+account." Indicative mood HELD, dollar figure attached, zero
+hedges — first clean money sentence. One precision correction:
+his stated cause (CPU processing) was the neighbouring diagnosis;
+actual cause = ISF hop. Coached the corrected version.
+
+COLD RETRIEVALS AT THE DOOR
+------------------------------------------------------------------
+Cold #1 (root-down NEW stitch — S38 register's planned twist):
+PASS on core ("can't be done — that's where the stitch is
+configured"; no root = no author) but appended a wrong gut-feel
+hedge ("you can but admin intensive") — confusing standalone-FGT
+authoring with fabric leaves. Coached: trust the stated mechanism.
+Cold #2 (manual quarantine CLI + excluded OS): MISS both halves —
+said "done on FortiEMS" despite the question specifying FortiGate
+CLI. Correct: diagnose endpoint fctems queue-complete-calls
+Q-<endpoint_ip>, run ON the FGT; excluded OS = FortiClient
+(Linux). Stays on retest queue.
+NOTE: The S39-flagged cold no-scaffold ambush on Schedule-trigger
+clock ownership was NOT delivered this session (session ran long);
+it remains due — deliver in S41 exactly as specified: cold, zero
+scaffold, treat a miss as a genuine retention gap.
+
+JUNIOR'S MISTAKES & LESSONS
+------------------------------------------------------------------
+(1) "Buy faster internet" → locate the latency before spending
+(40m fibre = 200ns; the box we own is the suspect). (2) Cabling
+every busy link to one NP7 → per-chip session tables; expensive
+paperweight. (3) "SP5 box is just as good as the 900G" → lower
+throughput; same organs, smaller animal.
+
+STUDENT'S OWN NOTABLE MOVES
+------------------------------------------------------------------
+- Made the NP/CP cut himself pre-teaching, by problem-shape.
+- Independently invented hardware session keys (S41 hook).
+- PREDICTED the same-NP constraint ("would need a bridge to the
+  other NP") ~20 minutes before NP Direct was introduced, then
+  re-derived it as the rack rule when the bridge was removed.
+- Asked two good out-of-scope CLI questions (NP7 count / port
+  mapping) — parked honestly rather than bluffed.
+- Attempted to skip past his 4e36/4e37 misread ("lets move on");
+  mentor corrected it anyway; he then aced it cold in the gauntlet.
+
+TEASER DELIVERED FOR SESSION 41 — "THE FAST PATH"
+------------------------------------------------------------------
+Señor, sombrero on, at the door: "The chips were the easy part.
+Tomorrow we find out which packets are WORTHY of them." Premise
+per master plan: two identical firewalls, wildly different
+latency — the difference is which sessions get to ride the NP.
+Topics: session offloading — requirements and the life of an
+offloaded packet (pp. 286–291). The student's own invented phrase
+"session key installed in hardware" is the bridge — open S41 by
+handing it back to him.
+
+Date and Time completed: Monday, 20 July 2026.

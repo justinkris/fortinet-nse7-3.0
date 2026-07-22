@@ -1,0 +1,271 @@
+==================================================================
+SESSION 40 REVISION PACK — "MILLISECONDS ARE MONEY"
+SPU architecture: NP6/NP7 · CP8/CP9/CP10 · SoC/SP5 · NP Direct
+SG 10 Hardware Acceleration, pp. 280–285 · Blueprint 1.2
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+Fortinet's SPUs (Security Processing Units — ASICs) offload
+resource-intensive work from the main CPU. The family splits by
+the SHAPE of the problem:
+
+NP (Network Processor, latest NP7): the forwarding specialist.
+Works at the INTERFACE LEVEL — accelerates/offloads traffic,
+performs the IP integrity header check and early inspections, and
+does IPsec encryption/decryption for supported algorithms in
+hardware. NP7 supports up to 12 MILLION sessions, limited by
+PROCESSOR MEMORY; sessions over the limit go to the CPU (slow
+path). Ports are wired to SPECIFIC NP7s and session tables are
+per-chip, not per-box — you must know the interface-to-NP mapping
+and distribute incoming traffic across processors. Cabling is
+capacity planning.
+
+CP (Content Processor, latest CP10; generations CP8/CP9/CP10):
+the CPU's coprocessor — never in the packet path alone. Offloads
+pattern matching for flow-based UTM (IPS, AV flow mode, app-ID),
+SSL/TLS encryption/decryption for deep SSL inspection, and IPsec
+for supported algorithms. An NP-only box is NOT sufficient for a
+heavy SSL-decrypt workload — that crypto is CP work and would
+crush the CPU.
+
+SoC/SP (latest SoC4 and SP5; SP5 alias = NP7lite): entry/mid-range
+chips combining LIGHT NP + LIGHT CP on one die, with LOWER
+THROUGHPUT. Same organs, smaller animal.
+
+NP DIRECT: normally an Internal Switch Fabric (ISF) — a hardware
+switch chip — glues every front port to every processor, charging
+a small latency toll on every packet, twice. NP Direct wires
+interfaces DIRECTLY to the NP, ELIMINATING THE ISF, for the
+lowest-latency forwarding. Available on NP6 devices with 2+ NP6
+chips (200E, 2000E, 2500E) and on NP7 devices with ultralow-
+latency interfaces (400F, 600F, 900G — ports X5–X8 direct to the
+NP7). REQUIREMENT: offloaded traffic must ENTER AND EXIT on
+interfaces of the SAME NP. The trade: flexibility for latency —
+which is why single-NP6 boxes don't get it.
+
+Identification: diagnose hardware lspci | grep 1a29 (Fortinet
+vendor ID) → NPID 4e36 = NP6, 4e37 = NP7. get hardware status →
+ASIC version shows the CP generation (e.g. CP9) or SOC5
+(confirming SP5).
+
+Two latency diagnoses, never to be conflated: ISF-hop latency
+(architectural; fix = NP Direct) vs CPU-overflow latency
+(capacity; fix = distribute sessions across NPs).
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+COMMANDS
+  diagnose hardware lspci | grep 1a29
+      1a29 = Fortinet PCI vendor ID
+      1a29:4e36 = NP6 · 1a29:4e37 = NP7
+  get hardware status
+      ASIC version: CP9  → CP generation (discrete-chip models)
+      ASIC version: SOC5 → SP5 combined chip (e.g. FG-91G)
+
+KEY NUMBERS / DEFAULTS
+  NP7 session capacity ......... 12,000,000 (per chip)
+  Limit cause .................. processor memory
+  Overflow destination ......... CPU (slow path)
+  Exchange cross-connect gag ... 40m fibre ≈ 200ns (locate first!)
+
+CHIP FAMILY
+  NP7  = latest NP  · example FG-900G
+  CP10 = latest CP  · example FG-200G (900G carries CP9)
+  SP5  = latest SP  · alias NP7lite · example FG-90G
+  SoC4 = latest SoC
+  CP generations that EXIST: CP8, CP9, CP10 (there is no CP7)
+
+JOB → CHIP
+  Traffic offload / fast path .......... NP
+  IPsec encrypt/decrypt (supported) .... NP (CP also capable)
+  IP integrity header check ............ NP
+  Flow-based pattern matching .......... CP
+  SSL deep-inspection crypto ........... CP
+  Proxy-based inspection ............... CPU (no NP offload)
+
+NP DIRECT
+  Removes: ISF (internal switch fabric)
+  Buys: lowest forwarding latency
+  Costs: any-port-to-any-processor flexibility
+  NP6 availability: 2+ NP6 chips — 200E / 2000E / 2500E
+  NP7 availability: ultralow-latency ifaces — 400F / 600F / 900G
+                    (ports X5–X8 direct to NP7)
+  RULE: offloaded traffic enters AND exits on the SAME NP
+        ("Same chip in, same chip out — there is no bridge
+         anymore.")
+
+DESIGN RULES
+  - Session tables are per-chip: distribute busy links across NPs.
+  - On NP Direct, physical topology IS the offload design — the
+    patch-panel owner is a stakeholder.
+  - Verify silicon (two commands) before trusting any quote.
+  - Classify latency first: architecture (path too long) vs
+    capacity (table full).
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: What does SPU stand for and what is it?
+A: Security Processing Unit — Fortinet's ASIC; can be an NP, a
+   CP, or both; offloads work from the main CPU.
+
+Q: At what level does the NP work?
+A: The interface level — it sits in the packet path at the ports.
+
+Q: Three jobs the NP performs?
+A: Traffic offload/acceleration; IPsec encrypt/decrypt (supported
+   algorithms); IP integrity header check (+ early inspections).
+
+Q: NP7 maximum sessions, and what limits it?
+A: 12 million, limited by processor memory.
+
+Q: Where do sessions beyond the NP7 limit go?
+A: To the CPU (slow path).
+
+Q: How do you prevent one NP7 overflowing while another idles?
+A: Know which interfaces connect to which NP7 and distribute
+   incoming traffic across processors — tables are per-chip.
+
+Q: What is the CP's relationship to the CPU?
+A: It functions like a coprocessor — the CPU decides, the CP
+   executes offloaded tasks; it's never in the path alone.
+
+Q: Three jobs the CP performs?
+A: Flow-based pattern matching (IPS/AV/app-ID); SSL/TLS crypto
+   for deep inspection; IPsec crypto for supported algorithms.
+
+Q: Which CP generations exist?
+A: CP8, CP9, CP10 (CP10 latest). There is no CP7.
+
+Q: Is an NP-only FortiGate sufficient for heavy SSL deep
+   inspection?
+A: No — SSL deep-inspect crypto is CP work; without a CP the
+   whole load lands on the CPU.
+
+Q: What is the SoC/SP family?
+A: Entry/mid-range chips combining light NP + light CP on one
+   die, with lower throughput. Latest: SoC4 and SP5.
+
+Q: What is the SP5's alias?
+A: NP7lite (appears in CLI, e.g. np7lite_0).
+
+Q: What does the ISF do, and what does it cost?
+A: The internal switch fabric connects every front port to every
+   processor (any-to-any flexibility); it adds a small latency
+   toll per crossing, paid on ingress and egress.
+
+Q: What is NP Direct?
+A: An architecture where the NP is directly connected to the
+   interfaces, eliminating the ISF, for the lowest forwarding
+   latency.
+
+Q: Where is NP Direct available?
+A: NP6 boxes with 2+ NP6 chips (200E/2000E/2500E); NP7 boxes
+   with ultralow-latency interfaces (400F/600F/900G, X5–X8).
+
+Q: The NP Direct traffic requirement?
+A: Offloaded traffic must enter and exit through interfaces on
+   the SAME NP6/NP7 processor.
+
+Q: Why does NP6 NP Direct require two or more NP6 chips?
+A: The ISF let many ports share one NP; removing it on a
+   single-NP box strands most ports. Multiple NPs provide enough
+   direct-attach silicon to afford trading flexibility for
+   latency.
+
+Q: Command + value to identify the NP model?
+A: diagnose hardware lspci | grep 1a29 → 4e36 = NP6, 4e37 = NP7.
+
+Q: Command + field to identify the CP or SoC?
+A: get hardware status → ASIC version (CP9 = CP gen; SOC5 = SP5).
+
+Q: ISF-hop latency vs CPU-overflow latency — fixes?
+A: ISF-hop = architectural → NP Direct / ultralow-latency ports.
+   CPU-overflow = capacity → distribute sessions across NPs.
+
+Q: Why can a latency fault have a clean config diff?
+A: Because the fault was committed with a patch cable — on NP
+   Direct and multi-NP hardware, cabling is part of the design.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "THE PACKET PATH", EPISODE 40
+------------------------------------------------------------------
+Generate a two-host podcast episode (Host A: warm narrator; Host
+B: sharp technical explainer) of "The Packet Path", 10–14 minutes,
+titled "Milliseconds Are Money".
+
+COLD OPEN: A whiteboard with one line on it: "2.1 ms". Rival firm
+Meridian Capital hits the exchange 2.1 milliseconds faster than
+LoFinance, measured side-by-side by the biggest algo client —
+$3.8M a year in execution fees walking out the door at quarter
+end. Junior suggests buying faster internet. Señor's reply: the
+exchange cross-connect is 40 metres of fibre — light covers that
+in two hundred nanoseconds. The milliseconds are dying inside a
+box LoFinance owns.
+
+ACT 1 — THE CUT: Before naming any chip, sort the firewall's work
+by the SHAPE of the problem. Forwarding work is repetitive,
+per-packet, decided-once — a switch-ASIC-style job. Content work
+is searching inside payloads — a different animal. Fortinet's
+silicon mirrors the cut: the NP (network processor, latest NP7)
+stationed at the ports, and the CP (content processor, CP8/9/10)
+chained to the CPU's desk as its coprocessor. Memorable beat:
+"IPsec is a forwarding job wearing a trench coat" — repetitive
+transform maths, so it belongs to the NP.
+
+ACT 2 — THE NUMBER: The NP7 holds 12 million sessions, limited by
+on-chip memory. Session 12,000,001 spills back to the CPU — the
+slow path — and someone's latency graph grows a second hump. The
+twist: on big boxes, each port is wired to a PARTICULAR NP7 and
+the chips don't pool memory. Tell the Junior story: every busy
+link cabled to one chip "because the ports were adjacent" — one
+NP7 overflowing to the CPU while its twelve-million-row sibling
+sits idle. An expensive paperweight. Moral: cabling is capacity
+planning, and nothing in the config is wrong.
+
+ACT 3 — THE TOLL BOOTH: Inside the chassis, the Internal Switch
+Fabric (ISF) glues every port to every processor — and charges a
+small latency toll on every packet, twice, forever. The aggressive
+move: remove the stop. NP Direct wires the interface straight into
+the NP — on NP6 boxes with two or more chips (200E/2000E/2500E)
+and on NP7 boxes via ultralow-latency ports X5–X8 (400F/600F/
+900G). The catch the student predicted BEFORE it was taught: the
+bridge is gone, so traffic must enter and exit on the SAME chip.
+The rack rule: "Same chip in, same chip out — there is no bridge
+anymore." And the hidden cost: flexibility. The ISF let many ports
+share one NP; that's exactly why single-NP boxes don't get NP
+Direct.
+
+ACT 4 — JUNIOR'S MISTAKES: (1) "Buy faster internet" — locate the
+latency before spending. (2) The one-chip cabling job. (3) "Isn't
+the branch box just as good? It has an NP and a CP inside!" — the
+SoC/SP5 (alias NP7lite) combines light versions of both on one
+die with LOWER throughput. Same organs, smaller animal.
+
+ACT 5 — PROOF: Two commands before anyone signs a quote.
+"diagnose hardware lspci | grep 1a29" — 1a29 is Fortinet's vendor
+ID; 4e36 means NP6, 4e37 means NP7. "get hardware status" — the
+ASIC version field shows CP9 on a 900G, or SOC5 on a branch box.
+Verify the rack, not the bezel.
+
+CLOSE: The fix that saved the account wasn't a purchase — it was
+a patch cable: trading VLAN onto X5 and X6, same NP7, no ISF, and
+one indicative-mood sentence for the board: "Our 2.1ms gap is
+caused by trading traffic crossing the internal switch fabric on
+every hop; moving the trading VLAN onto NP-Direct ports removes
+that hop, which keeps the $3.8M account."
+
+TEASER: Señor, sombrero on, at the door: "The chips were the easy
+part. Tomorrow we find out which packets are WORTHY of them."
+Next episode: The Fast Path — which sessions get to ride the NP,
+and the life of an offloaded packet.
+
+Tone: cinematic but precise; explain every technical claim;
+analogies over jargon; end on the teaser.
+
+==================================================================
+END OF PACK
+==================================================================

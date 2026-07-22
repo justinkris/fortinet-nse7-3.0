@@ -1,0 +1,355 @@
+==================================================================
+SESSION 46 — "HEARTBEATS" — COMBINED REVISION PACK
+FGCP heartbeat & ethertypes | Virtual clustering | VDOM partitioning
+Study Guide 04 High Availability, pp. 89-92 | Blueprint 1.3
+==================================================================
+
+##################################################################
+PART 1 — QUICK SUMMARY (one page)
+##################################################################
+
+FGCP does not run over IP. It runs over its own Ethernet types.
+Heartbeat is 0x8890 in NAT/route mode and 0x8891 in transparent
+mode. Configuration synchronisation is 0x8893. If you want to see
+the heartbeat, you must sniff on an interface configured as an
+hbdev — sniffing a data port shows you nothing and proves nothing.
+
+Session synchronisation is different. It has no ethertype of its
+own on that list, and by default it has no wire of its own either:
+it rides the HA heartbeat link. That is fine in a lab and dangerous
+in production. Heartbeats are tiny frames whose only job is to
+arrive on time; session sync is bulk data. Put them on the same
+wire and a busy hour will delay or drop heartbeats, the cluster will
+conclude its partner is dead, and you get a FALSE FAILOVER — an
+outage caused entirely by the redundancy mechanism itself. The fix
+is dedicated session-sync interfaces. List more than one and the
+traffic load balances across them. Lose all of them and session sync
+reverts to the heartbeat link: graceful, silent, and a quiet return
+to the original failure mode.
+
+Virtual clustering is FGCP extended to a cluster whose members run
+VDOMs. It is active-passive only, supports up to 30 virtual
+clusters, and caps the HA group ID at 7. Its load-sharing mechanism
+is VDOM partitioning, and the idea that makes it work is a
+redefinition: "primary" stops being a property of the box and
+becomes a property of the VDOM. Member A is primary for one set of
+VDOMs, member B for another. Both boxes carry live traffic while
+the cluster remains, technically, active-passive.
+
+You choose the winner per vcluster with `set priority`, because
+priority is the only election criterion an administrator assigns —
+interface state and uptime are facts the network hands you, and
+serial number is stamped at the factory.
+
+The catch, and the thing Penny needs to hear: during a failover one
+member processes all traffic for all VDOMs. So each member must be
+sized for 100% of total load. VDOM partitioning buys you
+utilisation of the second box. It does not buy you capacity.
+
+##################################################################
+PART 2 — CHEAT SHEET
+##################################################################
+
+--- ETHERTYPES ---------------------------------------------------
+0x8890   Heartbeat — NAT/route mode
+0x8891   Heartbeat — transparent mode
+0x8893   Configuration synchronisation
+
+Heartbeat frames carry: discovery of other FortiGates in the same
+HA group; primary election; other data sync; failure detection;
+traffic redistribution.
+
+Hook: "88-90 keeps you alive, 88-93 keeps you identical."
+
+--- COMMANDS -----------------------------------------------------
+Sniff the heartbeat (NAT/route, port3, verbosity 4):
+  diagnose sniffer packet port3 "ether proto 0x8890" 4
+
+Dedicated session sync:
+  config system ha
+      set session-pickup enable
+      set session-sync-dev "port5" "port6"
+  end
+
+Virtual clustering / VDOM partitioning:
+  config system ha
+      set mode a-p
+      set vcluster-status enable
+      config vcluster
+          edit 1
+              set override disable
+              set priority 200
+              set vdom "VDOM1" "root"
+          next
+          edit 2
+              set override disable
+              set priority 50
+              set vdom "VDOM2"
+          next
+      end
+  end
+
+Carried from S45:
+  diagnose sys ha dump-by vcluster
+  diagnose sys ha reset-uptime          (run ON the primary)
+
+--- NUMBERS AND DEFAULTS -----------------------------------------
+Max virtual clusters ...................... 30
+Max HA group ID (virtual clustering) ...... 7   (lower than standard HA)
+Virtual clustering mode ................... a-p ONLY
+Session sync default path ................. the HA heartbeat link
+Multiple session-sync interfaces .......... load balanced
+All session-sync interfaces down .......... reverts to heartbeat link
+Recommended heartbeat interfaces .......... at least 2
+Failover behaviour (VDOM partitioning) .... survivor runs ALL VDOMs
+
+--- KEY BEHAVIOURS -----------------------------------------------
+* FGCP is Ethernet-typed, not IP-based.
+* Heartbeat lives on hbdev. Nowhere else.
+* Session sync and heartbeat on one wire = false-failover risk
+  proportional to session volume.
+* Virtual clustering is an extension of FGCP, not a separate
+  protocol, and inherits all standard HA requirements.
+* Highest priority wins each vcluster independently.
+* root VDOM must be assigned to a vcluster.
+
+--- DESIGN RULES -------------------------------------------------
+1. Separate the control plane from bulk data. Always.
+2. Size every cluster member for 100% of total load.
+3. Utilisation is not capacity.
+4. Any fallback that does not alarm is a fault waiting to recur.
+5. If a symptom has a schedule, the cause has a load profile.
+
+##################################################################
+PART 3 — FLASHCARDS
+##################################################################
+
+Q: Which ethertype carries the FGCP heartbeat in NAT/route mode?
+A: 0x8890.
+
+Q: And in transparent mode?
+A: 0x8891.
+
+Q: Which ethertype carries configuration synchronisation?
+A: 0x8893.
+
+Q: Name four things heartbeat traffic is responsible for.
+A: Discovering other FortiGates in the HA group; electing the
+   primary; synchronising other data; detecting device failure and
+   redistributing traffic.
+
+Q: Write the command to sniff heartbeat traffic on port3, verbosity 4.
+A: diagnose sniffer packet port3 "ether proto 0x8890" 4
+
+Q: You sniff for 0x8890 on port1 and see nothing. Is the heartbeat
+   dead?
+A: Unknown — you are listening in the wrong place. The heartbeat
+   only traverses interfaces configured as hbdev.
+
+Q: By default, what path does session synchronisation use?
+A: The HA heartbeat link.
+
+Q: What command assigns dedicated session-sync interfaces?
+A: set session-sync-dev <interface1> <interface2> (under
+   config system ha).
+
+Q: What happens if you specify two session-sync interfaces?
+A: Session sync traffic is load balanced across them.
+
+Q: What happens if ALL dedicated session-sync interfaces go down?
+A: Session sync reverts to the HA heartbeat link — and you silently
+   re-enter the shared-wire failure mode with no alarm.
+
+Q: Why is mixing session sync and heartbeat on one link dangerous?
+A: Session sync needs high bandwidth; heartbeats need low latency.
+   Under heavy session load heartbeats are delayed or lost, the
+   cluster presumes a member has failed, and you get a false
+   failover.
+
+Q: What is virtual clustering?
+A: FGCP extended to a cluster of FortiGates with multiple VDOMs
+   enabled.
+
+Q: Which HA mode does virtual clustering use?
+A: Active-passive. Only.
+
+Q: Maximum number of virtual clusters?
+A: 30.
+
+Q: Maximum HA group ID in a virtual clustering setup?
+A: 7.
+
+Q: What is VDOM partitioning?
+A: An extension of virtual clustering in which one FortiGate
+   processes all traffic for some VDOMs while the other processes
+   all traffic for the remaining VDOMs.
+
+Q: Which election criterion decides the primary for each VDOM, and
+   why that one?
+A: Priority — it is the only criterion an administrator assigns.
+   Interface state and uptime are facts about the network; serial
+   number is factory-stamped.
+
+Q: What command enables virtual clustering?
+A: set vcluster-status enable
+
+Q: What happens during a failover in a VDOM partitioning setup?
+A: The surviving device processes all traffic for all VDOMs.
+
+Q: How should the two members be sized?
+A: Each for 100% of total load — because either one may have to
+   carry everything.
+
+Q: Why doesn't active-active solve a "one box is running hot"
+   problem?
+A: The primary owns the vMACs, so every packet still arrives at the
+   primary first. Distributed sessions take an extra hop out to the
+   secondary and back. It does not move the front door.
+
+Q: A cluster flaps repeatedly, but only during market open. Both
+   members healthy, all monitored interfaces up. Hypothesis?
+A: Session sync sharing the heartbeat link; heartbeats starved
+   under peak session volume; false failover. Verify by sniffing
+   the heartbeat during peak and correlating gaps with failover
+   timestamps.
+
+##################################################################
+PART 4 — PODCAST PROMPT ("The Packet Path")
+##################################################################
+
+Generate a single episode of the technical narrative podcast "The
+Packet Path", roughly 9-12 minutes of spoken audio. Two hosts: a
+warm, curious lead host who asks the questions a competent
+intermediate engineer would ask, and a dry, precise co-host who
+explains mechanisms and occasionally lands a memorable line. The
+tone is documentary-with-a-pulse: think a well-produced engineering
+podcast, not a training video. No jingles, no sponsor reads.
+
+EPISODE TITLE: "Heartbeats"
+
+COLD OPEN:
+Open in the LoFinance server room on a Monday morning. A second
+FortiGate 900G has just been racked next to the first — same model,
+same firmware, same licensing, bought because a substation failure
+nearly took the firm down. Junior, the junior engineer, cabled it
+himself: two heartbeat links, port3 and port4, direct-connect,
+exactly per the design doc. He is proud, and he is mostly right.
+
+The cluster forms. And then it starts to bicker. Sync status
+flickers in and out. The help desk gets three tickets that all say
+"the internet went weird for a second." Cipher, the security lead,
+walks past the rack, looks at the blinking lights, and says four
+words: "That rhythm is wrong."
+
+ACT ONE — LISTENING IN THE WRONG ROOM:
+Junior does the right thing and goes diagnostic before touching
+config. He runs a sniffer for ethertype 0x8890 and sees absolutely
+nothing. He concludes the heartbeat is dead and proposes a reboot.
+
+Explain here that FGCP does not run over IP — it has its own
+Ethernet types. 0x8890 for the heartbeat in NAT/route mode, 0x8891
+in transparent mode, 0x8893 for configuration sync. Use the memory
+hook: "88-90 keeps you alive, 88-93 keeps you identical."
+
+Then deliver Junior's mistake plainly: he sniffed port1, a data
+port. The heartbeat only ever travels on interfaces declared as
+hbdev. He was standing in the lobby listening for a conversation
+happening in the basement. The senior lesson: verify your
+instrument before you trust its silence. Absence of evidence
+gathered from the wrong place is not evidence of absence.
+
+Point the sniffer at port3 and the heartbeat is there — a steady
+drumbeat, every second, both directions. Alive. Which makes the
+mystery worse.
+
+ACT TWO — DEAFENED BY ITS OWN CHATTER:
+This is the heart of the episode. Ask the audience the question:
+if the heartbeat is healthy, why is the cluster still arguing?
+
+Walk through the reasoning. Session synchronisation isn't on that
+ethertype list — so where does it travel? By default, over the HA
+heartbeat link, because nobody gave it a road of its own. Now
+picture what that means at market open: a heartbeat is a tiny frame
+whose only job is to arrive on time, and it is sharing a wire with
+a flood of session-table data.
+
+Land the chain deliberately: session sync saturates the link,
+heartbeats arrive late or not at all, the cluster concludes its
+partner is dead, and it fails over. Nothing was wrong. The cluster
+wasn't broken — it was deafened by its own chatter.
+
+Make the point that a false failover is worse than a real one,
+because you took the outage and got nothing in return.
+
+The fix: set session-pickup enable, and set session-sync-dev with
+dedicated interfaces. Two properties worth remembering — list
+several interfaces and the traffic load balances across them; lose
+all of them and session sync quietly reverts to the heartbeat link.
+Flag that fallback as the sneakiest thing in the lesson: graceful
+degradation that puts you back in the original failure mode without
+raising a single alarm.
+
+Give Señor his line here, dry and unhurried: "The heart and the
+mouth should not share a throat."
+
+ACT THREE — WHOSE PRIMARY IS IT ANYWAY:
+Penny, the business owner, arrives with coffee and an objection.
+She now owns two firewalls and one of them does nothing. The
+Trading and Compliance VDOMs are both running hot on the same box,
+and she has been told the answer is to buy a third firewall. She
+declines.
+
+Junior's instinct: active-active, both boxes work. Dismantle it —
+in active-active the primary owns the virtual MACs, so every packet
+still lands on the primary first and selected sessions take an
+extra hop out and back. It doesn't move the front door, which was
+the entire problem.
+
+Then introduce virtual clustering as the real answer, and make the
+audience feel the trick of it: it is active-passive only, and yet
+both boxes work. The resolution is that "primary" stops being a
+property of the box and becomes a property of the VDOM. FGT-1 is
+primary for Trading. FGT-2 is primary for Compliance. Each is
+secondary for the other's territory.
+
+Cover the mechanism: set vcluster-status enable, then config
+vcluster with mirrored priorities — 200 versus 100 in vcluster one,
+50 versus 200 in vcluster two. And the reason it's priority: it is
+the only election criterion an administrator actually assigns.
+Interface state and uptime are facts the network hands you; serial
+number is stamped at the factory. If you want to choose, you must
+use the dial you control.
+
+Numbers to state once, clearly: up to 30 virtual clusters, HA group
+ID capped at 7.
+
+ACT FOUR — THE BILL:
+Close the technical arc on the sizing trap. During a failover, one
+device processes all traffic for all VDOMs. So both members must be
+sized for one hundred percent of total load. VDOM partitioning
+gives you utilisation of the second box, not capacity from it.
+
+Let Junior say the line that shows he's learned something: "It's
+not two boxes' worth of firewall. It's one box's worth, running in
+two places."
+
+Then the design warning: size them at fifty percent each and you
+have built a firewall pair that works beautifully right up until
+the moment it's needed. The insurance policy pays out at half value
+on the one day you claim.
+
+CLOSING — THE TEASER:
+Tuesday, 10:47am. A power supply dies in the primary, mid-trade.
+The failover takes under a second and the help desk stays quiet.
+But the trading logs show half the sessions sailed straight through
+as if nothing happened — and half of them died on the spot. Same
+second, same cluster, same virtual MACs, same everything.
+
+Cipher, reading over Penny's shoulder: "That's not a failure.
+That's a rule. Something decided which half lived."
+
+End on Señor at the whiteboard, drawing a MAC address that belongs
+to no physical port: "You told me the understudy knows the part.
+Now tell me which lines she remembers."
+
+Next episode: The Understudy.

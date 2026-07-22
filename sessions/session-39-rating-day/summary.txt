@@ -1,0 +1,268 @@
+==================================================================
+SESSION 39 SUMMARY — "RATING DAY"
+Season 4 · Blueprint 1.1 · SG 09 Security Fabric pp. 274–278
+Topics: Security Fabric hardening — Security Rating, review & verification
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Monday 08:47 AM. Penny and Cipher arrive within seconds of each
+other, both wanting custody of the Security Rating printout Señor
+had face-down under his coffee mug. Penny: board pack prints
+Thursday, wants the score as a number. Cipher: the findings list is
+a "target package" — a map of exactly how to hurt LoFinance — and
+should not leave the room until remediated. Señor hands the student
+the printout: "Referee reads the rules before the whistle." Student
+derived how the rating engine works (root compiles, leaves
+self-audit — same push-to-edge/pull-to-centre pattern as stitches
+and logging), identified the critical WAN-facing admin-HTTPS
+finding as categorically different (precondition-free, internet-
+facing, vs. every other finding requiring some prior foothold),
+triaged the remaining findings by exposure/blast-radius/cost-to-fix
+rather than raw severity (trusted hosts + password policy = hour-
+one free wins; firmware = scheduled change window, reboot risk;
+ISFW "all/all" policies = needs FAZ evidence before tightening,
+long lookback window to avoid killing rare batch/backup flows).
+Student delivered the ruling: Penny gets score + trend + industry
+percentile (the derivatives — useless to an attacker, priceless to
+a board); Cipher keeps the findings detail locked in the room; the
+team fixes the free wins Mon/Tue BEFORE Thursday's print so the
+number itself moves in Penny's favour. Both antagonists accepted —
+Señor moved the happy cactus toward the student's desk. Junior
+proposed "hope it re-runs" for the fresh score; corrected to
+on-demand manual re-run from the GUI. Chad (marketing) triggered a
+second incident off-screen; Señor manually quarantined him via CLI
+before FortiAnalyzer even flagged it, "hypothetically." Fence-
+walking verification pass closed the chapter: config-backup proof
+lives in Configuration > Revisions (derived via "version history"
+analogy), manual quarantine command confirmed
+(diagnose endpoint fctems queue-complete-calls Q-<ip>), Linux
+FortiClient exclusion re-confirmed. Session closed with Señor
+revealing the Session 40 hook: a rival trading firm is beating
+LoFinance's algo to the exchange by two milliseconds — "that's not
+a delay, that's a heist."
+
+CHARACTERS: Penny (wants the number for Thursday's board pack,
+accepted derivatives-only ruling), Cipher (wants findings protected,
+accepted the ruling, closest thing to a compliment given),
+Señor (referee framing, closed the fence-walk, quarantined Chad
+live, delivered S40 teaser), Junior ("report card" framing —
+correct instinct; "hope it re-runs" — corrected to on-demand run;
+smart-lights callback), Riley (ticket #4488 — rating re-ran
+unprompted, correctly flagged as suspicious-but-explicable),
+Chad (off-screen repeat phishing victim, quarantined mid-session).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+Custody dispute over the Security Rating output between two
+stakeholders with legitimate but conflicting needs (visibility vs.
+attack-surface protection). Resolved by splitting the artefact by
+audience rather than picking a side, and by closing cheap findings
+before the deadline so the presented number is itself improved,
+not just contextualised.
+
+TECHNICAL CONCEPTS COVERED
+------------------------------------------------------------------
+1. SECURITY RATING ARCHITECTURE: root compiles a fabric-wide audit;
+   each member FortiGate self-checks its own config against
+   best-practice checks and reports results upward. Same
+   distribute-work/centralise-verdict pattern as stitches (config
+   authored on root, executed locally) and fabric logging (each
+   member logs independently to FAZ).
+2. RATING RE-RUNS AUTOMATICALLY on a schedule (not just on click) —
+   explains Riley's "why did this change with nobody touching it"
+   ticket. Can ALSO be triggered on-demand from the GUI — used to
+   force a fresh score after Mon/Tue remediation, ahead of the
+   scheduled cycle.
+3. SCORE ANATOMY: weighted points per check (severity ×
+   device-importance) → letter grade. TWO context layers turn a
+   floating number into board-usable information: (a) TREND — score
+   over time, because the rating has been running since fabric
+   go-live; (b) INDUSTRY PERCENTILE — compared to similar-sized
+   organizations in the same sector. Both the full check set and
+   percentile comparison require a FortiGuard Security Rating
+   subscription; without it, checks and comparison degrade/vanish
+   while local score/findings largely still compute — same
+   asymmetric-degradation pattern as S23's FortiGuard web-filter
+   outage. Diagnostic instinct reused correctly: `diagnose
+   autoupdate versions` as the paperwork check.
+4. FINDINGS TRIAGE — THREE LENSES (beyond raw severity order):
+   (a) EXPOSURE — who can reach it unprompted? internet / internal /
+   post-compromise-only. (b) BLAST RADIUS — what does a successful
+   exploit hand the attacker? (c) COST TO FIX — zero-disruption CLI
+   change vs. requires a change window (e.g., firmware = reboot =
+   plan around trading hours). Some findings offer a one-click
+   remediation shortcut directly from the Rating page ("free wins").
+5. EXAMPLE FINDING SET WORKED: critical = admin HTTPS enabled on
+   WAN interface (precondition-free, internet-facing — categorically
+   worse than anything requiring prior compromise); high = no
+   trusted hosts on admin accounts (cheap, high-value insurance
+   against credential/lateral-movement risk); medium = stale
+   firmware on a branch box (schedule for change window, reboot
+   risk); medium = "all/all" firewall policies (cannot be tightened
+   safely from config alone — must audit actual traffic via FAZ
+   logs, over a WIDE window to catch rare/periodic flows before
+   assuming a service is unused); low = admin password policy not
+   enforced (cheap, hour-one fix).
+6. CONFIG-BACKUP STITCH PROOF POINT: Schedule-triggered backups land
+   in Configuration > Revisions — the version-history page, also
+   used for rollback. Hook: "Schedule trigger → Revisions page."
+7. SCHEDULE TRIGGER FREQUENCIES (corrected this session): Once,
+   Hourly, Daily, Weekly, Monthly — NOT "Now." Governed by the
+   ROOT FortiGate's system clock, because the stitch is authored on
+   the root and pushed to leaves ("root's ink, root's clock"). This
+   is a repeat-miss item (also missed cold in S38) — now flagged for
+   an unprompted cold ambush in a future session rather than another
+   warm-up.
+8. MANUAL QUARANTINE CLI (retained from S38, applied live):
+   `diagnose endpoint fctems queue-complete-calls
+   Q-<endpoint_ip_address>` — manually injects the same instruction
+   EMS would send after an automated IoC detection. Not supported on
+   FortiClient (Linux) — reconfirmed cold.
+9. SAML SSO ROLES (retest): root = sole IdP; downstream FortiGates,
+   FortiAnalyzer, FortiManager = SPs. FortiAuthenticator is NOT part
+   of this fabric SSO picture — it's a separate standalone IdP
+   product; naming it as an SP was a planted distractor and was
+   taken. "One fabric, one anchor, one voucher" derivation still
+   solid; vendor-name-similarity traps remain a live risk pattern.
+10. FMG REINSTALL-KEEPS-MAPPING: cold retest passed a third
+    consecutive time (decayed S37, re-anchored, held S38, held
+    again S39) — recommend ONE final confirmation then retire from
+    active spaced-retest queue.
+11. TRIPTYCH RELATIONSHIP (Watching/Acting/Judging) — INTRODUCED,
+    NOT YET DEMONSTRATED BY STUDENT: Watching (FAZ, memory) and
+    Acting (stitches, reflexes) must exist BEFORE Judging (Rating)
+    is useful, because a score alone doesn't fix anything — FAZ
+    supplies evidence to act correctly on findings (e.g., the
+    ISFW policy example), and stitches give the fabric a way to
+    respond to what Judging keeps finding. This is an OPEN LOOP —
+    student answered a related-but-different question (IoC chain
+    mechanics) twice when asked for the triptych relationship, then
+    declined further attempts both times ("No next"). Needs a
+    fresh-angle retry next time, not a repeat of today's framing.
+
+MENTAL MODELS / ANALOGIES (new this session)
+------------------------------------------------------------------
+- "The judge sits where the judge can see" (root = rating vantage
+  point, same logic as authorization-on-root).
+- "Push the work to the edges, pull the verdict to the centre" —
+  named explicitly this session as the fabric's recurring design
+  pattern across stitches, logging, AND rating.
+- "Everyone marks their own homework and hands it in — with a
+  rulebook they cannot edit" (Junior's phrase, kept — self-audit +
+  centralised, unchangeable check set).
+- "Severity tells you how bad the fall is; exposure tells you how
+  many people are standing near the ledge" (triage reframe).
+- "Monday morning firmware upgrades are how engineers become former
+  engineers" (Señor — change-window discipline).
+- "The fix for everything starts with evidence" (FAZ-before-policy-
+  change, reused from earlier seasons' evidence-first throughline).
+- "Root's ink, root's clock" (Schedule trigger timezone hook — NEW,
+  built specifically to fix the repeat miss).
+- "The best evidence is collected before you know you need it"
+  (Señor, re: the rating's auto-run trend line quietly building
+  Penny's board case unprompted).
+
+KEY CLI / GUI
+------------------------------------------------------------------
+- Security Fabric > Security Rating (score, grade, trend, industry
+  percentile, ranked findings list, on-demand re-run button, some
+  findings have inline one-click remediation).
+- Security Fabric > Automation > Trigger (Schedule: Once / Hourly /
+  Daily / Weekly / Monthly, root's system clock).
+- Configuration > Revisions — where Schedule-triggered config
+  backups land; also the rollback page.
+- diagnose autoupdate versions — FortiGuard subscription/contract
+  paperwork check (reused from S23).
+- diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip> —
+  manual endpoint quarantine via EMS channel. Not supported on
+  FortiClient (Linux).
+
+TROUBLESHOOTING / DESIGN APPROACH TAUGHT
+------------------------------------------------------------------
+Referee framing: read what the artefact actually IS before ruling
+on who gets it. Split deliverables by AUDIENCE and PURPOSE rather
+than picking a side in a two-stakeholder conflict — Penny needed
+"is it improving / how do we compare," Cipher needed "protect the
+target package," and both needs were served by separating derived
+metrics from raw findings. Triage findings by exposure → blast
+radius → cost-to-fix, not raw severity alone. Never guess-tighten a
+firewall policy from config alone — pull FAZ evidence first, over a
+window wide enough to catch periodic/rare legitimate flows.
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+No topology change. Remediation plan agreed: WAN admin-HTTPS
+disabled, trusted hosts configured on all four FGT admin accounts,
+admin password policy enforced — all scheduled Mon/Tue, before
+Thursday's board pack. Firmware update on Dave's branch FGT60F
+scheduled for a change window (not immediate). HQ-ISFW "all/all"
+policies queued for FAZ-evidence-based tightening, NOT yet executed
+— pending a suitably long log review window.
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+None this session (policy/config hardening only; no new devices,
+links, or fabric members).
+
+BUSINESS OUTCOME
+------------------------------------------------------------------
+Board-pack conflict resolved without escalation. Score improves
+before Thursday's print (grade movement cited was C+ → B-, driven
+by three closed findings) — Penny gets a defensible number, Cipher's
+findings stay internal, Señor visibly approves (cactus moved).
+Chad quarantined manually mid-session before FAZ could even flag
+him automatically.
+
+EXAM-RELEVANT NOTES
+------------------------------------------------------------------
+- Security Rating requires FortiGuard subscription for full check
+  set + industry percentile comparison; local/basic checks still
+  run without it.
+- Schedule trigger frequencies: Once, Hourly, Daily, Weekly,
+  Monthly — governed by ROOT's system time. "Now" is a plausible
+  wrong answer (repeat-miss, watch for cold ambush next time).
+- Config-backup stitch results appear under Configuration >
+  Revisions.
+- FortiNDR file transit for downstream members goes THROUGH THE
+  ROOT (not FAZ); session is HELD (not visible/streaming to user)
+  pending verdict.
+- SAML SSO: root is the ONLY IdP; downstream FGTs + FAZ + FMG are
+  SPs; FortiAuthenticator is a separate product, not part of this
+  fabric SSO relationship — common distractor.
+- Manual quarantine CLI unsupported on FortiClient (Linux).
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+------------------------------------------------------------------
+(1) "Root logs into every leaf and reads configs" — corrected to
+self-audit + roll-up (distribute work, centralise verdict).
+(2) Severity-only sort of findings ("red, orange, yellow, yellow,
+white, done") — right default, wrong depth; used as the foil to
+teach exposure/blast-radius/cost-to-fix triage.
+(3) "Just hope it re-runs before Thursday" — corrected to on-demand
+manual trigger from the GUI; never let a schedule stand between you
+and a deadline when a button exists.
+
+OPEN THREADS / STUDENT DECLINED FURTHER ATTEMPTS
+------------------------------------------------------------------
+- Q7 (business/boardroom sentence, indicative mood, using supplied
+  grade/count/timeframe anchors): student declined a second attempt
+  ("No, 'Next"). Still the #1 persistent non-technical growth edge
+  across S37/S38/S39 — three sessions running.
+- Q10 (Watching/Acting/Judging triptych relationship — WHY Judging
+  needs the other two to exist first): student answered the
+  neighbouring IoC-chain-mechanics question instead, twice; declined
+  further attempts ("No nexty"). Concept was TAUGHT this session in
+  the debrief text but NOT yet demonstrated by the student under
+  question conditions — treat as untested going into S40, not as a
+  miss to be scored harshly, but flag for a fresh-angle retry.
+
+TEASER DELIVERED FOR SESSION 40 — "MILLISECONDS ARE MONEY"
+------------------------------------------------------------------
+A rival trading firm is beating LoFinance's algorithm to the
+exchange by two milliseconds. Penny wants to know if hardware can
+buy the time back. Topics: SPU architecture — NP6/NP7 network
+processors, CP8/CP9 content processors. SG 10 Hardware Acceleration
+on FortiGate, pp. 280–285.
+
+Date and Time completed: Sunday, 19 July 2026.

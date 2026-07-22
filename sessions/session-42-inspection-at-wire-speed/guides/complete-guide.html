@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 42 Complete — Inspection at Wire Speed</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">›</span>
+      <a href="#">Curriculum</a><span class="breadcrumb-sep">›</span>
+      <span>Session 42 — Complete Guide</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Study Guide · NSE7 EF 7.6 · Session 42</div>
+    <h1>Inspection at <em>Wire Speed</em></h1>
+    <p>Cipher demands inspection. Marcus demands physics. Only one of them is quoting a rule that has exceptions.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Junior said <em>security profiles</em> kill the offload. The word he needed was <em>proxy</em>.</div>
+  <p class="motivation-sub">One imprecise category word nearly cost LoFinance either a compliance audit or a quarter of a million dollars of ultralow-latency fibre. Precision in language is an engineering skill, not a stylistic one.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav"><a class="nav-tab active" href="#section-crack">The Crack</a><a class="nav-tab" href="#section-nturbo">NTurbo</a><a class="nav-tab" href="#section-ipsa">IPSA</a><a class="nav-tab" href="#section-paths">Packet Paths</a><a class="nav-tab" href="#section-config">Config & Traps</a></nav>
+
+<main><div class="main-content">
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · THE CRACK</span>
+  </div>
+  <p class="socratic-insight">Marcus is standing in the network room with a printed memo, arguing that inspection and latency are physically incompatible. Junior agrees with him and is about to talk Cipher out of a design that is actually available. Before you read on, answer these two.</p>
+  <ul class="socratic-questions"><li>Junior says "security profiles kill the offload." Which single word in that sentence is doing damage, and what should it be?</li><li>If flow-based inspection does not disqualify a session from NP acceleration, what problem still remains? The NP cannot run IPS signatures — so how does an inspected packet ever reach the thing that can?</li></ul>
+  <div class="answer-area" data-section="crack">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text"><strong>"Security."</strong> The Session 41 rule is that <em>proxy-based</em> profiles disqualify a session from NP offload — and that a single proxy profile poisons the entire policy. Flow-based profiles are not in that category at all. Junior generalised a specific rule into a universal one, which is the exact error that turns an available design into a refused one.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">The remaining problem is a <strong>path problem</strong>, not a permission problem. The NP has no native mechanism to hand a packet to the IPS engine and get it back, so without help the whole session would still collapse onto the slow path. That missing on-ramp and off-ramp is precisely what NTurbo builds.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-crack">
+<div class="section-label">SECTION 01</div>
+<h2>The Crack in <em>Junior's Claim</em></h2>
+<div class="section-img-wrap">
+  <img src="images/s1-crack.png" class="section-img" alt="Two stakeholders each holding an absolute, with an engineer between them"
+       onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+  <p class="img-caption">Compliance says <em>must</em>. Trading says <em>can't</em>. Neither absolute survives contact with the actual rule.</p>
+  <div class="si-placeholder">
+    <span class="si-filename">images/s1-crack.png</span>
+    <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector illustration, cream off-white background, coral and muted gold accents, sage green, soft brown outlines, bold clean line work, no gradients, no photorealism. Composition: a wide three-part scene inside a modern financial-district network room. On the LEFT, Cipher — a composed security lead in a charcoal blazer, restrained posture, arms folded — holds up a printed memo headed "DIRECTIVE 2026-14 — IPS REQUIRED". Above her head floats a coral speech bubble containing a single word: "MUST". On the RIGHT, Marcus, a trading-desk operator in shirtsleeves with a rolled-up cuff and an agitated expression, jabs a finger at a wall-mounted latency readout showing "40 µs". Above his head a sage-green speech bubble reads: "CAN'T". In the CENTRE stands the Intermediate Engineer, calm, holding a single sheet of paper on which is written, in clear legible lettering, "PROXY ≠ SECURITY PROFILES". A faint chalk-line arrow connects that sheet to both speech bubbles, visually cracking them. In the background, out of focus, Junior — younger, overconfident posture deflating — stands beside a whiteboard on which two words are written in muted gold: "NTurbo" and "IPSA". Bottom-left corner: small LoFinance logo, stacks of banknotes frozen inside a pale blue ice cube. Mood: tense standoff resolving into clarity. Visual hierarchy: the central sheet of paper is the brightest element. Do NOT include: dense technical labels, cabling diagrams, photorealistic faces, glossy 3D rendering, any FortiGate model numbers.</div>
+  </div>
+</div>
+
+<p>Two stakeholders arrived holding absolutes. Cipher's absolute came from a regulator; Marcus's came from a quarter of a million dollars of ultralow-latency fibre and a measured 40&nbsp;µs path. When two absolutes collide, the engineer's job is not to pick a side. It is to find <strong>the cheapest true version of the requirement</strong> and then state its cost plainly.</p>
+<p>The cheapest true version existed because Junior's premise was wrong. He said <em>security profiles</em> kill the offload. Session 41 taught something narrower and far more useful: <strong>proxy-based</strong> profiles kill the offload, and one of them poisons the whole policy. Flow-based inspection sits outside that rule entirely — and flow-based is exactly the category NTurbo and IPSA were built to accelerate.</p>
+<div class="callout callout-amber"><strong>Common misconception:</strong> "Turning on IPS drops the session to the CPU." Only if the profile is proxy-based, or if a proxy-based profile shares the policy. A flow-based IPS profile keeps NP acceleration through NTurbo.</div>
+<div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">It is <strong>proxy</strong> that hard-kills the offload, not inspection as such. Junior generalised the category; the generalisation nearly cost the business either the audit or the fibre.</div>
+  </div>
+</div>
+
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-crack" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-crack','The Crack')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-crack" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-crack')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · NTURBO</span>
+  </div>
+  <p class="socratic-insight">You know now that flow-based inspection is permitted to keep NP acceleration. But permission is not plumbing. Something still has to physically carry the packet to the inspector and bring it back — and the NP cannot do that on its own.</p>
+  <ul class="socratic-questions"><li>Which component actually decides whether a packet matches an IPS signature — the NP, the CP, or the IPS engine?</li><li>Given that answer: where does NTurbo need to carry the packet <em>to</em>, and where does it need to bring it <em>back to</em>?</li></ul>
+  <div class="answer-area" data-section="nturbo">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">The <strong>IPS engine</strong>. The NP forwards; it cannot evaluate a signature. The CP is called upon during evaluation but does not own the decision. This matters because it fixes the destination of NTurbo's data path — a packet must physically reach the IPS engine.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">NTurbo carries the packet from the ingress interface <strong>to the IPS engine</strong>, and then from the IPS engine <strong>back to the NP</strong> for forwarding. It is an on-ramp and an off-ramp. Not NP&nbsp;→&nbsp;CP: NP&nbsp;→&nbsp;IPS&nbsp;engine&nbsp;→&nbsp;NP.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-nturbo">
+<div class="section-label">SECTION 02</div>
+<h2>NTurbo — <em>The On-Ramp</em></h2>
+<div class="section-img-wrap">
+  <img src="images/s2-nturbo.png" class="section-img" alt="A motorway with an on-ramp and off-ramp serving an inspection booth"
+       onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+  <p class="img-caption">NTurbo does not remove the inspection. It builds the slip roads so the motorway does not have to stop.</p>
+  <div class="si-placeholder">
+    <span class="si-filename">images/s2-nturbo.png</span>
+    <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector illustration, cream off-white background, coral accents, muted gold highlights, sage green, soft brown outlines, bold clean line work, no gradients, no photorealism, generous spacing. Composition: a wide side-on cutaway view of a stylised motorway running left to right across the frame, drawn as a smooth coral band labelled in small clean lettering "NP FAST PATH". A single stylised data packet — a rounded rectangle with a small envelope glyph — travels along it. Midway, an ON-RAMP curves upward off the motorway in muted gold, labelled "NTurbo driver", leading to a raised inspection booth drawn as a small sage-green building with a magnifying-glass sign above the door reading "IPS ENGINE". Beside the booth, and clearly NOT on the road, sits a small separate cabinet labelled "CP" connected to the booth by a curling telephone cord — visually signalling a phone call, not a stop on the journey. An OFF-RAMP in muted gold curves back down from the booth and rejoins the motorway, labelled "back to NP". Underneath the whole scene, a thin horizontal band in soft brown reads: "the road never ends — it just detours". Do NOT include: the packet travelling THROUGH the CP cabinet, any arrow from the motorway directly to the CP, dense technical labels, photorealism, 3D rendering, vendor logos. Learning purpose: burn in that NTurbo is a path feature with symmetric ramps, and that the CP is a side call rather than a hop in the packet path.</div>
+  </div>
+</div>
+
+<p><strong>The problem NTurbo solves:</strong> ordinary NP offload cannot be used when flow-based security profiles are configured, because the NP has no way to hand a packet to inspection and take it back. Without help, the entire session falls to the slow path — which is precisely the outcome Junior predicted and Marcus feared.</p>
+<p><strong>What it does:</strong> NTurbo creates a special data path that redirects traffic from the ingress interface to the IPS engine. FortiGate runs the NTurbo driver on a CPU <em>dedicated</em> to processing traffic the NP sends that requires flow-mode inspection.</p>
+<ul>
+<li><strong>Step 1:</strong> For a new session, the NTurbo driver sends packets to the IPS engine.</li>
+<li><strong>Step 2:</strong> The IPS engine processes the required security action.</li>
+<li><strong>Step 3:</strong> The IPS engine sends the packet back to the NTurbo driver.</li>
+<li><strong>Step 4:</strong> NTurbo continues to send processed packets back to the NP.</li>
+</ul>
+<div class="callout callout-green"><strong>Remember — the scope rule:</strong> <em>anything that is handled by the IPS engine can use NTurbo.</em> Proxy-based inspection is handled by the FortiGate CPU and the FortiOS proxy — not by NTurbo.</div>
+<div class="analogy-box">
+  <div class="analogy-label">Analogy</div>
+  <div class="analogy-text">
+    <p class="analogy-summary">NTurbo keeps the NP relevant.</p>
+    <ul>
+      <li>Without NTurbo, an inspected session has <em>nothing</em> for the NP to contribute — the whole thing runs on the slow path.</li>
+      <li>With NTurbo, the NP keeps the forwarding half of the job and only surrenders the inspection half.</li>
+      <li>The road does not end at the inspection booth. It detours through it and rejoins.</li>
+    </ul>
+  </div>
+</div>
+<div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">NTurbo is a <strong>path</strong> feature: NP ↔ IPS engine, on-ramp and off-ramp. It does not perform inspection and it does not touch the CP.</div>
+  </div>
+</div>
+
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-nturbo" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-nturbo','NTurbo')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-nturbo" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-nturbo')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · IPSA</span>
+  </div>
+  <p class="socratic-insight">The IPS engine is software running on a CPU, and it must compare every packet against tens of thousands of signature patterns. That is a lot of comparison work for a general-purpose processor.</p>
+  <ul class="socratic-questions"><li>What is the single most expensive operation the IPS engine performs, and what kind of silicon would you rather hand it to?</li><li>Does IPSA involve the network processor in any way?</li></ul>
+  <div class="answer-area" data-section="ipsa">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text"><strong>Pattern matching.</strong> You would rather hand it to a content processor — a coprocessor purpose-built for exactly this. That is IPSA: flow-based pattern matching offloaded to the CP, with the pattern-matching databases compiled and downloaded to the CPs from the IPS engine and the IPS database.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><strong>No.</strong> IPSA is a relationship between the IPS engine and the CP. The NP is not a party to it. NTurbo is the NP-facing feature; IPSA is the CP-facing feature. Neither causes the other — both are beneficiaries of the same qualifying condition, which is that the profile is flow-based.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-ipsa">
+<div class="section-label">SECTION 03</div>
+<h2>IPSA — <em>The Coprocessor Call</em></h2>
+<p>Pattern matching is the expensive part of flow-based inspection, and it is software running on a general-purpose CPU. <strong>IPSA</strong> allows those pattern-matching operations to be redirected to the content processors, reducing load on the FortiGate CPU and accelerating the match itself.</p>
+<p>When IPSA is enabled, flow-based pattern-matching databases are <em>compiled and downloaded to the content processors</em> from the IPS engine and the IPS database. The CP does not become the engine — it becomes the thing the engine calls.</p>
+<div class="callout"><strong>Exam tip:</strong> the causal arrow runs one way. Flow-based is the <em>precondition</em>. Because the profile is flow-based, two independent things become possible: the NP can stay in the path via NTurbo, <em>and</em> pattern matching can go to the CP via IPSA. IPSA does not make a session NP-eligible.</div>
+<table class="data-table">
+<thead><tr><th>Component</th><th>Job on a flow-based UTM session</th></tr></thead>
+<tbody>
+<tr><td>NP6 / NP7</td><td>Forwarding fast path; ingress and egress; IPsec crypto</td></tr>
+<tr><td>NTurbo</td><td>The data path between the NP and the IPS engine</td></tr>
+<tr><td>CPU</td><td>Runs the IPS engine; runs the FortiOS proxy</td></tr>
+<tr><td>CP8 / CP9 / CP10</td><td>Pattern matching via IPSA; SSL/TLS crypto</td></tr>
+</tbody></table>
+<div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">NTurbo is a <strong>path</strong> feature. IPSA is an <strong>offload</strong> feature. Different problems, different silicon, same precondition.</div>
+  </div>
+</div>
+
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-ipsa" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ipsa','IPSA')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-ipsa" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ipsa')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · PACKET PATHS</span>
+  </div>
+  <p class="socratic-insight">Two packet paths matter for the exam: the accelerated flow-based path and the proxy-based path. The second one contains a trap that has caught most engineers at least once.</p>
+  <ul class="socratic-questions"><li>Trace an established NTurbo-accelerated flow-based session from ingress to egress. Where does the CP appear in that trace?</li><li>On a proxy-based UTM session the NP does not offload the session. Does that mean the NP does nothing at all?</li></ul>
+  <div class="answer-area" data-section="paths">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">Ingress → NP → NTurbo driver → IPS engine on the CPU → NTurbo driver → NP → egress. The path is <strong>symmetrical</strong>. The CP appears <em>nowhere in the trace</em> — the IPS engine calls it for pattern matching and receives a result. It is a phone call, not a train station. Once the session key is installed in the NP, subsequent packets skip routing and kernel processing.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><strong>No — and this is the trap.</strong> The NP still conducts some early security inspections before handing packets off to the IPS engine, and it can still be leveraged for <strong>IPsec tunnel decryption and encryption</strong>. The CP is still used for SSL/TLS encryption and decryption when deep inspection is configured. "Not offloaded" is not the same as "not involved".</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-paths">
+<div class="section-label">SECTION 04</div>
+<h2>Two Paths, <em>One Trap</em></h2>
+<div class="section-img-wrap">
+  <img src="images/s4-paths.png" class="section-img" alt="Two parallel packet journeys, one accelerated and one proxied"
+       onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+  <p class="img-caption">The upper path detours. The lower path stops, unpacks, and reassembles — but the NP has not left the building.</p>
+  <div class="si-placeholder">
+    <span class="si-filename">images/s4-paths.png</span>
+    <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector illustration, cream off-white background, coral accents, muted gold highlights, sage green, soft brown outlines, bold clean line work, no gradients, no photorealism. Composition: the frame is split horizontally into two labelled lanes of equal width. UPPER LANE, labelled in small clean lettering "FLOW-BASED · NTurbo": a continuous coral track running left to right; a stylised packet travels along it, briefly rising via a gold slip-road into a small sage-green booth marked "IPS ENGINE (CPU)", then descending back to the same coral track and continuing to a right-hand exit marked "EGRESS". Beside the booth, a small cabinet marked "CP" is connected by a curling cord, clearly off the track. LOWER LANE, labelled "PROXY-BASED": the track changes from coral to soft brown at a checkpoint drawn as a larger building marked "PROXY (CPU)", where the packet is shown being buffered — depicted as three small packets stacking in a tray labelled "BUFFERED" — before continuing. Critically, at BOTH the entry and exit of the lower lane, a small coral chip icon labelled "NP" remains visible, with two tiny captions beneath it: "early checks" and "IPsec crypto". A muted gold banner across the lower lane reads: "NOT OFFLOADED ≠ NOT INVOLVED". Do NOT include: the NP icon removed or greyed out from the lower lane, dense signature names, photorealism, 3D rendering. Learning purpose: prevent the over-generalisation that a proxy-based session leaves the NP idle.</div>
+  </div>
+</div>
+
+<p><strong>Flow-based, NTurbo-accelerated, established session:</strong></p>
+<div class="code-block"><div class="code-label">Packet path</div><pre><code>ingress interface
+   -> NP6/NP7
+   -> NTurbo driver
+   -> IPS engine (CPU)          [calls CP for pattern matching via IPSA]
+   -> NTurbo driver
+   -> NP6/NP7
+   -> egress interface</code></pre></div>
+<p>After the session key is installed in the network processor, subsequent packets for the accelerated session <em>skip routing and kernel processing</em>. UTM/NGFW operations are still handled by the CPU, with IPSA offloading pattern matching to the content processors.</p>
+<p><strong>Proxy-based session:</strong> the network processor does not offload the session. The FortiGate CPU handles packet processing and inspection through a combination of the IPS engine and the FortiOS proxy. But the NP still conducts some early security inspections before handing off, and can still be leveraged for IPsec tunnel decryption and encryption. Where SSL deep inspection is configured, the CPU leverages the CP for SSL/TLS crypto.</p>
+<p>The deep-inspection sub-flow is worth knowing in order: the IPS engine sends the packet to the proxy for decryption; the proxy decrypts by offloading to the CP; the decrypted packet returns to the IPS engine for IPS and application control; it goes back to the proxy for the configured proxy-based inspection; the proxy re-encrypts, again offloading to the CP.</p>
+<div class="callout callout-amber"><strong>Exam trap:</strong> a question asks what the NP can still do on a proxy-based session. The tempting answer is "nothing — proxy kills offload." The correct answer names early security inspections <em>and</em> IPsec encryption/decryption. The IPsec exception is a property of IPsec, not a footnote to the tunnelling rule.</div>
+<div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">Not offloaded is not the same as not involved. On a proxy path the NP still does early checks and IPsec crypto; the CP still does SSL/TLS crypto.</div>
+  </div>
+</div>
+
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-paths" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-paths','Packet Paths')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-paths" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-paths')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · CONFIG & TRAPS</span>
+  </div>
+  <p class="socratic-insight">Two commands govern this behaviour, and they live at different scopes with different value sets. Mixing up which values belong to which command is one of the easiest marks to drop on the exam.</p>
+  <ul class="socratic-questions"><li>Name the global command that controls NTurbo, its two possible values, and its default.</li><li>How would you disable NTurbo for one firewall policy only, and why would you ever want to?</li></ul>
+  <div class="answer-area" data-section="config">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text"><code>config ips global</code> → <code>set np-accel-mode {none | basic}</code>. The default is <strong>basic</strong>, which is the value that provides acceleration. Note this is <em>not</em> enable/disable — those values belong to the per-policy command.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><code>config firewall policy</code> → <code>edit &lt;id&gt;</code> → <code>set np-acceleration disable</code> (default is <strong>enable</strong>). You would do this <strong>for troubleshooting purposes</strong> — to determine whether acceleration is implicated in a fault, on one policy, without disturbing the rest of the box. And, per Session 41, you put it back.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-config">
+<div class="section-label">SECTION 05</div>
+<h2>Configuration, Defaults, and the <em>Value-Bleed Trap</em></h2>
+<div class="code-block"><div class="code-label">FortiOS CLI — global</div><pre><code>config ips global
+    set np-accel-mode {none | basic}
+    set cp-accel-mode {none | basic | advanced}
+end</code></pre></div>
+<div class="code-block"><div class="code-label">FortiOS CLI — per policy</div><pre><code>config firewall policy
+    edit &lt;policy_id&gt;
+        set np-acceleration {disable | enable}
+    next
+end</code></pre></div>
+<table class="data-table">
+<thead><tr><th>Setting</th><th>Scope</th><th>Values</th><th>Default</th></tr></thead>
+<tbody>
+<tr><td>np-accel-mode</td><td>Global (config ips global)</td><td>none | basic</td><td><strong>basic</strong> — provides acceleration</td></tr>
+<tr><td>cp-accel-mode</td><td>Global (config ips global)</td><td>none | basic | advanced</td><td><strong>advanced</strong> on most models; <strong>basic</strong> is the only mode on devices with a single CP8</td></tr>
+<tr><td>np-acceleration</td><td>Per firewall policy</td><td>disable | enable</td><td><strong>enable</strong></td></tr>
+</tbody></table>
+<div class="callout callout-amber"><strong>The value-bleed trap:</strong> <code>np-accel-mode</code> and <code>np-acceleration</code> have similar names, different scopes, and <em>different value sets</em>. If you answer "enable / disable" for the global command you have imported the per-policy values. Learn the three rows above as one table, not three separate facts.</div>
+<p>By default NTurbo is enabled to ensure a load-balanced approach for handling IPS signature and pattern-matching tasks. Both disable paths — global <code>np-accel-mode none</code> and per-policy <code>np-acceleration disable</code> — exist <strong>for troubleshooting purposes</strong>. Neither is a tuning knob for production.</p>
+<h2 style="font-size:22px;margin-top:28px;">Troubleshooting <em>Workflow</em></h2>
+<ol>
+<li><strong>Check the inspection mode before you check the hardware.</strong> A single proxy-based profile on the policy is the most common cause of a policy silently dropping to the slow path.</li>
+<li><strong>Audit the policy for mixed profiles.</strong> Flow plus proxy on one policy offloads nothing at all.</li>
+<li><strong>Confirm the acceleration settings were not left disabled</strong> from a previous troubleshooting session. Diagnostic settings are temporary by contract.</li>
+<li><strong>Remember the birth rule.</strong> The offload decision is made once, at session creation, and never re-evaluated. Existing sessions carry the old verdict until they die.</li>
+<li><strong>Verify, do not assume.</strong> Which is exactly what Session 43 is about.</li>
+</ol>
+<h2 style="font-size:22px;margin-top:28px;">Senior Engineering <em>Insights</em></h2>
+<ul>
+<li><strong>"Accelerated" is not "free."</strong> Know which component pays for each stage. NTurbo did not get Marcus off the CPU — it stopped the entire session from collapsing onto it. Say that out loud to the business rather than letting them infer something better.</li>
+<li><strong>When two stakeholders both invoke absolutes,</strong> find the cheapest true version of the requirement and state its cost plainly. Compliance said <em>must</em>; trading said <em>can't</em>. Both were partly wrong, and the engineer was the only person in the room who could show why.</li>
+<li><strong>Precision in category language is not pedantry.</strong> "Security profiles" versus "proxy-based profiles" is the difference between telling the business no and telling it yes with a condition.</li>
+<li><strong>A newly-learned rule arrives absolute.</strong> Junior over-generalised the poison rule into "IPS kills offload." The same instinct produces "proxy kills offload, therefore the NP does nothing." Give every new rule a deliberate <em>what are the exceptions</em> pass before you let it harden.</li>
+</ul>
+<h2 style="font-size:22px;margin-top:28px;">Key <em>Takeaways</em></h2>
+<ol>
+<li>Proxy kills offload. Flow does not.</li>
+<li>NTurbo = the path, NP ↔ IPS engine.</li>
+<li>IPSA = pattern matching offloaded to the CP.</li>
+<li>Inspection itself still costs CPU. Acceleration ≠ free.</li>
+<li>Not offloaded ≠ not involved — the NP still does early checks and IPsec crypto on a proxy path.</li>
+</ol>
+<div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text"><code>np-accel-mode</code> takes <strong>none | basic</strong> (default basic). <code>np-acceleration</code> takes <strong>disable | enable</strong> (default enable). Different commands, different scopes, different values.</div>
+  </div>
+</div>
+
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-config" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-config','Config & Traps')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-config" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-config')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+</div></main>
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="#">
+    <span class="page-nav-label">← PREVIOUS</span>
+    <span class="page-nav-title">Session 41 — The Fast Path</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="#">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Session 43 — Proving the Speed</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Session 42 · Blueprint 1.2 · Hardware Acceleration
+</footer>
+
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-session42-inspection-wire-speed';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-crack': 'The Crack',
+  'section-nturbo': 'NTurbo',
+  'section-ipsa': 'IPSA',
+  'section-paths': 'Packet Paths',
+  'section-config': 'Config & Traps',
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+</body>
+</html>

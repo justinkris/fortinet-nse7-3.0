@@ -1,0 +1,253 @@
+==================================================================
+SESSION 43 SUMMARY — "PROVING THE SPEED"
+Hardware acceleration configuration & diagnostics
+Study Guide ch.10 Hardware Acceleration, pp. 294-302
+Blueprint 1.2
+==================================================================
+Written for Claude. Read before Session 44.
+
+STORY EVENTS
+------------------------------------------------------------------
+Tuesday 07:41. NEW DEVICE INTRODUCED: the DOOR QUIZ — Señor tapes
+three questions to the inside of the network-room door at eye
+height, with a doodle of a cactus in sunglasses and the line "the
+door does not give hints." Student must answer to the door before
+entering. This replaced the S42 "banking retest" opener and worked
+better — the physical gate framing produced sharper cold recall.
+KEEP THIS DEVICE.
+
+Inside: Cipher at the whiteboard with a printed Directive 2026-14
+and a red pen. Demand: "I don't submit adjectives to auditors. I
+submit command output." She wants the specific LINE proving VLAN
+40 trading traffic is inspected AND accelerated.
+
+On the bench: a patch lead draped over a monitor like a scarf,
+with a paper label in Señor's handwriting — "EL TÚNEL. HQ <-> DR.
+Age: 26 sessions. Grievance: nobody has ever checked on me." This
+is the IPsec-gets-a-character escalation the S42 register
+prescribed after three failed list-drills. IT WORKED. Señor pats
+it like a pet, later drapes it round the student's neck like a
+medal, and at session end peels the label off and pockets it:
+"El Túnel has been seen. He can rest."
+
+Riley's 06:20 ticket (off-screen): DR replication crawled all
+night, HQ-to-Parramatta tunnel.
+
+Junior's beats: (1) "just screenshot the dashboard, it says IPS
+enabled" — Cipher: "a checkbox proves INTENT, I asked for
+EVIDENCE"; (2) "we just change it to SHA-256, I'll do it now" —
+Señor: "¡Chico! Sit down."
+
+CHARACTERS: Cipher (red pen, evidence-not-adjectives, accepted the
+pack, left a deliberate hook about counters), Señor (door quiz,
+El Túnel ceremony, sombrero, ends session putting on the COWBOY
+HAT for the S44 teaser), Junior (checkbox + rush-to-fix),
+Riley (ticket, off-screen), Penny (referenced only).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+Two threads. (1) Cipher needs auditable EVIDENCE, not
+configuration intent, that Directive 2026-14 is satisfied.
+(2) A 26-session-old IPsec tunnel has been doing software crypto
+since the day it was built and finally became visibly slow.
+
+TECHNICAL CONCEPTS COVERED
+------------------------------------------------------------------
+1. EVIDENCE vs INTENT. A checkbox proves intent; session-table
+   output proves behaviour. Cipher's framing, and the spine of
+   the whole session.
+2. Reading `diagnose sys session list` as an evidence artefact:
+   `offload=9/9` (forwarding accelerated, 9=NP7, both directions)
+   and `ips_offload=9/9` (inspection riding NTurbo).
+3. WHICH TABLE OWNS WHICH FIELD — the session's central lesson.
+   `ips_offload` = NTurbo's footprint (a PATH, per-session,
+   per-direction). IPSA leaves NO session-table footprint (it is
+   a per-pattern-match CALL, thousands per session, nowhere to
+   record it in a one-row-per-session table).
+   THE TOOL TAUGHT: "what can this table physically record?" —
+   the student fixed three separate wrong answers with it.
+4. cp-accel-mode {none|basic|advanced}; default ADVANCED on
+   CP9/CP10 boxes; single-CP8 devices limited to BASIC ONLY.
+   MECHANISM DERIVED: the extra pattern types aren't etched in
+   CP8 silicon, so FortiOS won't offer a mode the chip has no
+   instructions for.
+   GENERALISATION BANKED: "a software mode that varies by
+   hardware generation is a thin wrapper over a fixed instruction
+   set." Deliberately planted, then CASHED IN 20 minutes later on
+   the SHA-512 problem. This pay-off structure worked extremely
+   well — reuse it.
+5. IPsec on the NP: the work is ENCRYPT/DECRYPT (crypto), the
+   only reason ESP is special. The NP needs the SA (algorithm +
+   keys) COPIED INTO NPU MEMORY. Student intuited "stores the
+   keys in silicon" unprompted — good.
+6. WHY THE COPY IS LAZY: NPU memory is finite (same scarcity that
+   caps NP7 at ~12M sessions). Don't spend it on an idle tunnel.
+   SAs go to the KERNEL at phase 2 up; copied to NPU on FIRST
+   TRAFFIC, per direction.
+7. npu_flag TABLE (in `diagnose vpn tunnel list`):
+     00 = kernel only, nothing in NPU
+     01 = OUTBOUND SA copied
+     02 = INBOUND SA copied
+     03 = BOTH (healthy steady state) — it's a BITFIELD, 01+02=03
+     20 = unsupported cipher/HMAC, CANNOT offload (doesn't fit
+          the bitfield — FortiOS's way of saying "refusal, not
+          progress")
+8. THE CAN'T-vs-WON'T PAIR (exam gold):
+     npu_flag=20 -> CAN'T. Look at the `enc:`/`auth:` line.
+     npu_flag=00 WITH TRAFFIC FLOWING -> WON'T. Someone set
+       `npu-offload disable` on phase 1. Confirm with
+       `show vpn ipsec phase1-interface <name>`.
+     00 is AMBIGUOUS on its own (no traffic yet OR disabled).
+9. ONE UNSUPPORTED ALGORITHM POISONS THE WHOLE TUNNEL — explicit
+   rhyme with S41's "one proxy profile poisons the whole policy."
+   The student was shown the shape-match; it landed.
+10. Also covered (lightly, from pp. 295-298): npu_vlink0/vlink1
+    inter-VDOM acceleration and the assign-one-link-to-each-VDOM
+    rule; `auto-asic-offload disable` as the sniffing workaround
+    with the put-it-back-immediately warning; DVLAN/VXLAN offload
+    on NP7/SP5; `ipsec-asic-offload` (GLOBAL scope, DH key
+    exchange, distinct from per-tunnel `npu-offload`).
+
+MENTAL MODELS / ANALOGIES (new keepers)
+------------------------------------------------------------------
+- "A checkbox proves INTENT. Output proves EVIDENCE." (Cipher —
+  best line of the season for audit framing.)
+- "What can this table physically record?" — the diagnostic tool
+  for deciding which feature owns a field. HIGH VALUE, reuse.
+- "00 means not yet. 03 means yes. 20 means NEVER. And never has
+  a reason." (Señor, boxed on the whiteboard.)
+- CAN'T vs WON'T — same symptom, different fix, only one needs a
+  signature.
+- "A software mode that varies by hardware generation is a thin
+  wrapper over a fixed instruction set." (CP8 -> SHA-512 payoff.)
+- "El Túnel has been seen." (IPsec debt, closed.)
+- Carried: NTurbo = a PATH; IPSA = a PHONE CALL (S42, did all the
+  work today); trench coat (S40) — "today you opened the coat."
+
+KEY CLI DISCUSSED
+------------------------------------------------------------------
+diagnose sys session list
+  -> npu info: flag=0x81/0x91, offload=9/9, ips_offload=9/9
+diagnose vpn tunnel list name <tunnel>
+  -> enc:/auth: line; npu_flag=00|01|02|03|20; npu_rgwy/npu_lgwy
+config vpn ipsec phase1-interface / set npu-offload enable|disable
+  (PER TUNNEL, default enable)
+config system global / set ipsec-asic-offload disable
+  (GLOBAL, DH key exchange, default enable)
+config ips global / set np-accel-mode {none|basic}   (def basic)
+                    set cp-accel-mode {none|basic|advanced}
+                    (def advanced; basic-only on single-CP8)
+config firewall policy / set np-acceleration enable|disable
+config firewall policy / set auto-asic-offload enable|disable
+  (the npu_vlink sniffing workaround)
+diagnose npu np7 dvlan-mode-list / dvlan-mode
+show vpn ipsec phase1-interface <name>
+
+TROUBLESHOOTING APPROACH TAUGHT
+------------------------------------------------------------------
+Slow tunnel workflow: `diagnose vpn tunnel list name <x>` ->
+read npu_flag -> if 20, go straight to the enc:/auth: line and
+identify WHICH algorithm -> if 00 and traffic IS flowing, go to
+phase 1 config and look for npu-offload disable. Symptom is
+identical; the flag tells you which branch.
+SENIOR MOVE THE STUDENT MISSED (given, not derived): the tunnel
+had SHA-512 since day one and was NEVER offloaded — so why did it
+only crawl LAST NIGHT? Fixing the algorithm without finding what
+tipped it over means you'll be back. Flagged as an OPEN ACTION.
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+- Evidence pack for Directive 2026-14 submitted and accepted.
+- HQ-to-Parramatta: remediation to SHA-256 PENDING Cipher's
+  sign-off (she wrote the crypto standard herself). Framed to her
+  as "not lowering the bar — moving from an unnecessary margin to
+  the industry standard, and buying back hardware crypto."
+- No change made in-session; the sign-off arrives in the teaser.
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+HQ-NGFW (900G): VLAN 40 evidence confirmed — offload=9/9,
+ips_offload=9/9, cp-accel-mode at default advanced.
+HQ <-> Parramatta IPsec: documented as npu_flag=20, SOFTWARE
+CRYPTO SINCE BUILD, cause auth: sha512. Remediation pending.
+OPEN ACTION: identify what changed to tip it into visible
+slowness.
+
+BUSINESS OUTCOME
+------------------------------------------------------------------
+Cipher's audit evidence accepted with the student's own caveat
+about what CANNOT be proven from the session table — she
+explicitly credited that ("the part most engineers leave out").
+A 26-session latent performance defect found and correctly
+diagnosed. Fix correctly routed through governance rather than
+applied by reflex (Junior's instinct, blocked).
+
+EXAM PERFORMANCE (10-question gauntlet): 5/10 STRICT
+------------------------------------------------------------------
+DOWN from 8/10 (S42) — but the miss profile is the story.
+SIX HALF-MARKS. In every single one the FIRST clause was correct
+and the SECOND was missing. Not a knowledge collapse — a CLAUSE
+COLLAPSE.
+Q1 HALF: NTurbo not active (right); no commands given (needs
+  `show ips global` np-accel-mode AND policy np-acceleration).
+Q2 HALF: three values right; default advanced + CP8-basic-only
+  both omitted — he had BOTH correct one hour earlier.
+Q3 HALF: False correct; only one of two causes of 00 given.
+Q4 HALF: didn't say OUTBOUND; didn't answer the 30-seconds-later
+  clause (03).
+Q5 MISS: ipsec-asic-offload / config system global / GLOBAL scope.
+  Fair miss, new fact. He correctly said "not sure" — CREDIT THIS.
+Q6 HALF: NP7 right; guessed "8?" for NP6. Guess-with-question-mark
+  costs the same as wrong.
+Q7 MISS: reached for np-acceleration; correct = auto-asic-offload.
+  Confused the IPS feature with the inter-VDOM one.
+Q8 HALF: npu_vlink0/1 right; the assign-one-to-each-VDOM RULE
+  omitted.
+Q9 FULL. Q10 (stretch) FULL — best answer of the set, including
+  an unprompted, unhedged business cost sentence.
+NOTE THE SHAPE: the two HARDEST questions were his two BEST
+answers. This is not a knowledge problem.
+
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+------------------------------------------------------------------
+(1) "Screenshot the dashboard" — a checkbox proves intent, not
+behaviour. Configuration is a claim; the session table is a
+witness.
+(2) "Just change it to SHA-256, I'll do it now" — the fix was
+technically correct and would have worked, which is what made it
+dangerous. It bypassed the person who wrote the standard. LESSON:
+a correct fix applied without the sign-off it requires is still
+an incident.
+
+STUDENT BEHAVIOUR NOTES
+------------------------------------------------------------------
+- Said "Lets move on" when asked to reason about SHA-256 vs
+  SHA-512 security. First time he has declined a reasoning
+  question outright. I gave the answer rather than pressing.
+  WATCH: was this fatigue (90 min in) or avoidance of a
+  crypto-adjacent topic? If it recurs on crypto, treat as a
+  confidence gap, not disengagement.
+- Asked "what is the title of the session" mid-flow — he tracks
+  the artefact structure and wants the frame. Give the title in
+  the opening beat next time.
+- Three separate wrong answers this session were the SAME error:
+  applying session-table slash-notation (X/Y) to the tunnel-list
+  single-value field. Fixed each time by the "what can this table
+  record?" question.
+
+TEASER DELIVERED FOR SESSION 44
+------------------------------------------------------------------
+Wednesday 07:50. Cipher's sign-off email: "Approved. SHA-256. But
+I want the same audit run on every tunnel in the fleet — HQ, DR,
+Parramatta, Chatswood. If one has been in software for twenty-six
+sessions, how many others are?"
+Señor: "Chico. How many tunnels do we have?" Junior: "Like...
+nine?" Señor: "And how do you check nine tunnels?" Junior: "You...
+run the command nine times?"
+SEÑOR PUTS ON THE COWBOY HAT.
+=> S44 is signposted as a COWBOY HAT / boss-battle-flavoured
+fleet-wide audit session. Confirm against the master plan before
+committing; if the plan has different content for S44, the
+tunnel-audit can be folded in as the cold open instead.
+
+Date and Time completed: Tuesday, 21 July 2026.

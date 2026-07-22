@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 43 Troubleshooting — Acceleration Diagnostics</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-vivid:#2563eb;--blue-glow:rgba(30,64,175,0.07);--blue-dim:#a8c0e8;--blue-deep:#0c1f5c;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a;--red:#9b1c1c;--red-light:#fbe4e4;--red-border:#e8b4b4}
+html{scroll-behavior:smooth}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px}
+.header-left{flex:1}
+.breadcrumb{font-family:'Outfit',sans-serif;font-size:11px;color:rgba(251,247,236,0.6);letter-spacing:0.08em;margin-bottom:12px;text-transform:uppercase}
+.breadcrumb a{color:#9bb8e6;text-decoration:none}.breadcrumb-sep{color:rgba(155,184,230,0.4);margin:0 6px}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em}
+header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent)}
+header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6}
+.motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface)}
+.motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em}
+.motivation-text em{font-style:italic;font-weight:500;color:var(--blue)}
+.motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px}
+.section-nav{position:sticky;top:0;z-index:90;display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto}
+.nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+main{max-width:1200px;margin:0 auto;padding:0}.main-content{padding:36px 60px 60px 60px}
+.section-block{margin-bottom:48px}
+.section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em}
+.section-block h2 em{font-style:italic;font-weight:500;color:var(--blue)}
+.section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);margin:22px 0 10px}
+.section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px}
+.section-block p strong{color:var(--text);font-weight:600}.section-block p em{color:var(--blue);font-style:italic}
+.section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px}
+.section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px}
+.section-block li strong{color:var(--text);font-weight:600}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft)}
+.callout strong{color:var(--text);font-weight:600}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light)}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light)}
+.callout-red{border-left-color:var(--red-border);background:var(--red-light)}
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+.data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left}
+.data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5}
+.data-table tr:hover td{background:var(--blue-glow)}
+.data-table td:first-child{color:var(--text);font-weight:600}
+.data-table code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border)}
+.code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08)}
+.code-block pre{padding:16px;overflow-x:auto}
+.code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff}
+.hl{color:#ffd479;font-weight:700}.hl-bad{color:#ff9b9b;font-weight:700}.hl-good{color:#a7e8b0;font-weight:700}.cmt{color:#7d8db3;font-style:italic}
+.socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue)}
+.socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.socratic-icon{font-size:17px}
+.socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase}
+.socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic}
+.socratic-questions{list-style:none;padding:0;margin:0}
+.socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6}
+.socratic-questions li:last-child{border-bottom:none}
+.socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue)}
+.mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border)}
+.mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.mental-note-block-inner{flex:1}
+.mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase}
+.mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text)}
+.analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0}
+.analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase}
+.analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic}
+.analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px}
+.lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px}
+.lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6}
+.page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface)}
+.page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none}
+.page-nav-prev{border-right:1px solid var(--border)}.page-nav-next{text-align:right}
+.page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase}
+.page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block}
+footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface)}
+footer span{color:var(--blue)}
+.image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0}
+.ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px}
+.ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px}
+.ip-meta{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 6px}
+.ip-prompt{margin-top:8px;padding:12px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-soft);line-height:1.65;text-align:left;white-space:pre-wrap}
+.approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px}
+.flash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:16px 0}
+.flash-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.flash-q{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
+.flash-a{font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.6;color:var(--text-soft)}
+.dtree{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.9;background:var(--ink-dark);color:#e8efff;border-radius:10px;padding:20px;overflow-x:auto;margin:16px 0}
+@media(max-width:720px){header{padding:28px 24px 24px}header h1{font-size:34px}.motivation-banner{padding:16px 24px}.main-content{padding:24px 24px 40px}.section-nav{padding:0 16px}.lesson-tools-grid{grid-template-columns:1fr}footer{padding:16px 24px}}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb"><a href="#">Home</a><span class="breadcrumb-sep">›</span><a href="#">Troubleshooting</a><span class="breadcrumb-sep">›</span><span>Session 43</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> TROUBLESHOOTING GUIDE · SESSION 43</div>
+    <h1>The Tunnel That Was <em>Never Checked</em></h1>
+    <p>How a senior engineer diagnoses a slow IPsec tunnel and an unaccelerated policy — thinking first, commands second.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">The command is the easy part. Knowing <em>which output line answers which question</em> is the skill.</div>
+  <p class="motivation-sub">Everything below assumes the fault is real and the config "looks fine". That is the normal case, not the exception.</p>
+</div>
+
+<main><div class="main-content">
+
+<div class="section-block">
+  <div class="section-label">Section One</div>
+  <h2><em>Symptoms</em> that lead here</h2>
+  <ul>
+    <li>Replication, backup or file transfer over a site-to-site tunnel is slow — but not broken.</li>
+    <li>Latency is <em>milliseconds</em> where the design predicted <em>microseconds</em>.</li>
+    <li>CPU on the firewall is higher than the traffic volume justifies.</li>
+    <li>Two identical boxes, same config, different performance.</li>
+    <li>An auditor asks you to prove something the dashboard already claims.</li>
+    <li>Performance degraded "overnight" with no change record.</li>
+  </ul>
+  <div class="callout callout-amber"><strong>The tell for this class of fault:</strong> nothing is <em>down</em>. Everything works. It just costs more than it should. Availability monitoring will never find it — only someone who goes looking.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Two</div>
+  <h2>Questions to ask <em>before</em> you type</h2>
+  <ol>
+    <li><strong>Is this new, or newly visible?</strong> The single most important question. A defect present since build behaves very differently from a change last night.</li>
+    <li><strong>Has anyone been troubleshooting on this box recently?</strong> Most disabled acceleration is left over from someone's packet capture.</li>
+    <li><strong>What is the expected path?</strong> Which chip, which ports, which direction. If you can't state it, you can't tell whether the output is wrong.</li>
+    <li><strong>Am I being asked for a fix, or for evidence?</strong> Cipher's distinction. They require different outputs.</li>
+    <li><strong>If I fix this, whose standard am I changing?</strong> Crypto, inspection mode and policy structure all belong to somebody.</li>
+  </ol>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Three</div>
+  <h2>Verification <em>commands</em> and expected output</h2>
+
+  <h3>Is forwarding accelerated?</h3>
+  <div class="code-block"><div class="code-label">diagnose sys session list</div>
+<pre><code><span class="cmt"># HEALTHY</span>
+npu info: flag=0x81/0x91, <span class="hl-good">offload=9/9</span>, <span class="hl-good">ips_offload=9/9</span>, epid=128/166 ...
+
+<span class="cmt"># NOT OFFLOADED — and FortiOS tells you why</span>
+npu_state=0x000001 <span class="hl-bad">no_offload</span>
+no_ofld_reason: <span class="hl-bad">disabled-by-policy</span></code></pre></div>
+  <p><strong>Read it as:</strong> 9 = NP7, 6 = NP6. Slash = originate / reply. Both directions need their own key — <code>9/0</code> means replies are on the CPU.</p>
+
+  <h3>Is the tunnel offloaded?</h3>
+  <div class="code-block"><div class="code-label">diagnose vpn tunnel list name &lt;tunnel&gt;</div>
+<pre><code>stat: rxp=88214 txp=91003 rxb=12884901 txb=13221376   <span class="cmt"># ← is traffic FLOWING?</span>
+  <span class="hl">enc: aes-256-cbc  auth: sha512</span>                      <span class="cmt"># ← the WHY, if flag=20</span>
+  <span class="hl-bad">npu_flag=20</span> npu_rgwy=10.10.2.2 npu_lgwy=10.10.1.1</code></pre></div>
+  <div class="callout"><strong>Always read <code>rxp</code>/<code>txp</code> alongside <code>npu_flag</code>.</strong> They are what makes <code>00</code> interpretable. Without traffic counts, <code>00</code> tells you nothing.</div>
+
+  <h3>Confirming the human factor</h3>
+  <div class="code-block"><div class="code-label">Was it turned off deliberately?</div>
+<pre><code># show vpn ipsec phase1-interface "HQ-to-Parramatta"
+    ...
+    <span class="hl-bad">set npu-offload disable</span>          <span class="cmt"># default is enable — a human did this</span>
+
+# show ips global                     <span class="cmt"># np-accel-mode / cp-accel-mode</span>
+# show firewall policy 12             <span class="cmt"># np-acceleration / auto-asic-offload</span></code></pre></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Four</div>
+  <h2>Decision <em>Tree</em></h2>
+
+  <div class="dtree">START: something is slower than the design predicts
+ │
+ ├─ Is it a TUNNEL? ──────────► diagnose vpn tunnel list name &lt;x&gt;
+ │   │
+ │   ├─ npu_flag=03 ──────────► Offload healthy. STOP looking here.
+ │   │                          Go to MTU / routing / far end / link.
+ │   │
+ │   ├─ npu_flag=20 ──────────► CAN'T offload.
+ │   │   └─ Read enc: and auth:
+ │   │      ├─ hash off the supported list (SHA-512 is the classic)
+ │   │      └─ cipher off the list (rarer — AES has been supported for years)
+ │   │      └─ FIX = crypto change = NEEDS SIGN-OFF, not a reflex
+ │   │
+ │   ├─ npu_flag=00 ──────────► Check rxp / txp FIRST.
+ │   │   ├─ counters flat ────► No traffic. Lazy copy. NOT A FAULT.
+ │   │   └─ counters moving ─► WON'T offload.
+ │   │                          └─ show vpn ipsec phase1-interface
+ │   │                             └─ set npu-offload disable → put it back
+ │   │
+ │   └─ npu_flag=01 / 02 ─────► One direction only.
+ │                              Transient at ramp-up. Persistent =
+ │                              ask why the quiet direction is quiet.
+ │
+ └─ Is it a POLICY / session? ► diagnose sys session list
+     │
+     ├─ no_ofld_reason present ► READ THE CONFESSION. Do not hypothesise
+     │                           over the top of a stated reason.
+     │   ├─ disabled-by-policy ► auto-asic-offload or np-acceleration
+     │   └─ (proxy / helper / tunnel reasons — Session 41 list)
+     │
+     ├─ offload=9/0 ──────────► asymmetric. Return path is the suspect.
+     │
+     ├─ ips_offload=0/0 with a
+     │  flow-based profile ───► NTurbo not active.
+     │                          └─ show ips global → np-accel-mode none?
+     │                          └─ show firewall policy → np-acceleration disable?
+     │
+     └─ Config now correct but
+        sessions still wrong ─► STALE SESSIONS. The offload decision is made
+                                ONCE at session birth and never re-evaluated.
+                                diagnose sys session filter dstip &lt;ip&gt;
+                                diagnose sys session clear
+                                → then re-verify.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Five</div>
+  <h2>Common <em>dead ends</em></h2>
+  <table class="data-table">
+    <tr><th>Dead end</th><th>Why it wastes time</th><th>Do this instead</th></tr>
+    <tr><td>Screenshotting the GUI</td><td>Proves intent, not behaviour. The config was "correct" for 26 sessions.</td><td>Pull the session or tunnel table</td></tr>
+    <tr><td>Blaming the WAN</td><td>Physics rarely moves. 40m of fibre is 200ns.</td><td>Prove the box first — it's cheaper to check</td></tr>
+    <tr><td>Assuming <code>20</code> means the cipher</td><td>AES has been in NP silicon for generations</td><td>Suspect the <strong>hash</strong> first</td></tr>
+    <tr><td>Reading <code>00</code> as a fault on sight</td><td>An idle tunnel legitimately shows 00</td><td>Check <code>rxp</code>/<code>txp</code> before judging</td></tr>
+    <tr><td>Changing config, then re-reading the session table</td><td>Existing sessions were qualified at birth</td><td>Clear the sessions, then verify</td></tr>
+    <tr><td>Fixing the algorithm and closing the ticket</td><td>Explains the defect, not the change in symptom</td><td>Ask what removed the headroom</td></tr>
+    <tr><td>Applying the correct fix immediately</td><td>Crypto standards belong to someone</td><td>Route it through the owner</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Six</div>
+  <h2>Likely <em>root causes</em>, ranked</h2>
+  <ol>
+    <li><strong>Leftover troubleshooting state.</strong> <code>npu-offload disable</code>, <code>auto-asic-offload disable</code>, <code>np-accel-mode none</code> — someone disabled it for a capture and never restored it. By far the most common.</li>
+    <li><strong>Unsupported hash chosen at build time.</strong> SHA-512 selected once by someone being careful. Never offloaded, never noticed.</li>
+    <li><strong>A proxy-based profile on the policy.</strong> One poisons the whole policy (Session 41).</li>
+    <li><strong>Stale sessions</strong> holding a decision made before the fix.</li>
+    <li><strong>Asymmetric path</strong> — one direction not qualifying.</li>
+    <li><strong>Chip resource exhaustion</strong> — NP session-table limit reached, overflow to CPU (Session 40).</li>
+  </ol>
+  <div class="mental-note-block"><span class="mental-note-block-icon">◆</span><div class="mental-note-block-inner">
+    <div class="mental-note-block-label">The pattern behind #1 and #2</div>
+    <div class="mental-note-block-text">Both are one-off human decisions that never expire. Acceleration faults are usually archaeology, not events.</div>
+  </div></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Seven</div>
+  <h2>Exam <em>traps</em></h2>
+  <ul>
+    <li><strong>Slash notation across tables.</strong> <code>9/9</code> is a session-list value. <code>npu_flag</code> is a single two-digit value. A distractor offering <code>03/03</code> is bait.</li>
+    <li><strong>The ambiguous 00.</strong> Any stem giving <code>npu_flag=00</code> without traffic information cannot be diagnosed. If a question does supply traffic counters, they are the point.</li>
+    <li><strong>Two IPsec offload scopes.</strong> <code>npu-offload</code> = per phase-1 tunnel, ESP data path. <code>ipsec-asic-offload</code> = <code>config system global</code>, Diffie-Hellman.</li>
+    <li><strong>Three "disable acceleration" commands.</strong> <code>auto-asic-offload</code> (policy, NP forwarding, the sniffing workaround) · <code>np-acceleration</code> (policy, NTurbo) · <code>npu-offload</code> (tunnel).</li>
+    <li><strong>The CP8 exception.</strong> "What is the default <code>cp-accel-mode</code>?" — <code>advanced</code>, <em>unless</em> single CP8, where <code>basic</code> is the only mode.</li>
+    <li><strong>IPSA visibility.</strong> Any answer claiming a session-table field proves CP pattern-match offload is wrong.</li>
+    <li><strong>Cause vs remedy.</strong> If the stem asks "what is causing this", <code>set npu-offload enable</code> is not an answer.</li>
+  </ul>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Section Eight</div>
+  <h2>The <em>workflow</em>, compressed</h2>
+  <div class="callout callout-green">
+    <strong>1.</strong> State the business symptom in one sentence.<br>
+    <strong>2.</strong> Ask: new, or newly visible?<br>
+    <strong>3.</strong> State the expected path before you look at any output.<br>
+    <strong>4.</strong> Pull the table that records <em>behaviour</em> — session list or tunnel list.<br>
+    <strong>5.</strong> Read the confession (<code>no_ofld_reason</code> / <code>npu_flag</code>) before hypothesising.<br>
+    <strong>6.</strong> Separate <strong>can't</strong> from <strong>won't</strong> — they have different owners.<br>
+    <strong>7.</strong> Fix, clear stale sessions, <strong>re-verify from the same table</strong>.<br>
+    <strong>8.</strong> Explain what you could <em>not</em> prove, and what else must have changed.
+  </div>
+  <div class="mental-note-block"><span class="mental-note-block-icon">◆</span><div class="mental-note-block-inner">
+    <div class="mental-note-block-label">Step 8 is the senior step</div>
+    <div class="mental-note-block-text">Cipher explicitly credited the caveat about what the session table cannot show — "the part most engineers leave out." Stating the boundary of your evidence is not weakness. It is what makes the rest of it trustworthy.</div>
+  </div></div>
+</div>
+
+</div></main>
+<footer>LoFinance · Session 43 Troubleshooting Guide · <span>Thinking, not memorising</span></footer>
+
+</body>
+</html>

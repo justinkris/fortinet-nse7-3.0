@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 04 — Dual-Hub and Multiregion Topologies (SD-WAN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">SD-WAN</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 04</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 04 · NSE7 SD-WAN 7.6</div>
+    <h1>Scaling the Overlay <em>Across Regions</em></h1>
+    <p>How dual-hub redundancy, multiregion segmentation, and BGP self-healing turn a single-site SD-WAN into a resilient, geographically distributed fabric.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A single hub is <em>a single story</em>; a dual-hub, multiregion fabric is a network that keeps talking when a story ends.</div>
+  <p class="motivation-sub">This chapter maps the shapes of large SD-WAN deployments, the FortiManager knobs that make them practical, and the BGP tricks that let the overlay heal itself when a link degrades.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-dual-hub-single">Dual-Hub</a>
+  <a class="nav-tab" href="#section-multiregion">Multiregion</a>
+  <a class="nav-tab" href="#section-region-routing">Region Routing</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · DUAL-HUB</span>
+      </div>
+      <p class="socratic-insight">A single hub is a single point of failure — geographical, physical, and administrative all at once. Before you accept a second hub as the answer, ask yourself what kinds of redundancy it actually delivers, and what it costs in overlay count, IPsec state, and BGP peerings on every spoke.</p>
+      <ul class="socratic-questions">
+        <li>What is the difference between a Primary &amp; Secondary dual-hub deployment and a Primary &amp; Primary deployment, and which one load-shares versus fails over?</li>
+        <li>Why does the study guide recommend IBGP inside a region and grouping overlays per device and location?</li>
+      </ul>
+      <div class="answer-area" data-section="dual-hub-single">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">In a Primary &amp; Secondary dual-hub, each spoke establishes IPsec tunnels and BGP peerings with both hubs at all times, but the SD-WAN rules on the spoke assign a higher member cost to the secondary hub's interfaces. Under normal conditions the spoke steers to the primary; if the performance of the primary links degrades, the spoke falls back to the secondary. In a Primary &amp; Primary deployment, both hubs handle traffic simultaneously — the spoke picks either hub according to SD-WAN rules and per-link performance, which produces load-sharing rather than fail-over.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">IBGP inside a region is recommended because it is more scalable than static routing and it lets FortiGate learn multiple equal paths through the overlay, which SD-WAN then treats as candidate members. Grouping overlays per device and per location keeps rule definitions manageable — the administrator writes one rule that references the "HUB1" zone rather than enumerating every underlay-specific tunnel — and it aligns with how the SD-WAN Manager overlay orchestrator names things so member cost can be applied consistently to every interface reaching a given hub.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-dual-hub-single">
+      <div class="section-label">SECTION 01</div>
+      <h2>Two Hubs, <em>One Region</em></h2>
+
+      <p>The single-hub design that carries a small SD-WAN cleanly falls apart the moment the hub becomes a single point of failure for hundreds of branches. The Fortinet answer is to extend the base design with a <strong>second SD-WAN gateway</strong>, usually housed in a different building or a different city so a fibre cut, a power outage, or a maintenance window on one hub does not silence the whole overlay. Each gateway may be a standalone FortiGate or an HA cluster, and the two forms of redundancy compose — you can put an HA cluster at the primary hub and a standalone at the secondary, or run HA clusters on both, or add HA to spokes only at the most critical sites.</p>
+
+      <p>Operationally, dual-hub is a <em>dial-up IPsec</em> story. Each hub acts as a dial-up IPsec server on every available underlay, and every spoke builds a static IPsec tunnel toward each hub over each underlay. A spoke with two WAN uplinks and two hubs therefore carries <strong>four overlays</strong> — two to the primary and two to the secondary — and monitors the health of all four continuously. According to the SD-WAN rule definitions, the spoke steers traffic to the primary hub under normal conditions and falls back to the secondary based on link quality or hub availability. The hubs themselves communicate through the underlay — through the internet and the WAN links — and Fortinet does <em>not</em> require a direct hub-to-hub link, though the administrator is free to build one.</p>
+
+      <p>Dynamic routing is strongly preferred over static routes for these designs, and <strong>IBGP is the recommended protocol</strong> inside the region because it scales, propagates SD-WAN's health-influenced route selection, and pairs naturally with ADVPN when spoke-to-spoke shortcuts become desirable. ADVPN itself is a separate lesson, but the study guide is explicit that a geo-redundant dual-hub topology can be combined with ADVPN.</p>
+
+      <div class="callout"><strong>Two forms of redundancy, one topology.</strong> <em>Geo-redundancy</em> comes from placing the second hub in a different location; <em>intra-site redundancy</em> comes from an HA cluster — FGCP or FGSP. They are independent choices and can be mixed per site to match how critical each hub really is.</div>
+
+      <table class="data-table">
+        <thead><tr><th>Design Choice</th><th>Primary &amp; Secondary</th><th>Primary &amp; Primary</th></tr></thead>
+        <tbody>
+          <tr><td>Tunnels to both hubs</td><td>Always established</td><td>Always established</td></tr>
+          <tr><td>Traffic under normal conditions</td><td>Primary hub only</td><td>Both hubs, per SD-WAN rules</td></tr>
+          <tr><td>Secondary hub member cost</td><td>Higher than primary</td><td>Equal to primary</td></tr>
+          <tr><td>Behavior when primary degrades</td><td>Fall back to secondary</td><td>Rule-driven redistribution</td></tr>
+          <tr><td>Typical intent</td><td>Fail-over redundancy</td><td>Load-sharing across hubs</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Both hubs always have tunnels and peerings; it is the SD-WAN member cost on the spoke that decides whether the design behaves as fail-over or load-share.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-dual-hub-single" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-dual-hub-single','Dual-Hub')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-dual-hub-single" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-dual-hub-single')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · MULTIREGION</span>
+      </div>
+      <p class="socratic-insight">One region can hold a lot of spokes, but the moment you draw a line across a map — East vs West, Americas vs EMEA, retail vs manufacturing — the design changes shape. Multiregion is where SD-WAN stops being a hub-and-spoke and starts being a fabric of hub-and-spoke <em>blocks</em> stitched together by EBGP and static hub-to-hub tunnels.</p>
+      <ul class="socratic-questions">
+        <li>When should you consider a multiregion design over a very large single-region design, and what does each region actually contain?</li>
+        <li>What is the difference between the IPsec overlays inside a region and the IPsec overlays between regions?</li>
+      </ul>
+      <div class="answer-area" data-section="multiregion">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Consider a multiregion design when the deployment reaches thousands of sites, when traffic inside a region is significantly higher than traffic crossing regions, or when the sites correspond to geographical areas that need independent administration. Each region is a full hub-and-spoke block: it has its own SD-WAN topology, which can be single-hub or dual-hub, and each hub can be standalone or HA. Fortinet recommends dual-hub inside every region for redundancy. Regions are then interconnected in a full mesh between the regional hubs.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">At the region level the IPsec configuration mirrors a normal single-region deployment — hubs are dial-up IPsec endpoints for spokes, and every spoke builds a static IPsec tunnel to each hub over every available underlay. Between regions the picture flips: the hubs themselves build a full-mesh topology of <em>static</em> IPsec tunnels over each available underlay, with every hub establishing a tunnel over each transport to every other hub. There are no dial-up endpoints between regions — the hub-to-hub mesh is deterministic and static.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-multiregion">
+      <div class="section-label">SECTION 02</div>
+      <h2>A Region Is a <em>Hub-and-Spoke Block</em></h2>
+
+      <p>Multiregion is what the SD-WAN turns into once geography stops being a footnote. As the solution expands and the number of spokes climbs into the thousands, the administrator segments the fabric into regions — one per geographical area, or per business unit, or per any logical grouping that matches the expected traffic pattern. Inside each region, branches connect to the regional SD-WAN gateway; between regions, the regional gateways interconnect in a full mesh. When a user in one region needs to reach a workload in another, the traffic flows through the regional gateways rather than through a spoke-to-spoke shortcut.</p>
+
+      <p>The design test is straightforward: <em>if traffic within a region is significantly higher than traffic between regions</em>, multiregion is a fit. If the number of sites is modest and traffic patterns are flat, a single region — possibly with a very generous dual-hub — is usually simpler. Multiregion adds real complexity in BGP, in IPsec overlay counts on the hubs, and in FortiManager templates.</p>
+
+      <p>The IPsec design has two layers. <strong>At the region level</strong>, hubs act as dial-up IPsec endpoints for the spokes they serve. Each hub exposes a separate dial-up endpoint on each available underlay, and every spoke builds a static IPsec tunnel toward each hub over each underlay. <strong>Between regions</strong>, all hubs build a <em>full-mesh</em> topology of static IPsec tunnels — every hub establishes a tunnel to every other hub over every available underlay transport. Optionally, ADVPN can be enabled at the region level to allow intra-region shortcuts; if the design also needs <em>inter-region</em> ADVPN shortcuts, the forwarder mode must be enabled on each hub so discovery requests are forwarded across the region boundary.</p>
+
+      <p>Fortinet's example topology in the study guide names the pieces cleanly: a <em>West Region</em> with WEST-DC1 and WEST-DC2 as dual hubs (ASN 65001), an <em>East Region</em> with EAST-DC1 as its hub (ASN 65002), and a Multi-Regional SD-WAN/ADVPN fabric that carries EBGP between the two ASNs. It is common for the entire SD-WAN network to consist of a single region — but at thousands of sites, the multiregion design is the honest choice.</p>
+
+      <div class="callout callout-amber"><strong>ADVPN caveat.</strong> By default, ADVPN operates within a region. If you want spoke-to-spoke shortcuts to cross a region boundary, you either use IBGP as the only routing protocol across the whole fabric, or you deploy an ADVPN 2.0 topology. Otherwise, inter-region traffic flows through the regional hubs.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Inside a region: dial-up IPsec, hub-and-spoke. Between regions: static IPsec, full mesh. Two topologies, one fabric.</div>
+        </div>
+      </div>
+
+      <p>Beyond the pure enterprise design, the study guide also frames these topologies as <strong>MSSP blueprints</strong>. An MSSP delivering SD-WAN as a managed service has three architectural choices for the hub: install a multi-tenant hub on MSSP premises with one VDOM per customer and one SD-WAN instance per VDOM; install a dedicated hub per customer on MSSP premises (typically a FortiGate VM in a cloud infrastructure); or place the hub on the customer's own premises — a central office or data centre — with only the management plane remaining on the MSSP side. In multi-tenant designs, ADOMs on FortiManager keep each customer setup isolated, and most customer traffic is either spoke-to-spoke through ADVPN shortcuts or direct internet access (DIA) on the spokes, which means the hubs themselves see very little data-plane traffic.</p>
+
+      <p>The related <em>SD-branch</em> concept fits naturally here: an SD-branch is an SD-WAN spoke site enriched with extensions — FortiSwitch and FortiAP on the LAN side, FortiExtender on the WAN side for 4G/5G. All of them run in <em>managed mode</em>, controlled by the local FortiGate through FortiLink, so from the management plane's point of view the switch ports, wireless SSIDs, and cellular WAN are simply logical interfaces on the spoke FortiGate. That lets microsegmentation, 802.1X, NAC, and security profiles reach the LAN with the same policy language used on the overlay.</p>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-multiregion" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-multiregion','Multiregion')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-multiregion" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-multiregion')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · REGION ROUTING</span>
+      </div>
+      <p class="socratic-insight">Routing across regions is where BGP earns its keep. Inside a region you want IBGP for tight coupling to SD-WAN's health checks; between regions you want EBGP so you can summarize, apply policy, and keep each region's control plane loosely coupled. And once you have BGP, you can use it to let the overlay <em>heal itself</em>: spokes tell hubs which links are meeting SLA, and the hubs use that signal to steer return traffic.</p>
+      <ul class="socratic-questions">
+        <li>Why IBGP within a region and EBGP between regions, and where does route summarization belong?</li>
+        <li>How does SD-WAN self-healing with BGP work — what do <em>route-map-out-preferable</em> and <em>route-map-out</em> actually advertise, and why does the hub not need SD-WAN configured?</li>
+      </ul>
+      <div class="answer-area" data-section="region-routing">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Assign a single BGP autonomous system to each region. Inside the region, every spoke advertises its LAN prefixes to the hubs using IBGP, and the hubs readvertise those routes and their own LAN prefixes back to the spokes. Between regions, configure EBGP peering between the hubs to exchange inter-region routes; each region's hub then readvertises the learned routes to its own spokes. Route summarization is possible between regions but not within a region — SD-WAN needs to know all available paths to a destination to select the best member for a rule, so intra-region routes are usually left unsummarized. If ADVPN is planned inside a region, use dynamic BGP; alternatively, configure every hub as a BGP route reflector for intra-region ADVPN so each spoke learns all paths to every other spoke in the region.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">SD-WAN self-healing uses BGP communities to inform BGP neighbors of link SLA status. On the spoke, <em>route-map-out-preferable</em> is applied when the SLA is met and <em>route-map-out</em> is applied when the SLA is missed — each map sets a different community, so the same prefix is advertised with a "good" community over a healthy overlay and an "avoid" community over an unhealthy one. The BGP peer at the hub does not need to be a FortiGate at all; it simply matches the received community in a route-map-in and adjusts route priority, metric, or tag accordingly. That means the hub steers return traffic through the healthier overlay without ever running its own SD-WAN health check, and because every spoke advertises with the same community strings, one set of service rules on the hub covers every branch — the solution scales natively.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-region-routing">
+      <div class="section-label">SECTION 03</div>
+      <h2>BGP Between the Blocks, <em>and Self-Healing Across Them</em></h2>
+
+      <p>Once the overlays are up, the devices must exchange reachability so every site can reach every other site. Fortinet's recommended protocol for these topologies is BGP — an industry-standard, flexible, feature-rich dynamic protocol that composes cleanly with SD-WAN's per-member health checks. Inside a region the choice is <strong>IBGP</strong> (with BGP on loopback or BGP per overlay); between regions the choice is <strong>EBGP</strong>, one autonomous system per region.</p>
+
+      <p>The design guidelines the study guide lists are worth memorizing as a checklist:</p>
+
+      <ul>
+        <li><strong>One AS per region.</strong> Assign a single BGP autonomous system to each region so the intra-region control plane stays clean.</li>
+        <li><strong>IBGP from every spoke to its hubs</strong> to advertise LAN prefixes.</li>
+        <li><strong>EBGP peering between hubs</strong> to exchange inter-region reachability.</li>
+        <li><strong>Hubs readvertise</strong> everything they learn to their own spokes — inter-region routes plus their own LAN prefixes and destinations learned from outside the SD-WAN network.</li>
+        <li><strong>Dynamic BGP for ADVPN</strong> inside a region, or route reflection on each hub as an alternative that lets every spoke learn all paths to every other spoke in the region.</li>
+        <li><strong>Summarize between regions, not inside them.</strong> SD-WAN needs to see all available paths to a destination to select the best member for its rules, so intra-region summarization defeats the point; summarize the routes exchanged between the regions.</li>
+      </ul>
+
+      <div class="callout"><strong>Scalability of the orchestrator.</strong> When FortiManager's overlay orchestrator builds BGP router IDs for the branches, it uses a metadata variable — good for up to 255 branches. Beyond 255, the orchestrator switches to a Jinja formula (<em>ipmath(branch_id|int)</em>) that increments the network part of a base router ID as the branch count grows. It also subdivides the overlay network for BGP per-overlay neighbor ranges: a class C overlay with two hubs and three overlays yields eight /27 subnets with 30 addresses each — capping the design at 30 spokes. A class B overlay accommodates more than 8,190 spokes, and the orchestrator defaults to <em>10.10.0.0/16</em> for exactly that reason.</p>
+      </div>
+
+      <p>On top of BGP, the study guide layers three SD-WAN-specific BGP options that matter most for dual-hub and multiregion designs:</p>
+
+      <ol>
+        <li><strong>BGP route tags.</strong> SD-WAN rules can steer traffic to routes carrying a specific route tag. In FortiOS 7.4 and later, a firewall address object of type <em>route-tag</em> is used as an SD-WAN service destination — the community learned from a BGP neighbor is mapped to a route tag via a community-list and a route-map, and the resulting address object is what the SD-WAN service rule targets.</li>
+        <li><strong>SD-WAN self-healing with BGP.</strong> On the spoke, <em>route-map-out-preferable</em> is applied to BGP advertisements when the SLA is met, and <em>route-map-out</em> is applied when it is not. Each maps to a different community — a "good" community for healthy overlays and an "avoid" community for unhealthy ones — so BGP neighbors, whether FortiGates or not, learn which overlay to prefer for return traffic without ever running their own health check.</li>
+        <li><strong>Route mapping according to SLA status</strong> with <em>route-map-out-preferable</em> and <em>minimum-sla-meet-members</em>. The latter refines behavior when multiple SD-WAN members feed the same BGP neighbor: by default, <em>route-map-out-preferable</em> is applied when at least one member meets the SLA; setting <em>minimum-sla-meet-members 2</em> requires two members within SLA before the preferable route map is used.</li>
+      </ol>
+
+      <p>The mechanics of self-healing follow directly. The spoke associates each overlay with a community — say <em>65000:11</em> for tunnel T1 preferred, <em>65000:21</em> for tunnel T2 preferred, <em>65000:50</em> when no SLAs are met — and advertises the same prefix with the community that matches the current SLA state. On the hub, a community-list matches each incoming community and a route-map sets a corresponding priority (lower is preferred): 11 for the primary healthy path, 21 for the alternate healthy path, 50 for the "avoid" community. Standard BGP path selection then routes hub-initiated traffic through the overlay with the lowest priority — and the whole thing works even if the hub is a third-party router with no SD-WAN awareness.</p>
+
+      <div class="code-block">
+        <div class="code-label">SPOKE — BGP self-healing route maps</div>
+        <pre><code>config router route-map
+    edit "comm1"
+        config rule
+            edit 1
+                set match-ip-address "net192"
+                set set-community "65000:11"
+            next
+        end
+    next
+end
+
+config router bgp
+    config neighbor
+        edit "172.31.0.1"
+            set route-map-out "comm5"
+            set route-map-out-preferable "comm1"
+        next
+        edit "172.31.0.2"
+            set route-map-out "comm5"
+            set route-map-out-preferable "comm2"
+        next
+    end
+end</code></pre>
+      </div>
+
+      <p>For multi-VRF deployments — the <em>segmentation over single overlay</em> use case — FortiGate supports VRF-aware overlays. On the control plane, MP-BGP VPNv4 advertises VRF information alongside each LAN prefix; on the data plane, traffic is tagged using <em>vpn-id-ipip</em> encapsulation (a variant of IPIP with the VRF ID encoded into the extra IP header inside the ESP payload) so a single IPsec tunnel can carry multiple segmented flows without collapsing their separation. Health checks can also be made VRF-aware: <em>set vrf</em> and <em>set source</em> under <em>config health-check</em> let the spoke tag probes with the correct VRF so the hub forwards them to the right health-check server.</p>
+
+      <p>Finally, the <strong>hub-to-edge SD-WAN</strong> problem — how the hub steers sessions initiated behind it toward the healthier overlay to a given spoke — has two supported answers. <em>Remote health probing</em> lets the spoke embed SLA measurements (latency, jitter, packet loss) inside the ICMP probes it sends over each overlay; the hub reads those measurements and applies priorities to IKE routes (<em>set priority-in-sla</em> and <em>set priority-out-sla</em>) so lower priorities go to overlays inside SLA. Remote health probing requires active-mode ping health checks on the spokes, works with only one SLA criterion per hub, and pairs naturally with BGP-on-loopback or static routing (with static IP addressing for tunnels, since it is not compatible with <em>mode-cfg</em>). The alternative is BGP self-healing, described above, which distributes the same signal through communities rather than through embedded probes.</p>
+
+      <div class="callout callout-green"><strong>Neighbor health monitoring.</strong> An SD-WAN neighbor can be monitored by SLA link quality (<em>set mode sla</em>, one or more members per neighbor) or by speed-test status (<em>set mode speedtest</em>, exactly one member per neighbor, using hub-and-spoke or cloud-assisted speed tests). Only SLA mode supports multiple members per neighbor.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The spoke speaks the truth about link health; BGP communities carry that truth to the hub; the hub — SD-WAN or not — obeys standard BGP path selection. That is the whole self-healing story.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-region-routing" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-region-routing','Region Routing')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-region-routing" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-region-routing')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-03-overlay-design.html">
+    <span class="page-nav-label">← PREVIOUS</span>
+    <span class="page-nav-title">Chapter 03 · Overlay Design</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-05-advpn.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Chapter 05 · ADVPN</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 SD-WAN 7.6</span><span>.</span> Chapter 04 · Dual-Hub and Multiregion Topologies
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-sdwan-ch04-dual-hub-multiregion';
+
+const SECTIONS = {
+  'section-dual-hub-single': 'Dual-Hub',
+  'section-multiregion': 'Multiregion',
+  'section-region-routing': 'Region Routing',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

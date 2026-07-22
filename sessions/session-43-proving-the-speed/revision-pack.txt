@@ -1,0 +1,431 @@
+==================================================================
+LOFINANCE — SESSION 43 REVISION PACK
+"Proving the Speed"
+Hardware acceleration configuration & diagnostics
+Study Guide ch.10, pp. 294-302 · Blueprint 1.2
+==================================================================
+
+
+==================================================================
+PART 1 — QUICK SUMMARY (one page)
+==================================================================
+
+Cipher refused to accept a dashboard screenshot as proof that
+VLAN 40 trading traffic was inspected and accelerated. "A checkbox
+proves INTENT. I asked for EVIDENCE." The evidence lives in
+`diagnose sys session list`, on the npu info line: offload=9/9
+proves NP7 forwarding acceleration in both directions;
+ips_offload=9/9 proves the inspection is riding the NTurbo path.
+
+That raised the session's central lesson: WHICH TABLE OWNS WHICH
+FIELD. A session table holds one row per session, so it can only
+record facts about the PATH a session takes. NTurbo is a path, so
+it has a field. IPSA is a per-pattern-match phone call from the
+IPS engine to the CP — thousands per session — so it has NO
+session-table footprint at all. The reasoning tool: "what can this
+table physically record?"
+
+Then Riley's ticket. DR replication to Parramatta crawled all
+night. `diagnose vpn tunnel list` showed npu_flag=20 — unsupported
+cipher or HMAC — with `enc: aes-256-cbc auth: sha512`. AES has
+been in NP silicon for generations; SHA-512 has not. The tunnel had
+never been offloaded since the day it was built. Every ESP packet
+was being encrypted and decrypted in software on the CPU.
+
+The mechanism underneath: the NP's only special job on an ESP
+packet is CRYPTO, and to do it, it needs the SA (algorithm + keys)
+copied into NPU memory. NPU memory is finite — the same scarcity
+that caps an NP7 at ~12M sessions. So FortiOS is lazy: SAs load
+into the KERNEL at phase 2 up, and are copied to the NPU only on
+FIRST TRAFFIC, per direction. That produces npu_flag: 00 (nothing),
+01 (outbound), 02 (inbound), 03 (both — healthy), 20 (refusal).
+
+And the exam-critical pair: CAN'T versus WON'T. npu_flag=20 means
+the silicon cannot do the algorithm — fix requires a crypto change
+and therefore a sign-off. npu_flag=00 WITH TRAFFIC FLOWING means
+someone set `npu-offload disable`, almost always for a packet
+capture they never undid. Identical symptom, different owner.
+
+Junior wanted to change SHA-512 to SHA-256 immediately. The fix was
+correct and would have worked — which is what made it dangerous.
+Cipher wrote the crypto standard. A correct fix applied without the
+sign-off it needs is still an incident.
+
+Open action: the tunnel had SHA-512 from day one and was never
+offloaded, so why did it only crawl LAST NIGHT? Fixing the
+algorithm restores service; it does not explain what removed the
+headroom that had been hiding the defect.
+
+
+==================================================================
+PART 2 — CHEAT SHEET
+==================================================================
+
+--- COMMANDS ---
+
+diagnose sys session list
+    npu info: flag=0x81/0x91, offload=9/9, ips_offload=9/9,
+              epid=128/166, ipid=166/128, vlan=0x0000/0x0000
+    npu_state=0x000001 no_offload
+    no_ofld_reason: disabled-by-policy
+
+diagnose vpn tunnel list name <tunnel>
+    stat: rxp=... txp=...          <- is traffic flowing?
+    enc: aes-256-cbc  auth: sha512 <- the WHY when flag=20
+    npu_flag=03 npu_rgwy=... npu_lgwy=... npu_selid=1
+
+show vpn ipsec phase1-interface "<name>"    <- npu-offload state
+show ips global                             <- accel modes
+show firewall policy <id>                   <- policy-level toggles
+
+diagnose sys session filter dstip <ip>
+diagnose sys session clear                  <- stale sessions
+
+diagnose hardware lspci | grep 1a29   (4e36=NP6, 4e37=NP7)
+get hardware status                    (ASIC version: CP9 / SOC5)
+diagnose npu np7 dvlan-mode-list       (802.1AD default)
+diagnose npu np7lite dvlan-mode-list   (SP5 = NP7lite)
+
+--- CONFIGURATION ---
+
+config ips global
+    set np-accel-mode {none | basic}              # NTurbo
+    set cp-accel-mode {none | basic | advanced}   # IPSA
+end
+
+config firewall policy
+    edit <id>
+        set np-acceleration {enable | disable}    # NTurbo, policy
+        set auto-asic-offload {enable | disable}  # NP fwd, policy
+    next
+end
+
+config vpn ipsec phase1-interface
+    edit "<tunnel>"
+        set npu-offload {enable | disable}        # per tunnel, ESP
+    next
+end
+
+config system global
+    set ipsec-asic-offload {enable | disable}     # GLOBAL, DH
+end
+
+config system interface                            # VLAN over vlink
+    edit "VLANvlink1Sales"
+        set vdom "Sales"
+        set interface "npu0_vlink1"
+        set vlanid 10          # SAME VLAN ID on both vlinks
+    next
+end
+
+--- DEFAULTS (memorise) ---
+
+np-accel-mode ............ basic
+cp-accel-mode ............ advanced
+                           (basic is the ONLY mode on single-CP8)
+np-acceleration .......... enable
+auto-asic-offload ........ enable
+npu-offload .............. enable
+ipsec-asic-offload ....... enable
+DVLAN mode (NP7/SP5) ..... 802.1AD (0x88a8)
+
+--- KEY VALUES ---
+
+offload= / ips_offload=    9 = NP7, 6 = NP6.
+                           X/Y = originate / reply direction.
+                           9/0 = asymmetric = fault.
+
+npu_flag=  00  kernel only (no traffic yet OR disabled)
+           01  OUTBOUND SA copied to NPU
+           02  INBOUND SA copied to NPU
+           03  BOTH copied — healthy steady state (01+02)
+           20  unsupported cipher/HMAC — CANNOT offload
+
+--- DESIGN RULES ---
+
+* Both npu_vlinks default to ROOT. Assign ONE to each VDOM or
+  nothing is accelerated.
+* VLANs over NPU vlinks need the SAME VLAN ID on both.
+* auto-asic-offload disable affects ALL traffic on the policy.
+  Set it back immediately.
+* One unsupported algorithm poisons the WHOLE tunnel.
+  (cf. one proxy profile poisons the whole policy — S41.)
+* The offload decision is made ONCE at session birth. Fix the
+  config, then CLEAR the sessions, then re-verify.
+* A software mode that varies by hardware generation is a thin
+  wrapper over a fixed instruction set.
+
+--- THE THREE "DISABLE" COMMANDS (do not confuse) ---
+
+auto-asic-offload   policy    kills NP forwarding (sniff workaround)
+np-acceleration     policy    kills NTurbo
+npu-offload         tunnel    kills IPsec ESP offload
+ipsec-asic-offload  GLOBAL    kills DH key-exchange CP offload
+
+
+==================================================================
+PART 3 — FLASHCARDS
+==================================================================
+
+Q: What single line proves a session is both accelerated and
+   inspected?
+A: The npu info line in `diagnose sys session list`:
+   offload=9/9, ips_offload=9/9.
+
+Q: What does the digit 9 mean in offload=9/9?
+A: NP7. NP6 shows 6.
+
+Q: What does ips_offload prove?
+A: The session's inspection is riding the NTurbo path. It says
+   nothing about the CP.
+
+Q: What does IPSA leave in the session table?
+A: Nothing. It is a per-pattern-match call, not a path.
+
+Q: The tool for deciding which feature owns a field?
+A: Ask what the table can physically record. One row per session
+   = paths only.
+
+Q: np-accel-mode — values and default?
+A: none | basic. Default basic.
+
+Q: cp-accel-mode — values, default, and the exception?
+A: none | basic | advanced. Default advanced. Single-CP8 devices
+   are limited to basic only.
+
+Q: Why can't a CP8 do advanced mode?
+A: The extra pattern-match types were never etched into that
+   silicon. FortiOS won't offer work the chip has no instructions
+   for.
+
+Q: What does the NP do to an ESP packet that it never does to a
+   TCP packet?
+A: Crypto — encrypt outbound, decrypt inbound.
+
+Q: What must be in NPU memory for that to happen?
+A: The Security Association — algorithm and keys.
+
+Q: Why aren't SAs copied to the NPU when phase 2 comes up?
+A: NPU memory is finite. Don't spend it on a tunnel carrying no
+   traffic. Copied on first traffic, per direction.
+
+Q: npu_flag=00?
+A: SAs in the kernel only. Either no traffic yet, or offload
+   disabled.
+
+Q: npu_flag=01 vs 02?
+A: 01 = outbound SA copied. 02 = inbound SA copied.
+
+Q: npu_flag=03?
+A: Both SAs in the NPU. Healthy steady state. (01+02 bitfield.)
+
+Q: npu_flag=20?
+A: Unsupported cipher or HMAC. Cannot be offloaded, ever, as
+   configured.
+
+Q: Which command holds npu_flag?
+A: diagnose vpn tunnel list name <tunnel>. NOT the session list.
+
+Q: You see npu_flag=20. What's the next line you read?
+A: enc: / auth: — and suspect the HASH first, not the cipher.
+
+Q: Tunnel is slow, npu_flag=00, traffic IS flowing. Diagnosis?
+A: npu-offload is disabled on phase 1. Someone did it and didn't
+   put it back. Confirm with show vpn ipsec phase1-interface.
+
+Q: Can't vs Won't — one line?
+A: 20 = can't (silicon, needs a sign-off to fix).
+   00 with traffic = won't (a human, just re-enable it).
+
+Q: Per-tunnel vs global IPsec offload commands?
+A: npu-offload = per phase-1 tunnel, ESP data path.
+   ipsec-asic-offload = config system global, Diffie-Hellman.
+
+Q: How do you sniff traffic on an npu_vlink?
+A: set auto-asic-offload disable on the firewall policy — then
+   put it straight back. It affects all traffic on that policy.
+
+Q: What are the NPU VDOM links called, and the assignment rule?
+A: npu_vlink0 and npu_vlink1. Both default to root. Assign one
+   to each VDOM or nothing accelerates.
+
+Q: How do you create more accelerated inter-VDOM links?
+A: VLAN interfaces on top of the npu_vlink interfaces, with the
+   same VLAN ID on both.
+
+Q: Which chips offload DVLAN and VXLAN, and what's the default
+   DVLAN mode?
+A: NP7 and SP5 (NP7lite). Default 802.1AD (0x88a8).
+
+Q: You fixed the algorithm and replication recovered. Are you
+   done?
+A: No. The defect existed since build. Find what removed the
+   headroom that was hiding it.
+
+Q: Junior's fix was technically correct. Why was it still wrong?
+A: It changed a standard owned by someone else without sign-off.
+   A correct fix applied without authority is still an incident.
+
+
+==================================================================
+PART 4 — PODCAST PROMPT
+"THE PACKET PATH" — Episode 43
+==================================================================
+
+Paste the following into an AI audio generator.
+
+-----------------------------------------------------------------
+
+Produce a single-host narrative technical podcast episode, roughly
+twelve to fourteen minutes, for a show called "The Packet Path."
+The host is warm, dry, unhurried, and slightly wry — a senior
+network engineer telling a story to a colleague rather than
+lecturing. Technical precision matters, but the story carries it.
+
+EPISODE TITLE: "The Tunnel Nobody Checked."
+
+COLD OPEN:
+Open on the image, not the technology. A Tuesday morning at
+LoFinance. On a bench in the network room, someone has draped an
+Ethernet patch lead over the corner of a monitor like a scarf, and
+tied a paper label to it. The label reads: EL TÚNEL. HQ to DR. Age,
+twenty-six sessions. Grievance — nobody has ever checked on me.
+Let that sit for a beat. Then: this is an episode about a fault
+that was present from the day the network was built, caused no
+outage, broke no alarm, and sat in plain sight for months.
+
+ACT ONE — EVIDENCE VERSUS INTENT:
+Introduce Cipher, the security lead, who has taped a compliance
+directive to a glass wall and now wants proof that the trading
+VLAN is both inspected and accelerated. Junior — the eager,
+overconfident one — offers to screenshot the dashboard. It says
+"IPS: enabled" right there. Cipher's reply is the spine of the
+episode: a checkbox proves INTENT. I asked for EVIDENCE.
+Explain the distinction properly. Configuration describes what you
+meant to happen. The session table describes what is happening.
+Walk through `diagnose sys session list` and the npu info line —
+offload equals nine slash nine, ips_offload equals nine slash
+nine. Explain that nine means NP7, six means NP6, and the slash
+separates the two directions of the flow, each of which needs its
+own offload key. Nine slash zero is not "mostly fine" — it means
+the replies are crawling through the CPU.
+
+ACT TWO — THE FILING CABINET PROBLEM:
+Here is the conceptual heart. Our engineer, reading that output,
+attaches the wrong feature to the field — says ips_offload proves
+the CP is doing signature matching. Reasonable, but wrong, and the
+way it gets fixed is the transferable lesson.
+Don't correct him with a fact. Ask him what the table can
+physically record.
+A session table holds one row per session. So it can record which
+PATH a session took. NTurbo is a path — a session either rides it
+or it doesn't, decided once at birth. It gets a field. IPSA is
+different: it's a phone call the IPS engine makes to the content
+processor, per pattern match, thousands of times inside a single
+session's inspection. There is nowhere in a one-row-per-session
+table to write that down. So IPSA leaves no footprint at all.
+Give the analogy: a delivery van's logbook records the route. It
+does not record every phone call the driver made from the cab.
+Then the caveat, because Cipher supplies it: "IPSA leaves no
+footprint in THIS table" is true. "IPSA is unmeasurable" is false.
+Know the difference between no evidence here and no evidence.
+
+ACT THREE — JUNIOR'S MISTAKE, PART ONE:
+Cover the CP8 detour. cp-accel-mode has three values — none,
+basic, advanced. Default is advanced. But on a device with a
+single CP8, basic isn't the default, it's the only option. Explain
+why: a content processor isn't a software library, it's a
+pattern-matching engine with a fixed instruction set etched into
+silicon. Advanced mode offloads more TYPES of matching. Those
+circuits were never fabricated on the CP8. FortiOS won't offer to
+hand a chip work it has no instructions to perform.
+Then state the generalisation clearly, because it pays off in five
+minutes: a software mode that varies by hardware generation is
+always a thin wrapper over a fixed instruction set.
+
+ACT FOUR — EL TÚNEL:
+Now the ticket. DR replication crawled all night. Same box, same
+config, nothing changed.
+Build the mechanism before the reveal. What does the NP actually
+do to an IPsec packet that it never does to a TCP packet? Crypto.
+That's the whole exception. And to do crypto it needs the Security
+Association — the algorithm and the keys — copied into the NPU
+itself. But NPU memory is finite. It's the same scarcity that caps
+an NP7 at twelve million sessions. So FortiOS is lazy on purpose:
+the SAs load into the kernel when phase two comes up, and are
+copied to the NPU only when traffic actually arrives — one
+direction at a time.
+That's what npu_flag counts. Zero-zero, nothing in the NPU.
+Zero-one, outbound copied. Zero-two, inbound copied. Zero-three,
+both — the healthy steady state. And then twenty, which breaks the
+pattern entirely, because it isn't progress. It's a refusal.
+The reveal: the tunnel reads npu_flag equals twenty. Encryption is
+AES-256-CBC — fine, that's been in NP silicon for generations.
+Authentication is SHA-512. And there is the generalisation cashing
+in: the NP's crypto isn't a library either. Etched circuits, fixed
+list. Ask for something off the list and it can't decline
+politely. FortiOS stamps twenty and hands the entire tunnel to the
+CPU.
+Not just the hashing. The whole tunnel. Rhyme it with the previous
+episode: one proxy profile poisons the whole policy. Same shape,
+different layer.
+Deliver Señor's whiteboard line: zero-zero means not yet.
+Zero-three means yes. Twenty means never — and never has a reason.
+
+ACT FIVE — JUNIOR'S MISTAKE, PART TWO:
+Junior says: easy, change it to SHA-256, I'll do it now.
+And here's the thing — he's right. It would work. Replication
+would recover. Which is exactly what makes it the mistake of the
+episode. Cipher wrote the crypto standard. A correct fix applied
+without the sign-off it requires is still an incident.
+Explain how to put it to her honestly: we're not lowering the
+security bar, we're moving from an unnecessary margin to the
+industry standard, and buying back hardware crypto on a tunnel
+that's been running in software since the day it was built.
+Concede nothing that's actually true. Hide nothing that is.
+
+ACT SIX — CAN'T VERSUS WON'T:
+Close the technical arc with the pair worth remembering.
+Two tunnels, both slow, both doing software crypto. One reads
+twenty. One reads zero-zero with traffic definitely flowing.
+Twenty means CAN'T — the silicon cannot do the algorithm. Fix
+needs a signature.
+Zero-zero with traffic means WON'T — someone set npu-offload
+disable, almost certainly to force traffic through the CPU for a
+packet capture, and never put it back. Fix is one command and no
+paperwork.
+Same symptom. Same slow tunnel. Completely different owner.
+
+CLOSING BEAT:
+Return to the patch lead. Señor takes the label off and puts it in
+his pocket. El Túnel has been seen, he says. He can rest.
+Then the uncomfortable question the host should leave hanging: the
+tunnel had SHA-512 from the day it was built. It was never
+offloaded. So why did it only crawl LAST night? Fixing the
+algorithm restores the service. It does not explain what removed
+the headroom that had been hiding the defect for twenty-six
+sessions. Find that, or you'll be back.
+
+TEASER FOR NEXT EPISODE:
+Wednesday morning. Cipher's sign-off arrives. One line: approved,
+SHA-256 — but run the same audit on every tunnel in the fleet. If
+one has been in software for twenty-six sessions, how many others
+are?
+Señor asks how many tunnels there are. Junior says, like, nine?
+Señor asks how you check nine tunnels. Junior says: you run the
+command nine times?
+End on the sound of Señor putting on the cowboy hat, and the
+host's last line: next week, we find out how many other things
+nobody has checked.
+
+TONE NOTES: no sound effects beyond a light musical sting between
+acts. Do not read CLI commands as strings of characters — say them
+naturally, the way an engineer says them out loud. Let the pauses
+do work, particularly before the npu_flag reveal.
+
+-----------------------------------------------------------------
+
+==================================================================
+END OF REVISION PACK — Session 43, "Proving the Speed"
+Completed Tuesday, 21 July 2026.
+==================================================================

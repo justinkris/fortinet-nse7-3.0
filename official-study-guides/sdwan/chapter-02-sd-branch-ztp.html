@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 02 — SD-Branch and Zero-Touch Provisioning (SD-WAN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">SD-WAN</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 02</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 02 · NSE7 SD-WAN 7.6</div>
+    <h1>Turning Up a Branch <em>Without Touching It</em></h1>
+    <p>How FortiManager, device blueprints, CSV imports, and FortiAnalyzer combine to onboard, provision, and monitor SD-WAN branches at scale.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A hundred branches, <em>one shipping box at a time</em>.</div>
+  <p class="motivation-sub">Zero-touch provisioning is what turns an SD-WAN rollout from a road trip into a spreadsheet. FortiManager holds the plan; the FortiGate arrives, phones home, and configures itself.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-sd-branch-overview">ZTP Overview</a>
+  <a class="nav-tab" href="#section-ztp-concepts">Blueprints &amp; CSV</a>
+  <a class="nav-tab" href="#section-ztp-workflow">SD-WAN Monitoring</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · ZTP OVERVIEW</span>
+      </div>
+      <p class="socratic-insight">An SD-WAN project rarely involves one FortiGate — it involves dozens or hundreds. Before we look at any GUI, ask yourself what the administrator actually does when a branch box is powered on for the first time, and how much of that work has to be done by hand.</p>
+      <ul class="socratic-questions">
+        <li>What is the difference between zero-touch provisioning (ZTP) and low-touch provisioning (LTP), and where does each place the burden of initial configuration?</li>
+        <li>Which four onboarding methods does the study guide list, and what does each one rely on to tell the FortiGate where FortiManager lives?</li>
+      </ul>
+      <div class="answer-area" data-section="sd-branch-overview">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">With <em>ZTP</em>, the administrator performs no configuration on the FortiGate itself. At power on, the device pulls its IP address, netmask, and gateway from a DHCP server, and DHCP option 240/241 tells it the FortiManager IP address and credentials. With <em>LTP</em>, a technician performs a small amount of manual configuration — typically the management interface IP, default route, and FortiManager IP with connection credentials — so that the FortiGate can reach FortiManager. In both flavors, FortiManager then installs the detailed configuration (routing, SD-WAN rules, firewall policies, and so on) on the device.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">The four onboarding methods are: <strong>ZTP using FortiCloud and FortiDeploy</strong>, where the FortiGate at factory default authenticates to FortiCloud with its serial number and is directed to FortiManager based on device registration data; <strong>ZTP using DHCP option</strong>, which requires no FortiCloud and relies on DHCP option 240/241 to hand over the FortiManager location; <strong>ZTP using USB boot</strong>, where the FortiGate reads its initial configuration from a USB stick; and <strong>LTP</strong>, where a site technician manually applies enough configuration to reach FortiManager and then triggers the connection using a serial number or pre-shared key.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-sd-branch-overview">
+      <div class="section-label">SECTION 01</div>
+      <h2>What Zero-Touch Provisioning <em>Actually Promises</em></h2>
+
+      <p>Zero-touch provisioning is best understood as a promise about the human, not the machine. A large SD-WAN project can involve hundreds of FortiGate branch devices, and the traditional model — an engineer opening a serial console, typing in a management IP, uploading a config, verifying the tunnels — simply does not scale. ZTP groups together a family of techniques and tools that let FortiManager push a <em>detailed and personalized</em> configuration to each FortiGate without anyone touching the device beyond unpacking it and plugging it in.</p>
+
+      <p>The study guide is careful to name two flavors. <strong>Zero-touch provisioning (ZTP)</strong> requires no preconfiguration of the FortiGate at all — the device boots on factory defaults, obtains its network settings automatically over DHCP, and is told where FortiManager lives either by FortiCloud or by DHCP options 240/241. <strong>Low-touch provisioning (LTP)</strong> requires a small amount of manual preparation: an administrator or site technician sets the management interface IP address, the default route, and the FortiManager IP and credentials, and only then does FortiManager take over and install the rest.</p>
+
+      <p>Underneath both flavors sits the same foundation. Three ingredients make ZTP and LTP possible: a <em>device blueprint</em> that describes what a given model of FortiGate should look like when it comes online; a set of <em>provisioning templates</em> — CLI, IPsec, BGP, SD-WAN, policy packages — that carry the actual configuration payload; and a <em>CSV file</em> whose rows list every device to be deployed together with the values of the metadata variables that personalize the templates for each site. The templates are written once; the CSV multiplies them across the fleet.</p>
+
+      <p>Choosing the onboarding method is the planning step that comes before any of this. ZTP using FortiCloud and FortiDeploy is the option for a FortiGate that has factory defaults and internet reachability through an external DHCP server — it authenticates to FortiCloud with its serial number and is redirected to the correct FortiManager. ZTP using DHCP option 240/241 does the same job without requiring FortiCloud connectivity, provided the DHCP server on the WAN interface has been configured with the FortiManager location. ZTP using USB boot pulls the initial configuration off a USB stick. LTP is the escape hatch for sites where none of those automated paths are practical.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Method</th><th>Preconfiguration</th><th>How FortiGate Finds FortiManager</th></tr></thead>
+        <tbody>
+          <tr><td>ZTP · FortiCloud + FortiDeploy</td><td>None (factory default)</td><td>Authenticates to FortiCloud by serial number, receives FortiManager location from device registration data</td></tr>
+          <tr><td>ZTP · DHCP option</td><td>None (factory default)</td><td>DHCP server provides FortiManager location via option 240/241</td></tr>
+          <tr><td>ZTP · USB boot</td><td>None on FortiGate; config on USB stick</td><td>Initial configuration read from USB at boot</td></tr>
+          <tr><td>LTP</td><td>Manual management IP, default route, FortiManager IP and credentials</td><td>Administrator or technician configures FortiManager reachability by hand</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Two ways to think of the trade-off:</strong> ZTP maximizes automation at the cost of requiring some infrastructure (FortiCloud reachability or a DHCP server that speaks option 240/241). LTP trades a small amount of on-site typing for independence from that infrastructure. Both end at the same place — FortiManager installing the personalized configuration.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">"Zero touch" does not mean zero preparation. It means the preparation was done once, on FortiManager, before any hardware was shipped. The FortiGate stays untouched because the plan is already waiting for it.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-sd-branch-overview" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-sd-branch-overview','ZTP Overview')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-sd-branch-overview" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-sd-branch-overview')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · BLUEPRINTS &amp; CSV</span>
+      </div>
+      <p class="socratic-insight">The ZTP workflow has three phases — <em>preparation</em> done once, <em>staging</em> where each site is declared, and <em>deploying</em> where technicians simply connect the boxes. Two objects do most of the work: the <strong>device blueprint</strong> that describes a model, and the <strong>CSV file</strong> that describes the fleet.</p>
+      <ul class="socratic-questions">
+        <li>What does a device blueprint let you predefine, and why should you not assign both provisioning templates and a device group inside the same blueprint?</li>
+        <li>Which columns must a CSV file contain to import model devices into FortiManager, and what happens if the import contains a serial number that is already managed?</li>
+      </ul>
+      <div class="answer-area" data-section="ztp-concepts">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">A device blueprint predefines parameters per device model: <em>Automatically Link to Real Device</em> (auto-link, required for ZTP/LTP), <em>Enforce Firmware Version</em>, <em>Enforce Device Configuration</em>, <em>Pre-Run CLI Template</em>, <em>Assign Policy Package</em>, and <em>Provisioning Templates</em>. It can also add the device to a group. However, if you add a device to a group, it will inherit all templates associated with that group — so assigning provisioning templates <em>and</em> a group on the same blueprint risks conflicting configuration. You should choose one path or the other for a given blueprint.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">The required CSV columns are <strong>serial number</strong>, <strong>device blueprint</strong>, and <strong>name</strong>. For VM models, <strong>vm_interface_number</strong> is also required. For SD-WAN branches the file typically carries <strong>branch_id</strong> for the SD-WAN template, and any metadata variable names as additional columns. If a serial number in the CSV corresponds to a device already managed by FortiManager, the import triggers a warning and that line is ignored — which is how FortiManager prevents an accidental override of production configuration.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ztp-concepts">
+      <div class="section-label">SECTION 02</div>
+      <h2>Device Blueprints and CSV Imports <em>Do the Heavy Lifting</em></h2>
+
+      <p>The ZTP workflow diagram in the study guide splits the effort into three vertical bands. In the <strong>Preparation</strong> band, the administrator defines metadata variables, CLI templates, IPsec templates, BGP templates, firewall objects, SD-WAN templates, and policy packages — the entire configuration payload — bundled together as the SD-WAN overlay templates. This work is done <em>once</em> per SD-WAN deployment. In the <strong>Staging</strong> band, each site is provisioned on FortiManager by creating a device entry with its serial number and device name, either one at a time or, more realistically, by importing a CSV that lists every branch at once. In the <strong>Deploying</strong> band, technicians simply connect each site — FortiManager recognizes the FortiGate and loads the intended configuration on it automatically.</p>
+
+      <p>A <em>device blueprint</em> is the object that makes the staging step compact. A blueprint is a model-specific description — one for a FortiGate-40F branch, another for a FortiGate-VM64-KVM, another for a FortiGate-1800F hub — that stores the parameters FortiManager should apply to a device of that model as soon as it comes online. Per blueprint, the administrator can enforce a firmware version, add the device to a group, run a pre-run CLI template, assign a policy package, and assign one or more provisioning templates. The special toggle <em>Automatically Link to Real Device</em> (auto-link) must be enabled for ZTP or LTP to function at all — it is what lets FortiManager attach the blueprint to the physical device the moment it registers.</p>
+
+      <p>When a FortiGate powers on and reaches FortiManager, FortiManager checks whether a corresponding device model exists. If a blueprint matches, FortiManager <em>authorizes</em> the device, applies the firmware enforcement, and starts the configuration process. If more than one blueprint exists for the same device model, the CSV file's <em>device blueprint</em> column tells FortiManager which one to use per serial number. If no blueprint matches, the device is added to the <em>unauthorized device list</em> and waits for the administrator.</p>
+
+      <p>The parameter <em>Enforce Device Configuration</em> deserves its own paragraph. When enabled, it allows the auto-link process to change the configuration of the interface that the FortiGate uses to reach FortiManager — useful for setting an alias or interface speed on port1 during ZTP/LTP. When disabled, FortiManager will not touch that interface. The warning in the study guide is explicit: misconfiguring the interface used to connect to FortiManager — a wrong IP address or gateway — can break connectivity between the two devices and cause ZTP to fail outright.</p>
+
+      <div class="callout callout-amber"><strong>Do not do both.</strong> Assigning provisioning templates <em>and</em> adding the device to a group inside the same blueprint invites conflicting configuration, because the device inherits all templates associated with that group in addition to the ones you named directly.</div>
+
+      <p>The <em>CSV file</em> is the multiplier. Building the file with columns for serial number, device blueprint, name, and any metadata variables lets an administrator bulk-import an entire fleet in a few clicks. The first columns must be <strong>serial number</strong>, <strong>device blueprint</strong>, <strong>name</strong> and — for VMs — <strong>vm_interface_number</strong>. Additional columns whose headers match metadata variable names populate the per-device variable values automatically. For SD-WAN branches, the file typically also carries <strong>branch_id</strong>, either supplied explicitly or generated by the auto-assign branch ID feature. For HA clusters the file carries cluster ID, cluster name, HA priority, and HA mode.</p>
+
+      <table class="data-table">
+        <thead><tr><th>CSV Field</th><th>Required?</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>serial number</td><td>Required</td><td>Identifies the FortiGate uniquely</td></tr>
+          <tr><td>device blueprint</td><td>Required</td><td>Selects which blueprint FortiManager applies to this device</td></tr>
+          <tr><td>name</td><td>Required</td><td>Human-readable device name in FortiManager</td></tr>
+          <tr><td>vm_interface_number</td><td>Required for VM models</td><td>Number of ports to provision on the virtual FortiGate</td></tr>
+          <tr><td>branch_id</td><td>Required for SD-WAN template</td><td>Per-branch identifier consumed by the SD-WAN template</td></tr>
+          <tr><td>Metadata variables (e.g. admin_gw, sdwan_port1_gw)</td><td>Optional</td><td>Values that personalize CLI/SD-WAN templates per device</td></tr>
+        </tbody>
+      </table>
+
+      <p>On file import, FortiManager sets metadata variable values for every predefined column and ignores columns that already correspond to previously defined variables. If the import detects a serial number that matches a device already in production, it warns the administrator and skips that line — a deliberate guardrail against overriding a live configuration. Devices imported by CSV are placed directly in the managed device list; when the FortiGate makes its first connection, it does not pass through the unauthorized list at all.</p>
+
+      <div class="callout"><strong>Sequence to memorize:</strong> Physically connect and power on the FortiGate → DHCP hands over the WAN IP, gateway, and FortiManager address → FortiGate connects to FortiManager → FortiManager auto-accepts, optionally enforces firmware, and pushes the configuration elements → the administrator confirms success in the FortiManager monitor panels.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">A blueprint describes a <em>model</em>. A CSV row describes a <em>device</em>. Metadata variables bridge the two — the same template becomes a hundred different personalized configurations because a hundred different rows filled in a hundred different variable values.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ztp-concepts" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ztp-concepts','Blueprints &amp; CSV')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ztp-concepts" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ztp-concepts')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SD-WAN MONITORING</span>
+      </div>
+      <p class="socratic-insight">Once the fleet is deployed, monitoring is what turns a static configuration into an operational network. FortiManager offers Map, Table, and Template views of the SD-WAN estate; FortiAnalyzer aggregates the logs. Ask yourself what each view is <em>best</em> at surfacing before you go looking for a specific fault.</p>
+      <ul class="socratic-questions">
+        <li>Which three SD-WAN monitor views does FortiManager provide, and what is each one designed to show?</li>
+        <li>What must be enabled to store SD-WAN member statistics beyond the default 10-minute window, and how do you cap that storage?</li>
+      </ul>
+      <div class="answer-area" data-section="ztp-workflow">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">FortiManager provides three views under <em>SD-WAN Manager &gt; Network &gt; Monitor</em>. The <strong>Map View</strong> plots devices geographically and color-codes interface status — hover for details, click for historical graphs. The <strong>Table View</strong> lists every SD-WAN device with the status of each member, upload and download volumes, and application traffic. The <strong>Template View</strong> is available only for topologies defined with the overlay orchestrator — it shows hubs as star icons and spokes as device icons, with green/red tunnel lines and green/orange/red device icons reflecting health-check outcomes.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">By default, FortiManager displays interface statistics for the past 10 minutes only. To store longer history you must enable the SD-WAN history monitor with <code>config system admin setting / set sdwan-monitor-history enable</code>. Once enabled, FortiManager stores data on disk for up to 180 days per managed SD-WAN device. To cap disk use, set <code>rtm-max-monitor-by-days</code> to a smaller number of days under the same <code>config system admin setting</code> stanza.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-ztp-workflow">
+      <div class="section-label">SECTION 03</div>
+      <h2>Monitoring the Fabric <em>from Manager to Analyzer</em></h2>
+
+      <p>After ZTP delivers the branches, monitoring makes them useful. FortiManager offers a family of SD-WAN monitor views tailored to different questions. The <strong>Map View</strong> answers "where is the pain?" — it draws each device on a world map based on the longitude and latitude configured at device registration and paints its interfaces with a color code. Hovering over a member shows utilization details calculated from the interface's <code>estimated-upstream-bandwidth</code> and <code>estimated-downstream-bandwidth</code>; clicking a device opens historical graphs. The <strong>Table View</strong> answers "which member is doing what?" — a flat list of SD-WAN interfaces per device with link mode, upload and download volumes, and application traffic. The <strong>Template View</strong> answers "does the overlay match the design?" — available only for topologies built with the overlay orchestrator, it shows hubs as star icons, spokes as device icons, and tunnels as lines that go green when up and red when down. Device icons themselves turn green when all health checks pass, orange when some pass, and red when all fail.</p>
+
+      <p>By default, the historical graphs cover the past ten minutes. For real forensic work — noise complaints from a specific site last Tuesday, capacity planning across a quarter — the administrator enables the SD-WAN history monitor and, if disk space is a concern, caps the retention window. The two CLI knobs are simple and both live under <code>config system admin setting</code>.</p>
+
+      <div class="code-block">
+        <div class="code-label">FORTIMANAGER · ENABLE HISTORICAL SD-WAN MONITORING</div>
+        <pre><code>config system admin setting
+    set sdwan-monitor-history enable
+    set rtm-max-monitor-by-days &lt;nb of days&gt;
+end</code></pre>
+      </div>
+
+      <p>Beyond passive monitoring, FortiManager exposes two active measurement tools. <strong>Cloud-assisted speed tests</strong> run from the SD-WAN monitor Map View against Fortinet-maintained cloud servers, but only for interfaces with the WAN role, on devices carrying a valid SD-WAN service bundle subscription — specifically the <em>SD-WAN Underlay &amp; Application Monitoring Service</em>. Each interface is capped at ten speed tests per day; between tests, FortiGate serves the cached result. Because QoS policies and traffic shapers are generic, this course does not cover them directly — but the measured bandwidth column is where a designer looks first when tuning them. <strong>Hub-and-spoke speed tests</strong> are a CLI-only, license-free alternative that measures throughput between two FortiGates in a hub-and-spoke topology by configuring one as a speed-test server and the other as a client. The relevant snippets:</p>
+
+      <div class="code-block">
+        <div class="code-label">HUB-AND-SPOKE SPEED TEST · SERVER AND CLIENT</div>
+        <pre><code>config system global
+    set speedtest-server enable
+    set speedtestd-server-port &lt;integer&gt; [default 5201]
+    set speedtestd-ctrl-port &lt;integer&gt; [default 5200]
+end
+
+config system speed-test-schedule
+    edit &lt;interface&gt;
+        set dynamic-server {enable | disable}
+        set ctrl-port &lt;integer&gt; [default 5200]
+        set server-port &lt;integer&gt; [default 5201]
+        set update-shaper {disable|local|remote|both}
+    next
+end</code></pre>
+      </div>
+
+      <p>For hub-and-spoke tests to work at all, <code>set allowaccess speed-test</code> must be enabled on <em>both</em> the underlay and the IPsec overlay tunnel interfaces on each side. If the IPsec tunnel is configured with <code>exchange-ip</code>, speed-test access must also be enabled on the associated interface — including loopback interfaces. Optionally, <code>set speedtest-bypass-routing enable</code> tells SD-WAN to stop steering traffic through a member while it is participating in a speed test, so that the measurement is not polluted by unrelated flows.</p>
+
+      <p>Tunnel state is not just a read-only concept. On the <strong>VPN Monitor</strong> page under <em>Device Manager &gt; Monitors &gt; VPN Monitor</em>, enabling <em>Show Table</em> reveals every IPsec VPN tunnel created by IPsec templates and the SD-WAN overlay wizard. Right-clicking a link on the map, or selecting a row in the table, exposes <strong>Bring Tunnel Up</strong> and <strong>Bring Tunnel Down</strong> — a deliberate operational lever for forcing a tunnel state without touching the underlying configuration.</p>
+
+      <p>FortiAnalyzer is the piece that turns short-lived logs into a lasting record. Operating in <em>Analyzer</em> mode, it aggregates log data from every registered SD-WAN FortiGate and stores SD-WAN traffic logs, SD-WAN event logs, and periodic health-check SLA status logs. In the <em>Log View &gt; Traffic</em> table, enabling the SD-WAN columns (<strong>SD-WAN Quality</strong>, <strong>SD-WAN Rule ID</strong>, <strong>SD-WAN Rule Name</strong>) reveals which SD-WAN rule matched each session and which member it was steered to — with rule ID 0 meaning the session used the default SD-WAN rule. In <em>Log View &gt; Event &gt; SD-WAN</em>, event logs record member state transitions such as a health-check port flipping from <em>dead</em> to <em>alive</em> or a service being disabled because no outgoing path remained.</p>
+
+      <p>The health-check SLA status logs are a separate category worth explicit attention. They are disabled by default and must be turned on via <code>sla-fail-log-period</code> and <code>sla-pass-log-period</code> on the performance SLA — or in the FortiManager GUI under <em>SD-WAN Manager &gt; Rules &gt; Performance SLA &gt; Advanced Options</em>. Both values default to zero (no logs generated); setting them to a positive integer generates a log every N seconds while the member is failing or passing, respectively. Some of the FortiView graphs on FortiAnalyzer depend on these logs.</p>
+
+      <p>FortiView, finally, is the reporting surface. The <strong>Secure SD-WAN Monitor</strong> page delivers a per-device, per-time-range view with widgets for SD-WAN Bandwidth Overview, SD-WAN Performance Status, SD-WAN Rules Utilization (a Sankey graph), and SD-WAN Utilization by Application. The <strong>SD-WAN Summary</strong> page aggregates across the fleet — SD-WAN Health Overview, Top SD-WAN SLA Issues, Top SD-WAN Applications, Top SD-WAN Talkers. All widgets refresh automatically every five minutes; the manual refresh button in the upper right handles the impatient.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Tool</th><th>Location</th><th>Answers</th></tr></thead>
+        <tbody>
+          <tr><td>Map / Table / Template View</td><td>FortiManager · SD-WAN Manager &gt; Network &gt; Monitor</td><td>Real-time device, interface, and tunnel status</td></tr>
+          <tr><td>SD-WAN History View</td><td>Click device in Map or Table View</td><td>Historical health and bandwidth per member</td></tr>
+          <tr><td>VPN Monitor</td><td>Device Manager &gt; Monitors &gt; VPN Monitor</td><td>Force tunnels up or down; per-tunnel volumes</td></tr>
+          <tr><td>Cloud-assisted speed test</td><td>SD-WAN Monitor Map View (WAN interfaces only)</td><td>Measured underlay bandwidth against Fortinet cloud servers</td></tr>
+          <tr><td>Hub-and-spoke speed test</td><td>CLI (no license)</td><td>Underlay/overlay throughput between two FortiGates</td></tr>
+          <tr><td>Traffic / SD-WAN Event logs</td><td>FortiAnalyzer · Log View</td><td>Which rule matched, which member was chosen, member state changes</td></tr>
+          <tr><td>Secure SD-WAN Monitor / SD-WAN Summary</td><td>FortiAnalyzer · FortiView</td><td>Per-device and fleet-wide analytics and reports</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-green"><strong>Where to look first:</strong> A single site behaving oddly — start in FortiManager's Map View. A rule not steering the way you expected — enable the SD-WAN columns in FortiAnalyzer's traffic logs. A member flapping — check the SD-WAN event logs and, if the underlying performance SLA has <code>sla-fail-log-period</code>/<code>sla-pass-log-period</code> set, the periodic health-check status logs.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">FortiManager tells you what the network is doing right now; FortiAnalyzer tells you what it has been doing over time. Both are necessary — one for the pager, one for the postmortem.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-ztp-workflow" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ztp-workflow','SD-WAN Monitoring')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-ztp-workflow" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ztp-workflow')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-01-centralized-management.html">
+    <span class="page-nav-label">← PREV</span>
+    <span class="page-nav-title">Chapter 01 · Centralized Management</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-03-overlay-design.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Chapter 03 · Overlay Design</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 SD-WAN 7.6</span><span>.</span> Chapter 02 · SD-Branch and Zero-Touch Provisioning
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-sdwan-ch02-sd-branch-ztp';
+
+const SECTIONS = {
+  'section-sd-branch-overview': 'ZTP Overview',
+  'section-ztp-concepts': 'Blueprints & CSV',
+  'section-ztp-workflow': 'SD-WAN Monitoring',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

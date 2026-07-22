@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appendix — Monitoring and Troubleshooting (SD-WAN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">SD-WAN</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Appendix</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Appendix · NSE7 SD-WAN 7.6</div>
+    <h1>Reading the Overlay <em>When Something Goes Wrong</em></h1>
+    <p>A field guide to the CLI commands, SLA maps, and redundancy features that turn an unhealthy SD-WAN into a debuggable one.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A tunnel is only as trustworthy as <em>the health check watching it</em>.</div>
+  <p class="motivation-sub">This appendix summarises the diagnose commands that expose what SD-WAN is actually doing on the box, and the FEC and packet-duplication features that let a lossy underlay still carry business-critical traffic.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-general-diag">General Diag</a>
+  <a class="nav-tab" href="#section-sla-health">SLA &amp; Health</a>
+  <a class="nav-tab" href="#section-rules-advpn">Rules &amp; ADVPN</a>
+  <a class="nav-tab" href="#section-fec-duplication">FEC &amp; Duplication</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · GENERAL DIAG</span>
+      </div>
+      <p class="socratic-insight">Before reaching for an SD-WAN-specific command, ask yourself the older question: is the packet even arriving, and if it is, what does FortiGate <em>think</em> it should do with it? A sniffer and a debug flow answer both — and they show SD-WAN behaviour in the outgoing interface they pick.</p>
+      <ul class="socratic-questions">
+        <li>Why must trace level 4 be used with <code>diagnose sniffer packet</code> when investigating SD-WAN outgoing-member selection?</li>
+        <li>What does the <code>sdwan_mbr_seq</code> field in a session entry tell you, and when is it deliberately absent?</li>
+      </ul>
+      <div class="answer-area" data-section="general-diag">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Trace level 4 makes the sniffer print the interface name alongside the packet header, which is exactly what you need to see when SD-WAN steers the flow — for example, whether the ICMP echo request that left <code>port5</code> came back through <code>HUB1-VPN1</code>, <code>HUB1-VPN2</code>, or <code>HUB1-VPN3</code>. Combine that with interface <code>any</code> so every possible outgoing member is captured, and a host filter to limit the noise. Remember: for FortiGates with NP2/NP4/NP6 offloading, disable ASIC offload at the policy level first, or the PCAP process cannot see the traffic at all.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">In the <code>diagnose sys session list</code> output, <code>sdwan_mbr_seq</code> is the SD-WAN member ID currently steering the session, and <code>sdwan_service_id</code> is the SD-WAN rule ID that produced that decision. Both fields are absent when the session matched the SD-WAN implicit rule and was therefore handled by ordinary FIB routing, or when the traffic never touched SD-WAN at all — that absence is itself a diagnostic clue that the flow is not being steered by any user-defined rule.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-general-diag">
+      <div class="section-label">SECTION 01</div>
+      <h2>General-Purpose Commands <em>in an SD-WAN Context</em></h2>
+
+      <p>Troubleshooting SD-WAN does not throw away the classical FortiGate toolbox — it extends it. The workflow still starts with a <strong>sniffer</strong> to prove packets are actually arriving, a <strong>debug flow</strong> to see the forwarding decision, a <strong>session list</strong> to inspect what state was built, and <strong>route-lookup commands</strong> to explain why that state was built. What changes in an SD-WAN deployment is that each of those commands exposes new SD-WAN-specific fields you must know how to read.</p>
+
+      <p>Start with <em>diagnose sniffer packet</em>. Use interface <code>any</code> so every possible outgoing member is captured, apply a filter tight enough to isolate the flow you care about, and set trace level 4 so the interface name appears next to each packet — that is how you confirm which overlay tunnel SD-WAN actually selected.</p>
+
+      <div class="code-block">
+        <div class="code-label">SNIFFER — WATCH OUTGOING MEMBER SELECTION</div>
+<pre><code># diagnose sniffer packet any "host 10.0.2.101 and icmp" 4
+2025-04-06 14:10:36.360797 port5 in 10.0.1.101 -> 10.0.2.101: icmp: echo request
+2025-04-06 14:10:36.386674 HUB1-VPN1 out 10.0.1.101 -> 10.0.2.101: icmp: echo request
+2025-04-06 14:10:37.406789 HUB1-VPN3 out 10.0.1.101 -> 10.0.2.101: icmp: echo request
+2025-04-06 14:10:37.408639 HUB1-VPN3 in 10.0.2.101 -> 10.0.1.101: icmp: echo reply</code></pre>
+      </div>
+
+      <div class="callout callout-amber"><strong>Offload gotcha:</strong> On FortiGates with NP2, NP4, or NP6 interfaces that are offloading traffic, disable offload at the policy level (<code>set auto-asic-offload disable</code>) before you sniff. Otherwise the PCAP process cannot collect the traffic and the capture looks empty for reasons that have nothing to do with SD-WAN.</div>
+
+      <p>Next, <em>diagnose debug flow</em> shows how FortiGate actually handled the packet — including which SD-WAN rule matched, which member it was steered to, and which policy allowed it. Enable debug, set a filter (for example <code>filter addr 10.0.2.101</code>), and start the trace with an entry cap so it does not run away.</p>
+
+      <div class="code-block">
+        <div class="code-label">DEBUG FLOW — POLICY ROUTE MATCH VIA SD-WAN RULE</div>
+<pre><code># diagnose debug enable
+# diagnose debug flow filter addr 10.0.2.101
+# diagnose debug flow trace start 20
+id=20085 trace_id=3 msg="vd-root:0 received a packet(proto=1,
+    10.0.1.101:8605-&gt;10.0.2.101:2048) from port5..."
+id=20085 trace_id=3 msg="allocate a new session-00000209"
+id=20085 trace_id=3 func=rpdb_srv_match_input line=1030
+    msg="Match policy routing id=1: to 10.0.2.101 via ifindex-21"
+id=20085 trace_id=3 func=vf_ip_route_input_common
+    msg="find a route: flag=04000000 gw-172.16.1.5 via HUB1-VPN3"
+id=20085 trace_id=3 msg="Allowed by Policy-2"
+id=20085 trace_id=3 func=ipsecdev_hard_start_xmit
+    msg="enter IPSec interface HUB1-VPN3"</code></pre>
+      </div>
+
+      <p>Once a session is established, <em>diagnose sys session filter</em> plus <em>diagnose sys session list</em> (or <code>session6 list</code> for IPv6) surfaces the state itself. Two SD-WAN-specific fields matter: <strong><code>sdwan_mbr_seq</code></strong> — the SD-WAN member ID — and <strong><code>sdwan_service_id</code></strong> — the SD-WAN rule ID. If either is missing, the flow did not match a user-defined SD-WAN rule; it fell through to the implicit rule and standard FIB routing.</p>
+
+      <div class="code-block">
+        <div class="code-label">SESSION LIST — SD-WAN FIELDS</div>
+<pre><code># diagnose sys session list
+session info: proto=6 proto_state=11 duration=5 expire=3596
+state=log may_dirty ndr npu f00 f02 app_valid
+statistic(bytes/packets/allow_err): org=3427/20/1 reply=4744/23/1
+origin-&gt;sink: org pre-&gt;post, reply pre-&gt;post dev=7-&gt;20/20-&gt;7 gwy=100.64.1.9/10.0.1.101
+policy_id=3 auth_info=0 chk_client_info=0 vd=0 app=16060
+sdwan_mbr_seq=4 sdwan_service_id=2
+rpdb_link_id=ff000002 ngfwid=n/a npu_state=0x001000</code></pre>
+      </div>
+
+      <p>Finally, the route-lookup family answers <em>why</em> a packet went where it did. The overall lookup order is: <strong>regular policy routes</strong> → <strong>ISDB routes</strong> → <strong>SD-WAN rules</strong> → FIB. The command <em>diagnose firewall proute list</em> displays all policy routes; ISDB routes and SD-WAN-derived routes have IDs higher than 65535, and only SD-WAN rules include the <code>vwl_service</code> and <code>vwl_mbr</code> fields.</p>
+
+      <div class="code-block">
+        <div class="code-label">POLICY ROUTE LIST — SD-WAN FIELDS</div>
+<pre><code># diagnose firewall proute list
+list route policy info(vf=root):
+
+id=2131034113(0x7f050001) vwl_service=1(Critical-DIA) vwl_mbr_seq=1 2
+    dscp_tag=0xfc despite_flags=0x0 tos=0x00
+    protocol=0 sport=0-65535 iif=0(any) dport=1-65535
+    path(2) oif=3(port1) oif=4(port2)
+    internet service(3): GoToMeeting(4294836842), Microsoft.Office.365.Portal(4294837313), Salesforce(4294837705)
+    hit_count=34219 last_used=2025-04-06 14:04:15
+
+id=2131034115(0x7f050003) vwl_service=3(Corp) vwl_mbr_seq=3 4 5
+    dscp_tag=0xfc last_used_flags=0x0
+    path(3) oif=19(HUB1-VPN1) oif=20(HUB1-VPN2) oif=21(HUB1-VPN3)
+    source(1): 10.0.1.0-10.0.1.255
+    destination(1): 10.0.0.0-10.255.255.255
+    hit_count=13 last_used=2025-04-06 11:31:42</code></pre>
+      </div>
+
+      <p>Two supporting commands round out the routing view. <em>get router info routing-table database</em> shows every duplicate route received; <em>get router info routing-table all</em> consolidates duplicates for readability and prints the count of available copies in brackets. And <em>get router info kernel 18</em> filters the kernel table to <code>proto=18</code> entries — the arbitrary protocol tag FortiOS uses to mark FIB entries that route active health-check probes to the configured target servers. (On some models and firmware the tag is <code>proto=17</code>.)</p>
+
+      <table class="data-table">
+        <thead><tr><th>Command</th><th>What It Reveals</th></tr></thead>
+        <tbody>
+          <tr><td>diagnose sniffer packet any &lt;filter&gt; 4</td><td>Arriving/leaving packets with interface name — proves member selection</td></tr>
+          <tr><td>diagnose debug flow trace start &lt;n&gt;</td><td>Per-packet routing decision, policy match, and SD-WAN rule ID</td></tr>
+          <tr><td>diagnose sys session list</td><td>Session state including <code>sdwan_mbr_seq</code> and <code>sdwan_service_id</code></td></tr>
+          <tr><td>diagnose firewall proute list</td><td>All policy routes; SD-WAN rules show <code>vwl_service</code>/<code>vwl_mbr</code>, hit_count, last_used</td></tr>
+          <tr><td>get router info routing-table database</td><td>All duplicate routes received on the device</td></tr>
+          <tr><td>get router info routing-table all</td><td>Consolidated routing table with duplicate count in brackets</td></tr>
+          <tr><td>get router info kernel 18</td><td>FIB entries used for routing SD-WAN health-check probes</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Sniffer proves the packet exists; debug flow proves the decision; session list proves the state was built; proute list proves the rule. Skip a step and you will guess.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-general-diag" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-general-diag','General Diag')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-general-diag" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-general-diag')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SLA &amp; HEALTH</span>
+      </div>
+      <p class="socratic-insight">Every SD-WAN steering decision ultimately rests on one number: does this member meet its SLA targets right now? The <code>sla_map</code> bitmask compresses that answer into a single hex digit — and if you cannot read it, you cannot explain why a rule flipped members.</p>
+      <ul class="socratic-questions">
+        <li>How do you decode an <code>sla_map</code> of <code>0x6</code> when a member has three configured SLA targets — and why is <code>0x0</code> ambiguous?</li>
+        <li>When would you rely on <code>diagnose sys link-monitor-passive admin list</code> instead of <code>diagnose sys sdwan health-check status</code>?</li>
+      </ul>
+      <div class="answer-area" data-section="sla-health">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The <code>sla_map</code> is the hexadecimal value of a binary bitmask. Bit 0 is the first configured SLA target, bit 1 the second, and so on; each bit is 1 if that target is met and 0 if it is failing. So with three targets, <code>0x6</code> is binary <code>110</code>, meaning targets 3 and 2 pass (bits 2 and 1) but target 1 fails (bit 0). <code>0x0</code> has two possible meanings that you must disambiguate against the config: it can mean "all configured SLA targets are currently failing," or it can mean "no SLA targets are configured for this member at all." Always cross-check the Performance SLA configuration to know which one applies.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">When the health check is in passive or prefer-passive mode. The active <code>lnkmt</code> process measures via probes and is reflected in <code>diagnose sys sdwan health-check status</code>. In passive/prefer-passive mode, a separate <code>lnkmt_passive</code> process gathers packet-loss, latency, and jitter from real user traffic at the kernel level, and its data is exposed by <code>diagnose sys link-monitor-passive admin list</code> (with variants <code>by-interface</code>, <code>by-application</code>, and <code>remote list</code> for peer-reported SLA). You also enable it at the policy with <code>set passive-wan-health-measurement enable</code>, which forces FortiOS to disable <code>auto-asic-offload</code> on that policy because NPU cannot support passive measurement.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-sla-health">
+      <div class="section-label">SECTION 02</div>
+      <h2>Health Checks, SLA Maps <em>and the Link Monitor</em></h2>
+
+      <p>The SD-WAN-specific diagnostic family gives you a summary view of the whole feature. Start with <em>get sys sdwan</em> for the overall settings, then dig into the pieces.</p>
+
+      <div class="code-block">
+        <div class="code-label">SD-WAN MEMBERS AND ZONES</div>
+<pre><code># diagnose sys sdwan member
+Member(1): interface: port1, flags=0x0 , gateway: 192.2.0.2, priority: 0 1024, weight: 0
+Member(2): interface: port2, flags=0x0 , gateway: 192.2.0.10, priority: 0 1024, weight: 0
+Member(3): interface: HUB1-VPN1, flags=0xc , gateway: 100.64.1.1, priority: 0 1024, weight: 0
+
+# diagnose sys sdwan zone
+Zone overlay index=3
+    members(1): 25(HUB1-VPN1)
+Zone underlay index=2
+    members(2): 3(port1) 4(port2)
+Zone virtual-wan-link index=1
+    members(0):
+
+# diagnose netlink interface list | grep index=25
+if=HUB1-VPN1 family=00 type=768 index=25 mtu=1420 link=0 master=0</code></pre>
+      </div>
+
+      <p>The <em>flags</em> field on a tunnel member (e.g. <code>0xc</code>) indicates automatic gateway detection — FortiGate picked the tunnel ID from <code>diagnose vpn tunnel list</code>. The zone command prints the kernel interface index; cross-reference it with <em>diagnose netlink interface list</em> to prove which physical or virtual interface backs a given member.</p>
+
+      <p>The single most important status command is <em>diagnose sys sdwan health-check status</em>. It prints, per configured health check, each member's aliveness, an instantaneous reading for every measurable parameter (packet-loss, latency, jitter, MOS, bandwidth-up/dw/bi), and — crucially — the <strong><code>sla_map</code></strong> bitmask summarising which SLA targets are met.</p>
+
+      <div class="code-block">
+        <div class="code-label">HEALTH-CHECK STATUS — SLA_MAP FIELD</div>
+<pre><code># diagnose sys sdwan health-check status
+Health Check(Level3_DNS):
+Seq(1 port1): state(alive), packet-loss(0.000%) latency(22.129), jitter(0.201),
+    mos(4.393), bandwidth-up(10235), bandwidth-dw(10235), bandwidth-bi(20470) sla_map=0x0
+Seq(2 port2): state(alive), packet-loss(1.000%) latency(42.394), jitter(0.912),
+    mos(4.378), bandwidth-up(10236) sla_map=0x0
+Health Check(VPN_PING):
+Seq(3 HUB1-VPN3): state(alive), packet-loss(1.000%) latency(131.3), jitter(0.199),
+    mos(4.330), bandwidth-up(9999999) sla_map=0x2
+Seq(4 HUB1-VPN2): state(alive), packet-loss(1.000%) latency(1.465), jitter(0.245),
+    mos(4.398), bandwidth-up(10239) sla_map=0x1</code></pre>
+      </div>
+
+      <p>The <code>sla_map</code> is a hexadecimal bitmask. The number of bits equals the number of configured SLA targets; bit 0 is the first target, bit 1 the second, and so on. A bit set to 1 means that target is met.</p>
+
+      <table class="data-table">
+        <thead><tr><th>sla_map (hex)</th><th>Target #3 (Bit 2)</th><th>Target #2 (Bit 1)</th><th>Target #1 (Bit 0)</th></tr></thead>
+        <tbody>
+          <tr><td>0x7</td><td>Pass</td><td>Pass</td><td>Pass</td></tr>
+          <tr><td>0x6</td><td>Pass</td><td>Pass</td><td>Fail</td></tr>
+          <tr><td>0x5</td><td>Pass</td><td>Fail</td><td>Pass</td></tr>
+          <tr><td>0x4</td><td>Pass</td><td>Fail</td><td>Fail</td></tr>
+          <tr><td>0x3</td><td>Fail</td><td>Pass</td><td>Pass</td></tr>
+          <tr><td>0x2</td><td>Fail</td><td>Pass</td><td>Fail</td></tr>
+          <tr><td>0x1</td><td>Fail</td><td>Fail</td><td>Pass</td></tr>
+          <tr><td>0x0 *</td><td>Fail</td><td>Fail</td><td>Fail</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>0x0 is ambiguous.</strong> It can mean "every configured SLA target is failing" or "no SLA targets are configured for this member." Always cross-check the Performance SLA config before drawing conclusions.</div>
+
+      <p>The performance SLAs rely on the FortiOS <em>link monitor</em> process (<code>lnkmt</code>) to measure member state and performance. You can therefore run <em>diagnose sys link-monitor interface &lt;name&gt;</em> to see similar per-interface data. In passive or prefer-passive modes, a separate <em>lnkmt_passive</em> process gathers packet-loss, latency, and jitter from real traffic at the kernel level, and its data is exposed by <em>diagnose sys link-monitor-passive admin list</em>.</p>
+
+      <div class="code-block">
+        <div class="code-label">LINK-MONITOR AND PASSIVE STATUS</div>
+<pre><code># diagnose sys link-monitor interface port1
+Interface(port1): state(up, since Tue Apr 8 08:22:49 2025), bandwidth(up:79743bps,
+    down:1094502bps), session count(IPv4:412, IPv6:0),
+    tx(39720018 bytes), rx(202184681 bytes), latency(21.96), jitter(0.17), packet-loss(0.00).
+
+# diagnose sys link-monitor-passive admin list
+HUB1-VPN1( 19) | service=0x00000000 | latency=70.0 14:21:35 | jitter=0.0 14:21:47 | pktloss=0.0 % 14:21:47
+
+# diagnose sys link-monitor-passive admin list by-interface
+Interface port1 (3):
+    Microsoft.Office.365.Portal(0x0000a1fc): latency=40.0 03:14:46, jitter=20.0 03:14:47, pktloss=10.7 % 03:14:47
+    Salesforce(0x00004218): latency=10.0 03:14:45, jitter=40.0 03:14:50, pktloss=3.5 % 03:14:50
+    GoToMeeting(0x00003fe2): latency=30.0 03:14:46, jitter=30.0 03:14:51, pktloss=1.2 % 03:14:51
+
+# diagnose sys link-monitor-passive admin list by-application 41468
+Service: Microsoft.Office.365.Portal (0x0000a1fc)
+    port1( 3): latency=40.0 03:34:25, jitter=20.0 03:34:25, pktloss=10.7 % 03:34:25
+    port2( 4): latency=30.0 03:19:09, jitter=20.0 03:19:10, pktloss=11.7 % 03:19:10</code></pre>
+      </div>
+
+      <div class="callout"><strong>NPU offload and passive monitoring:</strong> Because passive SD-WAN measurement is not supported by the NPU, FortiOS automatically disables <code>auto-asic-offload</code> on any policy that has a passive health measurement enabled. You must enable it explicitly with <code>set passive-wan-health-measurement enable</code> at the policy level.</div>
+
+      <p>By default, FortiGate does <strong>not</strong> log the SLA health-check result. Enable it independently for fail and pass logs on each health check; FortiOS keeps 10 minutes of history locally, so forward the log to FortiAnalyzer for longer retention.</p>
+
+      <div class="code-block">
+        <div class="code-label">SLA LOGGING — CLI</div>
+<pre><code>config sys sdwan
+  config health-check
+    edit "VPN_PING"
+      set sla-fail-log-period 10
+      set sla-pass-log-period 20
+    next
+  end
+end
+
+# diagnose sys sdwan sla-log Level3_DNS 1
+Timestamp: Wed Apr 02 00:42:07 2025, vdom root, health-check Level3_DNS, interface: port1,
+    status: up, latency: 34.780, jitter: 0.166, packet loss: 0.000%.
+
+# diagnose sys sdwan intf-sla-log port1
+Timestamp: Wed Apr 02 00:41:54 2025, used inbandwidth: 1946bps, used outbandwidth: 1788bps,
+    used bibandwidth: 3734bps, tx bytes: 17460310429bytes, rx bytes: 5174715499bytes.</code></pre>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">sla_map is a bitmask, not a score. Read it right to left: bit 0 is target #1. And 0x0 is not "no data" — it is either "all failing" or "no targets configured."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-sla-health" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-sla-health','SLA &amp; Health')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-sla-health" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-sla-health')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · RULES &amp; ADVPN</span>
+      </div>
+      <p class="socratic-insight">SD-WAN rules are not static: their outgoing interface list is recomputed as members go up, down, and in and out of SLA. When a rule seems to have "stopped working," ask what its live status is — and when an ADVPN shortcut refuses to form, listen to what IKE has to say.</p>
+      <ul class="socratic-questions">
+        <li>What is the difference between "service disabled caused by no destination" and "service disabled caused by no outgoing path" — and which one implicates routing?</li>
+        <li>Why is <code>mrem-addr4</code> critical when you are debugging IKE for an ADVPN spoke-to-spoke shortcut?</li>
+      </ul>
+      <div class="answer-area" data-section="rules-advpn">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">"Service disabled caused by no destination" means there is no route to the destination in the routing table — a routing problem, not a member problem. "Service disabled caused by no outgoing path" means every outgoing interface for the rule is down, so even though the destination is known, no member can reach it. Both surface in the warning line above the member list in <code>diagnose sys sdwan service4</code>, and both switch a rule to disabled — but the fixes are different: fix the FIB for "no destination," fix the underlays or overlays for "no outgoing path."</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Ordinary IKE log filters accept a single peer address, but an ADVPN shortcut is a three-way conversation — the initiating spoke, the hub, and the target spoke — with messages like <code>shortcut-query</code>, <code>shortcut-reply</code>, and <code>shortcut-offer</code>. <code>mrem-addr4</code> (or <code>mrem-addr6</code> for IPv6) lets you specify multiple IP addresses — up to six — so a single debug session captures all sides of the exchange. Without it you would see only one endpoint's chatter and miss the actual negotiation.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-rules-advpn">
+      <div class="section-label">SECTION 03</div>
+      <h2>Rule Status, ISDB Cache <em>and ADVPN Debugging</em></h2>
+
+      <p>Because SD-WAN rules are updated dynamically as member state and SLA change, the current outgoing interface list is often not the one you saw yesterday. The best command to sanity-check a rule is <em>diagnose sys sdwan service4</em> (or <code>service6</code> for IPv6). It prints the matching criteria, rule mode, tie-break rule, member list with per-member SLA, and any warning messages sitting above the member list.</p>
+
+      <div class="code-block">
+        <div class="code-label">SD-WAN RULE STATUS</div>
+<pre><code># diagnose sys sdwan service4
+
+Service(2): Address Mode(IPV4) flags=0x200 use-shortcut-sla
+Tie break: cfg
+Gen(1), TOS(0x0/0x0), Protocol(0: 1-&gt;65535), Mode(sla), sla-compare-order
+Members(2):
+    1: Seq_num(4 HUB1-VPN2), alive, sla(0x1), gid(0), cfg_order(0), local cost(0), selected
+    2: Seq_num(3 HUB1-VPN1), alive, sla(0x1), gid(0), cfg_order(1), local cost(0), selected
+Internet Service(1): SSH(4294837953,0,0,0,0 16060)
+Src address(1):
+    10.0.1.0-10.0.1.255
+
+# diagnose sys sdwan service4 1
+Service(1): Address Mode(IPV4) flags=0x200 use-shortcut-sla
+Gen(1), TOS(0x0/0x0), Protocol(0: 1-&gt;65535), Mode(manual)
+Service disabled caused by no outgoing path.
+Members(2):
+    1: Seq_num(4 HUB1-VPN2), alive, selected
+    2: Seq_num(5 HUB1-VPN3), alive, selected</code></pre>
+      </div>
+
+      <div class="callout"><strong>Two warnings to recognise on sight:</strong><br>
+        <strong>service disabled caused by no destination</strong> — no route to the destination in the FIB (fix routing).<br>
+        <strong>service disabled caused by no outgoing path</strong> — every outgoing interface is down (fix the underlays/overlays).</div>
+
+      <p>When an SD-WAN rule matches on application, FortiGate populates the <em>ISDB application cache</em> — one entry per 3-tuple (destination IP, port, protocol) with an 8-hour lifetime — and uses that cache plus the ISDB application ID to correlate a connection to an SD-WAN rule. Read the cache with <em>diagnose sys sdwan internet-service-app-ctrl-list</em>, and flush it with <em>diagnose sys sdwan internet-service-app-ctrl-flush</em>.</p>
+
+      <div class="code-block">
+        <div class="code-label">ISDB APPLICATION CACHE</div>
+<pre><code># diagnose sys sdwan internet-service-app-ctrl-list
+LinkedIn(16331 4294838042): 104.244.42.65 6 443 Mon Apr 07 03:24:12 2025
+SSH(16060 4294837953): 10.1.0.7 6 22 Mon Apr 07 02:44:18 2025
+SSH(16060 4294837953): 10.1.0.28 6 22 Mon Apr 07 02:48:27 2025
+
+# diagnose sys sdwan service4 2
+Service(2): Address Mode(IPV4) flags=0x200 use-shortcut-sla
+Gen(1), TOS(0x0/0x0), Protocol(0: 1-&gt;65535), Mode(sla), sla-compare-order
+Members(2):
+    1: Seq_num(4 HUB1-VPN2), alive, sla(0x1), gid(0), cfg_order(1), cost(0), selected
+    2: Seq_num(3 HUB1-VPN1), alive, sla(0x0), gid(0), cfg_order(0), cost(0), selected
+Internet Service(1): SSH(4294837953,0,0,0 16060)
+Src address(1):
+    10.0.1.0-10.0.1.255</code></pre>
+      </div>
+
+      <p>ADVPN shortcut negotiation is a separate rabbit hole, and IKE is where its state lives. Enable IKE application debug with <em>diagnose debug application ike -1</em> and look for three message types: <code>shortcut-query</code>, <code>shortcut-reply</code>, and <code>shortcut-offer</code>. Because the negotiation involves the originating spoke, the hub, and the destination spoke, you almost always need to filter on more than one IP address at once — that is what <code>mrem-addr4</code> exists for.</p>
+
+      <div class="code-block">
+        <div class="code-label">ADVPN SHORTCUT DEBUG</div>
+<pre><code>diagnose debug console timestamp enable
+diagnose vpn ike log filter clear
+diagnose vpn ike log filter mrem-addr4 &lt;ip.of.hub&gt; &lt;ip.of.spoke&gt;
+diagnose debug application ike -1
+diagnose debug enable
+
+ike V=root:0: shortcut VPN1_0:192.2.0.1:0 to VPN1_1:203.0.113.1:0 for 10.0.1.101-&gt;10.0.2.101 0
+ike 0 ike ui admin caps trigger sport 2048, dport 0, proto 1, iif 20
+ike V=root:0 send shortcut-offer to VPN1_0</code></pre>
+      </div>
+
+      <div class="callout callout-green"><strong>Filter power:</strong> <code>mrem-addr4</code> (or <code>mrem-addr6</code>) accepts up to six IPv4 addresses. This is invaluable when a spoke-to-spoke shortcut fails and you need to see the query, reply, and offer messages between three or more parties in a single debug session.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">A disabled SD-WAN rule always tells you why in the warning line. Read it before you touch a config — the fix for "no destination" is different from "no outgoing path."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-rules-advpn" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-rules-advpn','Rules &amp; ADVPN')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-rules-advpn" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-rules-advpn')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · FEC &amp; DUPLICATION</span>
+      </div>
+      <p class="socratic-insight">When an underlay is lossy but you still need voice, video, or a critical session to survive, Fortinet gives you two very different tools: FEC ships parity packets so lost ones can be rebuilt, and packet duplication ships the same packet across multiple overlays so at least one arrives. Both trade bandwidth for reliability — and one supports NPU offload while the other does not.</p>
+      <ul class="socratic-questions">
+        <li>Why does enabling FEC on a policy force FortiOS to disable hardware offload for that traffic, and what does adaptive FEC do about it?</li>
+        <li>What is the operational difference between forced packet duplication and on-demand packet duplication, and how does the receiver dedupe?</li>
+      </ul>
+      <div class="answer-area" data-section="fec-duplication">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">FEC computes parity packets from the payload of original packets — that computation is not implemented in NPU silicon, so FortiOS automatically disables hardware offload for any session subject to FEC and increases CPU usage instead. Adaptive FEC mitigates this by applying FEC only when link conditions warrant it: an SLA health check drives the FEC mapping profile, so redundant packets rise as packet loss rises and fall (or stop) when the link is clean. In practice you apply adaptive FEC selectively — for example on UDP-based VoIP policies where FEC matters — and leave TCP-based flows alone so their offload survives.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Forced (<code>set packet-duplication force</code>) always duplicates the packet across up to <code>duplication-max-num</code> members regardless of link quality. On-demand (<code>set packet-duplication on-demand</code>) inspects the outgoing member selected by the SD-WAN rule lookup and duplicates only when that member does not meet any of its SLA targets — or has none configured — so bandwidth is saved when the link is healthy. On the receiver, <code>set packet-de-duplication enable</code> tells FortiGate to accept only the first copy that arrives and drop the rest. Unlike FEC, packet duplication ships verbatim copies (useful for OOB inspection or packet capture) and supports hardware offloading.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-fec-duplication">
+      <div class="section-label">SECTION 04</div>
+      <h2>Forward Error Correction <em>and Packet Duplication</em></h2>
+
+      <p><strong>Forward Error Correction (FEC)</strong> is a Fortinet-proprietary error-correction technique for IPsec overlays. The sending FortiGate transmits additional <em>parity packets</em> through the tunnel; the receiving FortiGate uses them to reconstruct any lost or corrupted originals. FEC is useful for delivering a better user experience for business-critical applications like voice and video, at the cost of extra bandwidth on the tunnel. It does not interoperate with third-party IPsec gateways.</p>
+
+      <p>FEC works by sending <code>fec-redundant</code> parity packets for every <code>fec-base</code> packets sent within the <code>fec-send-timeout</code> window. If the timeout is reached first, FortiGate sends the parity packets anyway. Direction matters: <code>fec-egress</code> makes this side generate parity; <code>fec-ingress</code> makes it process parity received from the peer.</p>
+
+      <div class="code-block">
+        <div class="code-label">FEC — BASE CONFIGURATION</div>
+<pre><code>config vpn ipsec phase1-interface
+  edit "HUB1-VPN1"
+    set fec-egress enable
+    set fec-ingress enable
+    set fec-base 10
+    set fec-redundant 1
+    set fec-send-timeout 5
+  next
+end
+
+config firewall policy
+  edit &lt;id&gt;
+    set fec enable
+  next
+end</code></pre>
+      </div>
+
+      <p>When FEC is enabled, the tunnel carries a specific SPI of <code>0x00000001</code> for both original and parity ESP packets. A sniffer will show the original ICMP echo request egressing the underlay followed by two additional ESP packets with that SPI — those are the parity packets.</p>
+
+      <div class="callout callout-amber"><strong>Offload trade-off:</strong> FortiOS automatically disables hardware offload for sessions subject to FEC and CPU usage rises. You do not need to disable offload manually on the policy.</div>
+
+      <p>FEC pays off. In a test using 100 ICMP echo request packets across a noisy overlay:</p>
+
+      <table class="data-table">
+        <thead><tr><th>Configuration</th><th>Packet Loss Observed</th></tr></thead>
+        <tbody>
+          <tr><td>Before enabling FEC</td><td>27%</td></tr>
+          <tr><td>fec-redundant 1, fec-base 20, timeout 8</td><td>12%</td></tr>
+          <tr><td>fec-redundant increased to 3</td><td>1%</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Adaptive FEC</strong> dynamically adjusts the base and redundant packet ratio based on the SLA health check. When packet loss is low, FEC uses a low redundancy ratio; as loss rises, redundancy rises with it. Apply it per policy and reserve it for streams most sensitive to packet loss — for example UDP-based VoIP.</p>
+
+      <div class="code-block">
+        <div class="code-label">ADAPTIVE FEC — MAPPING PROFILE</div>
+<pre><code>config vpn ipsec fec
+  edit "m1"
+    config mappings
+      edit 1
+        set base 8
+        set redundant 2
+        set packet-loss-threshold 10
+      next
+    end
+  next
+end
+
+config vpn ipsec phase1-interface
+  edit "HUB1-VPN1"
+    set fec-health-check "1"
+    set fec-mapping-profile "m1"
+    set fec-base 10
+    set fec-redundant 1
+  next
+end</code></pre>
+      </div>
+
+      <p><strong>Packet duplication</strong> takes a different approach. Instead of computing parity, it sends verbatim copies of the original packet through up to three additional SD-WAN members. Because the copies are exact, they are useful for data-loss protection <em>and</em> out-of-band inspection or packet capture. Unlike FEC, packet duplication supports hardware offload. The requirements are that the best route to the destination must resolve to an SD-WAN member, and the members used for duplication must have a route to the destination.</p>
+
+      <p>On the receiving side, enable <em>packet deduplication</em> so FortiGate accepts only the first copy of a packet and drops any additional copies — this saves resources at the receiver and prevents the next hop from having to discard the extras.</p>
+
+      <div class="code-block">
+        <div class="code-label">FORCED PACKET DUPLICATION</div>
+<pre><code># Spoke — always duplicate
+config system sdwan
+  set duplication-max-num 3
+  config duplication
+    edit 1
+      set srcaddr "10.0.1.0/24"
+      set dstaddr "10.1.0.0/24"
+      set srcintf "port5"
+      set dstintf "overlay"
+      set service "ALL"
+      set packet-duplication force
+    next
+  end
+end
+
+# Hub — deduplicate
+config system sdwan
+  config duplication
+    edit 1
+      set srcaddr "10.0.1.0/24"
+      set dstaddr "10.1.0.0/24"
+      set srcintf "overlay"
+      set dstintf "port5"
+      set service "ALL"
+      set packet-de-duplication enable
+    next
+  end
+end</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">SPOKE OUT / HUB IN — SNIFFER EVIDENCE</div>
+<pre><code>Spoke packet duplication (3 copies):
+port5 in 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request
+HUB1-VPN2 out 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request
+HUB1-VPN3 out 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request
+HUB1-VPN1 out 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request
+
+Hub packet deduplication (first to arrive is accepted):
+VPN3 in 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request
+port5 out 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request
+VPN1 in 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request  &lt;- dropped
+VPN2 in 10.0.1.101 -&gt; 10.1.0.7: icmp: echo request  &lt;- dropped</code></pre>
+      </div>
+
+      <p><strong>On-demand packet duplication</strong> is the smart cousin. FortiGate first selects the outgoing interface using the SD-WAN rule lookup, then inspects that interface's SLA state. If the interface meets at least one SLA target, FortiGate does <em>not</em> duplicate. If the interface meets no SLA targets — or has none configured — FortiGate duplicates. This conserves bandwidth on healthy links and only pays the duplication cost when the picked path looks poor.</p>
+
+      <p>Finally, you can restrict packet duplication to traffic matching one or more SD-WAN rules by setting <code>service-id</code> in the duplication rule. Once a service-id is set, the 5-tuple options on the duplication rule are hidden — matching is delegated entirely to the SD-WAN rule, which lets you leverage application steering and ISDB targets without redeclaring them.</p>
+
+      <div class="code-block">
+        <div class="code-label">RESTRICT DUPLICATION TO SD-WAN RULE</div>
+<pre><code>config system sdwan
+  set duplication-max-num 3
+  config duplication
+    edit 1
+      set service-id 1
+      set packet-duplication force
+    next
+  end
+end</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Feature</th><th>FEC</th><th>Packet Duplication</th></tr></thead>
+        <tbody>
+          <tr><td>Reconstruction</td><td>Parity packets recompute lost data</td><td>Verbatim copies of the original packet</td></tr>
+          <tr><td>Tunnel usage</td><td>Single IPsec overlay</td><td>Up to 3 additional SD-WAN members</td></tr>
+          <tr><td>Hardware offload</td><td>Automatically disabled</td><td>Supported</td></tr>
+          <tr><td>Third-party interop</td><td>Not supported</td><td>N/A</td></tr>
+          <tr><td>Adaptive mode</td><td>fec-mapping-profile + health-check</td><td>on-demand mode based on member SLA</td></tr>
+          <tr><td>Receiver control</td><td>fec-ingress on peer</td><td>packet-de-duplication on peer</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">FEC rebuilds; duplication duplicates. FEC gives up offload; duplication keeps it. Adaptive FEC and on-demand duplication both use the SLA state to decide when to spend the extra bandwidth.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-fec-duplication" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-fec-duplication','FEC &amp; Duplication')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-fec-duplication" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-fec-duplication')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-05-advpn.html">
+    <span class="page-nav-label">← PREVIOUS</span>
+    <span class="page-nav-title">Chapter 05 · ADVPN</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="index.html">
+    <span class="page-nav-label">↩ BACK TO</span>
+    <span class="page-nav-title">SD-WAN Guide Index</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 SD-WAN 7.6</span><span>.</span> Appendix · Monitoring and Troubleshooting
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-sdwan-appendix-monitoring';
+
+const SECTIONS = {
+  'section-general-diag': 'General Diag',
+  'section-sla-health': 'SLA & Health',
+  'section-rules-advpn': 'Rules & ADVPN',
+  'section-fec-duplication': 'FEC & Duplication',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

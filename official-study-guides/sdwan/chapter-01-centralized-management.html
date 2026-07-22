@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 01 — Centralized Management (SD-WAN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">SD-WAN</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 01</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 01 · NSE7 SD-WAN 7.6</div>
+    <h1>Bringing SD-WAN to the Branch <em>From One Console</em></h1>
+    <p>How FortiManager plans, provisions, and orchestrates an SD-WAN fabric that would be intractable to build one CLI at a time.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Scale is not a feature — it is <em>a design constraint</em>.</div>
+  <p class="motivation-sub">A single branch is a configuration problem. A hundred branches is an operational problem. FortiManager is the console where the second one becomes tractable.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-define-plan">Define &amp; Plan</a>
+  <a class="nav-tab" href="#section-config-fmg">Configure with FMG</a>
+  <a class="nav-tab" href="#section-overlay-template">Overlay Template</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ═════════ SECTION 1 — Define & Plan ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · DEFINE &amp; PLAN</span>
+      </div>
+      <p class="socratic-insight">A hundred branches, three ISPs each, a dual data-centre core, and one administrator to install the whole thing on a Tuesday. Before you touch a single FortiGate CLI, ask what FortiManager is actually doing for you — and what still has to be decided on paper first.</p>
+      <ul class="socratic-questions">
+        <li>What does FortiManager give a large SD-WAN network that a room full of individual FortiGate CLIs cannot?</li>
+        <li>Which decisions about addressing, routing, and topology have to be made <em>before</em> the SD-WAN overlay template will let you proceed?</li>
+      </ul>
+      <div class="answer-area" data-section="define-plan">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">FortiManager provides single-pane-of-glass management for the whole SD-WAN fabric. It provisions SD-WAN templates, CLI templates, and firewall policies across many devices at once; it supports per-device SD-WAN configuration where required; it monitors SD-WAN status; it acts as a central repository for configuration revision control and security audits; it deploys and monitors complex IPsec overlays; it offers guided configuration of overlay tunnels and BGP route deployment through the SD-WAN overlay orchestrator; it enables zero-touch provisioning for new branch sites; and it exposes scripts and JSON APIs to automate device provisioning and policy changes. The upshot is that consistent policy across the enterprise stops being an aspiration and becomes an install job.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Before defining an SD-WAN overlay template you must (1) have FortiManager already managing the FortiGate devices that will form the hub or hubs, (2) create a device group for your branch devices, and (3) configure the WAN, ISP links, and other interfaces on your imported devices. Then, on the network-planning side, you must decide the topology type — single hub, dual hub (primary/secondary or primary/primary), or multi hub — allocate the overlay network address space (default template value 10.10.0.0/16), allocate the loopback IP address space (default 172.16.0.0/16), and select a BGP AS number for the new SD-WAN overlay region (default 65000). Skipping the planning phase does not gain you time; it hands the same decisions back to you halfway through the wizard.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-define-plan">
+      <div class="section-label">SECTION 01</div>
+      <h2>Planning an SD-WAN <em>Before You Provision One</em></h2>
+
+      <p>FortiManager is the key component for deploying SD-WAN across a large network. Its centralised, single-pane-of-glass approach is not a marketing phrase — it is the reason that a hundred-branch rollout stops being a hundred separate configuration exercises and becomes one templated install. FortiManager provisions <em>SD-WAN templates</em>, <em>CLI templates</em>, and <em>firewall policies</em> across many devices at once, monitors SD-WAN status, acts as a central repository for revision control and security audits, deploys and monitors complex IPsec overlays, guides you through overlay orchestration with BGP, performs zero-touch provisioning for new sites, and exposes scripts and JSON APIs for automation.</p>
+
+      <p>Underneath the console, FortiManager organises everything it knows in <strong>management layers</strong>. The <em>Global Database</em> holds global objects and header/footer policy packages — the outermost wrapping around every ADOM's traffic. The <em>ADOM layer</em> is where policy packages are created, managed, and installed on devices; each ADOM has a common object database of addresses, services, and security profiles, and ADOMs let administrators group devices for monitoring and management. The <em>Device Manager layer</em> records each managed device's name, model, IP address, current firmware, revision history, and real-time status, and keeps a device database for every managed FortiGate. Configuration changes can be installed on a single FortiGate or pushed to many devices simultaneously.</p>
+
+      <p>SD-WAN itself can be managed two different ways from this console, and the choice matters. In <em>per-device management</em>, you edit SD-WAN settings on individual devices — useful when branches have genuinely different SD-WAN requirements and must be maintained separately. In <em>central management</em> via SD-WAN Manager, you configure SD-WAN templates once from the Templates section and assign them to one or more FortiGates. For each template you define members, zones, performance SLAs, rules, and so on; instead of applying a change to every device, you apply it to the shared template and let FortiManager push it out. Central management is the natural choice when many devices share the same shape.</p>
+
+      <p>Before you can define an SD-WAN overlay template, the FortiGate hubs must already be under FortiManager's control — either as model devices or discovered physical devices — and their WAN, ISP, and other links must be configured. Branch devices can join now or later, but a branch device group must exist before you proceed. Then network planning fixes the shape of the region: the topology type, the overlay network address space (default 10.10.0.0/16), the loopback IP address space (default 172.16.0.0/16), and the BGP AS number (default 65000). None of these decisions are optional — the wizard will ask for them either at the top or in the middle.</p>
+
+      <div class="callout"><strong>Two management modes, one console:</strong> per-device SD-WAN objects live in the device settings database; central-management SD-WAN objects live in the ADOM database. The GUI pages look almost identical, but the storage layer tells you which mode you are in.</div>
+
+      <table class="data-table">
+        <thead><tr><th>FortiManager Layer</th><th>Holds</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Global Database</td><td>Global objects; header/footer policies</td><td>Envelop the policies for each ADOM — common in carrier environments</td></tr>
+          <tr><td>ADOM Layer</td><td>Common object DB, devices, device groups, policy packages</td><td>Groups of devices sharing common objects; default ADOM is <em>root</em></td></tr>
+          <tr><td>Device Manager Layer</td><td>Managed device names, models, IPs, revision history, status</td><td>Device DB for each managed FortiGate</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Per-device is <em>maintain each</em>; central is <em>maintain one, deploy many</em>. The pane looks the same — the storage layer, and the operational cost of a change, does not.</div>
+        </div>
+      </div>
+
+      <p>FortiManager also ships <em>FortiAI</em> as a licensed assistant that helps define configurations such as FortiManager scripts, VPNs, and BGP settings, with the FortiAI dialogue reachable from the upper-right corner or the left-side menu. And the <strong>Device Manager wizards</strong> — Add Device, Install Wizard, Import Configuration, and Re-install Policy — cut most repetitive tasks down to a few clicks: Add Device brings devices under central management and imports their configuration; the Install Wizard previews and pushes changes from the Device Manager or Policy &amp; Objects pane; Import Configuration pulls interface mappings, policy databases, and objects into a policy package; Re-install Policy performs a quick reinstall with preview. It is worth noticing that Import Configuration and Re-install Policy are hidden inside the right-click menu on a managed device.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">You cannot start the SD-WAN overlay template until the hubs are managed, the branch device group exists, and you have decided your overlay subnet, loopback subnet, and BGP AS. Everything else the wizard can give you defaults for.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-define-plan" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-define-plan','Define &amp; Plan')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-define-plan" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-define-plan')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ SECTION 2 — Configure with FortiManager ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · CONFIGURE WITH FMG</span>
+      </div>
+      <p class="socratic-insight">A template is only as reusable as its variables. If every branch's port1 gateway were baked into the SD-WAN template, the template would only ever fit one branch. The trick that makes central management scale is that FortiManager lets you push the same policy shape while letting each device carry its own values.</p>
+      <ul class="socratic-questions">
+        <li>What are metadata variables, and why are they the key to reusing one SD-WAN template across dozens of branches with different gateways?</li>
+        <li>How do template groups, system templates, and CLI templates fit together — and when would you choose a Jinja CLI template over a plain CLI script?</li>
+      </ul>
+      <div class="answer-area" data-section="config-fmg">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Metadata variables are ADOM-level, user-defined parameters (also available at the Global ADOM level for per-ADOM mapping) that let one variable name carry a different value on each device. In the SD-WAN template you can use them in Interface Member, Gateway, and Health-Check Server fields — for example, a <code>$(sdwan_port1_gw)</code> metadata variable holds 192.2.0.2 on branch1_fgt and 203.0.113.2 on branch2_fgt, while <code>$(inet3)</code> tells FortiManager to install port3 as the member on branch1_fgt and port8 on branch2_fgt. You reference a metadata variable by typing <code>$</code> in a supported field (a magnifying glass with a <code>$</code> sign marks such fields), pick from the list or create a new one with <code>+</code>. Each variable should have a default value plus per-device mappings; FortiManager will refuse to install a configuration that uses a variable it has no value for on that device. CSV/JSON import and export exist so provisioning hundreds of values does not become manual data-entry work.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">A <em>template group</em> bundles a System Template, an IPsec Tunnel Template, a BGP Template, a Static Route Template, an SD-WAN Template, and one or more CLI Templates into a single unit that gets assigned to a device or device group in one step. <em>System templates</em> are subsets of a model device configuration — DNS, alert email, admin settings, log settings, SNMP — that facilitate identical device-level settings across many devices. <em>CLI templates</em> come in two flavours: plain CLI scripts (FortiGate CLI commands with metadata variables prefixed by <code>$</code>) and Jinja scripts, a Python-like template engine that supports loops, arithmetic (e.g. <code>ipmath</code>), and per-device logic, with metadata variables referenced using <code>{{ }}</code>. Reach for a Jinja template when you need programmatic behaviour — computing a loopback IP from a branch_id, for example — and stick with a plain CLI script when you are simply substituting values. A template group can mix both types and applies its scripts top-down. Only one CLI template or CLI template group per device.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-config-fmg">
+      <div class="section-label">SECTION 02</div>
+      <h2>Templates, Metadata, and the Craft of <em>Reusable Configuration</em></h2>
+
+      <p>Whether you configure SD-WAN in per-device mode or with central management, the FortiManager pages look almost identical to the FortiGate GUI: the same three sections — <strong>SD-WAN Zones</strong>, <strong>Performance SLA</strong>, and <strong>SD-WAN Rules</strong> — and the same conceptual language of members, zones, SLAs, and rules. The critical difference in central mode is that fields like Interface Member, Gateway, and Health-Check Server accept <em>metadata variables</em>: user-defined parameters, defined at the ADOM level, that let a single template carry per-device values.</p>
+
+      <p>A metadata variable is created under <em>Policy &amp; Objects &gt; Advanced &gt; Metadata Variables</em>. Each variable has a name (letters, numbers, and underscores only), an optional default value, and a per-device mapping table. When you reach a field that supports variables, a magnifying glass with a <code>$</code> icon marks it — type <code>$</code> and FortiManager shows you a menu of existing variables, with a <strong>+</strong> to create a new one and a pen icon to edit an existing one. You can use metadata variables in firewall address objects, IP pools, virtual IPs, and SD-WAN template fields. For IP/Netmask fields both parts must be supplied separately — <code>$(LAN_Subnet)/$(LAN_Mask)</code>, <code>$(LAN_Subnet)/255.255.255.0</code>, or two literal values are all acceptable. FortiManager will not install a configuration whose variables lack values on a given device, so setting a default (or an explicit per-device mapping) is a best practice, not a nicety.</p>
+
+      <p>For large fleets, populating every mapping by hand is untenable — the <strong>import</strong> and <strong>export</strong> features accept CSV and JSON, letting you provision hundreds of values from a spreadsheet or an automation pipeline, and letting you export the current state as a starting point for the next round. As a native alternative for Jinja templates only, <em>device database variables</em> (<code>{{DVMDB.name}}</code>, <code>{{DVMDB.hostname}}</code>, <code>{{intf.ip}}</code>, and so on) expose device attributes without you having to duplicate them as metadata; they are not compatible with plain CLI scripts, and when typing <code>{{</code> in the GUI FortiManager only lists metadata variables — device DB variables must be typed by hand.</p>
+
+      <div class="callout"><strong>Why variables exist:</strong> a template with no variables fits exactly one device. A template with well-chosen metadata and device DB variables fits an ADOM. Design your variables the way you would design an API — name them for meaning, give them defaults, and export/import their mappings.</div>
+
+      <p>Templates come in families and are best assembled into <strong>template groups</strong> that get assigned as a unit. A group typically contains a System Template (device-level settings like DNS, alert email, admin, logging, SNMP), an IPsec Tunnel Template, a BGP Template, a Static Route Template, an SD-WAN Template, and one or more CLI Templates. System templates can be created new, cloned, or built by importing the settings of an existing device — associate them with a profile and use <em>Preview CLI Configuration</em> to see the commands they will emit before install.</p>
+
+      <p>CLI templates come in two forms with different powers. A plain <strong>CLI script</strong> is exactly what it sounds like — FortiGate CLI commands, with metadata variables referenced by a <code>$</code> prefix — and is the right choice when you need substitution but not logic. A <strong>Jinja script</strong> uses Jinja2 syntax, Python-like, supporting loops, conditionals, and arithmetic such as <code>ipmath</code>; metadata variables are wrapped in <code>{{ }}</code>, and device DB attributes are available for free. A template group can mix CLI and Jinja types, applied top-down, but a device can only receive one CLI template or one CLI template group at a time.</p>
+
+      <div class="code-block">
+        <div class="code-label">CLI script — plain</div>
+<pre><code>config system global
+    set hostname $(hostname)
+end
+
+config system interface
+    edit "HUB-Lo"
+    set vdom "root"
+    set ip $loopback_hub 255.255.255.255
+    set allowaccess ping
+    set type loopback
+    next
+end</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Jinja script — with arithmetic</div>
+<pre><code>config system global
+    set hostname {{hostname}}
+end
+
+config system interface
+    edit "Branch-Lo"
+    set vdom "root"
+    set ip {{'10.200.99.0'|ipmath(branch_id|int)}} 255.255.255.255
+    set allowaccess ping
+    set type loopback
+    next
+end</code></pre>
+      </div>
+
+      <p>Firewall policies for SD-WAN traffic live in a <strong>policy package</strong>. The critical rule: policies must reference <em>SD-WAN zones</em>, not individual members. The other interfaces in the policy are usually <em>normalized interfaces</em>, an abstraction that lets one policy reference "LAN" on branch1_fgt (mapped to port5) and "LAN" on branch2_fgt (mapped to port1). When FortiManager installs an object that references a normalized interface, it reads the mapping rules and assigns the correct physical port to each target device. If you plan to use an IPsec interface as an SD-WAN member you do not need to normalise it; if you use the IPsec interface directly in a firewall policy (outside SD-WAN), you do.</p>
+
+      <p>Configuring an <strong>SD-WAN zone</strong> is a matter of naming the zone, selecting at least one interface member, and — optionally — setting <code>service-sla-tie-break</code>. The tiebreaker applies to all SD-WAN rule strategies except load-balancing, and is most commonly used with the lowest-cost strategy. <em>cfg-order</em> uses member configuration order (default). <em>fib-best-match</em> selects the member with the most specific route to the destination. <em>input-device</em> enforces overlay stickiness — traffic received on one overlay egresses on the same overlay when possible; the CLI equivalents are <code>set input-zone</code> and <code>set tie-break input-device</code>. When you create a zone in an SD-WAN template, FortiManager automatically creates a corresponding normalized interface.</p>
+
+      <p><strong>Performance SLA</strong> configuration in FortiManager mirrors FortiGate's own. The header defines the probe method — Active, Agent Based, Passive, Prefer Passive, or Remote — and the protocol (Ping, DNS, FTP, HTTP, HTTPS, TCP CONNECT, TCP ECHO, TWAMP, UDP ECHO), a server or two (best practice: two, to guard against a single-server false positive), and the members. Optional <strong>SLA Targets</strong> define latency, jitter, and packet-loss thresholds for the lowest-cost strategy. <em>Link Status</em> configures <code>Check Interval</code> (default 500 ms), <code>Failure Before Inactive</code> (default 5), <code>Restore Link After</code> (default 5), and <code>Probe Timeout</code> (default 500 ms). <em>Action When Inactive</em> lets a state change update static routes matching the member gateway, or bring alert interfaces up or down. The FortiManager map view highlights members that miss an SLA target in red and members that are alive but SLA-violating in orange, with fully healthy in green.</p>
+
+      <div class="callout callout-amber"><strong>Common misconception:</strong> firewall policies for SD-WAN traffic must reference SD-WAN <em>zones</em>, never individual members. Referencing a member directly hides the rule from the SD-WAN service logic.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Metadata variables carry per-device values across a shared template. Template groups carry a full device shape. Normalized interfaces carry per-device port names. Together they turn one template into a whole fleet.</div>
+        </div>
+      </div>
+
+      <p>Finally, if you already have an SD-WAN configuration on a live device and want to templatise it, FortiManager can <em>import</em> the SD-WAN settings of a managed device directly into a new SD-WAN template. From <em>SD-WAN Manager &gt; Rules &gt; SD-WAN</em>, choose <strong>Import</strong> from the More menu, pick the source device, and the resulting template can then be assigned to other branches with the same shape.</p>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-config-fmg" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-config-fmg','Configure with FMG')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-config-fmg" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-config-fmg')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ SECTION 3 — Overlay Template ═════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OVERLAY TEMPLATE</span>
+      </div>
+      <p class="socratic-insight">Configuring one IPsec tunnel is tedious. Configuring a dual-hub overlay with ADVPN, IBGP, and a hundred branches is a project. The overlay template is Fortinet's answer to that project — a wizard that emits an entire family of coordinated templates from a handful of design choices.</p>
+      <ul class="socratic-questions">
+        <li>What does the SD-WAN overlay orchestrator actually produce when you complete the wizard, and why does that matter for how you review and install the result?</li>
+        <li>What are the hard restrictions on SD-WAN overlay templates — which mistake is easiest to make when combining them with VPN Manager or multiple ADOMs?</li>
+      </ul>
+      <div class="answer-area" data-section="overlay-template">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The overlay template generates a coordinated set of templates — BGP, IPsec Tunnel, Static Route, and CLI — and groups them per role (HUB1, HUB2, BRANCH). For the branch devices it also adds members and zones to the SD-WAN template. Device assignment is done for you. That matters because the wizard is not the endpoint: you land in <em>SD-WAN Manager &gt; Templates &gt; Template Groups</em> where you can review each individual template, fine-tune settings — a BGP timer, an IPsec proposal, an SD-WAN rule — and only then push to devices via the Install Wizard. Reviewing before installing is not optional in practice; it is the whole point of having a template layer in the first place.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">All devices participating in an SD-WAN overlay template must live in the same ADOM — you cannot span an overlay across ADOMs. Each FortiGate can be configured by only one SD-WAN overlay template at a time. And VPN Manager and an SD-WAN overlay template cannot be used together on the same network. For a new deployment Fortinet recommends the overlay template because it takes a comprehensive approach that walks you through IPsec, BGP, and SD-WAN in one guided flow. Trying to mix VPN Manager with the overlay template on the same fabric is the most common structural mistake because they look complementary but overlap in what they configure.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-overlay-template">
+      <div class="section-label">SECTION 03</div>
+      <h2>The Overlay Wizard <em>Where Complexity Becomes Templated</em></h2>
+
+      <p>Most SD-WAN deployments require complex overlay configurations for data-centre or cloud connectivity. FortiManager's <em>SD-WAN overlay template</em> is a wizard that automates and simplifies the process using the IPsec and BGP settings recommended by Fortinet. It walks you through the design decisions and emits a coordinated set of configuration templates — SD-WAN, overlay, IPsec, BGP, static route, CLI — for hubs and branches, so you configure the region once rather than device by device.</p>
+
+      <p>The workflow is disciplined. First, define the network topology and subnets you plan to use. Second, preconfigure your SD-WAN devices with administrator settings, interface IPs, and the WAN links. Third, import the devices into FortiManager. Fourth, run the SD-WAN overlay orchestration wizard. Fifth, review the generated templates. Sixth, install the configurations on devices. Branch devices can be added later to the branch device group — the region will accept newcomers as long as the shape holds.</p>
+
+      <p><strong>Region settings</strong> come first in the wizard. You set the template name, description, and topology — <em>Single HUB</em>, <em>Dual HUB (Primary &amp; Secondary)</em>, <em>Dual HUB (Primary &amp; Primary)</em>, or <em>Multi HUB</em>. The <em>Primary &amp; Secondary</em> mode is asymmetric — one hub is preferred by BGP; <em>Primary &amp; Primary</em> weights both hubs equally. The overlay authentication method is <em>Pre-shared Key</em> (auto-generated by FortiManager; you can replace it) or <em>Signature</em> (certificate-based, more secure). Under Advanced you set the Loopback IP address (default 10.200.99.252/255.255.255.0), the BGP-AS number (default 65000), <em>BGP on Loopback</em>, <em>Dynamic BGP</em>, <em>Route Reflection</em>, <em>Auto-Discovery VPN</em> (disable, Legacy, or ADVPN 2.0 — default disabled), and <em>Segmentation Over Single Overlay</em>. Enabling ADVPN in the overlay template automatically enables the necessary IPsec and SD-WAN settings.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Topology</th><th>Shape</th><th>Typical Use</th></tr></thead>
+        <tbody>
+          <tr><td>Single HUB</td><td>One data-centre, one overlay per underlay</td><td>Small footprint or lab</td></tr>
+          <tr><td>Dual HUB (Primary &amp; Secondary)</td><td>Two hubs, one preferred by routing</td><td>DC1 primary, DC2 failover</td></tr>
+          <tr><td>Dual HUB (Primary &amp; Primary)</td><td>Two hubs, equally weighted</td><td>Active/active hub load-sharing</td></tr>
+          <tr><td>Multi HUB</td><td>Three or more hubs across regions</td><td>Global fabrics; regional segmentation</td></tr>
+        </tbody>
+      </table>
+
+      <p>When the wizard finishes, its output arrives in <em>SD-WAN Manager &gt; Templates &gt; Template Groups</em>. Typically you will see three groups — one for HUB1, one for HUB2, and one for BRANCH — each containing a System Template, an IPsec Tunnel Template, a BGP Template, a CLI Template, and, for branches, the SD-WAN Template and a Static Route Template with the branch underlay routes. The templates are already assigned to the correct devices or device group. At this stage the administrator can review each template, fine-tune settings, and only then use the Install Wizard to push changes.</p>
+
+      <p><strong>SD-WAN member installation targets</strong> deserve a call-out. When a template defines an SD-WAN member, you can restrict which devices actually receive it — by device group, by subgroup, or by individual device. Leave the target empty and the member installs on every device the template is assigned to. This matters when the region is not perfectly uniform: some branches have three WAN links, some only two; some sites have MPLS, some do not. The example in the study guide shows a template with three members — port1 (ISP1), port2 (ISP2), and port4 (MPLS) — where port1 and port2 apply to every branch but port4 installs only on devices in the <em>main</em> group.</p>
+
+      <p>The <strong>convert single-hub to dual-hub</strong> flow is a small but telling capability: existing network settings, address objects, and routes are reused for the second hub — you simply add another device to the appropriate branch device group and pick a topology upgrade. It is the same underlying template family, promoted to a richer shape.</p>
+
+      <div class="callout"><strong>Restrictions to memorise:</strong> all devices participating in an SD-WAN overlay template must live in the same ADOM. Each FortiGate can be configured by only one SD-WAN overlay template. VPN Manager and an SD-WAN overlay template cannot be used together on the same network — for a new deployment, pick the overlay template.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The overlay template is a generator, not an install button. It emits template groups; you review them, tune them, and then install. Skipping the review step wastes the leverage the wizard just gave you.</div>
+        </div>
+      </div>
+
+      <p>Two knowledge-check facts worth pinning to the wall: a FortiGate you added to FortiManager but that is <em>not showing up</em> in SD-WAN Manager is almost always missing the <em>Enable SD-WAN Management</em> flag from the More menu on the Device Manager pane. And the overlay orchestration wizard supports four topology types, not two — Single HUB, Dual HUB (Primary &amp; Secondary), Dual HUB (Primary &amp; Primary), and Multi HUB.</p>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-overlay-template" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-overlay-template','Overlay Template')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-overlay-template" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-overlay-template')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="index.html">
+    <span class="page-nav-label">← Back to</span>
+    <span class="page-nav-title">SD-WAN Guide</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-02-sd-branch-ztp.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Chapter 02 · SD-Branch &amp; ZTP</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 SD-WAN 7.6</span><span>.</span> Chapter 01 · Centralized Management
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-sdwan-ch01-centralized-management';
+
+const SECTIONS = {
+  'section-define-plan': 'Define & Plan',
+  'section-config-fmg': 'Configure with FMG',
+  'section-overlay-template': 'Overlay Template',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

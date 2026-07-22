@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 05 — ADVPN (SD-WAN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">SD-WAN</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 05</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 05 · NSE7 SD-WAN 7.6</div>
+    <h1>Shortcut Tunnels <em>on Demand</em></h1>
+    <p>How ADVPN quietly turns a hub-and-spoke overlay into a full mesh whenever two branches actually need to talk.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Every efficient overlay is <em>a compromise between mesh and hub</em>.</div>
+  <p class="motivation-sub">A pure mesh is fast but unmanageable; a hub is manageable but slow. ADVPN chooses both — hub for control, mesh for the packets that need to move.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-advpn-concepts">ADVPN Concepts</a>
+  <a class="nav-tab" href="#section-advpn-design">SD-WAN + ADVPN Design</a>
+  <a class="nav-tab" href="#section-advpn-config">ADVPN Configuration</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · ADVPN CONCEPTS</span>
+      </div>
+      <p class="socratic-insight">A hub-and-spoke IPsec overlay is cheap to build and easy to reason about, but every spoke-to-spoke conversation has to walk through the hub. In a global network with geographically distant branches, that detour becomes latency, jitter, and load on a single device. ADVPN keeps the hub in charge of who-can-talk-to-whom while letting the packets themselves take a straight line between spokes.</p>
+      <ul class="socratic-questions">
+        <li>What role does the hub actually play in a shortcut negotiation, and why is that role indispensable even though the shortcut bypasses the hub for data?</li>
+        <li>Why did Fortinet introduce ADVPN 2.0 rather than continuing to enhance ADVPN 1.0, and what does ADVPN 2.0 move off the hub and onto the spokes?</li>
+      </ul>
+      <div class="answer-area" data-section="advpn-concepts">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The hub is the matchmaker. When spoke1 sends the first packet toward spoke2, that packet still traverses the hub via the parent tunnels. The hub recognises that a more direct path is possible and sends a <em>shortcut-offer</em> to spoke1. Spoke1 replies with a <em>shortcut-query</em>, which the hub forwards to spoke2; spoke2 replies with a <em>shortcut-reply</em> containing its public IP and an auto-generated PSK (or digital certificate authentication), which the hub forwards back to spoke1. Only then do the two spokes initiate their own IKE negotiation directly. Without the hub facilitating that IKE information exchange, neither spoke would know the other's public IP or the shared key needed to build the on-demand tunnel.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">ADVPN 1.0 was tied to specific BGP designs — route reflection with next-hop convergence, BGP per overlay, BGP on loopback — and the hub carried heavy processing to reflect routes to thousands of spokes. It also gave the initiator no visibility into the remote spoke's link performance, so shortcut endpoints reused the same interfaces as the initial flow. ADVPN 2.0, introduced in FortiOS 7.4.2, is natively integrated with SD-WAN and pushes edge discovery and path management down to the spokes. The initiator now learns the remote spoke's WAN link IP address, transport group, link quality, cost, and member order via an expanded <em>shortcut-reply</em>, and calculates the best shortcut path itself, per SD-WAN service or rule. It removes the dependency on a specific BGP design and adds resiliency against underlay outages and degraded performance.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-advpn-concepts">
+      <div class="section-label">SECTION 01</div>
+      <h2>ADVPN <em>in Concept — Shortcuts Without a Full Mesh</em></h2>
+
+      <p>ADVPN — <strong>Auto-Discovery VPN</strong> — is a Fortinet-proprietary framework built on top of standard IKE and IPsec. Its purpose is stated simply on the overview slide: enable direct spoke-to-spoke communication in a hub-and-spoke topology, without the cost or the configuration overhead of a full mesh. A pure hub-and-spoke topology forces every spoke-to-spoke flow through the hub, which adds latency and can hurt user experience when hub and spokes are geographically distant. A full mesh removes the detour but multiplies configuration and cost. ADVPN gives you the <em>benefits of a full-mesh topology in a hub-and-spoke network</em>.</p>
+
+      <p>The mechanism is a well-choreographed IKE exchange. Overlays between a spoke and the hub are called <strong>parent tunnels</strong>; direct tunnels negotiated between spokes over those parents are called <strong>shortcuts</strong>. Shortcuts are created on-demand from the IPsec phase-1 auto-discovery settings on each peer: <code>auto-discovery-receiver</code> enabled on the spoke overlay tells the hubs that this spoke can negotiate shortcuts, and <code>auto-discovery-sender</code> enabled on the hub overlay that connects the spoke allows the hub to broker shortcut negotiation between spokes. In a dual-region topology with two hubs, <code>auto-discovery-forwarder</code> must be enabled on the overlay between the two hubs so ADVPN information can flow across regions.</p>
+
+      <p>The IKE message sequence that establishes a shortcut is important to memorise. The initial packets flow through the hub in the ordinary way. The hub notices that both peers have ADVPN enabled and sends a <em>shortcut-offer</em> to spoke1. Spoke1 acknowledges the offer with a <em>shortcut-query</em>, which the hub forwards to spoke2. Spoke2 acknowledges the query with a <em>shortcut-reply</em> containing its public IP address, its local subnet, the desired destination subnet, and an auto-generated PSK (digital certificate authentication is also supported). The hub forwards the reply back to spoke1, and only then do the two spokes initiate a direct IKE negotiation. After routing convergence, spoke-to-spoke traffic no longer transits the hub.</p>
+
+      <div class="callout"><strong>Requirements at a glance:</strong> ADVPN needs a routing protocol on the overlay — Fortinet recommends <em>IBGP</em>, but OSPF, RIPv2/RIPng, and static routing are supported. PIM and multicast work. NAT is supported for on-demand tunnels. Both IPv4 and IPv6 are supported for ADVPN 1.0; ADVPN 2.0 supports IPv4 only.</p></div>
+
+      <p>Fortinet introduced <strong>ADVPN 2.0</strong> in FortiOS 7.4.2 to address ADVPN 1.0's scale limits. ADVPN 1.0 was heavily dependent on BGP mechanisms (route reflection, BGP next-hop recursive resolution, IPsec phase-2 selectors, BGP per overlay, BGP on loopback) and it did not scale gracefully into networks with thousands of branches. It also gave the initiator no visibility into the remote spoke's WAN links — the shortcut always reused the same interfaces as the original flow, forcing administrators to configure overlay-stickiness policy routes to avoid impossible cross-overlay shortcuts. ADVPN 2.0 is <em>natively designed for SD-WAN</em>, supports very large topologies, limits hub involvement, improves underlay selection for tunnel establishment (using overlays available on both spokes with matching link performance), and improves resiliency against underlay outages and degraded performance.</p>
+
+      <p>The heart of ADVPN 2.0 is <strong>edge discovery and path management</strong>. Edge discovery expands the IKE <em>shortcut-reply</em> so the initiator spoke learns the remote spoke's IP address, transport group, link quality, link cost, and member configuration order for each remote WAN link. Path management, performed on the initiator, calculates the best shortcut path per SD-WAN service or rule and advises IKE to establish the shortcut using the selected interface pair — which may differ from the interface used for the initial data. After the shortcut is up, the spokes exchange link status every <strong>5 seconds</strong> over the shortcut using <em>UDP port 4684</em>, for best-quality or lowest-cost (SLA) rules. This exchange is not configurable; it happens automatically for those rule strategies.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Phase-1 Setting</th><th>Where</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>auto-discovery-receiver</td><td>Spoke overlay</td><td>Tells the hub this spoke can negotiate shortcuts</td></tr>
+          <tr><td>auto-discovery-sender</td><td>Hub overlay to spoke</td><td>Allows the hub to broker shortcut negotiation between spokes</td></tr>
+          <tr><td>auto-discovery-forwarder</td><td>Hub-to-hub overlay</td><td>Forwards ADVPN sender/receiver info between hubs (dual region)</td></tr>
+          <tr><td>auto-discovery-crossover</td><td>Hub (block)</td><td>Prevents shortcuts between overlays with different network IDs</td></tr>
+        </tbody>
+      </table>
+
+      <p>Shortcut endpoint selection differs sharply between the two generations. With <em>ADVPN 1.0</em>, the shortcut endpoints simply mirror the interfaces used by the initial flow through the hub, and the administrator must add overlay-stickiness policy routes to prevent shortcuts that would try to bridge incompatible transports (for example, an ISP overlay to an MPLS overlay). With <em>ADVPN 2.0</em>, the spoke picks the interface based on link performance information received from the remote spoke, different SD-WAN rules can trigger different shortcuts, and the spoke can reevaluate performance and negotiate a new shortcut. Overlay stickiness is no longer relevant; instead, administrators assign a <strong>transport group ID</strong> to each link to differentiate compatible from incompatible interfaces.</p>
+
+      <p>When a spoke detects that the SLA on the member carrying the current shortcut is no longer met, it does not simply give up. It sends ADVPN control packets — <em>UDP trigger packets</em> — to the hub on UDP port 4684, sourced from its loopback IP toward the hub's loopback IP. The hub responds by sending a fresh <em>shortcut-offer</em> to trigger the negotiation of a new shortcut on a better link. That interaction is what turns ADVPN 2.0 into a resilient runtime system rather than a one-shot tunnel builder.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The hub matchmakes; the spokes marry. In ADVPN 1.0 the hub also chose the venue. In ADVPN 2.0 the spokes pick the venue themselves — using SLA information exchanged every 5 seconds over UDP/4684.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-advpn-concepts" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-advpn-concepts','ADVPN Concepts')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-advpn-concepts" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-advpn-concepts')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SD-WAN + ADVPN DESIGN</span>
+      </div>
+      <p class="socratic-insight">The original ADVPN design used one BGP peer per overlay, route reflection on the hub, and prefix redistribution. It was easy to explain but it degraded as branches multiplied. Fortinet's later releases added several routing overlay designs — BGP on loopback, IPsec selector with static routing, dynamic BGP — each of which trades off scalability, simplicity, and the reliance on route reflection differently.</p>
+      <ul class="socratic-questions">
+        <li>Why does the traditional BGP-per-overlay design scale poorly, and what does BGP on loopback change to make it scale better?</li>
+        <li>What problem do transport groups and overlay placeholders solve in an ADVPN 2.0 SD-WAN design?</li>
+      </ul>
+      <div class="answer-area" data-section="advpn-design">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">In BGP-per-overlay each branch establishes a BGP peer for every overlay it has with the hub, and the hub must reflect routes to every peer. Route reflection is a "square problem" — O(n²) — because the number of routes to reflect equals routes multiplied by peers. The hub's CPU and the spokes' unnecessary route-learning both explode as branches increase. BGP on loopback collapses each branch into a <em>single</em> IBGP session with the hub, terminated on loopback interfaces at both ends, and lets FortiGate resolve routes recursively through all available overlays. Only one BGP route is generated per LAN prefix, so BGP add-path is no longer required, and the hub reflects a much smaller number of routes between a much smaller number of peers.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Transport groups differentiate WAN interfaces that are compatible for shortcut establishment from those that are not — for example, ISP interfaces versus MPLS. Members inside the same transport group can build shortcuts between each other; members in different groups cannot. By default all members sit in transport group zero, so shortcuts are allowed everywhere; the administrator adds distinct group IDs to prevent inter-group shortcuts. Overlay placeholders solve the mirror problem: two spokes may share a direct MPLS connection to each other but have no MPLS connection to the hub. A placeholder phase-1 interface with <code>auto-discovery-dialup-placeholder enable</code> and no static remote gateway lets ADVPN 2.0 build a shortcut over the MPLS transport between the two spokes while the regular parent tunnels continue to run over broadband to the hub.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-advpn-design">
+      <div class="section-label">SECTION 02</div>
+      <h2>Designing the Overlay <em>Around ADVPN and SD-WAN</em></h2>
+
+      <p>The original SD-WAN + ADVPN design used a single routing protocol — BGP — on the overlay, one BGP peer per overlay, route reflection on the hub, and prefix redistribution. That design remains easy to understand and easy to configure, and it still fits small to mid-size topologies. Its drawbacks appear at scale: it is not suitable for topologies with thousands of branches, the hub sees a high processing load reflecting routes to spokes, and the spoke routing tables grow exponentially as branches are added. Later FortiOS versions introduced alternatives — BGP on loopback, IPsec selector with static routing, BGP without route reflection and IPsec selector, and dynamic BGP — that improve scalability and remove or limit the reliance on route reflection.</p>
+
+      <p><strong>BGP on loopback</strong> is the most consequential alternative. Each branch establishes a <em>single IBGP session</em> with the hub, terminated on loopback interfaces at both ends, regardless of how many overlays exist between them. FortiGate resolves the routes recursively through all available overlays, and generates and propagates a single BGP route per LAN prefix. Route reflection remains a "square problem" — O(n²), where the number of routes to reflect equals the routes multiplied by the peers — so reducing both peers and routes significantly improves the scalability of the route reflector. Because only a single BGP route is generated per LAN prefix, BGP add-path is no longer required and the hubs do not inflate the route count when reflecting between spokes or advertising to other regions.</p>
+
+      <p><strong>Edge discovery and path management</strong>, introduced with ADVPN 2.0, are the design's most visible new features. Edge discovery expands the IKE <em>shortcut-reply</em> so the local spoke — the initiator — learns the remote spoke's WAN link information: IP address, transport group, link quality, link cost, and member configuration order. Path management runs in the background on the local spoke, monitors WAN link information available for local and remote overlays, calculates the best shortcut path per SD-WAN service or rule, and advises IKE to establish (or reestablish) a shortcut using the selected path. After the shortcut is established, both spokes exchange members' transport group, link quality, and link status <em>every 5 seconds</em> over the shortcut using UDP traffic on <strong>port 4684</strong> — automatically, for shortcuts associated with best-quality or lowest-cost (SLA) rules.</p>
+
+      <div class="callout callout-green"><strong>Shortcut endpoint selection — ADVPN 2.0:</strong> SD-WAN controls the shortcut negotiation. The spoke initiates. The interface used for the shortcut can differ from the interface of the overlay used for the initial data packets sent through the hub. Different SD-WAN rules can trigger and use different shortcuts. The spoke can reevaluate performance and negotiate a new shortcut if the link degrades. Overlay stickiness — the workaround required in ADVPN 1.0 — is no longer relevant, but administrators can assign a <em>transport group ID</em> per link to keep incompatible interfaces (for example ISP vs MPLS) from being paired.</p></div>
+
+      <p>Once a shortcut is up, it must be maintained. The spokes exchange health-check information — UDP on port 4684 — every 5 seconds, containing link status, link quality, and transport groups for all members. When the SLA on the current shortcut member degrades, the spoke sends <em>UDP trigger packets</em> to the hub on the same port, sourced from its loopback IP toward the hub's loopback IP; the hub then sends a shortcut-offer to trigger the negotiation of a new shortcut. Both settings need to be permitted end-to-end and on any intermediate devices.</p>
+
+      <p>Three configuration levers govern the shortcut lifecycle. <strong>Idle timeout</strong> (<code>set idle-timeout enable</code> with <code>set idle-timeoutinterval N</code>) brings down a shortcut after N minutes of no user traffic — health-check traffic does not count as user traffic. <strong>Dependent lifetime</strong> (<code>set auto-discovery-shortcuts dependent</code>) tears the shortcut down immediately when its parent goes down, which saves resources and speeds up routing convergence; the default is <em>independent</em>. <strong>Hold-down time</strong> on the SD-WAN service (<code>set hold-down-time 20</code>) delays failback to a recovered member — including recovered shortcuts — so the SLA is verified before traffic is steered back. Fortinet strongly recommends configuring at least 20 seconds on SD-WAN + ADVPN deployments using lowest-cost (SLA) rules.</p>
+
+      <p>For dual-region designs, <strong>network IDs</strong> let you either restrict or multiply shortcuts between the same pair of endpoints. Assigning the same network ID to two overlays that share a physical transport (both on ISP) allows shortcuts between them, and different IDs (say, MPLS at ID 2) prevent physically impossible shortcuts when <code>set auto-discovery-crossover block</code> is enabled on the hub. Setting a <em>different</em> network ID per overlay also allows multiple shortcuts between the same pair of local and remote gateway IPs — one via hub1, one via hub2, both up at the same time. The feature requires IKEv2. When you use FortiManager's SD-WAN overlay template, <code>network-overlay</code> is enabled and a different <code>network-id</code> is defined per overlay automatically.</p>
+
+      <p>Two more design tools deserve attention. <strong>Overlay placeholders</strong> allow ADVPN 2.0 to build shortcuts over transports that are not connected to the hub — the classic case being two spokes with a direct MPLS link between them where neither has MPLS to the hub. A placeholder phase-1 interface with <code>set type dynamic</code>, <code>set net-device enable</code>, and <code>set auto-discovery-dialup-placeholder enable</code> is defined with no static <code>remote-gw</code>; SD-WAN treats it as if it were a normal overlay, and shortcuts can be established between the spokes over that placeholder while the regular parent tunnels continue to run over broadband to the hub. Health checks run on both the regular shortcut and the placeholder shortcut, so SD-WAN can pick the interface that best meets the SLA.</p>
+
+      <p><strong>Dynamic BGP</strong> is the other alternative: BGP neighbor connections between spokes are formed only <em>after</em> an ADVPN shortcut is established between them. The hub learns only the summary route from each spoke, so it no longer needs to reflect routes at all; the spokes learn routes solely from the BGP neighbours they actually talk to. Dynamic BGP is compatible with BGP per overlay and BGP on loopback, and works for both IPv4 and IPv6. It removes the requirement for route reflection on the hub entirely.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Design</th><th>Overlay Peer Count</th><th>Route-Reflection Load</th><th>Best For</th></tr></thead>
+        <tbody>
+          <tr><td>BGP per overlay (original)</td><td>One per overlay</td><td>High — O(n²)</td><td>Small / mid-size, easy to reason about</td></tr>
+          <tr><td>BGP on loopback</td><td>One per branch</td><td>Much lower</td><td>Large deployments</td></tr>
+          <tr><td>IPsec selector + static</td><td>None (BGP-free)</td><td>None</td><td>Very large or BGP-averse designs</td></tr>
+          <tr><td>Dynamic BGP</td><td>Only via active shortcuts</td><td>Removed on the hub</td><td>FortiOS 7.4.1+, large designs</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Route reflection is a square problem. Every design change that reduces either the number of routes or the number of peers by an order of magnitude improves scale by two orders of magnitude.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-advpn-design" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-advpn-design','SD-WAN + ADVPN Design')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-advpn-design" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-advpn-design')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · ADVPN CONFIGURATION</span>
+      </div>
+      <p class="socratic-insight">Configuration for ADVPN falls neatly into two halves. The IPsec half sets the auto-discovery options and, on hub, disables <code>net-device</code> while on spokes it must be enabled with <code>allowaccess ping</code>. The SD-WAN half — new with ADVPN 2.0 — enables <code>advpn-select</code> on the zone and defines transport groups per member. FortiManager can do all of this via the SD-WAN overlay template.</p>
+      <ul class="socratic-questions">
+        <li>Why must <code>net-device</code> be disabled on the hub but enabled on the spokes, and why does the spoke overlay need <code>set allowaccess ping</code>?</li>
+        <li>What does <code>set advpn-select enable</code> at the SD-WAN zone level actually turn on, and how do transport groups plug into it?</li>
+      </ul>
+      <div class="answer-area" data-section="advpn-config">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">On the hub, <code>net-device</code> is disabled so that the hub does not create a network device per dial-up child tunnel — the hub aggregates many spokes on one parent interface, and net-device would multiply resources unnecessarily. On the spoke, <code>net-device</code> must be enabled (it is disabled by default) so that the spoke has a proper interface for each overlay; SD-WAN needs that interface identity to run health checks and steer traffic. The <code>set allowaccess ping</code> line is required on the spoke because SD-WAN sends ping probes to the overlay IP address of the remote spoke to monitor the shortcut's performance and health — if ping is not allowed on the interface, the probes fail and the shortcut is marked dead.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>set advpn-select enable</code> at the SD-WAN zone level turns on ADVPN 2.0 for that zone — it tells SD-WAN that this zone should participate in edge discovery, path management, and the enhanced <em>shortcut-reply</em> exchange. Once enabled, you can optionally define a <code>transport-group</code> for each SD-WAN member (default is zero, which means shortcuts are unrestricted). Different group IDs prevent ADVPN 2.0 from negotiating shortcuts between members in different groups — the standard use is to segregate ISP-connected members (group 1) from MPLS-connected members (group 2) so no impossible cross-transport shortcut is attempted.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-advpn-config">
+      <div class="section-label">SECTION 03</div>
+      <h2>Configuring, Monitoring, and Debugging <em>ADVPN in Practice</em></h2>
+
+      <p>ADVPN configuration divides cleanly into two parts — an <em>IPsec</em> part that is similar to the original ADVPN and an <em>SD-WAN</em> part that is new with ADVPN 2.0. On the IPsec side, the phase-1 interface holds the auto-discovery commands: <code>auto-discovery-receiver enable</code> on the spoke overlay, <code>auto-discovery-sender enable</code> on the hub overlay that faces spokes, and <code>auto-discovery-forwarder enable</code> on the hub overlay that faces the other hub (dual-region). On the SD-WAN side, configuration is applied on every spoke: <code>set advpn-select enable</code> at the SD-WAN zone level activates ADVPN 2.0 for that zone, and (optionally) a <code>transport-group</code> is defined per member. By default every member is in transport group zero, so shortcuts are allowed between all of them. Backward compatibility is preserved — an ADVPN 2.0 branch that receives a <em>shortcut-reply</em> without WAN link details falls back to the ADVPN 1.0 method for that peer only.</p>
+
+      <div class="code-block">
+        <div class="code-label">Hub — Phase-1 (SD-WAN overlay design)</div>
+        <pre><code>config vpn ipsec phase1-interface
+    edit "VPN1"
+        set net-device disable
+        set auto-discovery-sender enable
+    next
+end</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Spoke — Phase-1 and interface</div>
+        <pre><code>config vpn ipsec phase1-interface
+    edit "HUB1-VPN1"
+        set net-device enable
+        set auto-discovery-receiver enable
+    next
+end
+config system interface
+    edit "HUB1-VPN1"
+        set allowaccess ping
+    next
+end</code></pre>
+      </div>
+
+      <p>Note that <code>net-device</code> is <em>disabled</em> on the hub and <em>enabled</em> on the spoke — it is disabled by default, so the spoke line must be added explicitly. Ping must be allowed on the spoke overlay because SD-WAN sends ping probes to the overlay IP address of the remote spoke to monitor the shortcut. Without <code>allowaccess ping</code>, the health checks fail and the shortcut is marked dead.</p>
+
+      <div class="callout"><strong>FortiManager SD-WAN overlay template — ADVPN 1.0 defaults:</strong> Selecting <em>Auto-Discovery VPN</em> on the overlay template makes FortiManager set <code>add-route disable</code>, <code>net-device disable</code>, and <code>auto-discovery-sender enable</code> on the hub IPsec template; <code>additional-path enable</code> on the hub BGP template; <code>add-route disable</code>, <code>net-device enable</code>, and <code>auto-discovery-receiver enable</code> on the spoke IPsec template; and <code>recursive-next-hop enable</code>, <code>additional-path enable</code> on the spoke BGP template. FortiManager 7.4 and earlier build ADVPN 1.0 via this template; ADVPN 2.0 must be enabled explicitly.</p></div>
+
+      <p><strong>Transport groups</strong> are defined under <code>config system sdwan</code> in the <code>members</code> list: each member gets a <code>transport-group</code> number, and shortcuts are negotiated only between members that share the same group. A typical pattern is ISP interfaces in group 1 and MPLS in group 2, so ADVPN 2.0 never tries to bridge the two. <strong>Overlay placeholders</strong> extend this by allowing shortcuts on transports that don't reach the hub: a placeholder phase-1 interface (<code>set type dynamic</code>, <code>set net-device enable</code>, <code>set auto-discovery-dialup-placeholder enable</code>) is defined with no static <code>remote-gw</code>, and the placeholder tunnel is added as an SD-WAN member with the appropriate transport group.</p>
+
+      <div class="code-block">
+        <div class="code-label">SD-WAN — advpn-select and transport groups</div>
+        <pre><code>config system sdwan
+    set status enable
+    config zone
+        edit "overlay"
+            set advpn-select enable
+            set advpn-health-check "HUB1_HC"
+        next
+    end
+    config members
+        edit 4
+            set interface "H1_T11"
+            set zone "overlay"
+            set transport-group 1
+        next
+        edit 13
+            set interface "Placeholder_MPLS_1"
+            set zone "overlay"
+            set transport-group 2
+        next
+    end
+end</code></pre>
+      </div>
+
+      <p>Monitoring is done with a small set of diagnostic commands. On a local spoke, <code>diagnose sys sdwan advpn-session</code> displays the WAN link information received from the remote spoke — remote spoke device name and zone, the selected path for the shortcut, and the remote link performance details refreshed every 5 seconds. The command produces no output for shortcuts that do not require SLA monitoring; it only shows shortcuts associated with best-quality or lowest-cost (SLA) rules. The command <code>get router info routing-table all</code> and <code>get vpn ipsec tunnel summary</code> reveal how the routing table changes as the shortcut is established: the recursive lookup for the remote spoke's LAN prefix shifts from the parent tunnel (for example HUB1-VPN1) to the shortcut child (HUB1-VPN1_0), and a new static route to the remote spoke's overlay IP (say 192.168.1.2/32) appears as directly connected on the shortcut interface.</p>
+
+      <p>Logs identify shortcut tunnels with the <code>advpnsc</code> field — set to <em>1</em> for shortcuts and <em>0</em> otherwise. To filter for ADVPN-only messages on the FortiGate CLI: <code>execute log filter category event</code> then <code>execute log filter field advpnsc 1</code>. On FortiAnalyzer, activate the <strong>AD-VPN Shortcut</strong> column in Log View &gt; Event &gt; VPN to view the flag. FortiManager's <strong>VPN Monitor</strong> page shows shortcut tunnels graphically on a map and in a table with bandwidth statistics. FortiAnalyzer's <strong>Secure SD-WAN Monitor</strong> displays an expand button next to any interface with one or more shortcuts; expanding it reveals shortcut tunnel details.</p>
+
+      <p>Debugging shortcut negotiation uses the IKE real-time debug filtered on multiple IP addresses. <code>diagnose vpn ike log filter mrem-addr4 &lt;hub-ip&gt; &lt;spoke-ip&gt;</code> lets you print IKE debug for several IPv4 destinations at once (mrem-addr6 for IPv6). The debug output on the hub shows <em>SHORTCUT_OFFER</em>, then <em>SHORTCUT_QUERY</em> received from spoke1 and forwarded to spoke2, then <em>SHORTCUT_REPLY</em> received from spoke2 and forwarded to spoke1. On spoke1 you will see the received <em>SHORTCUT_REPLY</em>, followed by "adding new dynamic tunnel" and finally the SNMP tunnel-UP trap. The child dial-up tunnel on the hub and the shortcut tunnel on the spoke use the same name convention — <code>HUB1-VPN1_0</code> — but represent different things: on the hub, it is the child dial-up tunnel connecting hub to spoke1; on spoke1, it is the shortcut to spoke2.</p>
+
+      <div class="callout callout-amber"><strong>Common gotcha:</strong> Idle shortcuts inherit the parent tunnel's lifetime by default, so a shortcut with no user traffic can linger for hours consuming resources. Set <code>idle-timeout enable</code> and <code>idle-timeoutinterval N</code> on the spoke phase-1 to bring down idle shortcuts. Health-check traffic does <em>not</em> count as user traffic. Separately, <code>set auto-discovery-shortcuts dependent</code> tears down shortcuts immediately when the parent goes down — the default (<em>independent</em>) leaves them up, which can slow routing convergence and waste resources.</p></div>
+
+      <p>ADVPN can also be layered with alternative BGP designs. For <em>ADVPN with BGP on loopback</em>, the hub's phase-1 uses <code>set ike-version 2</code>, <code>set net-device disable</code>, <code>set exchange-ip-addr4 &lt;hub-loopback&gt;</code>, <code>set add-route disable</code>, and <code>set auto-discovery-sender enable</code>; the hub's BGP enables <code>ibgp-multipath</code> and <code>recursive-next-hop</code>, and each neighbor-group sets <code>next-hop-self enable</code>, <code>interface loopback</code>, and <code>update-source loopback</code>. A firewall policy from the IPsec zones to the loopback zone must be defined so BGP traffic can reach the loopback IP. On the spoke, <code>set tag-resolve-mode merge</code> and <code>set recursive-next-hop enable</code> are required so the next-hop resolves both through the best-match route and through same-tag routes at the same time; each hub is marked with a different tag via a route-map <code>set-tag</code> in the incoming direction.</p>
+
+      <p>For <em>ADVPN with dynamic BGP</em>, the hub enables the usual ADVPN sender settings plus BGP <code>neighbor-group</code> and <code>neighbor-range</code>, and route reflection is disabled globally (<code>client-to-client-reflection disable</code>) or per neighbor-group (<code>route-reflector-client disable</code>). The hub announces the spoke LAN summary through a network statement (with <code>network importcheck disable</code>) or a black-hole route. Each spoke enables <code>auto-discovery-receiver</code>, defines its own <code>neighbor-group</code> and <code>neighbor-range</code>, and — critically — configures <code>set passive disable</code> so the spoke can initiate the dynamic BGP connection to another spoke once the shortcut is up. For <em>ADVPN with phase-2 selector</em> on the hub, IPsec is similar to ADVPN with route-reflector, but BGP additional-path advertisement is enabled and <code>route-reflector-client</code> is left disabled; on the spoke, <code>mode-cfg enable</code>, <code>mode-cfg-allow-client-selector enable</code>, <code>add-route enable</code>, and phase-2 <code>src-addr-type name</code>/<code>dst-addr-type name</code> allow the injection of custom selectors on the shortcut.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Two parts to remember, one flag to test. IPsec sets the auto-discovery role, SD-WAN sets <code>advpn-select</code> and the transport groups, and <code>advpnsc=1</code> is the log field that tells you a tunnel is a shortcut.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-advpn-config" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-advpn-config','ADVPN Configuration')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-advpn-config" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-advpn-config')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-04-dual-hub-multiregion.html">
+    <span class="page-nav-label">← PREV</span>
+    <span class="page-nav-title">Chapter 04 · Dual-Hub &amp; Multiregion</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="appendix-monitoring-troubleshooting.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Appendix · Monitoring &amp; Troubleshooting</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 SD-WAN 7.6</span><span>.</span> Chapter 05 · ADVPN
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-sdwan-ch05-advpn';
+
+const SECTIONS = {
+  'section-advpn-concepts': 'ADVPN Concepts',
+  'section-advpn-design': 'SD-WAN + ADVPN Design',
+  'section-advpn-config': 'ADVPN Configuration',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 03 — SD-WAN Overlay Design and Best Practices (SD-WAN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:12px;"><a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Home</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Full Study Guide</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><a href="index.html" style="color:#9bb8e6;text-decoration:none;">SD-WAN</a><span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 2px;">›</span><span>Chapter 03</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Chapter 03 · NSE7 SD-WAN 7.6</div>
+    <h1>Designing the Overlay <em>the Way Fortinet Recommends</em></h1>
+    <p>A working tour of IPsec overlays, IBGP routing choices, and the OaaS shortcut for building SD-WAN hub-and-spoke fabrics.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Every SD-WAN fabric begins with <em>a choice about the overlay</em>.</div>
+  <p class="motivation-sub">Underlays are what you rent from carriers; overlays are what you engineer on top. This chapter is about the engineering.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-overlay-fundamentals">Overlay Fundamentals</a>
+  <a class="nav-tab" href="#section-overlay-design">Overlay Design</a>
+  <a class="nav-tab" href="#section-overlay-deployment">Overlay Deployment</a>
+  <a class="nav-tab" href="#section-oaas">SD-WAN OaaS</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OVERLAY FUNDAMENTALS</span>
+      </div>
+      <p class="socratic-insight">Underlay links are what carriers sell you — MPLS circuits, broadband, LTE. Overlays are the virtual links you build on top of those underlays so that routing, security, and identity can live in a place that the carrier cannot see or change. Before you touch any config, ask why Fortinet insists on IPsec for the overlay when GRE and IP-in-IP would also technically work.</p>
+      <ul class="socratic-questions">
+        <li>Why does Fortinet recommend IPsec as the tunneling protocol for SD-WAN overlays instead of GRE or IP-in-IP?</li>
+        <li>What are the two IKE phases, what does each of them negotiate, and why is IKEv2 recommended for SD-WAN?</li>
+      </ul>
+      <div class="answer-area" data-section="overlay-fundamentals">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">IPsec is a standard protocol (RFCs 4301, 4302, 4303) that authenticates and encrypts traffic between peers, so the overlay carries both privacy and integrity out of the box. It is also compatible with FortiManager central management and the SD-WAN overlay orchestrator, which know how to build IPsec templates automatically. GRE and IP-in-IP are supported but come with trade-offs — GRE is mainly useful for Cisco-style VPN interoperation (usually GRE over IPsec), and IP-in-IP (RFC 1853) has limited overlay routing options. For those reasons IPsec is Fortinet's recommended overlay tunneling protocol.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Phase 1 negotiates the IKE SA — the secure channel that both peers will use to talk to each other. In IKEv1 that is the main/aggressive mode; in IKEv2 it is IKE_SA_INIT and IKE_AUTH. Phase 2 negotiates the IPsec SA — the actual keys used to encrypt and decrypt data traffic. In IKEv1 that is quick mode; in IKEv2 it is CREATE_CHILD_SA. IKEv2 is recommended for SD-WAN because it has a simpler negotiation process, more features (network ID, EAP authentication, IKE SA integrity algorithm), and exclusively supports the network-id feature that lets you establish multiple tunnels between the same local and remote gateways — a requirement in SD-WAN failover scenarios and with ADVPN.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-overlay-fundamentals">
+      <div class="section-label">SECTION 01</div>
+      <h2>Underlays, Overlays, <em>and Why IPsec Wins</em></h2>
+
+      <p>In the vocabulary of SD-WAN, <strong>underlays</strong> are the physical links — the MPLS circuit, the broadband service, the LTE modem — that the carrier provides. <strong>Overlays</strong> are virtual links built on top of those underlays using tunneling. That distinction matters because the overlay is where you get to make design decisions: it is where routing lives, where encryption lives, and where the fabric's identity is expressed. The underlay is rented; the overlay is engineered.</p>
+
+      <p>FortiGate supports three tunneling protocols for building overlays. <em>IPsec</em> is a standard protocol (RFCs 4301, 4302, 4303), compatible with FortiManager central management and the SD-WAN overlay orchestrator, and it is the Fortinet-recommended overlay tunneling protocol. <em>GRE</em> — usually deployed as GRE over IPsec — is offered mainly for Cisco-style VPN interoperability. <em>IP-in-IP</em> (RFC 1853) is a standard protocol with limited overlay routing options. In practice, and for the rest of this chapter, overlays are IPsec.</p>
+
+      <p>IPsec is a suite of protocols for securing IP communications. Two of its members carry most of the weight. <strong>IKE</strong> (Internet Key Exchange) handles the handshake, tunnel maintenance, and disconnection; it uses UDP 500 by default, and UDP 4500 when NAT traversal (NAT-T) is required. <strong>ESP</strong> (Encapsulating Security Payload) provides data integrity and encryption; it uses IP protocol 50 natively, or is encapsulated in UDP 4500 when NAT-T is negotiated. ESP is the workhorse; ESP has no port numbers of its own, which is precisely why NAT-T exists — to let ESP survive translation on the path.</p>
+
+      <p>IKE has two phases. <em>Phase 1</em> negotiates the <strong>IKE SA</strong>, the secure channel used to negotiate everything else. <em>Phase 2</em> negotiates the <strong>IPsec SA</strong>, the actual keys used to encrypt and decrypt data traffic through the tunnel. In normal two-way traffic, the exchange is secured by a pair of IKE SAs — one for each direction. SAs expire and must be renegotiated after their lifetime. IKEv2 is recommended for SD-WAN because it simplifies negotiation, adds features (network ID, EAP authentication, IKE SA integrity algorithm), and exclusively supports network-id — a requirement for establishing multiple tunnels between the same gateways in SD-WAN failover and ADVPN scenarios.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Protocol</th><th>Purpose</th><th>Native Port</th><th>NAT-T Port</th></tr></thead>
+        <tbody>
+          <tr><td>IKE</td><td>Handshake, SA negotiation, tunnel maintenance</td><td>UDP 500</td><td>UDP 4500</td></tr>
+          <tr><td>ESP</td><td>Data integrity and encryption</td><td>IP proto 50</td><td>UDP 4500</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Overlay topology at a glance:</strong> Fortinet's standard SD-WAN overlay is a <em>hub-and-spoke</em> built with dial-up IPsec tunnels — the hub is the dial-up server, each spoke is a client. For higher performance, group overlays per ISP (same-ISP overlays generally beat cross-ISP overlays on latency). SD-WAN is usually deployed on the spokes; it is also required on the hub when hub-to-spoke traffic exists or ADVPN is in play.</p></div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Phase 1 negotiates the IKE SA; Phase 2 negotiates the IPsec SA. IKEv2 for SD-WAN — the network-id feature is why.</div>
+        </div>
+      </div>
+
+      <p>Overlay topology choices in this space are narrow but real. A <em>dynamic hub-and-spoke</em> topology with dial-up tunnels is the default; each spoke dynamically brings up a tunnel over each underlay to each hub. <em>Hub-and-spoke with static tunnels</em> trades scale for stability and readability — every tunnel is explicitly named, so logs are easier to interpret. <em>Full mesh with static tunnels</em> gives direct connectivity to every site but suffers scalability problems (the number of tunnels grows as <em>N × (N−1) / 2</em> per ISP), which is why Fortinet suggests dynamic hub-and-spoke with ADVPN instead of a full mesh for most SD-WAN designs.</p>
+
+      <div class="callout callout-amber"><strong>Common misconception:</strong> "Full mesh is faster because everything is direct." True in a lab. In practice, the configuration and tunnel count explode with the number of sites — dynamic hub-and-spoke plus <em>ADVPN</em> shortcuts gives you on-demand direct paths without the static-mesh overhead.</div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-overlay-fundamentals" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-overlay-fundamentals','Overlay Fundamentals')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-overlay-fundamentals" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-overlay-fundamentals')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OVERLAY DESIGN</span>
+      </div>
+      <p class="socratic-insight">Once you have committed to IPsec and to a hub-and-spoke, the interesting design questions begin. How do the tunnel interfaces get their IP addresses — from IKE mode-cfg, or manually via <em>exchange-interface-ip</em>? Should <em>net-device</em> be enabled on the spoke, disabled on the hub, or the other way round? And what routing protocol carries prefixes across the fabric?</p>
+      <ul class="socratic-questions">
+        <li>What does the <em>net-device</em> parameter do, and why does Fortinet recommend it disabled on the hub and enabled on the spokes?</li>
+        <li>Given a topology with three regions, 100–200 spokes per region, and overlays over each underlay, which routing protocol should the administrator use — and why?</li>
+      </ul>
+      <div class="answer-area" data-section="overlay-design">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">The <em>net-device</em> parameter is a Fortinet-proprietary attribute configured on the IPsec phase 1 interface that determines whether FortiGate creates a dedicated kernel interface for each dial-up tunnel. With <em>net-device enable</em>, a named interface is created per phase1name_index for each tunnel — great for monitoring and troubleshooting, but it consumes CPU resources and slows down tunnel setup and tear-down, so it is a poor fit for devices with many dial-up tunnels. With <em>net-device disable</em> (the default), a single network interface is shared per phase1 and a tunnel ID is generated for each dynamic tunnel; setup and tear-down rates improve. Fortinet therefore recommends disabling <em>net-device</em> on the hub (which handles many tunnels) and enabling it on the spokes (which typically have few). Additionally, if SD-WAN is configured on the hub, FortiOS does not allow dynamic IPsec tunnels to be SD-WAN members.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">BGP — specifically IBGP. Static routing is supported but does not scale well and is not compatible with ADVPN. Of the dynamic protocols FortiGate supports (RIP, OSPF, IBGP, EBGP), IBGP is recommended because it scales, preserves the next hop (which is convenient for ADVPN), and is compatible with ADVPN. In this scenario BGP on loopback is the recommended sub-design — a single IBGP session per hub, a loopback interface uniquely identifying each SD-WAN node, and spoke summary routes advertised over that single session per hub. It extends well to multi-region deployments, which the three-region scenario requires.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-overlay-design">
+      <div class="section-label">SECTION 02</div>
+      <h2>Tunnel IPs, <em>net-device, and the Routing Choice</em></h2>
+
+      <p>Designing the overlay begins with the tunnel-establishment mode. <em>Static</em> tunnels are stable and common with full-mesh topologies but require configuration on both ends for every new tunnel — heavy maintenance overhead. <em>Dynamic</em> tunnels are recommended for hub-and-spoke because adding a spoke does not require any change on the hub, and dynamic tunnels are ADVPN-compatible. In FortiGate terms this is expressed as the phase1-interface <code>type</code> (either <code>dynamic</code> for a dial-up server or <code>static</code> for a peer with a known IP).</p>
+
+      <p>Next comes the question of how the tunnel interface gets its IP address. Two options exist. <strong>IKE mode config</strong> (<code>mode-cfg enable</code>) is the IKE standard: the administrator defines a range of IP addresses on the hub, and each spoke receives its tunnel interface IP address from the hub during negotiation. <strong>Exchange interface IP</strong> (<code>exchange-interface-ip</code>) is a Fortinet-proprietary IKE attribute; the administrator manually assigns the tunnel IP on both the spoke and hub sides, and IKE exchanges those addresses so each gateway recognizes the remote overlay IP. Mode config is simple; exchange-interface-ip lets you pick fixed addresses, which is useful when the tunnel IP is also used for monitoring or, in the BGP-on-loopback design, when the loopback IP itself is the tunnel address.</p>
+
+      <div class="callout"><strong>SD-WAN overlay orchestrator note:</strong> When you drive the overlay with FortiManager's SD-WAN overlay orchestrator, it configures the hub as a dial-up server, defines mode-cfg with the administrator's IP range for BGP-per-overlay designs, and switches to <em>exchange-interface-ip</em> for BGP-on-loopback designs — matching Fortinet's recommended settings automatically.</div>
+
+      <p>The <em>net-device</em> parameter is Fortinet-specific and lives on the phase 1 interface. Enabled, it creates a dedicated kernel interface for each dial-up tunnel (name is <em>phase1name_index</em>); disabled — the default — it shares a network interface and generates a tunnel ID per dynamic tunnel in the form of an IP address, used as the gateway in the route entry. Recommended settings are <strong>hub: disabled</strong> (many tunnels, performance matters, and SD-WAN configured on the hub disqualifies dynamic tunnels from SD-WAN membership anyway) and <strong>spokes: enabled</strong> (few tunnels, and the named interfaces help monitoring and troubleshooting).</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">net-device on the hub = disabled (throughput). net-device on the spokes = enabled (readability). Never both the same way.</div>
+        </div>
+      </div>
+
+      <p>Routing across the overlay is the last big choice. Static routing is supported but does not scale and is not compatible with ADVPN. Of the dynamic protocols FortiGate supports (RIP, OSPF, IBGP, EBGP), Fortinet recommends <em>IBGP</em>: it scales, preserves the next-hop, and integrates cleanly with ADVPN. A common multi-region routing design uses <strong>EBGP between regions</strong>, <strong>IBGP within regions</strong>, and <strong>static routes between spokes and their local LAN</strong>.</p>
+
+      <p>Inside IBGP itself, Fortinet offers two implementations. <strong>BGP per overlay</strong> is the historical design — every spoke establishes a separate IBGP session over each overlay towards each hub, and each spoke advertises its LAN prefixes over every established session. It works with ADVPN but scales poorly as the number of overlays grows. <strong>BGP on loopback</strong> is the newer, recommended design — every spoke establishes a single IBGP session per hub, terminated on the loopback interface which uniquely identifies each SD-WAN node. Spokes advertise LAN prefixes over that single session per hub. Configuration is simpler, the number of advertised routes drops sharply, and the design extends well to multi-region deployments.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Aspect</th><th>BGP per Overlay</th><th>BGP on Loopback</th></tr></thead>
+        <tbody>
+          <tr><td>IBGP sessions per spoke</td><td>One per overlay to each hub</td><td>One per hub (terminated on loopback)</td></tr>
+          <tr><td>Tunnel IP method</td><td>IKE mode-cfg (allocated from hub range)</td><td>exchange-interface-ip (fixed loopback IP)</td></tr>
+          <tr><td>Scalability</td><td>Limited — sessions multiply with underlays</td><td>Good — flat session count, scales to multi-region</td></tr>
+          <tr><td>Historical role</td><td>Original ADVPN-compatible design</td><td>Recommended and now most common</td></tr>
+        </tbody>
+      </table>
+
+      <p>If ADVPN shortcuts are in the picture, spokes still need to learn each other's routes. Two options exist. <em>Route reflection</em> — the historical solution — has the hub learn all routes from each spoke and reflect them to every other spoke; simple, but the hub burns CPU proportional to the spoke count and routing tables get large. <em>Dynamic BGP</em> — the newer alternative — has the hub learn only spoke summary routes and lets spokes establish BGP peering with each other <em>only after</em> an ADVPN shortcut is up. That produces on-demand peering, drastically fewer routes, and better hub-CPU behavior in large ADVPN fabrics. Dynamic BGP is compatible with both BGP-per-overlay and BGP-on-loopback.</p>
+
+      <div class="callout callout-green"><strong>Multi-region rule of thumb:</strong> <em>EBGP</em> between regions, <em>IBGP</em> within a region, static routes between spokes and their local LAN. Prefer BGP on loopback when the topology exceeds a small single region.</div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-overlay-design" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-overlay-design','Overlay Design')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-overlay-design" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-overlay-design')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · OVERLAY DEPLOYMENT</span>
+      </div>
+      <p class="socratic-insight">The deployment tools are a ladder. Small topologies can be built with the FortiGate GUI's VPN wizard or the CLI; large ones live inside FortiManager, where the SD-WAN overlay orchestrator, the IPsec provisioning templates, and the (legacy) VPN Manager each play a role. Recommended IPsec templates encode Fortinet's best practices so administrators do not have to remember them one setting at a time.</p>
+      <ul class="socratic-questions">
+        <li>What are the three main tools for configuring SD-WAN overlays, and when do you choose each?</li>
+        <li>In BGP-per-overlay, why must the spoke bind BGP packets to a specific tunnel interface using <em>interface</em> and <em>update-source</em>?</li>
+      </ul>
+      <div class="answer-area" data-section="overlay-deployment">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Three main tools exist. The <em>FortiGate GUI or CLI</em> is available for small topologies with a limited number of devices, each spoke configured individually and no central management — the GUI's VPN Wizard supports Site to Site, Hub and Spoke with ADVPN, and Remote Access. The <em>SD-WAN overlay orchestrator</em> in FortiManager is recommended for SD-WAN — it guides the administrator through tunnel and BGP configuration for single-hub, dual-hub, or multi-hub (up to four hubs) topologies and applies Fortinet-recommended settings automatically. <em>IPsec Provisioning Templates</em> in FortiManager offer predefined templates (IPsec Fortinet Recommended, BRANCH IPsec Recommended, HUB IPsec Recommended) that add the same recommended settings. The <em>VPN Manager</em> is legacy central VPN management and is not recommended for new SD-WAN setups.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">With BGP per overlay you want each IBGP session to travel over the tunnel it belongs to, not over some other overlay. Binding BGP packets with <em>set interface "HUB1-VPN1"</em> forces the outgoing interface, and <em>set update-source "HUB1-VPN1"</em> ensures the source IP address is that of the selected interface. Together they prevent cross-overlay BGP peerings — a subtle but real risk on SD-WAN because FortiOS would otherwise perform a route lookup and could pick a different outgoing interface. Note that <em>update-source</em> is technically redundant when <em>interface</em> is set (the interface forces the source), but it is still good practice for consistency, and it matters when the source IP is not the interface IP — for example when the source IP is a loopback address.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-overlay-deployment">
+      <div class="section-label">SECTION 03</div>
+      <h2>Deploying the Overlay <em>at Scale</em></h2>
+
+      <p>The three-tool ladder starts with the <strong>FortiGate GUI or CLI</strong> for small topologies. The GUI's VPN Wizard offers three flavors — <em>Site to Site</em>, <em>Hub and Spoke with ADVPN</em>, and <em>Remote Access</em> — and, when you pick the hub-and-spoke path, produces a configuration key that simplifies matching the spoke to the hub. The CLI exposes every parameter and is where you refine what the wizard drafted. Beyond a handful of sites, this approach becomes untenable and central management takes over.</p>
+
+      <p>At scale you use <strong>FortiManager</strong>, and inside FortiManager you have three options in descending order of preference. The <em>SD-WAN overlay orchestrator</em> is recommended for SD-WAN: it guides overlay-tunnel and BGP configuration for single-hub, dual-hub, or multi-hub (up to four hubs) topologies and applies Fortinet-recommended settings automatically. The <em>IPsec Provisioning Templates</em> — HUB_IPsec_Recommended, BRANCH_IPsec_Recommended, and IPsec_Fortinet_Recommended — apply the same recommended parameters when you would rather work at the template level. The legacy <em>VPN Manager</em> is central VPN management and should not be used to deploy new SD-WAN setups.</p>
+
+      <div class="callout"><strong>Orchestrator choices in one line:</strong> topology (single/dual/multi-hub), IKEv2 with hub as dial-up server, authentication (pre-shared key or Signature), ADVPN (Legacy or 2.0), IBGP as the routing protocol, and either BGP-per-overlay (default) or BGP-on-loopback. The orchestrator generates matching IPsec and BGP templates for both hub and spoke, following best practices.</div>
+
+      <p>When the orchestrator prepares IPsec templates for a <em>BGP per overlay</em> design, the hub settings include <code>type dynamic</code>, <code>net-device disable</code>, <code>mode-cfg enable</code>, <code>add-route disable</code>, IP address assignment, <code>network-overlay enable</code>, a distinct <code>network-id</code> per overlay, and the tunnel IP address plus remote IP subnet. Branch templates use <code>type static</code>, <code>net-device enable</code>, <code>mode-cfg enable</code> (with <code>assign-ip enable</code>), <code>network-overlay enable</code>, matching <code>network-id</code>, a <code>local-id</code>, and <code>phase2 auto-negotiate enable</code>.</p>
+
+      <p>For <em>BGP on loopback</em>, the hub template drops mode-cfg and enables <code>exchange-interface-ip</code> with <code>exchange-ip-addr4</code> set to the hub's loopback IP. Branches mirror that with <code>exchange-ip-addr4</code> set to the spoke's loopback IP. The other core parameters — dynamic type on the hub, static type on the branch, net-device disabled on the hub and enabled on the branch, network-overlay enabled with a network-id — remain the same.</p>
+
+      <div class="code-block">
+        <div class="code-label">SPOKE BGP CONFIG — BGP PER OVERLAY</div>
+        <pre><code>config router bgp
+    set as 65000
+    set router-id 10.200.99.1
+    set ibgp-multipath enable
+    config neighbor
+        edit "192.168.1.61"
+            set interface "HUB1-VPN1"
+            set remote-as 65000
+            set update-source "HUB1-VPN1"
+        next
+        edit "192.168.1.125"
+            set interface "HUB1-VPN2"
+            set remote-as 65000
+            set update-source "HUB1-VPN2"
+        next
+    end
+    config redistribute "connected"
+        set status enable
+        set route-map "port5_only"
+    end</code></pre>
+      </div>
+
+      <p>In BGP-per-overlay, IBGP is used because it preserves the next-hop for prefixes (convenient for ADVPN); ECMP is expected due to SD-WAN's multipath nature, so <code>ibgp-multipath enable</code> is required. Each neighbor entry sets <code>interface</code> and <code>update-source</code> to bind BGP packets to a specific overlay and prevent cross-overlay peerings; while <code>update-source</code> is technically redundant when the interface already forces the source, it stays for consistency and for future scenarios where the source IP differs from the interface. The <code>redistribute "connected"</code> section, filtered by a route-map, injects the LAN prefix (for example <code>10.0.1.0/24</code> on port5) into BGP for advertisement.</p>
+
+      <p>On the hub side of BGP-per-overlay, one <code>neighbor-group</code> per overlay defines standard BGP settings; <code>route-reflector-client enable</code> is toggled on only if ADVPN is planned, because reflection is what lets spokes learn each other's prefixes. A <code>neighbor-range</code> associates an IP address prefix with each group so the correct settings apply to peers from each overlay's IP range.</p>
+
+      <p>The <strong>BGP on loopback</strong> design relies heavily on the loopback IP address, which uniquely identifies each SD-WAN node. The spoke sets <code>router-id</code> and <code>update-source</code> to the branch loopback, enables <code>ibgp-multipath</code>, and — critically — enables <code>recursive-next-hop</code> and <code>tag-resolve-mode merge</code>. That last piece introduces a Fortinet-proprietary BGP extension called <em>tag-based recursive resolution</em> (tag-match). Routes received from each hub are tagged via a route-map (for example, tag <code>1</code> for hub HUB1), and recursive resolution then attempts to resolve those routes using only routes with the same tag. In <em>merge</em> mode it combines the tag-match result with the standard best-match. The tag has only <em>local</em> significance — FortiGate does not advertise it — and does not break any BGP standard.</p>
+
+      <p>On the hub with BGP-on-loopback, the config enables both <code>ibgp-multipath</code> and <code>ebgp-multipath</code>, <code>recursive-next-hop</code>, <code>recursive-inherit-priority</code>, and defines a single <code>neighbor-group</code> for all branches (usually named <code>EDGE</code>) with a <code>neighbor-range</code> matching the loopback IP prefix.</p>
+
+      <p>Two more deployment moves matter. <strong>BGP route reflection</strong> (via <code>route-reflect-client enable</code>) is required only with ADVPN; it lets the hub reflect learned routes from one spoke to other spokes in the group. <strong>Advertise additional paths</strong> (also required with ADVPN) is how FortiGate propagates <em>more than one path</em> per prefix so that SD-WAN can see and steer over all available overlays. It uses <code>additional-path enable</code>, <code>additional-path-select N</code> (where N is the number of overlays), and per-neighbor-group <code>additional-path send</code> plus <code>adv-additional-path N</code>; receivers use <code>additional-path receive</code>. The result is duplicate BGP routes on the FIB — consolidated for cosmetic readability on the routing table but still present and usable.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Route reflection + additional paths + ADVPN → spokes learn all paths to all destinations. Without additional paths, SD-WAN skips overlays it never learned about.</div>
+        </div>
+      </div>
+
+      <p><em>Dynamic BGP</em> is the alternative to route reflection and is compatible with both BGP-per-overlay and BGP-on-loopback. Instead of the hub reflecting every possible route to every spoke, the hub learns only spoke summary routes; spokes establish BGP peering with each other only <em>after</em> an ADVPN shortcut is up, then exchange routes over that shortcut. The result: the hub avoids the CPU cost of reflecting, and spokes learn only the routes they actually need. On the spoke you keep <code>set passive disable</code> (so it can initiate) and define a neighbor-group and neighbor-range for the other spokes; on the hub you disable <code>route-reflector-client</code> and define a neighbor-group and neighbor-range that covers all spoke prefixes. Peerings between spokes are called <em>on-demand peering</em> — they exist only where user traffic requires them.</p>
+
+      <div class="callout callout-amber"><strong>Exam trap:</strong> Dynamic BGP is <em>not</em> exclusive to BGP-on-loopback — it works with BGP-per-overlay too. And if spokes fail to establish BGP peering after an ADVPN shortcut is up, look for <code>set passive disable</code> on the spoke's neighbor-group.</div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-overlay-deployment" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-overlay-deployment','Overlay Deployment')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-overlay-deployment" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-overlay-deployment')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SD-WAN OaaS</span>
+      </div>
+      <p class="socratic-insight">SD-WAN Overlay-as-a-Service (OaaS) shifts the hub off the customer's plate. Fortinet hosts and manages the hubs in FortiCloud; the customer owns the spokes. Configuration happens in a web portal, not on a per-device CLI. The exam question is: what exactly does OaaS create on the branch when you click Deploy?</p>
+      <ul class="socratic-questions">
+        <li>What does Fortinet provide in an OaaS deployment, and what does the customer still own?</li>
+        <li>What specific objects does OaaS create on each branch FortiGate, and why does it prefix every one of them with <em>oaas</em>?</li>
+      </ul>
+      <div class="answer-area" data-section="oaas">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Fortinet provides the managed hubs with a geo-redundant dual-hub high-availability architecture, and the OaaS orchestrator that creates and installs policies across multiple devices. The customer owns and manages the spoke devices — FortiGate hardware or in-house VMs at branch and data centre locations — and manages the overlay connections through the OaaS web interface. Fortinet does not host the customer's LAN; the customer runs it. The benefits are cost saving on device hosting and management, simplicity, and fast delivery, with SD-WAN intelligent path steering and BGP dynamic routing running on top of the managed overlay.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">OaaS creates one IPsec tunnel per ISP to the primary hub only, with ADVPN parameters so spokes can build shortcut tunnels between themselves. It sets up BGP on loopback using private AS 65001 (which must remain exclusive to OaaS) over the reserved subnet 10.200.0.0/16. It creates one SD-WAN zone (<em>oaas_overlay</em>) grouping all OaaS overlay interfaces, a performance SLA with a default 100ms latency threshold, and a lowest-cost SD-WAN rule (<em>oaas_default</em>). It adds two firewall policies (<em>oaas_default</em> for spoke LAN-to-spoke LAN traffic and <em>oaas_bgp</em> for health checks to loopbacks) and a system zone (<em>oaas_lan_zone</em>) plus a firewall address group (<em>oaas_corp_network</em>). Every object is prefixed with <em>oaas</em> so administrators can immediately identify what OaaS created — and can safely add their own policies alongside without confusion.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-oaas">
+      <div class="section-label">SECTION 04</div>
+      <h2>Overlay as a Service <em>and What It Configures for You</em></h2>
+
+      <p>SD-WAN <strong>Overlay as a Service</strong> (OaaS) is a Fortinet SaaS offering that provides on-demand secure connectivity between locations with point-and-click setup and monitoring. Fortinet provides the managed hubs — geo-redundant, dual-hub, high-availability — and the OaaS orchestrator that installs configuration across multiple devices. The customer provides ownership and management of the spoke devices and manages the overlay via the OaaS web interface. It is a division of labor: Fortinet owns the overlay infrastructure; you own the endpoints.</p>
+
+      <p>OaaS is a licensed service included in the FortiGate Cloud Standard Subscription, itself part of the SD-WAN service bundle; a subscription is required for each remote device. Supported topologies are SD-WAN with dual hub (primary and secondary) and SD-WAN with ADVPN. Spokes must run <strong>FortiOS 7.4.4 or later</strong>. Before adding a site, the spoke must be internet-connected and registered with FortiCare; LAN and WAN interfaces defined; basic routing configured so branches can reach the hub; and the interfaces used for OaaS must <em>not</em> already be associated with an SD-WAN zone, a network zone, or a firewall policy — OaaS creates its own.</p>
+
+      <div class="callout"><strong>Reserved subnet:</strong> OaaS reserves <code>10.200.0.0/16</code> for overlay IP addressing of all spokes; do not use this network in either the LAN subnets or the WAN network. It can be changed from the OaaS portal Settings if it conflicts with the existing network.</div>
+
+      <p>In the OaaS portal you select two hub locations (for redundancy), add sites (each with a name, type — <em>Branch</em> or <em>Data Center</em> — and a registered FortiGate serial number), add ISP links per site (name, interface, optional cost), define the LAN subnet per site, and click <strong>Apply</strong> to deploy. OaaS then relies on the management tunnel each FortiGate has with FortiCloud to retrieve interface information and install its configuration. The Home page shows a graphical view of the topology with color codes for device status: green (<em>All Pass</em>), orange (<em>Operational</em>), red (<em>Disconnected</em>), gray (<em>Unmanaged</em>).</p>
+
+      <p>What OaaS creates on each branch is worth memorizing because it forms the whole exam surface for this section:</p>
+
+      <ul>
+        <li><strong>IPsec tunnels:</strong> one tunnel per ISP interface, to the primary hub only (secondary is reached via the dual-hub HA architecture). Each tunnel carries the ADVPN parameters that let spokes build shortcut tunnels between themselves.</li>
+        <li><strong>BGP routing:</strong> BGP on loopback using the private AS <strong>65001</strong>, which must remain exclusive to the OaaS configuration.</li>
+        <li><strong>SD-WAN zone <em>oaas_overlay</em>:</strong> groups all OaaS overlay interfaces into one zone.</li>
+        <li><strong>Performance SLA:</strong> monitors performance through each overlay and any established ADVPN shortcuts, with a default latency threshold of <strong>100 ms</strong>.</li>
+        <li><strong>SD-WAN rule <em>oaas_default</em>:</strong> a lowest-cost (SLA) rule that steers traffic through the best-performing overlay link by latency.</li>
+        <li><strong>Firewall policies:</strong> <em>oaas_default</em> allows all traffic between spoke LAN subnets over the overlays; <em>oaas_bgp</em> allows health-check traffic to hub and spoke loopback interfaces.</li>
+        <li><strong>System zone <em>oaas_lan_zone</em>:</strong> a system zone including all branches' LAN subnets.</li>
+        <li><strong>Firewall address group <em>oaas_corp_network</em>:</strong> the address group referenced by the default policy.</li>
+      </ul>
+
+      <p>Every object OaaS creates is prefixed with <em>oaas</em> so administrators can immediately identify what belongs to the orchestrator and what belongs to them. This matters because OaaS does <em>not</em> lock the FortiGate down; the spoke administrator remains free to add additional firewall policies, tighten wildcard rules, and refine configuration as needed. The <em>oaas_default</em> policy uses wildcard address objects and services — you almost always want to add narrower policies alongside it.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">OaaS = Fortinet owns the hubs and the AS (65001); the customer owns the spokes and the LAN. The <em>oaas</em> prefix marks the boundary.</div>
+        </div>
+      </div>
+
+      <div class="callout callout-amber"><strong>Common misconception:</strong> "OaaS lets me mix customer-managed hubs with Fortinet hubs for extra redundancy." False — an OaaS topology is dual-hub within FortiCloud, not a hybrid with in-house hubs. And OaaS SD-WAN rules are not limited to lowest cost / SLA only despite the default rule; you can define additional rule types on the branch after deployment.</div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-oaas" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-oaas','SD-WAN OaaS')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-oaas" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-oaas')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="chapter-02-sd-branch-ztp.html">
+    <span class="page-nav-label">← PREVIOUS</span>
+    <span class="page-nav-title">Chapter 02 · SD-Branch & ZTP</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="chapter-04-dual-hub-multiregion.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">Chapter 04 · Dual-Hub & Multiregion</span>
+  </a>
+</div>
+
+<footer>
+  Vaultline Financial<span>.</span> <span>NSE7 SD-WAN 7.6</span><span>.</span> Chapter 03 · SD-WAN Overlay Design and Best Practices
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-sdwan-ch03-overlay-design';
+
+const SECTIONS = {
+  'section-overlay-fundamentals': 'Overlay Fundamentals',
+  'section-overlay-design': 'Overlay Design',
+  'section-overlay-deployment': 'Overlay Deployment',
+  'section-oaas': 'SD-WAN OaaS',
+};
+
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

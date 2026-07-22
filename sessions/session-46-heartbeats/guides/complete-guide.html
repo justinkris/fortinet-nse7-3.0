@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 46 Complete — Heartbeats</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">›</span>
+      <a href="#">Curriculum</a><span class="breadcrumb-sep">›</span>
+      <span>Session 46 — Heartbeats</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Study Guide · NSE7 EF 7.6 · Session 46</div>
+    <h1>Heartbeats, Ethertypes, and <em>Two Boxes That Both Work</em></h1>
+    <p>A cluster formed perfectly and still failed. The fault was in what shared the wire.</p>
+  </div>
+</header>
+<div class="motivation-banner">
+  <div class="motivation-text">A false failover is worse than a real one — you took the outage and <em>got nothing for it</em>.</div>
+  <p class="motivation-sub">Session 46 · FGCP heartbeat & ethertypes · virtual clustering · VDOM partitioning · Study Guide 04, pp. 89–92 · Blueprint 1.3</p>
+</div>
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+<nav class="section-nav" id="section-nav"><a class="nav-tab active" href="#section-overview">Overview</a><a class="nav-tab" href="#section-ethertypes">Ethertypes</a><a class="nav-tab" href="#section-sessionsync">Session Sync</a><a class="nav-tab" href="#section-vcluster">Virtual Clustering</a><a class="nav-tab" href="#section-partition">VDOM Partitioning</a><a class="nav-tab" href="#section-troubleshooting">Troubleshooting</a><a class="nav-tab" href="#section-takeaways">Takeaways</a></nav>
+<main><div class="main-content">
+
+<div class="section-block" id="section-overview">
+  <div class="section-label">SESSION OVERVIEW</div>
+  <h2>The cluster wasn't broken. It was <em>deafened by its own chatter.</em></h2>
+  <p>The second FortiGate 900G arrived on a Monday. Same model, same firmware, correctly licensed — everything Session 45 said it had to be. Junior cabled two heartbeat links direct-connect, typed the HA stanza himself, and the cluster <strong>formed</strong>. And then it began to bicker: sync status flickering, three help-desk tickets reading <em>"internet went weird for a second"</em>, and Cipher walking past the rack to deliver a four-word incident report — <em>"That rhythm is wrong."</em></p>
+  <p>This session is about the two things that go wrong <em>after</em> a cluster forms correctly. First: FGCP's own signalling — which ethertypes carry what, where they physically travel, and what happens when you make the control plane share a wire with bulk data. Second: Penny's objection that she now owns two firewalls and one of them does nothing — answered not with active-active, but with <strong>virtual clustering</strong> and <strong>VDOM partitioning</strong>.</p>
+
+  <div class="callout"><strong>Learning objectives.</strong> Identify the three FGCP ethertypes and what each carries · sniff heartbeat traffic on the correct interface · explain the default session-synchronisation path and the false-failover risk it creates · configure dedicated session-sync interfaces and predict their fallback behaviour · define virtual clustering and its constraints · configure VDOM partitioning with per-vcluster priority · size a partitioned cluster correctly.</p></div>
+
+  <div class="callout callout-amber"><strong>Story recap in one line.</strong> A correctly-built cluster produced intermittent micro-outages; the heartbeat was alive but starving, and the fix was to give session synchronisation a road of its own — after which Penny got both boxes working without buying a third.</div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">A cluster that forms is not a cluster that works. Formation is a checklist; behaviour is an engineering problem.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-overview" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-overview','Overview')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-overview" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-overview')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · ETHERTYPES</span>
+  </div>
+  <p class="socratic-insight">Junior went diagnostic before touching configuration — genuinely the right instinct. He ran a sniffer for the heartbeat ethertype, saw nothing at all, and concluded the heartbeat was dead. He was about to reboot a production firewall on the strength of that silence. Before you read on, work out what is wrong with his evidence.</p>
+  <ul class="socratic-questions"><li>FGCP does not travel over IP. What does it travel over, and how many distinct ethertypes are in the family?</li><li>Junior sniffed port1 and saw nothing. What has he actually proven?</li></ul>
+  <div class="answer-area" data-section="ethertypes">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">Three: <strong>0x8890</strong> (heartbeat, NAT/route mode), <strong>0x8891</strong> (heartbeat, transparent mode) and <strong>0x8893</strong> (configuration synchronisation). FGCP is Ethernet-typed, which is why an IP-based capture filter would never see it.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">Nothing. He has proven only that heartbeat frames do not traverse port1 — which is expected, because they only ever traverse interfaces declared as <code>hbdev</code>. Absence of evidence gathered from the wrong place is not evidence of absence.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-ethertypes">
+  <div class="section-label">SECTION 01</div>
+  <h2>FGCP speaks its own language — <em>three ethertypes</em></h2>
+  <div class="section-img-wrap">
+  <img src="images/s1-ethertypes.png" class="section-img" alt="Three labelled Ethernet frames travelling a heartbeat cable between two FortiGates"
+       onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+  <p class="img-caption">The FGCP family: two ethertypes keep you alive, one keeps you identical.</p>
+  <div class="si-placeholder">
+    <span class="si-filename">images/s1-ethertypes.png</span>
+    <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector illustration on a warm cream background (#faf5e9), coral and muted gold accents, sage green highlights, soft brown outlines, bold clean line work, no gradients, no photorealism, no 3D. Two identical dark navy rack-mounted firewall chassis stand facing each other in profile, one on the left and one on the right, each drawn with simple front-panel port rows. A single thick cable arcs between them labelled in small clean sans-serif capitals 'HBDEV — PORT3'. Travelling along this cable are three distinct stylised Ethernet frames drawn as rounded rectangular envelopes of different colours: a coral frame labelled '0x8890 HEARTBEAT — NAT/ROUTE', a sage green frame labelled '0x8891 HEARTBEAT — TRANSPARENT', and a muted gold frame labelled '0x8893 CONFIG SYNC'. Small icon glyphs sit inside each frame: a pulse waveform in the coral and green frames, and two identical tiny documents in the gold frame. Below the cable, a second thinner cable labelled 'PORT1 — DATA' is drawn deliberately empty, with a small dashed magnifying-glass icon hovering over it and a tiny label 'nothing here'. Composition is a wide horizontal band with generous white space. Educational diagram clarity, storybook warmth. Do not include any human characters, any logos, any dense technical text, or any IP addresses.</div>
+  </div>
+</div>
+  <p>FortiGate HA uses FGCP for all HA-related communication, and that traffic travels over the links you designate as heartbeats. The important structural fact — the one the exam leans on — is that <strong>FGCP uses its own Ethernet type rather than the IP protocol</strong>. It is not TCP, not UDP, not ICMP. If you build a capture filter around IP, you will never see it.</p>
+
+  <table class="data-table">
+    <thead><tr><th>Ethertype</th><th>Carries</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td>0x8890</td><td>Heartbeat</td><td>NAT / route mode cluster</td></tr>
+      <tr><td>0x8891</td><td>Heartbeat</td><td>Transparent mode cluster</td></tr>
+      <tr><td>0x8893</td><td>Configuration synchronisation</td><td>Always</td></tr>
+    </tbody>
+  </table>
+
+  <p>The heartbeat ethertypes do far more work than the name suggests. They are responsible for <strong>discovering other FortiGate devices in the same HA group</strong>, <strong>electing the primary</strong>, <strong>synchronising other data</strong>, and <strong>detecting when a device fails</strong> so traffic can be redistributed. Everything that makes a cluster a cluster, rather than two firewalls in a rack, rides on those frames.</p>
+
+  <div class="analogy-box">
+    <div class="analogy-label">Analogy</div>
+    <div class="analogy-text">
+      <p class="analogy-summary">88-90 keeps you alive. 88-93 keeps you identical.</p>
+      <ul>
+        <li>The heartbeat family is a pulse — small, constant, and meaningful only because it is <em>on time</em>.</li>
+        <li>Config sync is a photocopier — bursty, larger, and meaningful only because it is <em>accurate</em>.</li>
+        <li>Different jobs, different tolerances. That distinction is the whole of Section 02.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-block"><div class="code-label">FortiOS CLI — sniff the heartbeat (NAT/route mode)</div><pre><code>diagnose sniffer packet port3 &quot;ether proto 0x8890&quot; 4</code></pre></div>
+
+  <div class="callout"><strong>Verification discipline.</strong> Before you interpret a sniffer's silence, confirm you are on an interface listed in <code>hbdev</code>. Run <code>show system ha</code> and read the <code>set hbdev</code> line first. Silence from the wrong port is not a finding.</div>
+
+  <div class="callout callout-amber"><strong>Common mistake — the one that cost Junior an hour.</strong> Sniffing a data interface for 0x8890, seeing nothing, and diagnosing a dead heartbeat. A close second: hedging away from a correct first instinct. 0x8890 and 0x8891 are <em>both</em> heartbeat — they differ by operating mode, not by function.</div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">Verify your instrument before you trust its result. A negative capture on the wrong interface is not evidence.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-ethertypes" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ethertypes','Ethertypes')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-ethertypes" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ethertypes')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · SESSION SYNC</span>
+  </div>
+  <p class="socratic-insight">Junior repoints the sniffer at port3 and the heartbeat is there — a steady drumbeat, every second, both directions. Alive. Which makes the incident worse, not better: the cluster is bickering while its heartbeat is perfectly healthy. The answer is hiding in something that was never on the ethertype list.</p>
+  <ul class="socratic-questions"><li>Session synchronisation has no ethertype of its own in that list. Given the cables that physically exist between these two boxes, what path is it forced to take?</li><li>A heartbeat is a small frame whose only job is to arrive on time. What happens to it when it shares a wire with a flood of session-table data at market open?</li></ul>
+  <div class="answer-area" data-section="sessionsync">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">By default, session synchronisation occurs over the <strong>HA heartbeat link</strong>. Nobody configured a dedicated path, and the only other cables are carrying customer traffic — so it has nowhere else to go.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">It is delayed or dropped. The cluster interprets missing heartbeats as a dead partner and fails over. Nothing was actually wrong: this is a <strong>false failover</strong>, an outage manufactured entirely by the redundancy mechanism.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-sessionsync">
+  <div class="section-label">SECTION 02</div>
+  <h2>The heart and the mouth <em>should not share a throat</em></h2>
+  <div class="section-img-wrap">
+  <img src="images/s2-sessionsync.png" class="section-img" alt="A narrow pipe choked with bulk data while small heartbeat frames are crushed at the edges"
+       onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+  <p class="img-caption">Session sync on the heartbeat wire: the control plane starved by the data it is trying to protect.</p>
+  <div class="si-placeholder">
+    <span class="si-filename">images/s2-sessionsync.png</span>
+    <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector illustration, warm cream background (#faf5e9), coral / muted gold / sage green palette, soft brown outlines, bold clean lines, no gradients, no 3D, no photorealism. Split composition, two stacked horizontal panels separated by a thin brown rule. TOP PANEL labelled 'DEFAULT' in small clean capitals: two dark navy firewall chassis connected by one single cable drawn as a narrow tube seen in cutaway. Inside the tube, large muted gold blocks labelled 'SESSION TABLE DATA' are jammed shoulder to shoulder, completely filling the space, while three tiny coral heart-pulse frames are squeezed flat against the tube wall, one of them cracked and fading. Above the tube a small alarm glyph and the words 'HEARTBEAT LATE'. To the right, the receiving firewall has a thought-bubble containing a simple gravestone icon and the words 'PARTNER IS DEAD', with a curved coral arrow labelled 'FALSE FAILOVER'. BOTTOM PANEL labelled 'FIXED': the same two chassis, now with TWO separate cables. The upper thin cable carries only evenly spaced coral heart-pulse frames with clear space between them, labelled 'HBDEV port3/port4'. The lower thicker cable carries the gold session blocks flowing freely, labelled 'session-sync-dev port5/port6'. Both firewalls look calm; a small sage green tick sits between them. Generous spacing, educational diagram clarity. Do not include human characters, logos, or dense paragraphs of text.</div>
+  </div>
+</div>
+  <p>When session synchronisation is enabled, you may select dedicated interfaces for it. <strong>By default, session synchronisation occurs over the HA heartbeat link.</strong> That default is the entire fault in this episode.</p>
+  <p>Fortinet's own guidance is unambiguous about why: session synchronisation requires <em>high bandwidth</em>, and when it is not separated from the heartbeat it degrades the heartbeat's reliability. With a very large number of sessions to synchronise, the result is <strong>potential loss of heartbeats and false failover</strong>. Dedicated links reduce the bandwidth demand on the heartbeat interface and improve the efficiency and performance of the cluster.</p>
+
+  <div class="code-block"><div class="code-label">FortiOS CLI — give session sync its own road</div><pre><code>config system ha
+    set session-pickup enable
+    set session-sync-dev &quot;port5&quot; &quot;port6&quot;
+end</code></pre></div>
+
+  <p>Two behaviours to hold onto, because both are examinable:</p>
+  <ul>
+    <li><strong>Multiple interfaces → load balancing.</strong> If you select more than one interface, session synchronisation traffic is load balanced among them.</li>
+    <li><strong>Total failure → fallback.</strong> If <em>all</em> the session synchronisation interfaces become disconnected, session synchronisation reverts to using the HA heartbeat link.</li>
+  </ul>
+
+  <div class="callout callout-amber"><strong>The sneakiest thing in this lesson.</strong> That fallback is graceful — you do not lose session sync. But it silently returns you to the exact configuration that caused tonight's incident, and <em>nothing alarms you</em>. Monitor the dedicated sync interfaces explicitly, or you will rediscover this fault at the worst possible hour. Any fallback that does not alarm is a fault waiting to recur.</div>
+
+  <div class="callout callout-green"><strong>Senior insight.</strong> A false failover is worse than a real one. In a real failover you took an outage and bought availability with it. In a false failover you took the outage and got nothing.</div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">Never let a latency-critical control plane share bandwidth with a throughput-hungry data plane. The heart and the mouth should not share a throat.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-sessionsync" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-sessionsync','Session Sync')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-sessionsync" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-sessionsync')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · VIRTUAL CLUSTERING</span>
+  </div>
+  <p class="socratic-insight">Penny arrives with coffee and an objection: she now owns two 900Gs and one of them does nothing, while the Trading and Compliance VDOMs both run hot on the same box. She refuses to buy a third firewall. Junior's instinct is active-active. Yours should not be — and the reason reaches back to Session 45.</p>
+  <ul class="socratic-questions"><li>Why does active-active fail to solve the specific problem Penny described?</li><li>Virtual clustering runs in active-passive mode only. So how can both boxes possibly carry real traffic at the same time? What word has to change meaning?</li></ul>
+  <div class="answer-area" data-section="vcluster">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">In active-active the primary owns the virtual MACs, so <strong>every packet still arrives at the primary first</strong>; selected sessions then take an extra hop out to the secondary and back. It adds a toll booth without moving the front door — and the front door was Penny's actual problem.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><strong>'Primary' stops being a property of the box and becomes a property of the VDOM.</strong> Each member is simultaneously primary for some VDOMs and secondary for others. The cluster is still active-passive; it is just active-passive several times over, in opposite directions.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-vcluster">
+  <div class="section-label">SECTION 03</div>
+  <h2>Virtual clustering — <em>primary becomes a property of the VDOM</em></h2>
+  <div class="section-img-wrap">
+  <img src="images/s3-vcluster.png" class="section-img" alt="Two firewalls each holding a primary crown for a different VDOM territory"
+       onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+  <p class="img-caption">Both boxes wear a crown — for different territories. The cluster is still active-passive.</p>
+  <div class="si-placeholder">
+    <span class="si-filename">images/s3-vcluster.png</span>
+    <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+    <div class="prompt-content" hidden>Flat minimalistic vector illustration, warm cream background (#faf5e9), coral / muted gold / sage green palette, soft brown outlines, bold clean line work, no gradients, no 3D, no photorealism. Centre composition: two identical dark navy firewall chassis side by side, clearly labelled beneath in small clean capitals 'NGFW-1' and 'NGFW-2'. Above and spanning both, two horizontal translucent bands representing VDOM territories: the upper band tinted coral and labelled 'VCLUSTER 1 — TRADING + ROOT', the lower band tinted sage green and labelled 'VCLUSTER 2 — COMPLIANCE'. Inside the coral band, a small simple gold crown icon sits directly above NGFW-1 with the tag 'PRIMARY · priority 200', and a plain grey circle sits above NGFW-2 tagged 'secondary · priority 100'. Inside the sage band the arrangement is mirrored: the gold crown sits above NGFW-2 tagged 'PRIMARY · priority 200' and the grey circle above NGFW-1 tagged 'secondary · priority 50'. A small banner across the top reads 'MODE: A-P'. Traffic is shown as simple coral arrows entering NGFW-1 from the top and sage arrows entering NGFW-2 from the top, both flowing downward — visually proving both boxes are working. Generous white space, strong visual hierarchy, educational clarity. Do not include human characters, logos, gradients, or long sentences of text.</div>
+  </div>
+</div>
+  <p><strong>Virtual clustering is essentially a cluster of FortiGate devices operating with multiple VDOMs enabled</strong> — an extension of FGCP rather than a separate protocol. It inherits every standard HA requirement (same model, firmware, licensing, drive configuration, operating mode; matching group ID, group name, password and heartbeat settings) with one change: the <strong>maximum HA group ID value is seven</strong>.</p>
+
+  <table class="data-table">
+    <thead><tr><th>Constraint</th><th>Value</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>HA mode</td><td>Active-passive only</td><td>Junior will try to type <code>a-a</code> here. It is wrong.</td></tr>
+      <tr><td>Maximum virtual clusters</td><td>30</td><td>Sizing ceiling for large multi-tenant designs</td></tr>
+      <tr><td>Maximum HA group ID</td><td>7</td><td>Lower than standard HA — classic exam detail</td></tr>
+      <tr><td>Members</td><td>Two FortiGates</td><td>For more than two with VDOMs, look to FGSP instead</td></tr>
+    </tbody>
+  </table>
+
+  <p>For load-balancing sessions there are two options within a cluster: active-active mode, or — within active-passive — <strong>VDOM partitioning</strong>. Penny's problem is a territory problem, not a shared-work problem, which is why partitioning is the correct instrument.</p>
+
+  <div class="callout"><strong>Scaling note.</strong> If you need a cluster of <em>more than two</em> FortiGates operating with multiple VDOMs, virtual clustering is not the answer. Consider designs that avoid multiple VDOMs in one cluster, or use standalone session synchronisation with FGSP.</div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">Virtual clustering does not make active-passive into active-active. It makes 'primary' a per-VDOM role, so active-passive can point in two directions at once.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-vcluster" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-vcluster','Virtual Clustering')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-vcluster" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-vcluster')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · VDOM PARTITIONING</span>
+  </div>
+  <p class="socratic-insight">You now have the concept. The mechanism is the interesting part — Fortinet had four primary-election criteria available and chose exactly one for this job. Then there is the bill, which is the part Penny must hear before she signs.</p>
+  <ul class="socratic-questions"><li>Of the four election criteria — connected monitored interfaces, HA uptime, priority, serial number — which one does VDOM partitioning use, and why that one specifically?</li><li>NGFW-2 fails completely. What happens to the Compliance VDOM's traffic, and what does that imply about how you must size these two firewalls?</li></ul>
+  <div class="answer-area" data-section="partition">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text"><strong>Priority</strong>, set per vcluster. It is the only criterion that is <em>administratively assigned</em>: interface state and uptime are facts the network hands you, and serial number is stamped at the factory. If you want to choose a winner, you must use the dial you control.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">The surviving device processes <strong>all traffic for all VDOMs</strong>. Therefore each member must be sized for <strong>100% of total load</strong>, not 50%. VDOM partitioning delivers utilisation of the second box — it does not deliver capacity from it.</div></div></div>
+  </div>
+</div>
+
+<div class="section-block" id="section-partition">
+  <div class="section-label">SECTION 04</div>
+  <h2>VDOM partitioning — <em>and the bill that comes with it</em></h2>
+  <p>To configure VDOM partitioning you set one cluster device as the primary for some VDOMs and the other as primary for the rest. You control the distribution of traffic by adjusting which device is primary for each VDOM, and <strong><code>set priority</code> determines the role of the cluster device for each VDOM</strong> — highest priority wins that vcluster.</p>
+
+  <div class="code-block"><div class="code-label">FortiOS CLI — NGFW-1</div><pre><code>config system ha
+    set mode a-p
+    set vcluster-status enable
+    config vcluster
+        edit 1
+            set override disable
+            set priority 200
+            set vdom &quot;VDOM1&quot; &quot;root&quot;
+        next
+        edit 2
+            set override disable
+            set priority 50
+            set vdom &quot;VDOM2&quot;
+        next
+    end
+end</code></pre></div>
+
+  <div class="code-block"><div class="code-label">FortiOS CLI — NGFW-2 (mirrored priorities)</div><pre><code>config system ha
+    set mode a-p
+    set vcluster-status enable
+    config vcluster
+        edit 1
+            set override disable
+            set priority 100
+            set vdom &quot;VDOM1&quot; &quot;root&quot;
+        next
+        edit 2
+            set override disable
+            set priority 200
+            set vdom &quot;VDOM2&quot;
+        next
+    end
+end</code></pre></div>
+
+  <p>Read the two stanzas side by side and the pattern is obvious: vcluster 1 goes to NGFW-1 (200 beats 100), vcluster 2 goes to NGFW-2 (200 beats 50). Same two boxes, opposite outcomes, decided independently per cluster. Note also that the <strong>root VDOM must be assigned somewhere</strong> — here it travels with VDOM1 in vcluster 1.</p>
+
+  <div class="callout callout-amber"><strong>The sizing trap.</strong> Two members each running at 45% under normal load looks like a healthy design and is not one. During a failover the survivor inherits everything — its own load plus its partner's — and saturates. You get packet loss and dropped sessions during precisely the incident the cluster was purchased to survive. The insurance policy pays out at half value on the one day you claim.</div>
+
+  <div class="analogy-box">
+    <div class="analogy-label">Analogy</div>
+    <div class="analogy-text">
+      <p class="analogy-summary">It is not two boxes' worth of firewall. It is one box's worth, running in two places.</p>
+      <ul>
+        <li><strong>Utilisation</strong> is how much of what you bought is currently doing something.</li>
+        <li><strong>Capacity</strong> is how much load the design can survive losing a member.</li>
+        <li>VDOM partitioning improves the first and changes nothing about the second.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-green"><strong>Business translation for Penny.</strong> "Both firewalls now carry production traffic, so nothing sits idle — and either one can run the entire firm on its own if the other dies. That second property is why they are the size they are."</div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">Utilisation is not capacity. Size every cluster member for 100% of total load, then partition to use what you have already paid for.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-partition" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-partition','VDOM Partitioning')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-partition" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-partition')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-troubleshooting">
+  <div class="section-label">SECTION 05</div>
+  <h2>Troubleshooting workflow — <em>the timing detail is the diagnosis</em></h2>
+  <p>The workflow that solved this incident is short, and its first step is the one most engineers skip.</p>
+  <ol>
+    <li><strong>Restate the symptom with its scope and timing.</strong> "Repeated failovers, both members healthy, all monitored interfaces up, <em>only during market open, never overnight</em>."</li>
+    <li><strong>Let the timing eliminate causes.</strong> Override, priority misconfiguration and interface state are all time-of-day independent. A symptom with a schedule has a cause with a load profile. This single move discards three plausible hypotheses for free.</li>
+    <li><strong>Verify your instrument before trusting it.</strong> Confirm which interfaces are <code>hbdev</code> before you sniff, and before you interpret silence.</li>
+    <li><strong>Observe under the conditions that produce the fault.</strong> Sniff during peak, not at 4pm when everything works.</li>
+    <li><strong>Correlate.</strong> Match heartbeat gaps against failover timestamps in the event log.</li>
+    <li><strong>Fix the cause, not the symptom.</strong> Separating the sync path fixes it. Lengthening heartbeat timers only makes the cluster slower to detect a <em>real</em> failure.</li>
+  </ol>
+  <div class="callout"><strong>Exam tips.</strong> (1) "Only at market open / only under load" is never scene-setting — it is the discriminator. (2) 0x8890 and 0x8891 are both heartbeat; the difference is operating mode. (3) Virtual clustering is a-p only — any answer offering a-a is a distractor. (4) Watch for the fallback question: all sync interfaces down means <em>revert to heartbeat link</em>, not "sessions are lost".</div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">If a symptom has a schedule, the cause has a load profile.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-troubleshooting" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-troubleshooting','Troubleshooting')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-troubleshooting" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-troubleshooting')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-takeaways">
+  <div class="section-label">SECTION 06</div>
+  <h2>Key <em>takeaways</em></h2>
+  <ul>
+    <li><strong>FGCP is Ethernet-typed:</strong> 0x8890 heartbeat (NAT/route), 0x8891 heartbeat (transparent), 0x8893 config sync.</li>
+    <li><strong>The heartbeat lives on <code>hbdev</code></strong> and nowhere else. Sniff there or learn nothing.</li>
+    <li><strong>Session sync defaults to the heartbeat link</strong> — the single most consequential default in this lesson.</li>
+    <li><strong>Dedicated sync interfaces load balance;</strong> losing all of them reverts to the heartbeat link, silently.</li>
+    <li><strong>Virtual clustering:</strong> a-p only, max 30 clusters, max group ID 7.</li>
+    <li><strong>VDOM partitioning</strong> selects per-VDOM primaries with <code>set priority</code>, because priority is the only criterion you assign.</li>
+    <li><strong>Failover consolidates everything</strong> onto the survivor. Size for 100%.</li>
+  </ul>
+  <div class="callout callout-green"><strong>Señor's line, for the wall:</strong> <em>"The heart and the mouth should not share a throat."</em></div>
+  <div class="mental-note-block">
+  <div class="mental-note-block-icon">🧠</div>
+  <div class="mental-note-block-inner">
+    <div class="mental-note-block-label">MENTAL NOTE</div>
+    <div class="mental-note-block-text">Formation is a checklist. Behaviour is engineering. Tonight's fault passed every checklist.</div>
+  </div>
+</div>
+</div>
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-takeaways" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-takeaways','Takeaways')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-takeaways" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-takeaways')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="#">
+    <span class="page-nav-label">← SESSION 45</span>
+    <span class="page-nav-title">The Night the Lights Went Out</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="#">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">The Understudy</span>
+  </a>
+</div>
+</div></main>
+<footer>
+  LoFinance<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Session 46 · Complete Study Guide
+</footer>
+<script>
+const PAGE_KEY = 'nse7-session46-heartbeats-complete';
+const SECTIONS = {
+  'section-overview': 'Overview',
+  'section-ethertypes': 'Ethertypes',
+  'section-sessionsync': 'Session Sync',
+  'section-vcluster': 'Virtual Clustering',
+  'section-partition': 'VDOM Partitioning',
+  'section-troubleshooting': 'Troubleshooting',
+  'section-takeaways': 'Takeaways'
+};
+
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = '{{PAGE_KEY}}';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-{{S1_SLUG}}': '{{S1_SHORT_NAME}}',
+  'section-{{S2_SLUG}}': '{{S2_SHORT_NAME}}',
+  'section-{{S3_SLUG}}': '{{S3_SHORT_NAME}}',
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+
+</script>
+</body>
+</html>

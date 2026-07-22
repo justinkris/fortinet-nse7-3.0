@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 39 Troubleshooting — Rating Day</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green:#1a7c4a;--green-light:#dff0e1;--amber:#b45309;--amber-light:#fcf2c3;--red:#b91c1c;--red-light:#fbe6e6;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:36px 50px;background:var(--ink-dark);}
+  .eyebrow{font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.12em;margin-bottom:8px;}
+  header h1{font-family:'Playfair Display',serif;font-size:34px;color:#fbf7ec;font-weight:700;}
+  header p{color:rgba(251,247,236,0.6);font-style:italic;margin-top:6px;}
+  main{max-width:900px;margin:0 auto;padding:32px 50px 60px;}
+  .block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 26px;margin-bottom:20px;}
+  .block h2{font-family:'Playfair Display',serif;font-size:22px;border-left:3px solid var(--blue);padding-left:12px;margin-bottom:14px;}
+  .block p,.block li{font-size:16.5px;line-height:1.68;color:var(--text-soft);margin-bottom:8px;}
+  .block ul,.block ol{padding-left:20px;}
+  .block li strong{color:var(--text);}
+  .step{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px;}
+  .step-num{font-family:'Outfit',sans-serif;font-weight:700;background:var(--blue);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px;}
+  .step-text{font-size:16.5px;color:var(--text-soft);line-height:1.6;}
+  .step-text strong{color:var(--text);}
+  code{font-family:'SF Mono',monospace;background:var(--ink-dark);color:#dff0e1;padding:2px 6px;border-radius:4px;font-size:14px;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:14px 18px;margin:10px 0;font-family:'SF Mono',monospace;font-size:13px;color:#dff0e1;line-height:1.7;overflow-x:auto;}
+  .trap{border-left:3px solid var(--red);background:var(--red-light);border-radius:0 10px 10px 0;padding:12px 18px;margin:10px 0;font-size:15.5px;color:var(--text-soft);}
+  .trap strong{color:var(--red);}
+  .deadend{border-left:3px solid var(--amber);background:var(--amber-light);border-radius:0 10px 10px 0;padding:12px 18px;margin:10px 0;font-size:15.5px;color:var(--text-soft);}
+  .deadend strong{color:var(--amber);}
+  .win{border-left:3px solid var(--green);background:var(--green-light);border-radius:0 10px 10px 0;padding:12px 18px;margin:10px 0;font-size:15.5px;color:var(--text-soft);}
+  .win strong{color:var(--green);}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;color:var(--text-muted);text-align:center;padding:24px;letter-spacing:0.1em;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 39 · TROUBLESHOOTING FRAMEWORK</div>
+  <h1>Rating Day — Thinking Like the Referee</h1>
+  <p>How to triage a Security Rating report the way a senior engineer would — not by re-reading the severity column, louder.</p>
+</header>
+<main>
+
+<div class="block">
+  <h2>Symptom</h2>
+  <p>"The security rating came back with a C+ and 12 findings. Two stakeholders want opposite things done with it, and a board deadline is 3 days out."</p>
+  <p>This isn't a technical failure to diagnose — it's a <strong>triage and prioritisation</strong> exercise, and the discipline transfers directly to real vulnerability-management workflows.</p>
+</div>
+
+<div class="block">
+  <h2>Questions to Ask First</h2>
+  <ul>
+    <li>What does this artefact <strong>actually contain</strong> — a score, a grade, findings, or all three stapled together?</li>
+    <li>Who needs which part, and why? (A board doesn't need device names; a security lead doesn't want a bare grade.)</li>
+    <li>Is this score a one-time snapshot or something that re-runs? (It re-runs — on schedule, or on demand.)</li>
+    <li>For each finding: who can exploit it, with what precondition, and what do they get?</li>
+    <li>Which findings are safe to fix blind, and which need evidence first?</li>
+  </ul>
+</div>
+
+<div class="block">
+  <h2>Verification Commands</h2>
+  <div class="code-block">diagnose autoupdate versions
+<span style="color:#9bb8e6"># Confirms FortiGuard Security Rating subscription/contract state</span>
+
+Security Fabric &gt; Security Rating &gt; [Run Now / Re-evaluate]
+<span style="color:#9bb8e6"># On-demand re-run — don't wait on the schedule before a deadline</span>
+
+Configuration &gt; Revisions
+<span style="color:#9bb8e6"># Confirms scheduled config-backup stitch actually executed</span>
+
+diagnose endpoint fctems queue-complete-calls Q-&lt;endpoint_ip&gt;
+<span style="color:#9bb8e6"># Manual endpoint quarantine — bypasses the automated FAZ→EMS chain</span></div>
+  <p><strong>Expected output:</strong> <code>diagnose autoupdate versions</code> should show current contract dates for the rating-relevant service; a lapsed/expired contract will show as an expired date, which correlates directly with a degraded/missing percentile comparison on the rating page.</p>
+</div>
+
+<div class="block">
+  <h2>Decision Tree — Triaging a Findings List</h2>
+  <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Is it internet-facing and precondition-free?</strong> (e.g. admin access on WAN) → Fix immediately, regardless of listed severity tier.</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Is it a zero-disruption config change?</strong> (trusted hosts, password policy) → Fix same hour. No user impact, no rollback plan needed.</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Does the fix require a reboot or service interruption?</strong> (firmware upgrade) → Schedule a change window; check business-hours impact for the affected device/site first.</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Does the finding involve a policy or rule whose real-world usage you don't know?</strong> (broad "all/all" policies) → STOP. Pull FortiAnalyzer traffic logs for that policy ID first. Use a window wide enough to catch periodic/rare legitimate flows before tightening.</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-text"><strong>After fixes land</strong> → trigger an on-demand rating re-run rather than waiting for the schedule, so verification and reporting aren't blocked on a timer.</div></div>
+</div>
+
+<div class="block">
+  <h2>Common Dead Ends</h2>
+  <div class="deadend"><strong>Sorting purely by severity column and stopping there.</strong> Misses that a "medium" finding might be free to fix now while a "high" finding needs a change window — severity and urgency aren't the same axis.</div>
+  <div class="deadend"><strong>Assuming the score is a fixed snapshot.</strong> Leads to unnecessary waiting for a scheduled re-run when an on-demand trigger exists.</div>
+  <div class="deadend"><strong>Treating "all/all" policy findings the same as license/config findings.</strong> These need evidence (FAZ), not a direct edit — editing blind risks a delayed outage on a rare but legitimate flow.</div>
+</div>
+
+<div class="block">
+  <h2>Likely Root Causes Behind a Poor Rating</h2>
+  <ul>
+    <li>Admin management interfaces left reachable from WAN (most common critical finding).</li>
+    <li>No trusted-hosts restriction on admin accounts (cheap to fix, often overlooked).</li>
+    <li>Firmware drift on branch/remote devices that don't get routine maintenance windows.</li>
+    <li>Broad policies from early deployment that were never tightened once real traffic patterns were known.</li>
+  </ul>
+</div>
+
+<div class="block">
+  <h2>Exam Traps</h2>
+  <div class="trap"><strong>Trap:</strong> "Now" as a Schedule trigger frequency option. It isn't — the options are Once, Hourly, Daily, Weekly, Monthly.</div>
+  <div class="trap"><strong>Trap:</strong> Assuming the Security Rating checks run FROM the root AGAINST each leaf's live config over the network. They don't — each device self-audits locally; only results roll up.</div>
+  <div class="trap"><strong>Trap:</strong> Assuming FortiClient on all platforms supports remote quarantine. Linux is explicitly excluded.</div>
+  <div class="win"><strong>Solid ground:</strong> the exposure/blast-radius/cost-to-fix triage lens is not a memorised Fortinet term — it's a transferable senior-engineering habit the exam rewards through scenario reasoning, not rote recall.</div>
+</div>
+
+</main>
+<footer>LOFINANCE STUDY PROGRAMME · SESSION 39 · TROUBLESHOOTING GUIDE</footer>
+</body>
+</html>

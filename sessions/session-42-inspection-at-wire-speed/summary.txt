@@ -1,0 +1,234 @@
+==================================================================
+SESSION 42 SUMMARY — "INSPECTION AT WIRE SPEED"
+Flow vs proxy UTM acceleration · NTurbo · IPSA
+Study Guide ch.10 Hardware Acceleration, pp. 286-293
+Blueprint 1.2
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+Monday 07:20. Cipher tapes a printed memo to the trading floor
+glass wall — SECURITY DIRECTIVE 2026-14: all VLAN 40 (TRADING)
+traffic must be subject to IPS inspection, no exemptions,
+regulatory audit scheduled Q3. Printed and taped because Cipher
+does that when she wants something unignorable.
+
+07:35, Marcus from the trading desk arrives in the network room
+holding the memo "like a dead fish." His argument: LoFinance spent
+~$250k putting the trading VLAN on ultralow-latency ports X5/X6,
+same NP7, measured at 40 microseconds (the S40/S41 NP Direct
+work). "You can't inspect traffic without touching it, and you
+can't touch it without slowing it down. That's not policy, that's
+PHYSICS."
+
+Cipher, arriving silently behind him: "The audit doesn't care
+about physics. Uninspected trading traffic is an unacceptable risk
+surface. IPS goes on."
+
+Both turn to the student. Junior, already pale, repeats his
+Session 41 teaser panic: "Security profiles kill the offload! The
+second we put IPS on that policy everything drops to the CPU and
+forty microseconds becomes milliseconds!"
+
+Señor, not looking up from coffee, writes two words on the
+whiteboard: NTurbo. IPSA. Then: "Junior. Chico. You said SECURITY
+PROFILES kill the offload. Friday our engineer told us exactly
+WHICH profiles poison a policy. So — where is the crack in his
+claim?"
+
+CHARACTERS: Cipher (compliance push), Marcus/trading desk (NEW
+recurring — the physics-invokes-absolutes stakeholder), Junior
+(over-generalisation), Señor (whiteboard, the crack question),
+Penny (money-sentence question at the end).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+Two stakeholders each invoking an absolute: compliance says MUST
+inspect; trading says CAN'T add latency. Engineer's job = find the
+cheapest TRUE version of the requirement and state its cost
+plainly. Resolution: Cipher gets IPS on VLAN 40, on the condition
+the profile is FLOW-BASED and no proxy-based profile shares that
+policy.
+
+TECHNICAL CONCEPTS COVERED
+------------------------------------------------------------------
+1. The crack in Junior's claim: it is PROXY-based profiles that
+   hard-kill NP offload, not "security profiles" as a category.
+   Flow-based inspection is precisely what NTurbo rescues.
+2. NTURBO = a PATH feature. Creates a special data path
+   redirecting traffic from the ingress interface to the IPS
+   engine. Cycle: new session -> NTurbo driver sends packets to
+   IPS engine -> IPS engine performs the security action -> IPS
+   engine returns packet to NTurbo driver -> NTurbo returns
+   packets to the NP. FortiGate runs the NTurbo driver on a CPU
+   DEDICATED to processing NP-sent traffic needing flow-mode
+   inspection. Result: improved IPS performance; the session
+   keeps NP acceleration for everything that isn't inspection.
+   Scope rule: "anything handled by the IPS engine can use
+   NTurbo."
+3. IPSA = an OFFLOAD feature. Offloads flow-based pattern
+   matching to the CONTENT PROCESSORS. When enabled, flow-based
+   pattern-matching databases are compiled and downloaded to the
+   CPs from the IPS engine and the IPS database.
+4. CRITICAL SEPARATION taught: NTurbo is NP <-> IPS engine.
+   IPSA is IPS engine -> CP. The NP is NOT a party to IPSA.
+   Neither feature causes the other; both are beneficiaries of
+   the same qualifying condition (flow-based profile).
+5. WHERE THE IPS ENGINE LIVES: software on the FortiGate CPU.
+   The CP is a called coprocessor, not the engine. Therefore
+   NTurbo does NOT get you off the CPU — UTM/NGFW operations are
+   still handled by the CPU, with IPSA offloading pattern
+   matching to the CPs. Acceleration != free.
+6. Life of a packet, NTurbo/flow-based UTM session (established):
+   ingress -> NP -> NTurbo driver -> IPS engine (CPU)
+   [engine calls CP for pattern matching, result returns]
+   -> IPS engine -> NTurbo driver -> NP -> egress. Symmetrical.
+   Once the session key is installed, subsequent packets skip
+   routing and kernel.
+7. Life of a packet, PROXY-based UTM session: NP does NOT offload
+   the session. CPU handles processing via IPS engine + FortiOS
+   proxy. BUT the NP is not idle — it still conducts some early
+   security inspections before handing off, and still does IPsec
+   tunnel decryption/encryption. CP still does SSL/TLS crypto for
+   deep inspection. SSL deep-inspect sub-flow: IPS engine -> proxy
+   decrypts (offloading to CP) -> back to IPS engine for IPS/appctrl
+   -> back to proxy for proxy-based inspection -> proxy re-encrypts
+   via CP.
+
+MENTAL MODELS / ANALOGIES (new keepers)
+------------------------------------------------------------------
+- "NTurbo is the on-ramp and off-ramp; IPSA is a phone call."
+  (The CP is a SIDE TRIP, not a stop on the journey — student
+  drew the CP as a hop in his path trace and this correction
+  landed hard.)
+- "NTurbo keeps the NP7 RELEVANT." (STUDENT'S OWN PHRASE — reuse
+  verbatim. Without NTurbo the NP has nothing to contribute to an
+  inspected session.)
+- "NTurbo is a PATH feature; IPSA is an OFFLOAD feature."
+- "Flow-based is the precondition, not the consequence." (Fixed
+  his reversed causal arrow.)
+- "Acceleration is not free — know which component pays for each
+  stage."
+- Carried and reused: "one proxy profile poisons the whole
+  policy" (S41, did all the work today); trench coat (IPsec).
+
+KEY CLI DISCUSSED
+------------------------------------------------------------------
+config ips global
+    set np-accel-mode {none | basic}          <- basic = DEFAULT
+    set cp-accel-mode {none | basic | advanced}
+end                       advanced = default on most models
+                          basic = only mode on single-CP8 devices
+
+config firewall policy
+    edit <id>
+        set np-acceleration {disable | enable}  <- enable = DEFAULT
+end
+
+Disable NTurbo globally (np-accel-mode none) or per policy
+(np-acceleration disable) FOR TROUBLESHOOTING PURPOSES ONLY.
+
+TROUBLESHOOTING APPROACH TAUGHT
+------------------------------------------------------------------
+When inspected traffic is unexpectedly slow: check the INSPECTION
+MODE before you check the hardware. A single proxy-based profile
+is the most common cause of a policy silently dropping to the slow
+path. Then confirm NTurbo/IPSA were not left disabled from a
+previous troubleshooting session (Junior's S41 sin repeated at a
+different layer).
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+IPS applied to VLAN 40 in FLOW mode. Policy audited for
+proxy-based profiles — none permitted on this VLAN, flagged as an
+offload dependency. np-accel-mode and cp-accel-mode confirmed at
+defaults (basic / advanced).
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+FW-TRADE-01/02, VLAN 40 — IPS applied in flow mode. NTurbo/IPSA at
+defaults. Policy flagged: no proxy-based profiles permitted
+(offload dependency). No physical change; the S40 X5/X6 NP Direct
+path is preserved.
+
+BUSINESS OUTCOME
+------------------------------------------------------------------
+Directive 2026-14 satisfied without abandoning the NP Direct
+investment. Both absolutes survived contact: Cipher gets
+inspection, Marcus keeps microsecond-scale latency instead of
+millisecond-scale. Cost stated plainly rather than hidden.
+
+EXAM PERFORMANCE (10-question gauntlet): 8/10 STRICT — SEASON BEST
+------------------------------------------------------------------
+Q1 FULL — NTurbo offloads to IPS engine on CPU and back to NP for
+   forwarding. Both directions named. Self-derived mid-session.
+Q2 FULL — CP for pattern matching.
+Q3 FULL — IPS engine runs on the CPU. NOTABLE: he had this WRONG
+   an hour earlier ("doesn't the IPS engine run on CP9?") and the
+   in-session correction HELD under gauntlet pressure.
+Q4 MISS — gave "enable/disable, enabled by default" for
+   np-accel-mode. Correct = {none | basic}, basic default. He
+   collapsed the GLOBAL command's values into the PER-POLICY
+   command's values. Retrieval slip, not understanding — Q6
+   proves he knows both commands.
+Q5 FULL — advanced on most models, basic on single CP8.
+Q6 FULL — both scopes, correct syntax on each (np-accel-mode none
+   global; np-acceleration disable per policy).
+Q7 MISS — "It can't, proxy based kills it." Correct: NP still does
+   early security inspections AND IPsec tunnel encrypt/decrypt.
+   THE IPSEC EXCEPTION HAS NOW FAILED HIM ACROSS THREE SESSIONS
+   IN THREE DIFFERENT DISGUISES (S41 Q4 tunnels; S41 door quiz
+   half-pair; S42 Q7 proxy path).
+Q8 FULL — False, with mechanism attached. No skipped clause.
+Q9 FULL — complete symmetrical path traced correctly.
+Q10 HALF — money sentence. Did NOT restate despite the question
+   explicitly instructing him to. "Rest assured you're still
+   getting high speed" = reassurance without an anchor. Model
+   given: "Inspection is compliance work the CPU has to do, so
+   we've kept it as small as possible — we're paying microseconds
+   for the audit requirement, not milliseconds, and the fibre
+   investment is still doing its job."
+
+HEADLINE DIAGNOSTIC: THE CONSOLIDATION GAP IS CLOSING. S41's
+finding was that live-derived concepts decayed within the hour
+(5/10 after a near-flawless live phase). This session TWO
+same-session corrections (Q3 IPS-engine-location, Q9 CP-as-hop)
+BOTH SURVIVED into the gauntlet. 8/10 strict. What failed instead
+was (a) command-name precision and (b) the standing IPsec debt.
+Different failure mode = genuine progress.
+
+DOOR-QUIZ (S41 retest, before story)
+------------------------------------------------------------------
+1. Mixed flow+proxy policy: FULL, unprompted reason ("the proxy
+   AV stops the offload"). Poison rule banked.
+2. Four disqualifiers: 3/4 + one WRONG item — offered "interfaces
+   on separate NP7 chips," which is the NP DIRECT requirement from
+   S40. ADJACENT-DRAWER reach again. Then wrote the tunnel pair
+   as literally "Tunnels ? — except IPsec tunnels" — left the RULE
+   clause blank. Corrected; he identified NP Direct correctly when
+   asked.
+3. Stale sessions: gave the COMMANDS but not the DIAGNOSIS.
+   Skipped-clause pattern. Model given: the offload decision is
+   made once at session birth and never re-evaluated.
+
+JUNIOR'S MISTAKE AND WHAT IT TAUGHT
+------------------------------------------------------------------
+Junior generalised "proxy-based profiles" into "security
+profiles" and nearly talked Cipher out of a compliant design that
+was actually available. LESSON: precision in category language is
+not pedantry — it changes what the business is told it can have.
+The over-generalisation would have cost LoFinance either the
+audit or the $250k latency investment.
+
+TEASER DELIVERED FOR SESSION 43 — "PROVING THE SPEED"
+------------------------------------------------------------------
+Cipher: "You've told me it's fast. Show me."
+Señor slides a keyboard across the desk: "She is right, chico. You
+have DESIGNED an accelerated path. You have not yet PROVEN one
+exists." Writes on the whiteboard: `diagnose npu`. "Next week —
+we stop believing, and we start measuring."
+S43 = hardware acceleration configuration and diagnostics. It is
+the natural deep retest for the whole S40-42 arc AND the place to
+collect the IPsec debt for the fourth time.
+
+Date and Time completed: Tuesday, 21 July 2026.

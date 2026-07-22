@@ -1,0 +1,410 @@
+==================================================================
+SESSION 42 — COMBINED REVISION PACK
+"Inspection at Wire Speed" · NTurbo · IPSA · Flow vs Proxy
+NSE7 Enterprise Firewall 7.6 · Blueprint 1.2
+Study Guide ch.10 Hardware Acceleration, pp. 286-293
+==================================================================
+
+
+------------------------------------------------------------------
+PART 1 — QUICK SUMMARY (ONE PAGE)
+------------------------------------------------------------------
+
+THE BUSINESS PROBLEM
+Cipher issued Directive 2026-14: all traffic on the trading VLAN
+must be subject to IPS inspection, no exemptions, regulatory audit
+in Q3. Marcus from the trading desk objected on the grounds of
+physics — LoFinance had just spent ~$250k putting that VLAN on
+ultralow-latency ports X5/X6 on the same NP7, measured at 40 µs.
+Junior sided with physics: "security profiles kill the offload."
+
+THE CRACK
+Junior's word was wrong. Session 41's rule is that PROXY-BASED
+profiles disqualify a session from NP offload, and that one proxy
+profile poisons the entire policy. Flow-based inspection sits
+outside that rule — and flow-based is precisely the category that
+NTurbo and IPSA exist to accelerate. Junior generalised a specific
+rule into a universal one, which would have cost LoFinance either
+the audit or the fibre investment.
+
+THE TWO FEATURES
+Flow-based is the PRECONDITION. Because a profile is flow-based,
+two independent things become possible — neither causes the other:
+
+  NTURBO is a PATH feature. It creates a special data path that
+  redirects traffic from the ingress interface to the IPS engine
+  and returns processed packets to the NP. FortiGate runs the
+  NTurbo driver on a CPU dedicated to processing traffic the NP
+  sends that requires flow-mode inspection. Without NTurbo, an
+  inspected session has nothing for the NP to contribute and the
+  whole session runs on the slow path. Scope rule: anything
+  handled by the IPS engine can use NTurbo.
+
+  IPSA is an OFFLOAD feature. It allows basic or advanced pattern
+  matching required for flow-based inspection to be offloaded to
+  the content processors. Flow-based pattern-matching databases
+  are compiled and downloaded to the CPs from the IPS engine and
+  the IPS database. The NP is not a party to IPSA.
+
+THE HONEST PART
+The IPS engine is SOFTWARE running on the FortiGate CPU. The CP is
+a coprocessor it calls. NTurbo therefore does NOT get you off the
+CPU — UTM/NGFW operations are still handled by the CPU, with IPSA
+offloading pattern matching to the CPs. What NTurbo prevents is
+the collapse of the entire session onto the slow path.
+Acceleration is not free.
+
+THE OUTCOME
+Cipher gets IPS on VLAN 40, on the condition the profile is
+flow-based and no proxy-based profile shares that policy. Marcus
+keeps microsecond-scale latency instead of millisecond-scale. The
+cost was stated plainly rather than hidden.
+
+
+------------------------------------------------------------------
+PART 2 — CHEAT SHEET
+------------------------------------------------------------------
+
+COMMANDS
+------------------------------------------------------------------
+config ips global
+    set np-accel-mode {none | basic}
+    set cp-accel-mode {none | basic | advanced}
+end
+
+config firewall policy
+    edit <policy_id>
+        set np-acceleration {disable | enable}
+    next
+end
+
+THE THREE-ROW TABLE — LEARN AS A UNIT, NOT AS THREE FACTS
+------------------------------------------------------------------
+SETTING           SCOPE                  VALUES                    DEFAULT
+np-accel-mode     config ips global      none | basic              basic
+cp-accel-mode     config ips global      none|basic|advanced       advanced
+                                                                   (basic is the ONLY
+                                                                   mode on devices with
+                                                                   a single CP8)
+np-acceleration   config firewall policy disable | enable          enable
+
+VALUE-BLEED WARNING: np-accel-mode does NOT take enable/disable.
+Those belong to the per-policy command. Global takes none|basic.
+
+PURPOSE OF THE DISABLE PATHS
+------------------------------------------------------------------
+Both np-accel-mode none (global) and np-acceleration disable
+(per policy) exist FOR TROUBLESHOOTING PURPOSES. Neither is a
+production tuning knob. Diagnostic settings are temporary by
+contract — you put them back (Junior's S41 sin).
+
+KEY BEHAVIOURS
+------------------------------------------------------------------
+- Proxy-based profiles disqualify NP offload.
+- A MIXED flow+proxy policy offloads NOTHING at all.
+- Flow-based profiles keep NP acceleration via NTurbo.
+- By default NTurbo is enabled, giving a load-balanced approach to
+  IPS signature and pattern-matching tasks.
+- After the session key is installed in the NP, subsequent packets
+  for an accelerated session skip routing and kernel processing.
+- UTM/NGFW operations are still handled by the CPU even with
+  NTurbo and IPSA enabled.
+- The offload decision is made once at session creation and is
+  never re-evaluated (S41 carry-over).
+
+COMPONENT DIVISION OF LABOUR — FLOW-BASED SESSION
+------------------------------------------------------------------
+NP6/NP7    forwarding fast path, ingress/egress, IPsec crypto
+NTurbo     the data path, NP <-> IPS engine
+CPU        runs the IPS engine; runs the FortiOS proxy
+CP8/9/10   pattern matching via IPSA; SSL/TLS crypto
+
+PACKET PATH — FLOW-BASED, NTURBO-ACCELERATED, ESTABLISHED
+------------------------------------------------------------------
+ingress -> NP -> NTurbo driver -> IPS engine (CPU)
+                                    [calls CP for pattern matching]
+        <- NP <- NTurbo driver <- IPS engine
+        -> egress
+
+The CP appears NOWHERE in this trace. It is a phone call, not a
+train station.
+
+PACKET PATH — PROXY-BASED
+------------------------------------------------------------------
+The NP does NOT offload the session. The CPU handles processing
+through a combination of the IPS engine and the FortiOS proxy.
+
+BUT THE NP IS NOT IDLE. It still:
+  - conducts some early security inspections before handing off
+  - performs IPsec tunnel decryption and encryption
+And the CP still performs SSL/TLS crypto for deep inspection.
+
+SSL DEEP-INSPECTION SUB-FLOW (order matters)
+------------------------------------------------------------------
+1. IPS engine sends the packet to the proxy for decryption.
+2. Proxy decrypts, offloading the operation to the CP.
+3. Proxy sends the decrypted packet back to the IPS engine for
+   IPS and application control inspection.
+4. IPS engine sends it back to the proxy for the configured
+   proxy-based inspection.
+5. Proxy encrypts, again offloading to the CP.
+
+SSL DEEP INSPECTION — BEST PRACTICES
+------------------------------------------------------------------
+1. Limit the number of policies that allow encrypted traffic.
+2. Deploy SSL inspection gradually rather than all at once.
+3. Apply deep inspection only where needed; exempt known and
+   trusted traffic.
+4. Use hardware acceleration (e.g. CP9) to offload SSL content
+   scanning.
+
+FLOW vs PROXY — DESIGN CHARACTERISTICS
+------------------------------------------------------------------
+FLOW:  identifies and blocks threats in real time as FortiOS
+       identifies them; typically lower processing resources;
+       recommended for policies that prioritise throughput.
+PROXY: buffers traffic and examines it as a whole before
+       determining an action; complete data enables inspection of
+       more data points; supports advanced features such as
+       category usage quota and web-profile override.
+
+
+------------------------------------------------------------------
+PART 3 — FLASHCARDS
+------------------------------------------------------------------
+
+Q: What does NTurbo offload that the NP cannot offload alone?
+A: Traffic in sessions using flow-based security profiles. It
+   creates a data path from the ingress interface to the IPS
+   engine and returns processed packets to the NP.
+
+Q: Where does NTurbo carry the packet TO and FROM?
+A: To the IPS engine, and back to the NP. NP <-> IPS engine.
+   NOT NP -> CP.
+
+Q: Where does the IPS engine run?
+A: On the FortiGate CPU. It is software. The CP is a coprocessor
+   it calls out to.
+
+Q: What does IPSA offload, and to what?
+A: Flow-based pattern matching, to the content processors. The
+   pattern-matching databases are compiled and downloaded to the
+   CPs from the IPS engine and the IPS database.
+
+Q: Is the NP involved in IPSA?
+A: No. IPSA is a relationship between the IPS engine and the CP.
+   NTurbo is the NP-facing feature; IPSA is the CP-facing one.
+
+Q: Does flow-based inspection become possible BECAUSE of IPSA?
+A: No — the arrow runs the other way. Flow-based is the
+   precondition. NTurbo and IPSA are two independent beneficiaries
+   of it.
+
+Q: Global command controlling NTurbo, its values, and default?
+A: config ips global -> set np-accel-mode {none | basic}.
+   Default: basic.
+
+Q: Per-policy command disabling NP acceleration, and default?
+A: config firewall policy -> set np-acceleration {disable|enable}.
+   Default: enable.
+
+Q: Default cp-accel-mode, and the exception?
+A: advanced on most models. basic is the only available mode on
+   FortiGate devices with a single CP8.
+
+Q: Why would you ever disable NTurbo?
+A: For troubleshooting purposes — globally with np-accel-mode
+   none, or on a single policy with np-acceleration disable.
+
+Q: With NTurbo and IPSA both enabled, do flow-based UTM operations
+   stop consuming CPU?
+A: No. UTM/NGFW operations are still handled by the CPU; IPSA
+   offloads only the pattern matching to the CPs.
+
+Q: Trace an established NTurbo-accelerated flow-based session.
+A: ingress -> NP -> NTurbo driver -> IPS engine (CPU) -> NTurbo
+   driver -> NP -> egress. Symmetrical. The CP is a call from the
+   engine, not a hop.
+
+Q: On a proxy-based session, what can the NP still do?
+A: Conduct some early security inspections before handing off to
+   the IPS engine, and perform IPsec tunnel decryption and
+   encryption.
+
+Q: On a proxy-based session with deep inspection, what does the CP
+   still do?
+A: SSL/TLS encryption and decryption.
+
+Q: A policy has flow-based web filtering and proxy-based AV. What
+   offloads?
+A: Nothing. One proxy profile poisons the whole policy.
+
+Q: Which word in "security profiles kill the offload" is wrong?
+A: "Security." It is PROXY-BASED profiles that kill the offload.
+
+Q: You fix a policy's offload setting but sessions still show
+   no_offload. Why?
+A: The offload decision is made once at session creation and is
+   never re-evaluated. Existing sessions carry the old verdict
+   until they die.
+
+Q: Which inspection mode is recommended for policies that
+   prioritise throughput, and why?
+A: Flow-based — it identifies and blocks threats in real time and
+   typically requires lower processing resources.
+
+Q: What can proxy-based inspection do that flow-based cannot?
+A: Buffer traffic and examine it as a whole, inspecting more data
+   points; and support advanced features such as category usage
+   quota and web-profile override.
+
+Q: One sentence for Penny on why latency rose slightly after IPS
+   was enabled.
+A: Inspection is compliance work the CPU has to do, so we kept it
+   as small as possible — we're paying microseconds for the audit
+   requirement, not milliseconds, and the fibre investment is
+   still doing its job.
+
+
+------------------------------------------------------------------
+PART 4 — PODCAST PROMPT ("THE PACKET PATH")
+------------------------------------------------------------------
+
+Generate a single episode of the technical storytelling podcast
+"The Packet Path." Two hosts, conversational, warm, technically
+precise, roughly 12-15 minutes of spoken content. One host is the
+storyteller; the other is the sceptic who asks the questions a
+listener would ask. No music cues, no sponsor reads, no sound
+effects — just the dialogue.
+
+EPISODE TITLE: "Inspection at Wire Speed"
+
+COLD OPEN
+Open on the image of a printed memo taped to the glass wall of a
+trading floor at twenty past seven on a Monday morning. Cipher,
+LoFinance's security lead, does that when she wants something to
+be unignorable. The memo says: all traffic on the trading VLAN
+must be subject to intrusion prevention inspection. No exemptions.
+Regulatory audit in Q3. Fifteen minutes later, Marcus from the
+trading desk is standing in the network room holding it like a
+dead fish, and he has one argument: the company just spent a
+quarter of a million dollars putting that VLAN on ultralow-latency
+ports, measured at forty microseconds, and you cannot inspect
+traffic without touching it, and you cannot touch it without
+slowing it down. "That's not policy. That's physics."
+
+THE TENSION
+Two people, two absolutes. Compliance says MUST. Trading says
+CAN'T. Establish clearly that the engineer in the room does not
+get to pick a side — the job is to find the cheapest TRUE version
+of the requirement and then state its cost plainly.
+
+JUNIOR'S MISTAKE (make this a centrepiece)
+Junior, the junior engineer, sides with physics. He says: "Security
+profiles kill the offload." He is about to talk the security lead
+out of a design that was actually available. And the reason he is
+wrong is a single word. The rule is not that SECURITY profiles
+kill the offload — it is that PROXY-BASED profiles do, and that a
+single proxy-based profile poisons an entire firewall policy.
+Flow-based inspection is not in that category at all.
+
+Have the sceptic host push on this: isn't that pedantic? And have
+the storyteller land the point hard — no, it is the difference
+between telling the business "no" and telling it "yes, with one
+condition." Junior's imprecision would have cost LoFinance either
+the compliance audit or the quarter-million-pound fibre
+investment. Precision in category language is an engineering
+skill, not a stylistic one.
+
+THE TECHNICAL BUILD (teach it in this order)
+1. Flow-based is the PRECONDITION. Because the profile is flow
+   based, two independent things become possible. Neither causes
+   the other. This ordering matters and listeners commonly get the
+   causal arrow backwards.
+
+2. NTURBO — the path feature. Use the motorway analogy and stay
+   with it. The NP is the fast lane. Ordinary offload cannot be
+   used when flow-based profiles are configured, because the NP
+   has no way to hand a packet to the inspector and take it back.
+   NTurbo builds the slip roads. On-ramp up to the IPS engine,
+   off-ramp back down to the NP. The road does not end at the
+   inspection booth; it detours through it and rejoins. Include
+   the four-step cycle: NTurbo driver sends packets to the IPS
+   engine; the engine performs the security action; the engine
+   returns the packet to the NTurbo driver; NTurbo returns
+   processed packets to the NP.
+
+3. THE HONEST PART. Have the sceptic ask: so we're off the CPU
+   now, right? And have the storyteller say no — and explain why.
+   The IPS engine is SOFTWARE. It runs on the CPU. The content
+   processor is a coprocessor it calls out to. NTurbo did not
+   rescue anyone from the CPU; it stopped the ENTIRE session from
+   collapsing onto the slow path. Acceleration is not free. Land
+   the line: know which component pays for each stage.
+
+4. IPSA — the offload feature. Pattern matching is the expensive
+   part, and it is software on a general-purpose processor. IPSA
+   sends that pattern matching to the content processors; the
+   pattern-matching databases get compiled and downloaded to the
+   CPs from the IPS engine and the IPS database. Crucially: the
+   NP is not involved. NTurbo is the NP-facing feature. IPSA is
+   the CP-facing one.
+
+5. THE ANALOGY THAT FIXES THE MAP. The content processor is a
+   PHONE CALL, not a train station. The packet never travels to
+   the CP. The engine picks up a phone, asks a question, gets an
+   answer. Make this vivid — it is the single most common drawing
+   error engineers make when tracing this path.
+
+6. THE TRAP. On a proxy-based session the NP does not offload the
+   session — but it has not left the building. It still conducts
+   early security inspections before handing off, and it still
+   handles IPsec tunnel encryption and decryption. The CP still
+   does the SSL/TLS crypto. Say the line clearly and repeat it
+   once: NOT OFFLOADED IS NOT THE SAME AS NOT INVOLVED.
+
+7. THE CLI, briefly. Global: np-accel-mode takes none or basic,
+   default basic. Per policy: np-acceleration takes disable or
+   enable, default enable. Warn that these two similar-sounding
+   settings have DIFFERENT value sets and that importing one into
+   the other is an easy mark to drop. And note that both disable
+   paths exist for troubleshooting only — diagnostic settings are
+   temporary by contract.
+
+THE RESOLUTION
+Cipher gets her inspection. Marcus keeps microseconds instead of
+milliseconds. The condition is stated out loud: flow-based, and no
+proxy-based profile shares that policy. And the cost is stated
+honestly rather than hidden behind the word "accelerated."
+
+THE SENIOR LESSON, delivered as the closing reflection
+A newly-learned rule arrives absolute. Junior turned "proxy-based
+profiles" into "security profiles." The same instinct turns "proxy
+kills the offload" into "the NP does nothing." Every new rule
+deserves a deliberate what-are-the-exceptions pass before you let
+it harden. The engineer who caught Junior's over-generalisation
+made the identical mistake ninety minutes later, in a different
+costume. That is not a failure of intelligence. It is how rules
+set.
+
+TEASER FOR THE NEXT EPISODE
+End on Cipher's line: "You've told me it's fast. Show me." And the
+senior engineer sliding a keyboard across the desk: "She is right.
+You have DESIGNED an accelerated path. You have not yet PROVEN one
+exists." Then two words on the whiteboard — diagnose npu — and the
+closing line: "Next week, we stop believing and we start
+measuring."
+
+
+------------------------------------------------------------------
+PART 5 — TOPOLOGY UPDATE LINE
+------------------------------------------------------------------
+FW-TRADE-01/02, VLAN 40 — IPS applied in flow mode. NTurbo/IPSA at
+defaults (np-accel-mode basic, cp-accel-mode advanced). Policy
+flagged: NO proxy-based profiles permitted on this VLAN — offload
+dependency. S40 NP Direct path on X5/X6 preserved unchanged.
+
+==================================================================
+Session completed: Tuesday, 21 July 2026
+Gauntlet score: 8/10 strict — season best
+==================================================================

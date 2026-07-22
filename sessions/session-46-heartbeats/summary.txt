@@ -1,0 +1,263 @@
+==================================================================
+SESSION 46 — "HEARTBEATS"
+LoFinance / NSE7 Enterprise Firewall 7.6
+Study Guide: 04 High Availability, pp. 89-92 | Blueprint 1.3
+==================================================================
+
+STORY EVENTS
+------------------------------------------------------------------
+The second FortiGate 900G arrives at LoFinance HQ. Same model, same
+firmware, correctly licensed — Penny signed the PO herself and quoted
+the student's own S45 line back at him: "Insurance. With a sub-second
+claims process. I was listening."
+
+Junior cables it: port3-to-port3, port4-to-port4, direct-connect dual
+heartbeat, exactly per the student's design doc. He types the
+`config system ha` stanza himself (group-id 10, group name, password).
+It is mostly right — and the cluster forms.
+
+But the cluster BICKERS. Sync status flickers in-sync / out-of-sync.
+Riley has three help-desk tickets reading "internet went weird for a
+second." Cipher walks past the rack and says only: "That rhythm is
+wrong" — which from Cipher is a full incident report.
+
+Junior, creditably, goes diagnostic before touching config: "I'm going
+to LISTEN to the heartbeat." He sniffs on port1 — the wrong interface —
+sees nothing, concludes the heartbeat is DEAD, and proposes rebooting
+the new unit. Señor slides the sombrero back an inch (the "this one is
+yours" signal) and hands the case to the student.
+
+Second act: Penny arrives with coffee and a business problem. She now
+owns two 900Gs and objects to one doing nothing. Trading VDOM and
+Compliance VDOM are both running hot on the same box; she refuses to
+buy a third firewall. Junior immediately proposes active-active. The
+student dismantles it. Virtual clustering + VDOM partitioning is
+designed live. Penny approves it before finishing her coffee.
+
+CHARACTERS: Junior (cabling, wrong-port sniff, a-a instinct), Señor
+(sombrero signals, "the heart and the mouth should not share a
+throat", "Now he is learning"), Penny (funding + the waste objection),
+Cipher (one-line incident report), Riley (three tickets).
+
+BUSINESS PROBLEM
+------------------------------------------------------------------
+(1) A brand-new, correctly-built HA cluster is producing intermittent
+    micro-outages during trading hours. Not a formation failure — a
+    behaviour failure.
+(2) Two firewalls purchased; only one carrying load. Penny wants
+    utilisation without buying a third box.
+
+TECHNICAL CONCEPTS COVERED (pp. 89-92)
+------------------------------------------------------------------
+1. FGCP ETHERTYPES (FGCP is Ethernet-typed, NOT IP):
+   - 0x8890 heartbeat in NAT/route mode
+   - 0x8891 heartbeat in transparent mode
+     Both carry: neighbour discovery within the HA group, primary
+     election, failure detection, traffic redistribution, other sync.
+   - 0x8893 configuration synchronisation.
+   Sniff: diagnose sniffer packet <hbdev> "ether proto 0x8890" 4
+   CRITICAL: sniff on the HBDEV, not a data port. Junior's fault.
+
+2. SESSION SYNCHRONISATION PATH — the episode's core mechanism.
+   DEFAULT: session sync travels over the HA HEARTBEAT LINK.
+   Consequence: bulk session-table data competes with small,
+   latency-critical heartbeat frames. Under load (market open),
+   heartbeats are delayed/dropped → partner presumed dead →
+   FALSE FAILOVER. Cluster is not broken; it is deafened by its own
+   chatter.
+   FIX: dedicated session-sync interfaces.
+     config system ha
+         set session-pickup enable
+         set session-sync-dev "port5" "port6"
+     end
+   - Multiple interfaces listed → sync traffic is LOAD BALANCED
+     across them.
+   - If ALL dedicated sync interfaces fail → session sync REVERTS to
+     the heartbeat link. Graceful, but silently restores the original
+     failure mode with no alarm. (Q4 trap.)
+
+3. VIRTUAL CLUSTERING:
+   - FGCP extended to a cluster whose members have VDOMs enabled.
+   - ACTIVE-PASSIVE ONLY. Never a-a. (`set mode a-p`)
+   - Max 30 virtual clusters.
+   - Max HA group-id = 7 (standard HA allows higher) — exam detail.
+   - All other cluster requirements identical to standard HA.
+   - The conceptual key: "primary" stops being a property of the BOX
+     and becomes a property of the VDOM.
+
+4. VDOM PARTITIONING:
+   - One member is primary for some VDOMs, the other member primary
+     for others. Both boxes carry real traffic simultaneously while
+     the cluster remains active-passive.
+   - Selection mechanism = `set priority` PER VCLUSTER. Highest
+     priority wins that vcluster. Priority is used because it is the
+     only administratively assigned election criterion (interface
+     state and uptime are facts; serial is factory-stamped).
+   - root VDOM must be assigned to a vcluster.
+   - FAILOVER: the surviving member processes ALL traffic for ALL
+     VDOMs. Therefore each member must be sized for 100% of total
+     load. VDOM partitioning gives UTILISATION, not CAPACITY.
+
+   Config taught (both members, mirrored priorities):
+     config system ha
+         set mode a-p
+         set vcluster-status enable
+         config vcluster
+             edit 1
+                 set override disable
+                 set priority 200      (NGFW-1) / 100 (NGFW-2)
+                 set vdom "VDOM1" "root"
+             next
+             edit 2
+                 set override disable
+                 set priority 50       (NGFW-1) / 200 (NGFW-2)
+                 set vdom "VDOM2"
+             next
+         end
+     end
+
+5. WHY NOT ACTIVE-ACTIVE (carried from S45): in a-a the primary owns
+   the vMACs, so every packet lands on the primary FIRST and selected
+   sessions take an extra hop out to the secondary and back. It does
+   not move the front door — which was exactly Penny's problem.
+
+MENTAL MODELS / ANALOGIES (NEW KEEPERS)
+------------------------------------------------------------------
+- SEÑOR: "The heart and the mouth should not share a throat."
+  (control plane must not share bandwidth with bulk data)
+- "The cluster wasn't broken. It was deafened by its own chatter."
+- "A false failover is worse than a real one — you took the outage
+  and got nothing for it."
+- "'Primary' stops being a property of the box and becomes a property
+  of the VDOM." (STUDENT-DERIVED — reuse back to him.)
+- JUNIOR: "It's not two boxes' worth of firewall. It's one box's
+  worth, running in two places."
+- "Utilisation is not capacity."
+- "Graceful degradation hides the return of the original fault."
+- Carried: "88-90 keeps you alive, 88-93 keeps you identical";
+  "toll booth in a redundancy costume"; "insurance with a sub-second
+  claims process"; "you QUEUE the call on the FortiGate, EMS delivers".
+
+KEY CLI DISCUSSED
+------------------------------------------------------------------
+  diagnose sniffer packet port3 "ether proto 0x8890" 4
+  config system ha / set session-pickup enable
+  set session-sync-dev "port5" "port6"
+  set vcluster-status enable
+  config vcluster / edit <n> / set priority <n> / set vdom "X" "root"
+  diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>  (cold)
+
+TROUBLESHOOTING APPROACH TAUGHT
+------------------------------------------------------------------
+Symptom (flapping, time-correlated) → check WHERE you are listening
+before concluding silence → confirm heartbeat is alive → ask what
+ELSE shares that wire → correlate failover timestamps against load
+windows → fix by separating control plane from data plane.
+Central lesson: THE TIMING DETAIL IS THE DIAGNOSIS. "Only at market
+open" eliminates override, priority, and interface-state causes
+instantly, because none of them are time-of-day dependent.
+
+CONFIGURATION DECISIONS
+------------------------------------------------------------------
+- Dedicated session-sync links added (port5/port6), load-balanced.
+- session-pickup enabled.
+- Virtual clustering enabled; vcluster 1 = Trading + root (primary
+  FGT-1); vcluster 2 = Compliance (primary FGT-2).
+- override left DISABLED on both vclusters.
+- Both members sized for 100% of total load (design constraint
+  accepted by Penny).
+
+TOPOLOGY CHANGES
+------------------------------------------------------------------
+LoFinance HQ — FGCP cluster (2x FortiGate 900G, a-p, virtual
+clustering enabled). Heartbeat: port3/port4 direct-connect, dual.
+Dedicated session-sync: port5/port6, load-balanced — heartbeat link
+no longer carries session data. VDOM partitioning active: vcluster 1
+(Trading + root) primary on FGT-1; vcluster 2 (Compliance) primary on
+FGT-2. Failover consolidates all VDOMs onto the surviving member.
+
+BUSINESS OUTCOME
+------------------------------------------------------------------
+Micro-outages eliminated; Riley's ticket class closed. Both firewalls
+now carry production load with no third purchase. Either box can
+absorb the entire firm during a failure. Penny's closing question —
+"what does that cost me?" — was left OPEN as the money-sentence drill
+(unscaffolded, student must supply his own numeric anchor).
+
+EXAM PERFORMANCE — 10-question gauntlet: 7.5/10 (up from 5.5)
+------------------------------------------------------------------
+FULL: Q1 ethertypes (0x8890/0x8893) — DIRECT REVERSAL of the S45 Q8
+  fabrication ("0x0080 81"). Hook worked.
+FULL: Q2 sniffer syntax, exact.
+FULL: Q3 session-sync-dev + load balancing (did NOT state the default
+  is the heartbeat link — adjacent-clause omission, same shape as
+  S45 Q4).
+HALF: Q4 — answered about SESSIONS, question was about the SYNC PATH.
+  Correct: reverts to heartbeat link; good because graceful, dangerous
+  because it silently re-enters the failure mode without alarming.
+FULL: Q5 group-id max 7.
+FULL: Q6 virtual clustering is a-p only (False).
+FULL: Q7 priority.
+FULL: Q8 30 virtual clusters.
+HALF: Q9 — right direction (survivor CPU rises) but produced a GUESSED
+  NUMBER ("90% CPU") instead of the sizing PRINCIPLE he had stated
+  perfectly 30 minutes earlier (size each member for 100%).
+MISS: Q10 — answered "maybe override is enabled" to a flapping
+  scenario explicitly scoped to market-open-only. Walked past the
+  discriminator. This was the exact fault he had DIAGNOSED LIVE.
+
+SHAPE INVERSION — IMPORTANT: last session all reasoning questions were
+full and all label/command questions bled. THIS session inverted:
+labels, hex, commands and numbers were solid; the two losses were both
+SCENARIO questions where he had the knowledge and lost it to
+first-plausible-answer reflex. This is not a knowledge gap. It is the
+restate-first habit still not self-starting after three sessions.
+
+COLD RETRIEVAL
+------------------------------------------------------------------
+MANUAL QUARANTINE (3rd attempt, unannounced): CLEAN PASS, both halves
+— `diagnose endpoint fctems queue-complete-calls Q-<endpoint_ip>` and
+Linux not supported. TWO-STRIKES PROTOCOL CANCELLED. Anchor retired
+with the note that the PHRASE (who acts vs where you type) is what
+fixed it, not repetition.
+
+JUNIOR'S MISTAKES & WHAT THEY TAUGHT
+------------------------------------------------------------------
+(1) Sniffed heartbeat on port1 → heartbeat lives on hbdev; you can't
+    hear a conversation from the wrong room.
+(2) "The heartbeat is dead, should I reboot?" → silence in the wrong
+    place is not evidence of death. Verify your instrument before
+    trusting its result.
+(3) "Active-active! Both boxes work!" → a-a doesn't move the front
+    door; the primary still receives everything.
+(4) (Implied, Q9) Sizing two members at 45% each and calling it done.
+
+STUDENT'S NOTABLE MOVES
+------------------------------------------------------------------
+- Opened by producing GARP + "IP and vMAC stay the same" unprompted,
+  a full session ahead of the syllabus. S40/S45 pattern continuing.
+- Derived the entire virtual-clustering concept from one question:
+  "Maybe one VDOM has one box primary and another VDOM has the other
+  box primary." Noticed that a WORD had to change meaning.
+- Derived the false-failover mechanism ("the cluster concludes its
+  partner is dead") in one line from a single nudge.
+- Derived the 100%-sizing rule unprompted.
+- Said "not sure actually" on session-sync path rather than
+  fabricating — honesty signal stable and now reliable.
+- Self-undermining hedge appeared once again (ethertypes: correct
+  first instinct "0x8890 and 91 relate to the heartbeat", then talked
+  himself into "91 is config sync"). Named live.
+
+TEASER DELIVERED FOR SESSION 47 — "THE UNDERSTUDY"
+------------------------------------------------------------------
+Failover types; virtual MAC addresses; session pickup (SG pp. 93-98,
+Blueprint 1.3). Story: Tuesday 10:47am, a PSU dies in FGT-1 mid-trade.
+Failover is sub-second and Riley's queue stays quiet — but the trading
+logs show HALF the sessions sailed through and HALF died on the spot,
+same second, same cluster, same vMACs. Cipher: "That's not a failure,
+that's a RULE. Something decided which half lived." Señor at the
+whiteboard drawing a MAC address belonging to no physical port:
+"You told me the understudy knows the part. Now tell me which lines
+she remembers."
+
+Date and Time completed: Tuesday, 21 July 2026.

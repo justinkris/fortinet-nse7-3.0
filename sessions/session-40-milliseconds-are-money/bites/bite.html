@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 40 Bite — Milliseconds Are Money</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf5e9;--surface:#fffdf5;--surface-2:#f5eed9;--border:#d4c89a;--border-dim:#ebe1c2;--text:#0a1838;--text-soft:#1e2f5a;--text-muted:#6b7794;--blue:#1e40af;--blue-light:#eff4fc;--blue-border:#b8cce8;--ink-dark:#0d1a3a;--ink-accent:#9bb8e6;--green-light:#dff0e1;--green-border:#a7d8b0;--amber:#b45309;--amber-light:#fcf2c3;--amber-border:#f3d68a}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text)}
+header{padding:36px 40px 28px;background:var(--ink-dark)}
+.eyebrow{display:inline-block;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:4px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:10px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:32px;color:#fbf7ec;line-height:1.1}
+h1 em{font-style:italic;font-weight:500;color:var(--ink-accent)}
+header p{font-size:14px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:8px}
+main{max-width:920px;margin:0 auto;padding:30px 40px 50px}
+.block{margin-bottom:30px}
+.label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+h2{font-family:'Playfair Display',serif;font-size:22px;padding-left:12px;border-left:3px solid var(--blue);margin-bottom:10px}
+p,li{font-size:16px;line-height:1.65;color:var(--text-soft)}
+strong{color:var(--text)}
+ul,ol{padding-left:20px;margin-bottom:10px}
+.callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:15px;line-height:1.6}
+.callout-amber{border-left-color:var(--amber-border);background:var(--amber-light)}
+.callout-green{border-left-color:var(--green-border);background:var(--green-light)}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:8px 12px;text-align:left}
+td{font-size:14px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-soft)}
+td:first-child{color:var(--text);font-weight:600}
+.code{background:var(--ink-dark);border-radius:8px;padding:12px 14px;margin:10px 0;font-family:'SF Mono','Consolas',monospace;font-size:12px;line-height:1.6;color:#e8efff;overflow-x:auto;white-space:pre}
+footer{padding:16px 40px;background:var(--ink-dark);color:rgba(251,247,236,0.4);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase}
+@media(max-width:700px){main,header{padding-left:20px;padding-right:20px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SESSION 40 BITE · 5-MINUTE REVISION · SG 10 PP. 280–285</div>
+  <h1>Milliseconds Are Money: <em>SPU Architecture</em></h1>
+  <p>NP, CP, SoC, and the architecture that removes the toll booth.</p>
+</header>
+<main>
+
+<div class="block">
+  <div class="label">The One Cut</div>
+  <h2>Two Kinds of Work, Two Kinds of Chip</h2>
+  <p>Sort firewall workloads by the <strong>shape of the problem</strong>: repetitive per-packet <strong>forwarding</strong> (decided-once — like a switch ASIC's job) vs <strong>content</strong> work (searching inside payloads). Fortinet's ASICs — <strong>SPUs</strong> — mirror the cut exactly.</p>
+  <table>
+    <tr><th>SPU</th><th>Latest</th><th>Job</th><th>Example</th></tr>
+    <tr><td>NP</td><td>NP7</td><td>Interface-level traffic offload · IPsec crypto · IP integrity check</td><td>900G</td></tr>
+    <tr><td>CP</td><td>CP10 (also CP8/CP9)</td><td>CPU coprocessor · flow pattern matching (IPS/AV/app-ID) · SSL deep-inspect crypto</td><td>200G</td></tr>
+    <tr><td>SP/SoC</td><td>SP5 (NP7lite) / SoC4</td><td>Light NP + light CP, one chip, lower throughput</td><td>90G</td></tr>
+  </table>
+  <p><strong>NP at the ports. CP beside the CPU.</strong> Plain IPsec → NP ("a forwarding job in a trench coat"). SSL-heavy workload on an NP-only box → CPU meltdown; that crypto is CP work.</p>
+</div>
+
+<div class="block">
+  <div class="label">The Number</div>
+  <h2>12 Million Sessions — Per Chip</h2>
+  <p>NP7 holds up to <strong>12M sessions</strong>, limited by <strong>processor memory</strong>. Session 12,000,001 overflows to the <strong>CPU</strong> (slow path). Ports are wired to <em>specific</em> NP7s and tables don't pool — distribute traffic across chips or one NP7 overflows while its sibling sits idle. <strong>Cabling is capacity planning.</strong></p>
+</div>
+
+<div class="block">
+  <div class="label">The Architecture</div>
+  <h2>NP Direct — Remove the ISF</h2>
+  <p>The <strong>ISF</strong> (internal switch fabric) glues every port to every processor — and charges a latency toll on every packet, twice. <strong>NP Direct</strong> wires interfaces straight into the NP, eliminating the ISF → lowest-latency forwarding.</p>
+  <ul>
+    <li><strong>NP6:</strong> boxes with 2+ NP6 chips — 200E, 2000E, 2500E.</li>
+    <li><strong>NP7:</strong> ultralow-latency interfaces — 400F, 600F, 900G (ports X5–X8 direct to NP7).</li>
+  </ul>
+  <div class="callout-green callout"><strong>The rule:</strong> offloaded traffic must enter AND exit on interfaces of the <strong>same NP</strong>. "Same chip in, same chip out — there is no bridge anymore."</div>
+  <div class="callout-amber callout"><strong>The trade:</strong> ISF = flexibility (any port, any processor). NP Direct gives it up for latency — which is why NP6 boxes need 2+ chips to afford it. Physical topology becomes part of the offload design.</div>
+</div>
+
+<div class="block">
+  <div class="label">Verification</div>
+  <h2>Two Commands</h2>
+  <div class="code"># diagnose hardware lspci | grep 1a29
+Device 1a29:4e36  → NP6
+Device 1a29:4e37  → NP7
+
+# get hardware status
+ASIC version: CP9   → CP generation (discrete models)
+ASIC version: SOC5  → confirms SP5 combined chip</div>
+  <p>1a29 = Fortinet's PCI vendor ID. Verify the rack before trusting a quote.</p>
+</div>
+
+<div class="block">
+  <div class="label">Don't Conflate</div>
+  <h2>Two Different Latency Diagnoses</h2>
+  <p><strong>ISF-hop latency</strong> (architectural — fix: NP Direct) ≠ <strong>CPU-overflow latency</strong> (capacity — fix: distribute sessions across NPs). Different faults, different fixes; distractors bet you'll merge them.</p>
+</div>
+
+</main>
+<footer>LOFINANCE · SESSION 40 BITE · MILLISECONDS ARE MONEY</footer>
+</body>
+</html>
