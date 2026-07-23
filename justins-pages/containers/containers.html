@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 60 Visual — The Four Containers</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+<style>
+.main-content{max-width:1100px;margin:0 auto;}
+
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0 0;}
+.drw{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--blue);border-radius:12px;padding:16px 18px;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.drw:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(10,24,56,.10);}
+.drw.active{border-top-color:var(--amber);background:#fdf8e7;}
+.drw.blocked{border-top-color:#b45309;background:#fcf2c3;}
+.drw-n{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);}
+.drw-t{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin:4px 0 4px;}
+.drw-q{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--blue);line-height:1.5;}
+.drw-c{font-family:'SF Mono','Fira Code',monospace;font-size:10.5px;color:var(--text-muted);margin-top:8px;word-break:break-all;}
+.gates{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.gate{text-align:center;font-family:'Outfit',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);padding:8px 4px;}
+.gate span{display:block;font-family:'Cormorant Garamond',serif;font-size:13px;font-style:italic;letter-spacing:0;text-transform:none;color:var(--text-muted);font-weight:400;margin-top:2px;}
+.rt-wrap{display:flex;justify-content:center;margin-top:4px;}
+.rt{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--green);border-radius:12px;padding:16px 18px;max-width:420px;width:100%;cursor:pointer;transition:transform .15s;}
+.rt:hover{transform:translateY(-2px);}
+.rt.active{border-top-color:var(--amber);background:#fdf8e7;}
+.arrow-down{text-align:center;font-size:22px;color:var(--blue-dim);line-height:1;margin:2px 0;}
+
+/* detail panel */
+.detail{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-top:18px;min-height:120px;}
+.detail h4{font-family:'Playfair Display',serif;font-size:21px;color:var(--text);margin-bottom:8px;}
+.detail h4 em{font-style:italic;color:var(--blue);}
+.detail p{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.7;color:var(--text-soft);margin-bottom:10px;}
+.detail ul{padding-left:20px;margin-bottom:10px;}
+.detail li{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);margin-bottom:3px;}
+.detail strong{color:var(--text);font-weight:600;}
+.detail code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:rgba(10,24,56,.06);padding:1px 5px;border-radius:4px;}
+.nope{border-left:3px solid #b45309;background:#fcf2c3;border-radius:0 8px 8px 0;padding:10px 14px;margin-top:10px;font-family:'Cormorant Garamond',serif;font-size:15px;color:#5c3d09;line-height:1.6;}
+
+/* fault sim */
+.faults{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 6px;}
+.fbtn{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;padding:9px 15px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text-soft);cursor:pointer;transition:all .15s;}
+.fbtn:hover{border-color:var(--blue);color:var(--blue);}
+.fbtn.on{background:var(--ink-dark);border-color:var(--ink-dark);color:var(--ink-accent);}
+.verdict{border-radius:10px;padding:14px 18px;margin-top:14px;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.7;background:var(--green-light);border:1px solid var(--green-border);color:#134e30;}
+.verdict.bad{background:#fcf2c3;border-color:var(--amber-border);color:#5c3d09;}
+.verdict-t{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px;display:block;}
+.verdict code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;}
+
+/* scenario cards */
+.scn{border:1px solid var(--border);border-radius:12px;background:var(--surface);margin:14px 0;overflow:hidden;}
+.scn-h{padding:13px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--surface);}
+.scn-h:hover{background:var(--surface-2);}
+.scn-tag{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:3px 9px;border-radius:12px;white-space:nowrap;}
+.scn-q{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text);flex:1;line-height:1.45;}
+.scn-x{margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;}
+.scn-b{display:none;padding:0 18px 18px;border-top:1px solid var(--border-dim);}
+.scn.open .scn-b{display:block;}
+.scn.open .scn-x{color:var(--blue);}
+.ans-k{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin:14px 0 5px;}
+.scn-b p{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.7;color:var(--text-soft);margin-bottom:8px;}
+.scn-b strong{color:var(--text);font-weight:600;}
+.scn-b code{font-family:'SF Mono','Fira Code',monospace;font-size:13px;background:rgba(10,24,56,.06);padding:1px 5px;border-radius:4px;}
+
+@media(max-width:820px){.pipe,.gates{grid-template-columns:1fr;}.gate{padding:2px 4px 6px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="#">Season 5 &middot; The Expansion</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <span>Companion &middot; The Four Containers</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Companion &middot; Interactive &middot; NSE7 EF 7.6</div>
+    <h1>Four Containers, and <em>Why They Decide Everything</em></h1>
+    <p>RIB-in, Local RIB, RIB-out, routing table — and the bucket that fills one of them.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Four containers. <em>Believing and telling are different drawers.</em></div>
+  <p class="motivation-sub">Almost every BGP fault you will meet is not &ldquo;BGP is broken.&rdquo; It is a prefix sitting in the wrong container, perfectly healthy, and silent.</p>
+</div>
+<main><div class="main-content">
+
+<div class="section-block">
+  <div class="section-label">First &middot; a terminology check</div>
+  <h2>Two container metaphors, and they are <em>not the same thing</em></h2>
+  <p>Both arrived in the same session, so it is worth separating them before anything else.</p>
+  <table class="data-table">
+    <thead><tr><th>Metaphor</th><th>What it describes</th><th>Where it came from</th></tr></thead>
+    <tbody>
+      <tr><td>The <strong>drawers</strong> (RIBs)</td><td>The four containers a prefix passes through inside a router. This page is about these.</td><td>Se&ntilde;or's filing cabinet, Session 59. Study guide pp.&nbsp;340&ndash;341.</td></tr>
+      <tr><td>The <strong>bucket</strong> (and the tap)</td><td>Two <em>methods of originating</em> a prefix &mdash; <code>redistribute</code> versus <code>config network</code>. A single point on the journey, not the journey.</td><td>J.R., Session 60. Study guide pp.&nbsp;346&ndash;347.</td></tr>
+    </tbody>
+  </table>
+  <p>The bucket has its own section near the bottom. Everything before that is the drawers &mdash; and the reason they matter is simple: <strong>they turn &ldquo;BGP isn't working&rdquo; into a question with only four possible answers.</strong></p>
+  <div class="mental-note-block"><div class="mental-note-block-icon">&#129504;</div><div class="mental-note-block-inner"><div class="mental-note-block-label">Why this is the highest-value model you own</div><div class="mental-note-block-text">A prefix problem is always one of: <strong>never arrived</strong> &middot; <strong>arrived but not chosen</strong> &middot; <strong>chosen but not spoken</strong> &middot; <strong>spoken but not used</strong>. Naming the container first collapses the search space before you have run a single command.</div></div></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">The model &middot; click any container</div>
+  <h2>The Four Containers &mdash; <em>interactive</em></h2>
+  <div class="pipe">
+    <div class="drw" id="d-in" onclick="pick('in')"><div class="drw-n">Container 1</div><div class="drw-t">RIB-in</div><div class="drw-q">&ldquo;What I was told&rdquo;</div><div class="drw-c">get router info bgp network</div></div>
+    <div class="drw" id="d-loc" onclick="pick('loc')"><div class="drw-n">Container 2</div><div class="drw-t">Local RIB</div><div class="drw-q">&ldquo;What I believe&rdquo;</div><div class="drw-c">&hellip; best #M</div></div>
+    <div class="drw" id="d-out" onclick="pick('out')"><div class="drw-n">Container 3 &middot; per neighbour</div><div class="drw-t">RIB-out</div><div class="drw-q">&ldquo;What I will say, and to whom&rdquo;</div><div class="drw-c">inferred from neighbour config</div></div>
+  </div>
+  <div class="gates">
+    <div class="gate">Gate 1 &rarr;<span>inbound filter, then NEXT_HOP validity, then best-path selection</span></div>
+    <div class="gate">Gate 2 &rarr;<span>split horizon, RR relay, next-hop-self, prefix-list-out, route-map-out</span></div>
+    <div class="gate">&nbsp;<span>&nbsp;</span></div>
+  </div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="rt-wrap">
+    <div class="rt" id="d-rt" onclick="pick('rt')"><div class="drw-n">Container 4 &middot; not part of BGP</div><div class="drw-t">Routing Table</div><div class="drw-q">&ldquo;What the box will actually do&rdquo;</div><div class="drw-c">get router info routing-table all</div></div>
+  </div>
+  <div class="detail" id="detail"></div>
+  <div class="callout callout-amber" style="margin-top:18px;"><strong>Note the branch, not the line.</strong> RIB-out hangs <em>off</em> the Local RIB, and the routing table hangs off it too. They are siblings, not successors. A prefix can enter the routing table and never be advertised, or be advertised widely and lose the routing table to a static route. These are independent outcomes of the same belief.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Why it matters &middot; interactive</div>
+  <h2>Where Does the Prefix <em>Stop?</em></h2>
+  <p>Seven faults you have already met this season. Select one and watch which container it dies in &mdash; then notice how many of them produce <strong>no log, no error and a perfectly healthy session</strong>.</p>
+  <div class="faults">
+    <button class="fbtn" id="f-f1" onclick="fault('f1')">Inbound prefix-list denies it</button>
+    <button class="fbtn" id="f-f2" onclick="fault('f2')">NEXT_HOP unresolvable</button>
+    <button class="fbtn" id="f-f3" onclick="fault('f3')">Lost best-path selection</button>
+    <button class="fbtn" id="f-f4" onclick="fault('f4')">network-import-check fails</button>
+    <button class="fbtn" id="f-f5" onclick="fault('f5')">prefix-list-out implicit deny</button>
+    <button class="fbtn" id="f-f6" onclick="fault('f6')">Split horizon / RR relay</button>
+    <button class="fbtn" id="f-f7" onclick="fault('f7')">Loses to a static route</button>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div class="mental-note-block" style="margin-top:18px;"><div class="mental-note-block-icon">&#129504;</div><div class="mental-note-block-inner"><div class="mental-note-block-label">The pattern worth seeing</div><div class="mental-note-block-text">Faults in <strong>containers 1 and 2</strong> hide the prefix from <em>you</em>. Faults at <strong>gate 2</strong> hide it from <em>everyone else</em> while it looks perfect on your screen. That single distinction tells you which end of the cabinet to open &mdash; and it is the difference between a ten-minute fix and a two-hour one.</div></div></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Worked examples &middot; name the container before you reveal</div>
+  <h2>Six Scenarios from <em>Your Own Incidents</em></h2>
+  <p>Each of these actually happened in Sessions 55&ndash;60. Say the container out loud, then open the card.</p>
+<div class="scn"><div class="scn-h"><span class="scn-tag">Session 60</span><span class="scn-q">London traffic transits Singapore at 340ms. Both paths are 2 AS hops. Nothing is broken.</span><span class="scn-x">Reveal &#9662;</span></div><div class="scn-b"><div class="ans-k">Container</div><p><strong>RIB-in.</strong> Both paths are sitting in the waiting room; the question is which one gets through gate 1. This is a best-path question, and best-path is a RIB-in &rarr; Local RIB event.</p><div class="ans-k">Diagnosis</div><p><code>Paths: (2 available, best #2)</code>. Walk the tie-breaker list top-down. They differ nowhere until line 10 &mdash; lowest router ID. <strong>Not a fault. An absence of policy.</strong></p><div class="ans-k">Fix</div><p>Raise LOCAL_PREF inbound with a route-map on the EU carrier neighbour, so the argument ends at line 2 and line 4 is never reached. And note <em>where</em> the route-map runs: at gate 1, <strong>before</strong> the comparison.</p></div></div><div class="scn"><div class="scn-h"><span class="scn-tag">Session 60</span><span class="scn-q">Your own 10.55.10.0/24 is configured under config network. Nobody anywhere sees it. It works perfectly internally.</span><span class="scn-x">Reveal &#9662;</span></div><div class="scn-b"><div class="ans-k">Container</div><p><strong>The routing table</strong> &mdash; container four &mdash; even though the symptom is about advertisement. This is the one that catches people.</p><div class="ans-k">Diagnosis</div><p><code>get router info routing-table all</code> shows <code>10.55.0.0/16</code> connected. The network statement asks for a <code>/24</code>. <code>network-import-check</code> demands an <strong>exact</strong> prefix and mask on an <strong>active</strong> route. Covered is not matched.</p><div class="ans-k">Fix</div><p>Add a static route matching exactly. Do <strong>not</strong> disable the check &mdash; that switch is global and silently removes the safety net from every network statement on the box, forever.</p></div></div><div class="scn"><div class="scn-h"><span class="scn-tag">Session 60</span><span class="scn-q">You add a prefix-list-out with one permit rule to advertise the London subnet. Eleven other prefixes vanish from that peer.</span><span class="scn-x">Reveal &#9662;</span></div><div class="scn-b"><div class="ans-k">Container</div><p><strong>Gate 2, Local RIB &rarr; RIB-out.</strong> The eleven prefixes are untouched, valid, best and installed. They are simply no longer <em>spoken</em> to this one neighbour.</p><div class="ans-k">Diagnosis</div><p>Every FortiOS filtering construct &mdash; route map, prefix list, access list &mdash; ends in an implicit deny. One permit rule does not mean &ldquo;also allow this.&rdquo; It means <em>&ldquo;allow this and nothing else.&rdquo;</em></p><div class="ans-k">Fix</div><p>Add the terminator: <code>set prefix 0.0.0.0 0.0.0.0 / set le 32 / set action permit</code>. And form the habit: ask what a filter <strong>silently kills</strong>, not what it allows.</p></div></div><div class="scn"><div class="scn-h"><span class="scn-tag">Session 59</span><span class="scn-q">Adelaide is a route-reflector client with exactly one IBGP session, to HQ. Perth advertises a new subnet to HQ over ordinary IBGP. Does Adelaide learn it?</span><span class="scn-x">Reveal &#9662;</span></div><div class="scn-b"><div class="ans-k">Container</div><p><strong>HQ's RIB-out toward Adelaide.</strong> The route is safely in HQ's Local RIB &mdash; the only question is whether HQ is willing to say it.</p><div class="ans-k">Diagnosis</div><p>Yes. If the reflector did not pass non-client routes down to its clients, the cluster would be a sealed box and Adelaide would learn nothing from outside it.</p><div class="ans-k">Fix</div><p>No fix needed &mdash; but hold the compressed rule: <strong>a route is relayable if a CLIENT is on either end. Non-client to non-client is still plain IBGP.</strong></p></div></div><div class="scn"><div class="scn-h"><span class="scn-tag">Session 58</span><span class="scn-q">A prefix appears in the BGP database with a * but no >. The session is Established and no errors are logged.</span><span class="scn-x">Reveal &#9662;</span></div><div class="scn-b"><div class="ans-k">Container</div><p><strong>RIB-in.</strong> It arrived and was accepted &mdash; but it never made it through gate 1.</p><div class="ans-k">Diagnosis</div><p>It is not losing a competition; it is <strong>ineligible to enter one</strong>. Read the NEXT_HOP column, then <code>get router info routing-table details &lt;next-hop&gt;</code>. If the next hop cannot be resolved, the path can never be best.</p><div class="ans-k">Fix</div><p>Resolve the next hop via IGP or a static route, or rewrite it with <code>set next-hop-self enable</code>. And remember the counter-lesson: <strong>absence of errors is not evidence of correctness.</strong></p></div></div><div class="scn"><div class="scn-h"><span class="scn-tag">Session 56</span><span class="scn-q">Two carrier defaults, identical attributes. You enable ebgp-multipath. Is the idle circuit now redundancy?</span><span class="scn-x">Reveal &#9662;</span></div><div class="scn-b"><div class="ans-k">Container</div><p><strong>Gate 1 into the Local RIB</strong> &mdash; and then, importantly, container four.</p><div class="ans-k">Diagnosis</div><p>Equal attributes are the <em>permission</em> that makes multipath legal; the config command is the <em>instruction</em> that makes it happen. Both are required. But ECMP is load sharing, not redundancy.</p><div class="ans-k">Fix</div><p>None &mdash; understand the trade. A route only leaves the routing table when BGP withdraws it, which needs session teardown, which needs the hold timer (180s). For those 180 seconds ECMP hashes roughly half your flows onto a dead path. You have traded a total outage for a partial one, and partial outages are harder to diagnose because the phones only half ring.</p></div></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">The other metaphor</div>
+  <h2>The Bucket and the <em>Tap</em></h2>
+  <p>This one is not a container in the journey &mdash; it is a choice about <strong>how a prefix gets injected into the Local RIB in the first place</strong>. By default, FortiGate BGP originates nothing at all.</p>
+  <table class="data-table">
+    <thead><tr><th></th><th>The bucket &mdash; <code>redistribute</code></th><th>The tap &mdash; <code>config network</code></th></tr></thead>
+    <tbody>
+      <tr><td>What it takes</td><td>A whole <strong>category</strong>: connected, static, RIP, IS-IS, BGP</td><td>One <strong>named prefix</strong> at a time</td></tr>
+      <tr><td>Precision</td><td>None by itself &mdash; filter afterwards with a route-map</td><td>Exact and auditable</td></tr>
+      <tr><td>Failure mode</td><td>You announce your management network, your guest wireless and three VPN tunnels in one command</td><td>Silent non-advertisement when <code>network-import-check</code> finds no exact match</td></tr>
+      <tr><td>Reach for it when</td><td>You genuinely want everything in a category, or you already have tight filtering</td><td>You know precisely what you want to say &mdash; which is most of the time</td></tr>
+    </tbody>
+  </table>
+  <div class="code-block"><div class="code-label">Both, side by side</div><pre><code>config router bgp
+    config redistribute "connected"     &lt;-- the bucket: a whole category
+        set status enable
+    end
+end
+
+config router bgp
+    config network                      &lt;-- the tap: one named prefix
+        edit 1
+            set prefix 10.55.10.0 255.255.255.0
+        next
+    end
+end
+
+network-import-check (ENABLED by default) reads the ROUTING TABLE,
+not the Local RIB, and demands an EXACT prefix and mask on an ACTIVE route.</code></pre></div>
+  <div class="mental-note-block"><div class="mental-note-block-icon">&#129504;</div><div class="mental-note-block-inner"><div class="mental-note-block-label">Mental note</div><div class="mental-note-block-text">The bucket and the tap both empty into <strong>container two</strong>. Origination is an injection into the Local RIB &mdash; it never passes through RIB-in, because your own prefixes were never told to you by anybody.</div></div></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">The drill</div>
+  <h2>Name the Container <em>Before You Diagnose</em></h2>
+  <p>The habit is one sentence, spoken before any hypothesis and before any command:</p>
+  <div class="callout"><em>&ldquo;The prefix is in the ______, so this is a ______ question.&rdquo;</em></div>
+  <p>It sounds like pedantry. It is not. It is the thing that stops you from retrieving a fault you know well when the state you were given is different &mdash; which is the single most expensive habit available in both troubleshooting and the exam.</p>
+  <table class="data-table">
+    <thead><tr><th>If the symptom is&hellip;</th><th>Open this container first</th><th>First command</th></tr></thead>
+    <tbody>
+      <tr><td>&ldquo;I can't see their prefix&rdquo;</td><td>RIB-in</td><td><code>get router info bgp network</code></td></tr>
+      <tr><td>&ldquo;Traffic takes the wrong path&rdquo;</td><td>Gate 1 &mdash; best path</td><td><code>get router info bgp network &lt;prefix&gt;</code>, read <code>best #M</code></td></tr>
+      <tr><td>&ldquo;They can't see our prefix&rdquo;</td><td>Gate 2 &mdash; or origination</td><td>Is it in <em>our</em> database at all? Then check that neighbour's out-policy</td></tr>
+      <tr><td>&ldquo;Some sites see it, some don't&rdquo;</td><td>Gate 2 &mdash; relay rules</td><td>Check <code>route-reflector-client</code> per neighbour on the RR</td></tr>
+      <tr><td>&ldquo;BGP says best but traffic goes elsewhere&rdquo;</td><td>Routing table</td><td><code>get router info routing-table all</code></td></tr>
+      <tr><td>&ldquo;Our own prefix isn't advertised&rdquo;</td><td>Routing table &rarr; origination</td><td><code>get router info routing-table all</code> &mdash; exact prefix and mask?</td></tr>
+    </tbody>
+  </table>
+  <div class="callout callout-green"><strong>For the boss battle:</strong> the symptom in Session 61 is that one prefix is visible from Melbourne and Brisbane and invisible from Perth, Adelaide, Singapore and the EU carrier &mdash; with three firewalls each internally consistent. Look at the table above and notice that <em>no single row</em> explains that. An asymmetry across peers that splits along cluster lines needs <strong>at least two containers</strong> in the answer. Start there.</div>
+</div>
+
+</div></main>
+
+<footer>LoFinance &middot; Season 5 &middot; Session 60 &middot; <span>NSE7 EF 7.6 &middot; SNA Domain 4</span> &middot; EF Dynamic Routing Supplement pp.&nbsp;342&ndash;348</footer>
+
+<script>
+var DETAIL = {
+ in: {t:'RIB-in &mdash; <em>what I was told</em>',
+   b:'<p>Every prefix every neighbour has sent me, raw and unprocessed. This is the <strong>waiting room</strong>. Nothing here has been judged yet.</p>'+
+     '<p>Crucially, this drawer holds <strong>losers as well as winners</strong>. When two paths compete for the same prefix, the loser is not deleted &mdash; it stays here indefinitely, valid and unused, waiting for the winner to be withdrawn. That is your standby path, and it is why a failed link does not mean a lost route.</p>'+
+     '<ul><li><strong>Answers:</strong> what has the world offered me?</li><li><strong>Command:</strong> <code>get router info bgp network</code></li><li><strong>Populated by:</strong> BGP UPDATE messages from peers</li></ul>'+
+     '<div class="nope"><strong>What cannot be here:</strong> anything you originate yourself. Your own prefixes never arrive from a neighbour &mdash; they are injected further down the chain.</div>'},
+ loc:{t:'Local RIB &mdash; <em>what I believe</em>',
+   b:'<p>What survived the inbound filter, had a resolvable next hop, and <strong>won best-path selection</strong>. One prefix, one winner. This is BGP\'s own considered opinion.</p>'+
+     '<p>This is also where your <strong>originated</strong> prefixes appear &mdash; whether they arrived via <code>redistribute</code> or <code>config network</code>. That is the detail most people miss: origination is an injection into the Local RIB, not into RIB-in.</p>'+
+     '<ul><li><strong>Answers:</strong> of everything on offer, what did I choose?</li><li><strong>Command:</strong> <code>get router info bgp network &lt;prefix&gt;</code> &mdash; read <code>best #M</code></li><li><strong>Populated by:</strong> the inbound gate, plus origination</li></ul>'+
+     '<div class="nope"><strong>The classic error:</strong> assuming Local RIB = routing table. It is not. Winning inside BGP only earns you the right to <em>apply</em> for the routing table, where you must still beat other protocols on administrative distance.</div>'},
+ out:{t:'RIB-out &mdash; <em>what I am willing to say</em>',
+   b:'<p>Per neighbour. Not one drawer but one <strong>per peer</strong> &mdash; what you tell Singapore is not what you tell the EU carrier.</p>'+
+     '<p>This is where every policy you have learned this season lives: IBGP split horizon, route-reflector relay rules, <code>next-hop-self</code>, <code>prefix-list-out</code>, <code>route-map-out</code>. All of them answer one question: <strong>of the things I believe, what am I willing to say, and to whom?</strong></p>'+
+     '<ul><li><strong>Answers:</strong> what am I advertising, and to which peer?</li><li><strong>Command:</strong> no direct FortiOS view &mdash; infer it from the neighbour config and from what the peer actually receives</li></ul>'+
+     '<div class="nope"><strong>Believing and telling are different drawers.</strong> A prefix can be healthy, best, and installed &mdash; and still invisible to one specific neighbour. That is not a fault. That is a policy.</div>'},
+ rt: {t:'The Routing Table &mdash; <em>what the box will actually do</em>',
+   b:'<p>The fourth container, and the one that is <strong>not part of BGP at all</strong>. Every protocol competes here: connected, static, OSPF, RIP, BGP. Lowest administrative distance wins, and only the winner forwards traffic.</p>'+
+     '<p>Two things reach into this table from outside BGP, and both cost marks:</p>'+
+     '<ul><li><strong>Redistribution</strong> reads <em>from</em> here into BGP.</li><li><strong><code>network-import-check</code></strong> reads <em>from</em> here to decide whether a <code>config network</code> statement may be advertised at all &mdash; requiring an <strong>exact</strong> prefix and mask match on an <strong>active</strong> route.</li></ul>'+
+     '<ul><li><strong>Answers:</strong> where does a packet actually go?</li><li><strong>Command:</strong> <code>get router info routing-table all</code></li></ul>'+
+     '<div class="nope"><strong>Your two slips this session both happened here.</strong> You placed <code>network-import-check</code> against the Local RIB, and you described a best-path winner as being installed in the routing table in one step. Four boxes, not three.</div>'}
+};
+function pick(k){
+  document.querySelectorAll('.drw,.rt').forEach(function(e){e.classList.remove('active');});
+  document.getElementById('d-'+k).classList.add('active');
+  var d=DETAIL[k];
+  document.getElementById('detail').innerHTML='<h4>'+d.t+'</h4>'+d.b;
+}
+
+var FAULTS = {
+ f1:{n:'Inbound prefix-list denies it',stop:'in',
+   sym:'The peer swears they are advertising it. You cannot see it anywhere.',
+   ev:'<code>get router info bgp network</code> &mdash; prefix absent entirely. Session is Established and healthy.',
+   note:'It arrived and was discarded at the first gate. Nothing logs this.'},
+ f2:{n:'NEXT_HOP unresolvable',stop:'in',
+   sym:'Prefix is visible in the database but traffic does not use it.',
+   ev:'Status codes show <code>*</code> without <code>&gt;</code>. Check the NEXT_HOP column, then <code>get router info routing-table details &lt;nh&gt;</code>.',
+   note:'It is not losing a competition &mdash; it is ineligible to enter one. Session 58\'s scar.'},
+ f3:{n:'It lost best-path selection',stop:'in',
+   sym:'Traffic takes the other path. Nothing is broken.',
+   ev:'<code>Paths: (2 available, best #2)</code>. Walk the tie-breaker list top-down and find the first line where they differ.',
+   note:'Not a fault. If they differ nowhere you fell to line 10 &mdash; lowest router ID. That is an absence of policy.'},
+ f4:{n:'network-import-check exact-match fail',stop:'loc',
+   sym:'Nobody anywhere sees your own prefix. It works internally.',
+   ev:'<code>get router info routing-table all</code> &mdash; is there an ACTIVE route with the EXACT prefix and mask?',
+   note:'A /16 does not satisfy a /24. Covered is not matched. No log, no error, total silence.'},
+ f5:{n:'prefix-list-out implicit deny',stop:'loc',
+   sym:'One specific neighbour cannot see prefixes that everyone else can see.',
+   ev:'Prefix is present and <code>best</code> locally. Check <code>prefix-list-out</code> / <code>route-map-out</code> on THAT neighbour block.',
+   note:'A filter with one permit rule says "this and nothing else." The eleven others are alive in the Local RIB and simply unspoken.'},
+ f6:{n:'IBGP split horizon / RR relay',stop:'loc',
+   sym:'Some internal sites see it, others do not. Each firewall is internally consistent.',
+   ev:'Check <code>route-reflector-client</code> on the RR\'s neighbour blocks. Who is a client and who is not?',
+   note:'A route is relayable if a CLIENT is on either end. Non-client to non-client is still plain IBGP.'},
+ f7:{n:'Loses to a static route on distance',stop:'rt',
+   sym:'BGP shows it as best. Traffic still goes somewhere else entirely.',
+   ev:'<code>get router info routing-table all</code> &mdash; whose entry is actually installed for that prefix?',
+   note:'Winning inside BGP is not the same as winning the routing table. Two separate competitions.'}
+};
+var active=null;
+function fault(k){
+  var b=document.getElementById('f-'+k);
+  if(active===k){active=null;b.classList.remove('on');reset();return;}
+  document.querySelectorAll('.fbtn').forEach(function(e){e.classList.remove('on');});
+  b.classList.add('on');active=k;
+  var f=FAULTS[k];
+  document.querySelectorAll('.drw,.rt').forEach(function(e){e.classList.remove('blocked');});
+  document.getElementById('d-'+f.stop).classList.add('blocked');
+  var where = f.stop==='in' ? 'never leaves RIB-in' : (f.stop==='loc' ? 'reaches the Local RIB but never reaches RIB-out' : 'wins inside BGP but loses the routing table');
+  document.getElementById('verdict').className='verdict bad';
+  document.getElementById('verdict').innerHTML='<span class="verdict-t">The prefix '+where+'</span>'+
+    '<p style="margin:0 0 8px;"><strong>Symptom:</strong> '+f.sym+'</p>'+
+    '<p style="margin:0 0 8px;"><strong>Evidence to gather:</strong> '+f.ev+'</p>'+
+    '<p style="margin:0;"><strong>Why:</strong> '+f.note+'</p>';
+}
+function reset(){
+  document.querySelectorAll('.drw,.rt').forEach(function(e){e.classList.remove('blocked');});
+  document.querySelectorAll('.fbtn').forEach(function(e){e.classList.remove('on');});
+  active=null;
+  document.getElementById('verdict').className='verdict';
+  document.getElementById('verdict').innerHTML='<span class="verdict-t">Healthy path</span>The prefix is received, accepted, wins best-path, enters the Local RIB, survives the outbound policy for this neighbour, and is installed in the routing table. Select a fault above to see exactly where it stops &mdash; and note how few of them produce any log at all.';
+}
+document.querySelectorAll('.scn-h').forEach(function(h){h.addEventListener('click',function(){h.parentElement.classList.toggle('open');});});
+window.addEventListener('DOMContentLoaded',function(){pick('in');reset();});
+</script>
+
+</body>
+</html>
