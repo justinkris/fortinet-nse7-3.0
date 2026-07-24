@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 57 Complete — Fast Recovery</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">›</span>
+      <a href="#">Season 5 · The Expansion</a><span class="breadcrumb-sep">›</span>
+      <span>Session 57 · Complete Guide</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Study Guide · NSE7 EF 7.6 · Session 57</div>
+    <h1>Fast <em>Recovery</em></h1>
+    <p>Optimising BGP convergence — timers, BFD, and graceful restart. EF Study Guide 05, pp. 147–151.</p>
+  </div>
+</header>
+<div class="motivation-banner">
+  <div class="motivation-text">A ninety-one second gap cost six figures, and <em>every light in the building was green</em>.</div>
+  <p class="motivation-sub">Detection and reconvergence are different problems. This session is about the first one, which is almost always the expensive one.</p>
+</div>
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span><span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span><span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button><div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span><span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span><span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button><div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+<nav class="section-nav" id="section-nav"><a class="nav-tab active" href="#section-noticing">The Noticing</a><a class="nav-tab" href="#section-timers">Timers</a><a class="nav-tab" href="#section-bfd">BFD</a><a class="nav-tab" href="#section-everywhere">Not Everywhere</a><a class="nav-tab" href="#section-gr">Graceful Restart</a><a class="nav-tab" href="#section-real">Real Topology</a><a class="nav-tab" href="#section-ts">Troubleshooting</a><a class="nav-tab" href="#section-exam">Exam</a></nav>
+<main><div class="main-content">
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · THE NOTICING</span></div>
+<p class="socratic-insight">At 06:41:07 the far-end router at Parramatta died. At 06:42:38 BGP withdrew the routes. In between, half of LoFinance's trades went into a road that ended. Yet the reconvergence onto Chatswood, when it finally happened, took less than a second. Sit with that gap before reading on.</p>
+<ul class="socratic-questions"><li>If failover onto the second carrier was sub-second, what exactly consumed the other ninety seconds?</li><li>Riley's dashboard was entirely green throughout. Every light was reporting honestly. Why was every light useless?</li></ul>
+<div class="answer-area" data-section="noticing">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">Detection. BGP had no idea anything was wrong. The routing table still held Parramatta as a valid next-hop because BGP's only evidence of death is the <em>absence</em> of a keepalive for a full hold interval — 180 seconds by default. Reconvergence was never the bottleneck. Noticing was.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">Because they were watching the wrong layer. Interface state reports on the optics and the local port. The far-end router's <em>control plane</em> had died while its line card kept the laser lit. Every green light was truthfully answering a question nobody needed the answer to.</div></div></div>
+</div></div>
+<div class="section-block" id="section-noticing">
+<div class="section-label">SECTION 01</div>
+<h2>The Failover Was Instant. The <em>Noticing</em> Was Not.</h2>
+<div class="section-img-wrap">
+<img src="images/s1-noticing.png" class="section-img" alt="Split timeline showing 91 seconds of silent failure followed by sub-second reconvergence" onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+<p class="img-caption">Friday 06:41. Ninety-one seconds of silence, then a sub-second recovery.</p>
+<div class="si-placeholder"><span class="si-filename">images/s1-noticing.png</span>
+<button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+<div class="prompt-content" hidden>Wide cinematic flat-vector illustration, cream #faf5e9 background, clean bold soft-brown outlines, no gradients, no photorealism. A horizontal timeline bar spanning the full width, divided into two dramatically unequal segments. The LEFT segment occupies about 85% of the width, rendered in muted amber/ochre, labelled in small clean sans-serif '06:41:07 → 06:42:38 · DETECTION · 91 SECONDS'. Inside this long segment, draw small stylised data packets as coral-coloured envelopes marching confidently to the right and then falling off a broken road edge into soft grey fog — about eight packets, some mid-fall. Above them, a row of five perfectly round GREEN status lights, all lit, all serene, with a tiny label 'interface: UP'. The RIGHT segment is a thin sliver, about 5% of the width, rendered in sage green, labelled '< 1 SECOND · RECONVERGENCE'. In that sliver, packets curve smoothly upward onto a second intact road labelled 'CHATSWOOD'. Above the whole timeline, in elegant serif, the caption 'The failover was always instant.' Below it, smaller: 'It was the noticing that cost six figures.' In the far left margin, a small illustrated dead router icon — a plain rectangular network device with a dark X over its brain/CPU area but its front-panel port LED still cheerfully lit green, to make the point that the device died while the link stayed up. Muted gold accents on the timeline rule. Do NOT include any Fortinet branding, any real product photography, any dense technical labels, or any human characters. Purpose: burn in the distinction between detection time and reconvergence time.</div></div></div>
+<p>The incident that opened Session 57 is the one every network engineer eventually meets, and it is almost never the failure people prepare for. Nobody cut the fibre. Nobody unplugged anything. The optics stayed lit, the port stayed up, and the monitoring system — which was working perfectly — reported that everything was fine.</p>
+<p>What actually died was the <strong>control plane of the router at the far end</strong>. The line card kept transmitting light. Layer 1 was pristine. But the device behind it had stopped being able to forward anything, and there was no mechanism anywhere in the path whose job it was to ask <em>"is the machine at the other end still thinking?"</em></p>
+<div class="callout callout-amber"><strong>Baz's line, and why it was both true and worthless:</strong> "Mate, the link is up." He was right. The link <em>was</em> up. Link state is a statement about the physical medium and the local port, and it will remain cheerfully green across a total software failure of the device on the other side.</div>
+<p>The arithmetic of the loss is worth stating plainly, because it is the shape of the business case. With ECMP enabled across two carriers, roughly <strong>half</strong> of outbound flows were hashed onto the dead next-hop. Not all — half. A total outage announces itself in seconds because everything stops. A fifty-percent outage looks, from the trading desk, like the market being strange for a minute and a half.</p>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">Interface state proves the optics work. It proves nothing whatsoever about the device behind them.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-noticing" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-noticing','The Noticing')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-noticing" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-noticing')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · TIMERS</span></div>
+<p class="socratic-insight">BGP is not slow by accident. Its patience is a designed property, and understanding why it was designed that way is what stops you from 'fixing' it with a change that makes everything worse.</p>
+<ul class="socratic-questions"><li>What is BGP's only evidence that its neighbour is still alive — and therefore its only evidence of death?</li><li>The obvious fix is to set keepalive to 1 and hold to 3. Failure detected in three seconds. Why does nobody recommend this?</li></ul>
+<div class="answer-area" data-section="timers">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">A KEEPALIVE message arriving on a schedule. FortiGate defaults: keepalive every <strong>60 seconds</strong>, hold timer <strong>180 seconds</strong> — a deliberate 3:1 ratio, so that two consecutive keepalives can be lost to congestion or a brief control-plane hiccup without tearing down a perfectly healthy session. BGP's evidence of life is a scheduled message; its evidence of death is the absence of that message for a long time.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">Two reasons, and both matter. <strong>Flap risk:</strong> aggressive timers reclassify non-failures as failures. A teardown is expensive — every route from that peer withdrawn, the withdrawal propagated onward, best-path recalculated, FIB rewritten, then the entire table re-advertised on recovery. <strong>CPU:</strong> BGP runs in the routing daemon, in software, on the CPU — it is not offloaded to the NP. Multiply sixty-times-more-frequent processing across every peering and you degrade convergence precisely when routes are churning and CPU is already scarce.</div></div></div>
+</div></div>
+<div class="section-block" id="section-timers">
+<div class="section-label">SECTION 02</div>
+<h2>Why You Cannot Simply <em>Turn the Timers Down</em></h2>
+<p>The first instinct of every engineer who meets this problem is to reach for the timers. It is not a stupid instinct — the hold timer really is what cost ninety seconds. But it is a trade, not a fix, and it is a bad trade.</p>
+<table class="data-table">
+<thead><tr><th>Timer</th><th>FortiOS default</th><th>What it governs</th></tr></thead>
+<tbody>
+<tr><td>keepalive</td><td>60 seconds</td><td>How often this router announces it is still alive</td></tr>
+<tr><td>holdtime</td><td>180 seconds</td><td>How long silence is tolerated before the peer is declared dead</td></tr>
+<tr><td>ratio</td><td>3 : 1</td><td>Two keepalives may be lost without consequence</td></tr>
+</tbody></table>
+<div class="code-block"><div class="code-label">FortiOS CLI — the timers you should usually leave alone</div><pre><code>config router bgp
+    config neighbor
+        edit 100.64.1.254
+            set keep-alive-timer 60
+            set holdtime-timer 180
+        next
+    end
+end</code></pre></div>
+<div class="analogy-box"><div class="analogy-label">Analogy</div><div class="analogy-text">
+<p class="analogy-summary">Asking a slow man to run.</p>
+<ul>
+<li>BGP is deliberately unhurried because tearing down a session is expensive and reversing that decision is more expensive still.</li>
+<li>Make it check sixty times more often and it does not become alert — it becomes tired, and it makes worse decisions under exactly the load conditions where good decisions matter.</li>
+<li>The answer is not to make BGP faster. It is to give BGP a <em>separate, cheap</em> messenger whose only job is to sprint.</li>
+</ul></div></div>
+<div class="callout"><strong>Exam tip:</strong> When a scenario describes slow failover, the tempting answer is a timer value. It is usually the wrong one. The better answers involve BFD not being configured, or being configured in only one of the two required places.</div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">There is no free detection. BGP timers pay in flaps. BFD pays in packets. You are always choosing a currency.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-timers" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-timers','Timers')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-timers" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-timers')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · BFD</span></div>
+<p class="socratic-insight">If BGP cannot be the fast detector, something else must be. Before reading the answer, specify the requirements yourself — where should it run, how heavy can each check be, and what must it do once it decides the peer is gone?</p>
+<ul class="socratic-questions"><li>What three properties must a fast failure detector have to solve the Friday problem?</li><li>The name is <em>Bi</em>directional Forwarding Detection. What does that first syllable cost you operationally, and what is the failure mode if you get it wrong?</li></ul>
+<div class="answer-area" data-section="bfd">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">It must run <strong>below BGP and independent of the media</strong>, asking whether the far-end <em>device</em> answers rather than whether the interface is up. Each check must be <strong>lightweight</strong> — a small fixed-format packet doing exactly one job — because that is what makes sub-second cadence affordable. And it must <strong>tell BGP to act</strong>: BFD's value is not noticing, it is causing the peering to drop and the routes to be withdrawn immediately rather than after the hold timer.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">BFD is a negotiated session between two state machines (Down → Init → Up), not a probe one side fires at the other. Both ends must run it. If the far end does not, the BFD session never reaches Up — and here is the danger: <strong>BGP does not care.</strong> The peering stays Established, routes flow, the dashboard stays green, and you have closed the risk in your register while remaining on a 180-second hold timer.</div></div></div>
+</div></div>
+<div class="section-block" id="section-bfd">
+<div class="section-label">SECTION 03</div>
+<h2>Bidirectional Forwarding Detection — <em>The Seatbelt</em></h2>
+<div class="section-img-wrap">
+<img src="images/s2-bfd.png" class="section-img" alt="Two routers exchanging rapid lightweight BFD probes beneath a slower BGP session" onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+<p class="img-caption">Separate the liveness question from the routing protocol, and it becomes cheap enough to ask constantly.</p>
+<div class="si-placeholder"><span class="si-filename">images/s2-bfd.png</span>
+<button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+<div class="prompt-content" hidden>Flat-vector educational illustration in a warm storybook-technical style. Cream #faf5e9 background, clean bold soft-brown outlines, no gradients, no photorealism, generous white space. Two stylised network routers face each other, one on the left labelled 'HQ' and one on the right labelled 'ISP-1', drawn as simple rounded rectangular devices with small port rows. Between them, TWO clearly separated horizontal channels, one above the other. The UPPER channel is thick, muted blue, labelled 'BGP · TCP 179' and carries one large heavy envelope icon crawling slowly with a small clock icon reading '60s' — this channel is drawn to look ponderous and important, with the envelope rendered as a thick sealed document. The LOWER channel is thin, coral coloured, labelled 'BFD' and carries a rapid stream of eight tiny identical dots or darts moving fast in both directions, with motion lines, and a small clock reading '250ms'. Bidirectional arrowheads on BOTH ends of the lower channel, emphasised, to make the point that both sides transmit. To the right of the diagram, a small vertical bracket with the arithmetic in clean sans-serif: '250 ms × 3 = 750 ms'. Beneath the two channels, a short caption in elegant serif: 'Same three-strikes logic. Two hundred and forty times cheaper.' Include a small sage-green tick beside the lower channel and a small muted-gold weight icon beside the upper one to signal cheap versus expensive. Do NOT include any human characters, any vendor logos, any real product photography, or dense packet-header field diagrams. Purpose: make permanent the idea that BFD separates the liveness question from the routing protocol.</div></div></div>
+<p>The study guide's own description is worth memorising almost verbatim: BFD acts like a probe checking the status of the BGP peer, it is <strong>independent of the media type</strong>, and it detects a <strong>one-way device failure in less than a second</strong>. That phrase — <em>one-way device failure</em> — is Friday morning compressed into four words.</p>
+<p>Notice what BFD did <em>not</em> invent. It uses the same logic BGP uses: send at an interval, multiply by three, declare death. The insight is not a smarter algorithm. It is that once you strip the liveness question out of the heavyweight routing protocol and give it its own tiny fixed-format packet, you can afford to ask it two hundred and forty times more often.</p>
+<h3 style="font-family:'Playfair Display',serif;font-size:20px;margin:22px 0 10px;color:var(--text);">Configuration — two places, both required</h3>
+<div class="code-block"><div class="code-label">FortiOS CLI — per neighbour</div><pre><code>config router bgp
+    config neighbor
+        edit 100.64.1.254
+            set bfd enable
+        next
+    end
+end</code></pre></div>
+<div class="code-block"><div class="code-label">FortiOS CLI — per interface (the half people forget)</div><pre><code>config system interface
+    edit "port1"
+        set bfd enable
+        set bfd-desired-min-tx 250
+        set bfd-required-min-rx 250
+        set bfd-detect-mult 3
+    next
+end</code></pre></div>
+<table class="data-table">
+<thead><tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>bfd-desired-min-tx</td><td>250 ms</td><td>How often this end wants to transmit</td></tr>
+<tr><td>bfd-required-min-rx</td><td>250 ms</td><td>Fastest interval this end will accept receiving</td></tr>
+<tr><td>bfd-detect-mult</td><td>3</td><td>Missed intervals before declaring the peer down</td></tr>
+<tr><td>Detection time</td><td>750 ms</td><td>tx interval × multiplier</td></tr>
+</tbody></table>
+<h3 style="font-family:'Playfair Display',serif;font-size:20px;margin:22px 0 10px;color:var(--text);">Multihop — when the peers are not on the cable</h3>
+<p>BFD was originally designed for two routers on the same subnet. The Singapore peering is loopback-to-loopback across two underlay circuits, which breaks the design's founding assumption: on a directly-connected link, a missing probe means something is genuinely broken. Across hops you do not own, a missing probe might mean somebody else's core had a busy eight hundred milliseconds.</p>
+<div class="callout callout-amber"><strong>Consequence:</strong> multihop BFD needs <em>looser</em> timers than single-hop BFD. This is the same speed-versus-false-positive trade you met with BGP timers, reappearing one layer down.</div>
+<div class="code-block"><div class="code-label">FortiOS CLI — BFD multihop template</div><pre><code>config router bfd
+    config multihop-template
+        edit 1
+            set src 10.99.50.0 255.255.255.0
+            set dst 172.20.0.0 255.255.255.0
+            set auth-mode md5
+            set md5-key &lt;password&gt;
+        next
+    end
+end
+
+config router bgp
+    config neighbor
+        edit 172.20.0.1
+            set bfd enable
+            set ebgp-enforce-multihop enable
+        next
+    end
+end</code></pre></div>
+<div class="callout"><strong>Why MD5 here and not on port1:</strong> a probe crossing networks you do not control can be spoofed by someone who does. Single-hop BFD sits on a cable you own; multihop BFD does not.</div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">Enabled on the neighbour but not the interface — or on your side but not theirs — is a fix that fails quietly while wearing the clothes of a fix.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-bfd" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-bfd','BFD')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-bfd" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-bfd')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · NOT EVERYWHERE</span></div>
+<p class="socratic-insight">BFD is cheap, fast and effective, which makes 'enable it on every peering' feel like obvious good practice. It is not. Three situations should give you pause, and only one of them is about BFD itself.</p>
+<ul class="socratic-questions"><li>On a peer with no alternative path, what does BFD actually buy you?</li><li>Fifty branch spokes, all with BFD at default 250 ms. What have you built?</li></ul>
+<div class="answer-area" data-section="everywhere">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">Faster knowledge, not faster recovery. BFD's entire value lies in what you reconverge <em>onto</em>. With a single road, sub-second detection means you learn you are down 179 seconds earlier — a real <strong>monitoring</strong> benefit, but not an <strong>availability</strong> control. Anyone justifying BFD on a single-homed peer as an availability measure has confused noticing with fixing.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">Four packets per second, each way, per session — two hundred transmits and two hundred receives every second, forever, on the control plane. BFD does not remove the CPU constraint that ruled out aggressive BGP timers; it <strong>relocates</strong> it. The lever is the same: tune the interval to the value of the route. Sub-second on two carrier peerings carrying the trading floor is money well spent. Sub-second on fifty spokes where two seconds is invisible to the user is CPU spent on nothing.</div></div></div>
+</div></div>
+<div class="section-block" id="section-everywhere">
+<div class="section-label">SECTION 04</div>
+<h2>Why BFD <em>Everywhere</em> Is a Design Error</h2>
+<table class="data-table">
+<thead><tr><th>Situation</th><th>Verdict</th><th>Reasoning</th></tr></thead>
+<tbody>
+<tr><td>Two carriers, trading traffic</td><td>Yes — aggressive</td><td>Silent far-end death is the expected failure, an alternative path exists, the traffic is expensive</td></tr>
+<tr><td>Single-homed peer</td><td>Monitoring only</td><td>Nothing to reconverge onto. Do not sell it as availability</td></tr>
+<tr><td>Peer with no BFD commitment</td><td>Contract first</td><td>Your thresholds are only as good as the worst normal behaviour of a path you do not own</td></tr>
+<tr><td>Fifty branch spokes</td><td>Yes — relaxed</td><td>Aggregate control-plane cost dominates; two-second failover is invisible to the user</td></tr>
+<tr><td>Peer behind an HA cluster</td><td>Careful — see §5</td><td>BFD will detect a routine failover as a death</td></tr>
+</tbody></table>
+<div class="callout callout-green"><strong>The design rule:</strong> match detection speed to the failure you actually expect on <em>that link</em>, not to the fastest number the platform allows.</div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">Detection without an alternative path is monitoring, not availability. Know which one you are selling.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-everywhere" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-everywhere','Not Everywhere')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-everywhere" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-everywhere')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · GRACEFUL RESTART</span></div>
+<p class="socratic-insight">Riley's question ends the technical session: BFD handles Baz's router dying. What happens when LoFinance's own HA pair fails over at nine in the morning?</p>
+<ul class="socratic-questions"><li>Where does the BGP daemon actually run in an HA cluster, and what does the peer at the far end experience during a failover?</li><li>BFD and graceful restart are configured on the same neighbour. A failover occurs. Which one wins?</li></ul>
+<div class="answer-area" data-section="gr">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">The BGP daemon runs <strong>only on the primary</strong>. FGCP synchronises the session table, but that table is kernel state for <em>transit</em> traffic. A BGP peering terminates <em>on</em> the box, in a userland process's memory — its state machine, its RIB, its negotiated capabilities. Processes do not fail over. The secondary starts a fresh daemon that has never spoken to anyone, so the peering must rebuild from scratch and the peer withdraws every route. The new primary can forward perfectly; it is routing that announces a death which was really a change of shift.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><strong>BFD wins.</strong> Graceful restart is a promise about a session going down gracefully — it needs the peering to survive long enough for the stale-route logic to apply. BFD does not negotiate; it hands BGP a hard verdict that the forwarding path is dead. The session tears down, routes are withdrawn, and graceful restart never gets to speak. You configured a feature and then configured a second feature that silently overrules it.</div></div></div>
+</div></div>
+<div class="section-block" id="section-gr">
+<div class="section-label">SECTION 05</div>
+<h2>Graceful Restart — and the <em>Two Seatbelts</em> Problem</h2>
+<div class="section-img-wrap">
+<img src="images/s3-gr.png" class="section-img" alt="Opposing forces diagram: BFD pulling toward reroute, graceful restart pulling toward hold" onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+<p class="img-caption">Two tools, same neighbour, opposite instructions. One of them wins.</p>
+<div class="si-placeholder"><span class="si-filename">images/s3-gr.png</span>
+<button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+<div class="prompt-content" hidden>Flat-vector conceptual illustration, cream #faf5e9 background, bold soft-brown outlines, no gradients, no photorealism. Centre of the frame: a single stylised network router labelled 'DC' drawn as a rounded rectangle, with a routing table icon beside it showing three small route entries as horizontal lines. From the LEFT, a strong coral-coloured arrow labelled 'BFD — HE IS DEAD, REROUTE NOW' pushes toward the router, drawn thick and urgent with a small stopwatch icon reading '750ms' attached. From the RIGHT, a softer sage-green arrow labelled 'GRACEFUL RESTART — HE IS RESTARTING, HOLD' pushes back, drawn thinner and calmer with a small hourglass icon. The two arrows visibly collide at the router. The coral arrow is clearly winning: draw the sage-green arrow buckling or bending backward at the point of contact, and show the three route entries in the routing table being struck through / greyed out. Below the collision, in elegant serif, the caption 'You bought the seatbelt. Then you bought a second seatbelt that cuts the first one.' In the lower right corner, a small muted-gold key or legend box with two lines: 'BFD accelerates the reaction' and 'Graceful restart suppresses it'. In the upper left, a small faint illustration of an HA pair — two identical stacked router icons with a sync arrow between them and a tiny label 'failover, not death' — to anchor why the conflict matters. Do NOT include human characters, vendor logos, or dense CLI text. Purpose: make the tension between the two tools visually unforgettable so the student never enables both aggressively without thinking.</div></div></div>
+<p>Graceful restart exists to solve a very specific and slightly absurd problem: a healthy cluster, mid-failover, being reported to the world as dead. It works by negotiating a capability in advance — the cluster tells its peer <em>"if my session drops, I am restarting, not dying. Mark my routes stale, keep forwarding on them, and I will be back shortly with a usable table."</em></p>
+<div class="code-block"><div class="code-label">FortiOS CLI — both commands are required</div><pre><code>config router bgp
+    set as 65001
+    set router-id 10.99.50.1
+    set graceful-restart enable
+    config neighbor
+        edit 100.64.1.254
+            set capability-graceful-restart enable
+            set remote-as 65100
+        next
+    end
+end</code></pre></div>
+<div class="callout callout-amber"><strong>Common misconception:</strong> that <code>set graceful-restart enable</code> alone is sufficient. The global command enables the feature; the per-neighbour <code>capability-graceful-restart</code> advertises it to that peer. A capability nobody negotiated is a capability nobody honours — and the exam likes to show you a snippet with exactly one of the two present.</div>
+<div class="analogy-box"><div class="analogy-label">Analogy</div><div class="analogy-text">
+<p class="analogy-summary">A change of shift, announced as a death.</p>
+<ul>
+<li>The night guard hands over to the day guard. The building is protected continuously; the forwarding never stops.</li>
+<li>But the radio goes silent for eleven seconds during the handover, and headquarters declares the post abandoned and reroutes every patrol.</li>
+<li>Graceful restart is the memo sent <em>in advance</em>: "if you lose my radio, wait — I am changing shift, not evacuating."</li>
+</ul></div></div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">BFD shouts 'reroute now.' Graceful restart whispers 'do not reroute.' On the same neighbour, they are in genuine tension — and BFD wins.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-gr" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-gr','Graceful Restart')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-gr" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-gr')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · REAL TOPOLOGY</span></div>
+<p class="socratic-insight">A production environment: a 2601F HA cluster in the DC with NP7s and hardware-offloaded IPsec, peering over tunnels to an Active-Passive VM cluster in Sydney and a standalone FortiGate in Melbourne. Two failure scenarios, one neighbour statement.</p>
+<ul class="socratic-questions"><li>Sydney has an HA failover. Sydney's cluster dies entirely. At second zero, how does the DC distinguish these two events?</li><li>Which end's hardware sets your BFD timers — the 2601F with NP7s, or the Sydney VM?</li></ul>
+<div class="answer-area" data-section="real">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">It cannot. That is the whole design problem. At second zero both events look identical from the DC: packets stopped arriving. You cannot configure two different behaviours for two events you cannot tell apart, so the real question is not 'which tool per scenario' but <strong>what makes them distinguishable, and how long am I willing to wait to find out?</strong> The answer is per-neighbour tuning: on a peer that sits behind an HA cluster, you deliberately relax detection so that a routine failover falls <em>inside</em> the tolerance window rather than outside it.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><strong>The Sydney VM.</strong> The 2601F offloads IPsec into NP7 silicon and has control-plane headroom to spare. The VM does encryption, tunnel handling, the BGP daemon and the BFD state machine all in software on shared vCPU. The slower peer always sets the floor — your detection interval is bounded by whichever end struggles to hold the cadence under load, and it is never the one with the better ASICs.</div></div></div>
+</div></div>
+<div class="section-block" id="section-real">
+<div class="section-label">SECTION 06</div>
+<h2>Applied: <em>DC · Sydney · Melbourne</em></h2>
+<p>Three neighbours, three different expected failure modes, three different answers. This is what per-neighbour design judgement actually looks like in production, and it is the reason "enable BFD everywhere" is not a strategy.</p>
+<table class="data-table">
+<thead><tr><th>Peering</th><th>Expected failure</th><th>Primary tool</th><th>BFD posture</th></tr></thead>
+<tbody>
+<tr><td>DC ↔ Carrier</td><td>Silent far-end device death, no HA behind it</td><td>BFD</td><td>Aggressive — buy the 750 ms</td></tr>
+<tr><td>DC ↔ Sydney (A-P VM cluster)</td><td>HA failover far more likely than site loss</td><td>Graceful restart</td><td>Relaxed, above realistic failover time — or omitted</td></tr>
+<tr><td>DC ↔ Melbourne (standalone)</td><td>Device or tunnel loss; no failover exists</td><td>BFD</td><td>Straightforward — if it is gone, it is gone</td></tr>
+</tbody></table>
+<div class="callout"><strong>The FGCP detail that makes Sydney interesting:</strong> FGCP synchronises IPsec security associations, so the <em>tunnel</em> survives a Sydney failover. The BGP daemon does not. You get the slightly eerie situation of an intact tunnel carrying a dead peering — which is precisely why graceful restart, not BFD, is the tool for that neighbour.</div>
+<div class="callout callout-amber"><strong>The trap on this topology:</strong> configuring aggressive BFD on DC ↔ Sydney because it worked so well on the carrier links. Sydney fails over, DC declares death at 750 ms, routes are withdrawn, graceful restart never applies, and traffic reroutes away from a site that was never actually down.</div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">The slower peer sets the floor. A 2601F's NP7s cannot make a VM answer faster.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-real" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-real','Real Topology')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-real" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-real')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · TROUBLESHOOTING</span></div>
+<p class="socratic-insight">Someone reports that failover still took three minutes despite BFD being configured. Before touching anything, decide what you are actually going to check first.</p>
+<ul class="socratic-questions"><li>What is the very first command, and why that one?</li><li>BFD is enabled on both the neighbour and the interface, yet the session never reaches Up while BGP stays happily Established. Where is the fault?</li></ul>
+<div class="answer-area" data-section="ts">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text"><code>get router info bfd neighbor</code>. The question is not whether BFD is <em>configured</em> — it is whether BFD is <em>Up</em>. Those are different facts, and the gap between them is where almost every BFD incident lives. Verify the detector is alive before you start blaming the thing it was supposed to be watching.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text">Almost certainly at the far end. BFD is a negotiated bidirectional session; if the peer is not running it, your side has nobody to complete the handshake with. Note that BGP is entirely unbothered by this — which is exactly what makes the failure quiet. At that point it stops being a CLI problem and becomes a conversation with the carrier.</div></div></div>
+</div></div>
+<div class="section-block" id="section-ts">
+<div class="section-label">SECTION 07</div>
+<h2>Verification and <em>Troubleshooting Order</em></h2>
+<div class="code-block"><div class="code-label">FortiOS CLI — verification set</div><pre><code># Is BFD actually Up, or merely configured?
+get router info bfd neighbor
+
+# What capabilities were NEGOTIATED with this peer?
+get router info bgp neighbors 100.64.1.254
+
+# Is there anything to reconverge onto?
+get router info routing-table bgp
+
+# Confirm both halves of the BFD config
+show router bgp
+show system interface port1</code></pre></div>
+<table class="data-table">
+<thead><tr><th>Symptom</th><th>Question to ask</th><th>Likely root cause</th></tr></thead>
+<tbody>
+<tr><td>Failover still ~180 s</td><td>Is BFD Up, or just configured?</td><td>BFD session never established</td></tr>
+<tr><td>BFD configured, still slow</td><td>Enabled on both neighbour and interface?</td><td>Half-configured — the classic trap</td></tr>
+<tr><td>BFD never reaches Up</td><td>Does the far end run BFD?</td><td>Not a CLI problem. A carrier problem</td></tr>
+<tr><td>BFD flaps on a healthy path</td><td>Multihop running single-hop timers?</td><td>Jitter across hops you do not own</td></tr>
+<tr><td>Routes withdrawn on HA failover</td><td>Was graceful restart negotiated?</td><td>Global set, per-neighbour capability missing</td></tr>
+<tr><td>Fast detection, no recovery</td><td>Is there an alternative path?</td><td>Monitoring benefit mistaken for availability</td></tr>
+</tbody></table>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">Verify the detector is alive before blaming the thing it watches.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-ts" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ts','Troubleshooting')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-ts" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ts')">+ Add Note</button></div></div>
+</div></div>
+<div class="socratic-block">
+<div class="socratic-header"><span class="socratic-icon">💭</span><span class="socratic-label">THINK FIRST · EXAM & TAKEAWAYS</span></div>
+<p class="socratic-insight">Ten questions covering the session. Answer before revealing — the reasoning matters more than the letter.</p>
+<ul class="socratic-questions"><li>Which two places must BFD be enabled on a FortiGate, and what breaks if you do only one?</li><li>What are the two commands required for graceful restart, and why are both necessary?</li></ul>
+<div class="answer-area" data-section="exam">
+<textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+<div class="answer-buttons"><button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+<button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button></div>
+<div class="model-answers" style="display:none;"><div class="model-answer-item"><div class="model-answer-q">Q1 — MODEL ANSWER</div><div class="model-answer-text">Per neighbour under <code>config router bgp</code>, and per interface under <code>config system interface</code>. With only the neighbour half, the interface has no BFD parameters to run with; with only the interface half, BGP is never told to act on BFD's verdict. Either way you get a configuration that looks complete and delivers nothing.</div></div><div class="model-answer-item"><div class="model-answer-q">Q2 — MODEL ANSWER</div><div class="model-answer-text"><code>set graceful-restart enable</code> at the BGP global level enables the capability on this router; <code>set capability-graceful-restart enable</code> under the specific neighbour advertises it to that peer during the OPEN exchange. Graceful restart is a negotiated capability — one side quietly wanting it achieves nothing.</div></div></div>
+</div></div>
+<div class="section-block" id="section-exam">
+<div class="section-label">SECTION 08</div>
+<h2>Exam Questions and <em>Key Takeaways</em></h2>
+<table class="data-table">
+<thead><tr><th>#</th><th>Question</th><th>Answer</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>FortiGate default BGP keepalive / hold timers?</td><td>60 s / 180 s</td></tr>
+<tr><td>2</td><td>BFD detects what, in what time?</td><td>One-way device failure, under 1 second</td></tr>
+<tr><td>3</td><td>Two places BFD must be enabled?</td><td>Per neighbour under <code>router bgp</code>; per interface under <code>system interface</code></td></tr>
+<tr><td>4</td><td>Default bfd-desired-min-tx and detect-mult?</td><td>250 ms and 3 → 750 ms detection</td></tr>
+<tr><td>5</td><td>Command for BFD to a non-adjacent peer?</td><td><code>config router bfd</code> → <code>config multihop-template</code>, src/dst subnets</td></tr>
+<tr><td>6</td><td>Why does graceful restart exist for HA?</td><td>The BGP daemon runs only on the primary; failover restarts it and the peer would withdraw all routes</td></tr>
+<tr><td>7</td><td>Two commands for graceful restart?</td><td><code>graceful-restart enable</code> (global) + <code>capability-graceful-restart enable</code> (neighbour)</td></tr>
+<tr><td>8</td><td>BFD configured, never Up, BGP Established — cause?</td><td>The peer is not running BFD; the session is bidirectional and negotiated</td></tr>
+<tr><td>9</td><td>Is BFD an availability control on a single-homed peer?</td><td>No — monitoring benefit only, with nothing to reconverge onto</td></tr>
+<tr><td>10</td><td>Aggressive BFD + graceful restart on an HA peer?</td><td>BFD tears the session down first; graceful restart never applies</td></tr>
+</tbody></table>
+<div class="callout callout-green"><strong>Five sentences to carry out of this session:</strong>
+<br>1. The link is not the question — interface state says nothing about the device behind it.
+<br>2. The failover was always instant; the noticing was not.
+<br>3. There is no free detection — BGP timers pay in flaps, BFD pays in packets.
+<br>4. BFD and graceful restart are opposite tools, and BFD wins.
+<br>5. The slower peer sets the floor.</div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">Match detection speed to the failure you actually expect on that link — not to the fastest number the platform allows.</div></div></div>
+</div><div class="lesson-tools"><div class="lesson-tools-grid">
+<div><div class="tool-label">ASK A QUESTION</div>
+<textarea class="tool-textarea" id="q-section-exam" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-exam','Exam')">Add Question</button></div></div>
+<div><div class="tool-label">ADD A NOTE</div>
+<textarea class="tool-textarea" id="note-section-exam" placeholder="Write a note about this section..." rows="3"></textarea>
+<div class="tool-row"><button class="btn-add-q" onclick="addNote('section-exam')">+ Add Note</button></div></div>
+</div></div>
+</div></main>
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="session-56-complete-guide.html"><span class="page-nav-label">← PREVIOUS</span><span class="page-nav-title">Many Roads Out</span></a>
+  <a class="page-nav-btn page-nav-next" href="session-58-complete-guide.html"><span class="page-nav-label">NEXT →</span><span class="page-nav-title">The Politics of Routing</span></a>
+</div>
+<footer>LoFinance<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Season 5 · The Expansion · Session 57</footer>
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-session57-fast-recovery';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-noticing': 'The Noticing',
+  'section-timers': 'Timers',
+  'section-bfd': 'BFD',
+  'section-everywhere': 'Not Everywhere',
+  'section-gr': 'Graceful Restart',
+  'section-real': 'Real Topology',
+  'section-ts': 'Troubleshooting',
+  'section-exam': 'Exam'
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+</body>
+</html>

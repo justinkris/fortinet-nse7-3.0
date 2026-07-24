@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 58 Visual — Border Crossings</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+
+  /* ── SESSION-58 ADDITIVE (exam + flashcards + stat strip) ── */
+  .exam-q{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:12px 0;}
+  .exam-q-num{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;color:var(--blue);text-transform:uppercase;margin-bottom:6px;}
+  .exam-q-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);line-height:1.55;margin-bottom:8px;font-weight:600;}
+  .exam-opts{list-style:none;padding-left:0;margin:0 0 8px;}
+  .exam-opts li{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);padding:3px 0;}
+  .exam-a{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);border-radius:6px;padding:6px 10px;display:inline-block;}
+  details.reveal{margin-top:6px;}
+  details.reveal summary{cursor:pointer;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);}
+  details.reveal summary:hover{color:var(--blue);}
+  .stat-strip{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;}
+  .stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;}
+  .stat-chip .sv{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--blue);line-height:1;}
+  .stat-chip .sl{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;}
+  .flash{border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--surface);}
+  .flash-q{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text);}
+  .flash-a{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);margin-top:6px;padding-top:6px;border-top:1px solid var(--border-dim);}
+  .kv{display:grid;grid-template-columns:180px 1fr;gap:6px 16px;margin:14px 0;font-family:'Cormorant Garamond',serif;font-size:15px;}
+  .kv .k{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding-top:3px;}
+  .kv .v{color:var(--text-soft);line-height:1.55;}
+  .big-rule{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--blue);border-radius:0 12px 12px 0;padding:18px 22px;margin:18px 0;line-height:1.35;}
+  .dtree{font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.75;background:var(--ink-dark);color:#e8efff;border-radius:10px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb"><a href="../index.html">Home</a><span class="breadcrumb-sep">/</span><a href="../index.html">Season 5</a><span class="breadcrumb-sep">/</span><span>Session 58</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span>SESSION 58 &middot; VISUAL LEARNING</div>
+    <h1>Packet journey &amp; border crossing &mdash; six illustrated anchors for long-term memory</h1>
+    <p>So the picture should be a journey, not a topology.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Every concept today is <em>a boundary</em> and what changes when you cross it.</div>
+  <div class="motivation-sub">So the picture should be a journey, not a topology.</div>
+</div>
+<div class="section-nav"><a class="nav-tab" href="#section-style">Why This Style</a><a class="nav-tab" href="#section-images">The Six Images</a><a class="nav-tab" href="#section-sequence">The Chain</a></div>
+<main><div class="main-content">
+<div class="section-block" id="section-style">
+<div class="section-label">RECOMMENDED VISUAL STYLE</div>
+<h2>Why <em>Packet Journey &amp; Border Crossing</em></h2>
+<p>Session 58 has an unusual property: almost every concept is about <strong>a boundary and what changes when you cross it</strong>. AS_PATH is written at a border. NEXT_HOP is rewritten at a border. Split horizon is a rule about which borders a route may cross and how many times. Transit is what happens when a route crosses <em>two</em> borders it shouldn&rsquo;t.</p>
+<p>A pure topology diagram would flatten all of that into boxes and lines. A <strong>packet journey through border checkpoints</strong> keeps the transformation visible &mdash; you see the passport getting stamped, you see the guard refusing a second internal crossing, you see the address on the envelope being rewritten. The mechanism <em>is</em> the picture.</p>
+<div class="callout"><strong>Alternatives considered and rejected:</strong> a Memory Palace would fragment concepts that are causally chained; a Troubleshooting Decision Tree already exists as a separate artefact; a Layer-by-Layer breakdown doesn&rsquo;t fit &mdash; nothing today is layered, everything is <em>sequential</em> and <em>territorial</em>.</p></div>
+<div class="mental-note-block"><div class="mental-note-block-icon">&#129504;</div><div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div><div class="mental-note-block-text">If you remember only the image of a passport being stamped at the border and left untouched inside the country, you can rebuild split horizon, next-hop-self, and the full-mesh requirement from first principles.</div></div></div></div><div class="section-block" id="section-images"><div class="section-label">THE VISUAL SEQUENCE</div><h2>Six images, <em>one story</em></h2><div class="image-placeholder">
+<div class="ip-filename">58-01-two-nations.png</div>
+<div class="ip-caption">The Two Doctrines &mdash; One Map vs Many Treaties</div>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Purpose</p>
+<p style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);">Anchors the season&rsquo;s central contrast before any mechanism is introduced. This is the image that should surface whenever the question is &lsquo;why does BGP exist at all?&rsquo;</p>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 4px;">Image Generation Prompt</p>
+<div class="code-block"><pre><code>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, clean bold linework. No gradients, no photorealism, no glossy 3D rendering. Generous spacing. Professional but storybook-like, legible enough to function as an educational diagram. Split composition, two halves divided by a vertical seam. LEFT HALF: a warm domestic scene &mdash; four or five friendly router characters (simple rounded devices with small eyes and stubby antennae) sitting around a large kitchen table, ALL of them leaning over ONE enormous shared paper map spread across the table. Every router has an identical small copy of the same map in its hands. A cosy lamp, teacups, sage green tones. Label above in clean sans-serif: "OSPF — ONE MAP, ONE FAMILY". A small caption ribbon: "correctness from agreement". RIGHT HALF: a formal diplomatic scene &mdash; three router characters seated at separate negotiating desks, each behind a small flag on a stand, each holding its own DIFFERENT folded map held close to the chest, deliberately angled away from the others. Between them, sealed envelopes with wax stamps being passed by a courier. Coral and muted gold tones, more formal architecture with columns suggested by simple lines. Label above: "BGP — MANY MAPS, MANY TREATIES". Caption ribbon: "correctness from provenance". One of the diplomat routers wears a small sombrero. Another has a tiny Singapore flag. The seam between halves is a simple vertical line, not a dramatic crack. LoFinance logo (stacks of banknotes frozen inside a clear ice cube) small in the bottom-left corner. MUST NOT APPEAR: any technical labels like AS numbers or IP addresses, any packet or envelope icons on the left half, any hostility or conflict imagery — the right half is formal and polite, not adversarial.</code></pre></div>
+<div class="kv">
+<div class="k">Aspect ratio</div><div class="v">16:9</div>
+<div class="k">Placement</div><div class="v">Top of the visual page, immediately after the style rationale.</div>
+<div class="k">Accessibility</div><div class="v">Split illustration: routers sharing one map around a kitchen table on the left, routers at separate diplomatic desks with private maps on the right.</div>
+<div class="k">Memory anchor</div><div class="v">OSPF shares a map; BGP exchanges treaties. Everything else follows from this.</div>
+</div></div><div class="image-placeholder">
+<div class="ip-filename">58-02-passport-stamp.png</div>
+<div class="ip-caption">The Border Stamp &mdash; Where AS_PATH Is Written</div>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Purpose</p>
+<p style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);">Makes the single most important asymmetry of the session physically visible: the passport is stamped at the border and NOT stamped inside the country. Every downstream concept depends on this.</p>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 4px;">Image Generation Prompt</p>
+<div class="code-block"><pre><code>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, clean bold linework. No gradients, no photorealism, no glossy 3D rendering. Generous spacing. Professional but storybook-like, legible enough to function as an educational diagram. A single continuous horizontal journey read left to right. A friendly envelope character (simple rectangular envelope with small eyes, walking on two short legs, carrying a small passport booklet) travels along a path. STAGE 1, far left: a territory labelled with a simple banner "AS 65300 — SINGAPORE", warm sage tones, a small stylised skyline. STAGE 2: a border checkpoint — a proper barrier gate with a booth, a uniformed router-character officer holding a large rubber stamp, coral accents. The officer is pressing the stamp firmly onto the envelope's open passport, and a clear new entry reading "65300" appears on the passport page. Small sign on the booth: "EBGP — STAMP REQUIRED". STAGE 3: the envelope now inside a large territory labelled "AS 65001 — LOFINANCE", muted gold border line enclosing two buildings labelled simply HQ and MEL. STAGE 4, critically: between HQ and MEL there is NO checkpoint, NO barrier, NO officer — just an open road with a small sign reading "IBGP — NO STAMP". The envelope walks this stretch with its passport CLOSED and unchanged, and a small speech bubble from the envelope says "still says 65300". A magnifying glass hovers over the passport at this point showing the page has exactly one entry. MUST NOT APPEAR: any second stamp anywhere inside AS 65001, any IP addresses, any routing table imagery.</code></pre></div>
+<div class="kv">
+<div class="k">Aspect ratio</div><div class="v">16:9</div>
+<div class="k">Placement</div><div class="v">Second image, introducing the AS_PATH asymmetry.</div>
+<div class="k">Accessibility</div><div class="v">An envelope character has its passport stamped 65300 at an EBGP border checkpoint, then walks between two internal sites past a sign reading no stamp, passport unchanged.</div>
+<div class="k">Memory anchor</div><div class="v">The passport is stamped only at the border. Inside the country, nothing is written — which is why the loop check goes blind.</div>
+</div></div><div class="image-placeholder">
+<div class="ip-filename">58-03-one-hop-only.png</div>
+<div class="ip-caption">One Hop, Ever &mdash; Split Horizon as a Physical Barrier</div>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Purpose</p>
+<p style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);">Converts the split-horizon rule from a sentence to be memorised into a spatial fact to be seen. The visual asymmetry between the legal and blocked crossings is the whole lesson.</p>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 4px;">Image Generation Prompt</p>
+<div class="code-block"><pre><code>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, clean bold linework. No gradients, no photorealism, no glossy 3D rendering. Generous spacing. Professional but storybook-like, legible enough to function as an educational diagram. A large rounded territory boundary in muted gold occupies most of the frame, labelled "AS 65001". Inside it, three router characters arranged in a triangle: HQ (top, slightly larger, wearing a small sombrero, positioned near the territory's edge), MEL (bottom left), BNE (bottom right). OUTSIDE the boundary to the upper right, a fourth router labelled SG with a small flag, connected to HQ by a gold dashed line crossing the boundary, labelled "EBGP". From HQ, two confident coral arrows run to MEL and to BNE, each drawn as a solid clean line with a small green tick mark and the word "ALLOWED". Between MEL and BNE, an arrow is drawn but interrupted mid-way by a solid brick wall with a friendly but firm router-character guard standing in front of it, one hand raised palm-out; the arrow is greyed and dashed after the wall. A sign on the wall reads "NO SECOND HOP". A small thought bubble above the guard: "you heard it from inside — you may not pass it on". At the bottom of the frame, a small separate inset panel shows three circular arrows attempting to form a ring but each segment is drawn as a single short stub that cannot connect, with the caption "a circle needs segments longer than one". MUST NOT APPEAR: any AS_PATH or passport imagery (that is image 02's job), any next-hop addresses, any suggestion that HQ→MEL is blocked.</code></pre></div>
+<div class="kv">
+<div class="k">Aspect ratio</div><div class="v">3:2</div>
+<div class="k">Placement</div><div class="v">Third image, immediately following the passport stamp.</div>
+<div class="k">Accessibility</div><div class="v">Inside an AS boundary, arrows from HQ to MEL and BNE are marked allowed, while an arrow between MEL and BNE is stopped by a wall and a guard reading no second hop.</div>
+<div class="k">Memory anchor</div><div class="v">A route takes one IBGP hop, ever. Loops are impossible, not detected.</div>
+</div></div><div class="image-placeholder">
+<div class="ip-filename">58-04-phone-calls.png</div>
+<div class="ip-caption">The Ninth Office &mdash; Why 28 Is an Operational Number</div>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Purpose</p>
+<p style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);">Prevents the full-mesh formula from being remembered as arithmetic. The lesson is what adding one site does to your change window, and that is a picture of eight simultaneous phone calls.</p>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 4px;">Image Generation Prompt</p>
+<div class="code-block"><pre><code>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, clean bold linework. No gradients, no photorealism, no glossy 3D rendering. Generous spacing. Professional but storybook-like, legible enough to function as an educational diagram. Composition in two contrasting panels, left small and right large. LEFT PANEL: three router characters connected by three simple lines, relaxed postures, caption "3 sites — 3 calls". RIGHT PANEL, dominant: eight router characters arranged in a circle, each holding an old-fashioned telephone handset to its ear, connected by a dense but still-legible web of twenty-eight cream-coloured lines. In the centre of the circle, the number "28" rendered large in muted gold serif. Now the key element: a NINTH router character stands just outside the circle, newly arrived, holding a small cardboard box of belongings and looking slightly apprehensive, with EIGHT bright coral lines fanning out from it toward every one of the existing eight — and every one of the existing eight routers is drawn mid-turn, looking toward the newcomer with its telephone raised, interrupted. A small banner across the lower third reads: "the ninth office costs eight conversations". Below that, in smaller text on a torn-paper strip: "and you must touch every router to do it". Penny (a professional woman character with a tablet, calm, business attire) stands at the edge of the frame observing, one eyebrow raised. MUST NOT APPEAR: route reflector imagery of any kind, any hint of the Session 59 solution, mirror or reflection motifs.</code></pre></div>
+<div class="kv">
+<div class="k">Aspect ratio</div><div class="v">16:9</div>
+<div class="k">Placement</div><div class="v">Fourth image, closing the split-horizon consequence arc.</div>
+<div class="k">Accessibility</div><div class="v">Eight routers in a circle joined by twenty-eight lines all turn toward a newly arrived ninth router that connects to every one of them.</div>
+<div class="k">Memory anchor</div><div class="v">Full mesh is the bill for split horizon, and the bill is paid in change windows, not bandwidth.</div>
+</div></div><div class="image-placeholder">
+<div class="ip-filename">58-05-wrong-address.png</div>
+<div class="ip-caption">Valid But Not Best &mdash; The Envelope Nobody Can Deliver</div>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Purpose</p>
+<p style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);">The session's core troubleshooting fault. Shows that the route is genuinely present and genuinely correct, and still undeliverable — which is exactly why nothing is ever logged.</p>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 4px;">Image Generation Prompt</p>
+<div class="code-block"><pre><code>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, clean bold linework. No gradients, no photorealism, no glossy 3D rendering. Generous spacing. Professional but storybook-like, legible enough to function as an educational diagram. A postal sorting-room scene. LEFT SIDE: a large open filing cabinet or pigeonhole rack labelled "BGP DATABASE — what I have learned", containing two neat envelopes, each visibly clean and intact, each bearing a small green tick and a small tag reading "valid". CENTRE: a router-character postal clerk (Melbourne, small MEL nameplate on the counter) holding one of these envelopes up and squinting at the delivery address, which is written large and legible: "DELIVER TO: 172.20.0.1". The clerk's expression is puzzled rather than alarmed. Above the clerk, a large empty out-tray labelled "ROUTING TABLE — what I can actually use" with visible dust and a small tumbleweed, completely empty. RIGHT SIDE: a wall map the clerk is consulting, and on this map the location 172.20.0.1 is simply NOT DRAWN — a blank cream area with a small question mark, while everything else on the map is detailed. A small sign hangs above the whole scene: "* valid    &gt; best" with the &gt; symbol conspicuously crossed out in coral. In the lower corner, a wall-mounted alarm bell is drawn silent and still, with a small label "no alarm — nothing failed". Riley (a help-desk character wearing a headset) leans in through a doorway saying, in a speech bubble: "I can SEE it. Why can't I USE it?". MUST NOT APPEAR: any broken, torn, or damaged envelope — the route is perfectly valid; any error messages or red warning imagery.</code></pre></div>
+<div class="kv">
+<div class="k">Aspect ratio</div><div class="v">3:2</div>
+<div class="k">Placement</div><div class="v">Fifth image, opening the troubleshooting half of the page.</div>
+<div class="k">Accessibility</div><div class="v">A postal clerk holds a valid envelope addressed to 172.20.0.1 while consulting a map on which that address does not appear; the outgoing tray is empty and the alarm bell is silent.</div>
+<div class="k">Memory anchor</div><div class="v">Seeing is the database, using is resolution. A valid route with an unreachable next hop fails silently forever.</div>
+</div></div><div class="image-placeholder">
+<div class="ip-filename">58-06-two-doors.png</div>
+<div class="ip-caption">Next-Hop-Self Is a Promise &mdash; and Accidental Transit</div>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Purpose</p>
+<p style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);">Pairs the fix with its cost, and the cost with the exposure it creates. These belong in one frame because both are consequences of the same default: BGP tells unless told not to.</p>
+<p style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 4px;">Image Generation Prompt</p>
+<div class="code-block"><pre><code>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, clean bold linework. No gradients, no photorealism, no glossy 3D rendering. Generous spacing. Professional but storybook-like, legible enough to function as an educational diagram. Composition split into an upper band and a lower band. UPPER BAND — THE PROMISE: HQ router character (sombrero) stands in a doorway of the AS 65001 boundary, arms open, addressing MEL who stands inside. A large speech bubble from HQ reads: "AIM AT ME". A coral arrow runs from MEL to HQ, and beyond HQ a gold dashed line continues out to SG. Beneath HQ's feet, drawn subtly in soft brown outline, is a small pedestal with a hairline crack in it and a tiny label "single failure domain". To one side, a small greyed-out alternate road from MEL heading directly toward SG is shown with a barrier and the label "no longer available — traffic engineering lost". Caption ribbon across the band: "next-hop-self is a promise — do not make it unless you can keep it". LOWER BAND — THE EXPOSURE: the same HQ character now standing at a junction between two separate gates, one labelled SG and one labelled LON. Without doing anything active — HQ is drawn shrugging, palms up, expression innocent — a stream of small envelopes flows from the SG gate, straight past HQ, and out the LON gate, and back again. The envelopes are drawn in a neutral colour, clearly not addressed to LoFinance. A small toll booth beside the flow has its window shuttered and a sign reading "nobody paid for this". At the far right of the lower band, a simple gate labelled "prefix-list-out" is shown being lowered, cleanly stopping the pass-through flow while local envelopes continue unaffected. Caption ribbon: "you did not say no, and BGP took that as yes". MUST NOT APPEAR: any depiction of an attack, intrusion, or malicious actor — the transit is entirely accidental and must read as innocent.</code></pre></div>
+<div class="kv">
+<div class="k">Aspect ratio</div><div class="v">16:9</div>
+<div class="k">Placement</div><div class="v">Sixth and final image, closing the page.</div>
+<div class="k">Accessibility</div><div class="v">Upper band: HQ tells MEL to aim at it, standing on a cracked pedestal. Lower band: envelopes flow from Singapore through an innocent, shrugging HQ to London until an outbound filter gate is lowered.</div>
+<div class="k">Memory anchor</div><div class="v">Every fix is a promise with a cost, and every default has a direction. BGP's default is to tell.</div>
+</div></div></div><div class="section-block" id="section-sequence">
+<div class="section-label">HOW TO USE THIS PAGE</div>
+<h2>The order is <em>the argument</em></h2>
+<p>These six images are a chain, not a gallery. Each one is the reason the next one exists:</p>
+<div class="dtree">01  Two doctrines        ->  WHY BGP exists at all
+02  The border stamp     ->  therefore AS_PATH is written only at borders
+03  One hop, ever        ->  therefore the internal loop check is blind, so split horizon
+04  The ninth office     ->  therefore full mesh, and therefore an operational ceiling
+05  Valid but not best   ->  and meanwhile the next hop was never rewritten
+06  Two doors            ->  so you make a promise, and you close a door you never opened</div>
+<p>If you can retell that chain in six sentences without notes, you have the session. If any link breaks, that is the artefact to revisit &mdash; images 02 and 03 carry the conceptual load, image 05 carries the troubleshooting load.</p>
+<div class="mental-note-block"><div class="mental-note-block-icon">&#129504;</div><div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div><div class="mental-note-block-text">Retelling beats rereading. Walk the six images in order out loud once, and the parts you skip are precisely the parts you don&rsquo;t yet own.</div></div></div></div>
+</div></main>
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="session-58-troubleshooting.html"><span class="page-nav-label">&larr; TROUBLESHOOTING</span><span class="page-nav-title">Session 58 — Fault Guide</span></a>
+  <a class="page-nav-btn page-nav-next" href="session-58-complete-guide.html"><span class="page-nav-label">NEXT &rarr;</span><span class="page-nav-title">Session 58 — Complete</span></a>
+</div>
+<footer>
+  LoFinance<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Session 58 &middot; Visual Learning Page
+</footer>
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-session58-visual';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-style': 'Style',
+  'section-images': 'Images',
+  'section-sequence': 'Sequence'
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+<script>if(sessionStorage.getItem('pt')){sessionStorage.removeItem('pt');document.documentElement.classList.remove('pt-init');}</script>
+</body></html>

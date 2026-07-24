@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Session 59 — Troubleshooting Route Reflectors</title>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;text-transform:uppercase;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);margin:0 6px;}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);margin:22px 0 10px;}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;white-space:pre;}
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  .drawers{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:10px;margin:22px 0;}
+  .drawer{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);border-radius:10px;padding:16px 14px;text-align:center;}
+  .drawer-name{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+  .drawer-desc{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--text-soft);line-height:1.45;}
+  .drawer-gate{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);text-align:center;}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}footer{padding:16px 24px;}.drawers{grid-template-columns:1fr;}}
+</style>
+
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb"><a href="#">Home</a><span class="breadcrumb-sep">&rsaquo;</span><a href="#">Troubleshooting</a><span class="breadcrumb-sep">&rsaquo;</span><span>Session 59</span></div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Troubleshooting Guide &middot; NSE7 EF 7.6</div>
+    <h1>The Client That Hears <em>Nothing</em></h1>
+    <p>How a senior engineer isolates a route-reflector fault when every session is Established and nothing is logged.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Name the drawer <em>before</em> you name the cause.</div>
+  <div class="motivation-sub">Most RR faults are misdiagnosed because the engineer investigates the device that is complaining instead of the device that is silent.</div>
+</div>
+
+<main><div class="main-content">
+
+<div class="section-block">
+  <div class="section-label">Orientation</div>
+  <h2>Why RR Faults Are <em>Hard</em></h2>
+  <p>Route-reflector faults share a signature that defeats instinct: <strong>the broken device shows nothing wrong</strong>. The client's BGP session is Established. Its counters increment. Its logs are clean. It simply does not have a route, and nothing on it can explain the absence.</p>
+  <p>This is because the decision that broke you happened on <em>a different router</em>, in a drawer you have not looked in, and in the case of loop-prevention drops it happened <em>silently by design</em>.</p>
+  <div class="callout callout-amber"><strong>The governing principle:</strong> absence of errors is not evidence of correctness. A route that was never advertised and a route that was silently discarded look identical from the receiving end.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 01</div>
+  <h2>Symptoms You Will <em>Actually See</em></h2>
+  <table class="data-table">
+    <tr><th>Reported symptom</th><th>What it usually means</th></tr>
+    <tr><td>"The new branch can't reach anything"</td><td>Client not declared on the RR, or client peering with the wrong device</td></tr>
+    <tr><td>"Two branches can't reach each other but both reach HQ"</td><td>Reflection not happening &mdash; RR is treating them as ordinary IBGP peers</td></tr>
+    <tr><td>"It worked before we decommissioned the old sessions"</td><td>Full mesh was masking a missing <code>route-reflector-client</code> statement</td></tr>
+    <tr><td>"The route shows on the RR but not the client"</td><td>RIB-out problem on the RR, or a silent drop at the client</td></tr>
+    <tr><td>"Routes appear and vanish"</td><td>Multi-RR CLUSTER_LIST or cluster-ID mismatch</td></tr>
+    <tr><td>"Route is there but traffic fails"</td><td>Wrong drawer entirely &mdash; next-hop resolution or policy</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 02</div>
+  <h2>Questions To Ask <em>Before Typing</em></h2>
+  <div class="socratic-block">
+    <div class="socratic-header"><span class="socratic-icon">&#129504;</span><span class="socratic-label">Scope The Fault First</span></div>
+    <div class="socratic-insight">Every one of these narrows the search before a single command is run. Skipping them is how three-hour outages happen.</div>
+    <ul class="socratic-questions">
+      <li>Which prefixes are affected &mdash; all of them, or only those originating at particular sites?</li>
+      <li>Is this one client or every client? One client points at that client's neighbour block on the RR. All clients points at the RR's role itself.</li>
+      <li>Did this ever work? If it worked yesterday, what changed &mdash; and was a full mesh quietly masking the fault?</li>
+      <li>Is the affected prefix originated by a client, by a non-client peer, or learned via EBGP? The three cases have different legal outcomes.</li>
+      <li>Is the failure symmetric? Client-to-HQ working but client-to-client failing is a reflection fault, not a peering fault.</li>
+      <li>Am I looking at a route that never arrived, or one that arrived and was not used?</li>
+    </ul>
+  </div>
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">&#128173;</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">The Habit</div>
+      <div class="mental-note-block-text">Say the drawer out loud before you form a hypothesis: <em>"the prefix is absent from the client's RIB-in, so this is an RR RIB-out question."</em> Naming the drawer makes it impossible to skip reading the state.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 03</div>
+  <h2>Commands, And What <em>Good</em> Looks Like</h2>
+  <div class="code-block">
+    <div class="code-label">1. Is the session even up? (Rule it out fast, then stop trusting it)</div>
+    <pre><code># get router info bgp summary
+
+Neighbor      V  AS  MsgRcvd  MsgSent  Up/Down    State/PfxRcd
+10.99.80.1    4  65001   1204     1198  20:14:33          0
+
+# State column shows a NUMBER = Established. PfxRcd 0 with an
+# established session is the classic RR misconfiguration signature.
+# A hostname in the State column (Idle/Active/Connect) is a
+# DIFFERENT fault entirely - that is peering, not reflection.</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">2. THE decisive command &mdash; what is the RR actually saying?</div>
+    <pre><code># On the RR:
+# get router info bgp neighbors 10.99.80.1 advertised-routes
+
+# EXPECTED (healthy): the client's peers' prefixes appear here.
+# FOUND (broken): empty, or only locally-originated prefixes.
+#
+# This reads the RR's RIB-OUT toward that client. If the RR is not
+# saying it, no amount of investigation at the client will explain why.</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">3. Confirm from the other end</div>
+    <pre><code># On the client:
+# get router info bgp neighbors 10.99.10.1 received-routes
+
+# This is the client's RIB-IN from the RR. If (2) shows routes being
+# advertised and (3) shows nothing received, you have a SILENT DROP -
+# almost always ORIGINATOR_ID matching the client's own router-id.</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">4. Read the database and the status codes</div>
+    <pre><code># get router info bgp network
+
+   Network          Next Hop        Metric  LocPrf  Weight  Path
+*&gt;i 10.99.70.0/24    10.99.10.1           0     100       0  i
+*i  172.28.10.0/24   172.20.0.1           0     100       0  65300 i
+
+# *  valid    &gt;  best    i  internal
+# *i without &gt; on a SINGLE path = ineligible, not outvoted.
+# Read the NEXT HOP column next.</code></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">5. Confirm the RR role is actually configured</div>
+    <pre><code># On the RR:
+# show router bgp | grep -f route-reflector-client
+# or:
+# show router bgp
+
+config neighbor
+    edit "10.99.80.1"
+        set remote-as 65001
+        set next-hop-self enable
+        set route-reflector-client enable     &lt;-- MUST be present, HERE
+    next
+end
+
+# Checking the CLIENT for this line is the commonest wasted hour.
+# It will never be there. The client does not know it is a client.</code></pre>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 04</div>
+  <h2>Decision Tree</h2>
+  <div class="code-block">
+    <div class="code-label">Client is missing routes</div>
+    <pre><code>Is the IBGP session Established?
+├─ NO  ──▶ Peering fault, NOT a reflector fault.
+│           Check reachability, remote-as, router-id,
+│           update-source, ebgp-multihop. STOP HERE.
+└─ YES ──▶ Is the prefix in the RR's Local RIB?
+            (get router info bgp network, on the RR)
+    ├─ NO  ──▶ The RR never had it. Go upstream:
+    │           who should have originated it?
+    │           Check THAT device's RIB-out.
+    └─ YES ──▶ Is the RR advertising it to this client?
+                (neighbors &lt;client&gt; advertised-routes)
+        ├─ NO  ──▶ RIB-OUT GATE. Three candidates:
+        │       1. route-reflector-client not set on the RR
+        │          for this neighbour  ◀── MOST LIKELY
+        │       2. prefix-list-out / route-map-out filtering it
+        │       3. Route learned from a non-client and the
+        │          target is also a non-client (legal refusal)
+        └─ YES ──▶ Does the client show it in received-routes?
+            ├─ NO  ──▶ SILENT DROP at the client.
+            │       1. ORIGINATOR_ID = client's own router-id
+            │       2. CLUSTER_LIST contains its cluster-id
+            │       3. prefix-list-in / route-map-in on the client
+            └─ YES ──▶ Present but not installed?
+                    Read status codes. * without &gt; on a
+                    single path = INELIGIBLE.
+                    ──▶ Check NEXT_HOP resolution.
+                        get router info routing-table details &lt;nh&gt;
+                        Fix: next-hop-self on the RR, or an
+                        IGP/static route to the next hop.</code></pre>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 05</div>
+  <h2>Common <em>Dead Ends</em></h2>
+  <table class="data-table">
+    <tr><th>Dead end</th><th>Why it wastes time</th><th>Do this instead</th></tr>
+    <tr><td>Searching the client for RR configuration</td><td>It is never there. The client's config is an ordinary neighbour statement by design.</td><td>Read the RR's neighbour block for that client.</td></tr>
+    <tr><td>Trusting <code>bgp summary</code> because it looks healthy</td><td>Sessions are Established throughout an RR misconfiguration. The command cannot see the fault.</td><td>Use <code>advertised-routes</code> &mdash; it reads the drawer that is actually broken.</td></tr>
+    <tr><td>Hunting for a log entry</td><td>ORIGINATOR_ID and CLUSTER_LIST drops are silent by design. No log will ever appear.</td><td>Compare <code>advertised-routes</code> on the RR against <code>received-routes</code> on the client. The gap is the drop.</td></tr>
+    <tr><td>Restarting the BGP process or clearing the session</td><td>It temporarily re-advertises, so the fault appears to fix itself and then returns. You have destroyed your evidence.</td><td>Gather output first. Clear only to test a hypothesis you have already formed.</td></tr>
+    <tr><td>Adding routes back into a mesh "to see if that fixes it"</td><td>It will fix it &mdash; and hide the real cause permanently.</td><td>Fix the reflector. The mesh is what you are trying to eliminate.</td></tr>
+    <tr><td>Blaming next-hop-self for missing routes</td><td>Next-hop problems produce routes that are <em>present but unusable</em>, never routes that are absent.</td><td>Absent = advertisement. Present-but-unused = resolution. Different drawers.</td></tr>
+    <tr><td>Assuming a client will relay to another client</td><td>Clients are mute. You will wait forever for something that is working as designed.</td><td>Confirm both clients peer with the RR directly.</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 06</div>
+  <h2>Likely Root <em>Causes</em>, Ranked</h2>
+  <table class="data-table">
+    <tr><th>#</th><th>Root cause</th><th>Confirming evidence</th></tr>
+    <tr><td>1</td><td><code>route-reflector-client</code> missing on the RR for that neighbour</td><td>Session Established, PfxRcd 0, <code>advertised-routes</code> empty or local-only</td></tr>
+    <tr><td>2</td><td>Full mesh removed before the RR was configured</td><td>Worked yesterday; change record shows session decommissioning</td></tr>
+    <tr><td>3</td><td>Outbound filter on the RR catching reflected prefixes</td><td><code>advertised-routes</code> shows a subset; prefix-list-out present</td></tr>
+    <tr><td>4</td><td>ORIGINATOR_ID loop drop &mdash; client's router-id reappearing</td><td>Advertised by RR, not received by client, no logs anywhere</td></tr>
+    <tr><td>5</td><td>Cluster-ID mismatch or duplication across two RRs</td><td>Intermittent or partial reachability between clusters</td></tr>
+    <tr><td>6</td><td>Non-client to non-client expectation (working as designed)</td><td>Both routers are non-clients; the RR is legally refusing</td></tr>
+    <tr><td>7</td><td>Next-hop unresolvable at the client</td><td>Prefix present, <code>*</code> without <code>&gt;</code>, next hop not in routing table</td></tr>
+  </table>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Step 07</div>
+  <h2>Exam <em>Traps</em></h2>
+  <ul>
+    <li><strong>The "which device" trap.</strong> A scenario describes a client with no routes and asks what to configure <em>on the client</em>. The answer is that nothing is configured on the client &mdash; the fix is on the RR.</li>
+    <li><strong>The healthy-summary trap.</strong> Output shows all sessions Established and the question asks whether BGP is functioning. Established says the conversation is happening, not that anything useful is being said.</li>
+    <li><strong>The split-horizon wording trap.</strong> "Not advertised back to the peer that sent it" is offered alongside "not advertised to any other IBGP peer." Only the second is correct.</li>
+    <li><strong>The scope trap.</strong> ORIGINATOR_ID and CLUSTER_LIST both appear as options. Read the stem for "originating router" versus "reflecting RR" or "between clusters."</li>
+    <li><strong>The relay-direction trap.</strong> A route from a non-client IBGP peer. "Nobody" feels safe and is wrong &mdash; clients still receive it.</li>
+    <li><strong>The plane trap.</strong> Full-mesh questions offering latency or bandwidth explanations. Peering count is a control-plane cost.</li>
+    <li><strong>The compound trap.</strong> A scenario combining a reflection fault with an unresolvable next hop. Fixing one leaves the service broken and the second fault looks like the first fix failing.</li>
+  </ul>
+  <div class="callout callout-green"><strong>Personalised technique:</strong> on any multi-select question, evaluate each option as an independent true/false statement. Do not select by shape, and do not stop as soon as you have found the number of options the stem requested &mdash; test every option, then count.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">The Framework</div>
+  <h2>Carry This Into <em>The Next Incident</em></h2>
+  <ol>
+    <li><strong>Restate the business symptom.</strong> Who cannot reach what.</li>
+    <li><strong>Define the scope.</strong> One client or all clients; one prefix or all prefixes.</li>
+    <li><strong>Name the drawer.</strong> Absent from RIB-in? Present but not in the Local RIB? Believed but not in RIB-out? Say it out loud before hypothesising.</li>
+    <li><strong>Investigate the silent device, not the complaining one.</strong> In reflection faults, the answer is nearly always on the router that is <em>not</em> reporting a problem.</li>
+    <li><strong>Gather evidence before changing anything.</strong> Clearing a session destroys the state that would have told you why.</li>
+    <li><strong>Test one hypothesis at a time.</strong></li>
+    <li><strong>Verify service recovery <em>and</em> root cause.</strong> Working again is not the same as understood.</li>
+  </ol>
+</div>
+
+</div></main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="session-59-complete-guide.html"><span class="page-nav-label">Back To</span><span class="page-nav-title">Complete Guide</span></a>
+  <a class="page-nav-btn page-nav-next" href="session-59-visual.html"><span class="page-nav-label">Next</span><span class="page-nav-title">Visual Learning Page</span></a>
+</div>
+
+<footer>LoFinance &middot; Season 5 &middot; Session 59 &mdash; <span>Troubleshooting Route Reflectors</span> &middot; EF Dynamic Routing Supplement pp. 338&ndash;341</footer>
+<script>if(sessionStorage.getItem('pt')){sessionStorage.removeItem('pt');document.documentElement.classList.remove('pt-init');}</script>
+</body></html>

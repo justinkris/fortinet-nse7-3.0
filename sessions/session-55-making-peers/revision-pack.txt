@@ -1,0 +1,524 @@
+================================================================================
+SESSION 55 — "MAKING PEERS" — COMBINED REVISION PACK
+Season 5: The Expansion · NSE7 Enterprise Firewall 7.6
+EF Study Guide 05 — Dynamic Routing Protocols, pp. 137–141
+================================================================================
+
+
+################################################################################
+PART 1 — QUICK SUMMARY (one page)
+################################################################################
+
+THE EPISODE
+The first EBGP session from LoFinance HQ to ISP-1 Parramatta sat in Active state
+while the Singapore link billed and earned nothing. Five people watched a monitor
+for a morning. Root cause: the ISP handoff interface still had commissioning-era
+allowaccess (ping and https only), so local-in policy was silently dropping the
+inbound TCP SYN on port 179 — one hop from success. Junior spent ten minutes
+auditing firewall policy, which was fine, and which governs traffic THROUGH the
+FortiGate rather than TO it.
+
+THE FIVE THINGS THAT MATTER
+
+1. BGP RIDES TCP 179.
+   Unicast transport → peers cannot be discovered, every neighbour declared by
+   hand on both sides. Reliable transport → BGP implements no sequencing, no
+   acknowledgement, no retransmission; it inherits all of it and therefore never
+   re-floods (send once, withdraw explicitly). Routed transport → BGP has a
+   bootstrap dependency: something else must already know how to reach the peer.
+
+2. THE STATE MACHINE IS A DIAGNOSTIC LADDER.
+   Idle → Connect → Active → OpenSent → OpenConfirm → Established
+   Stuck early = TRANSPORT. Cycling late = PARAMETERS. Established but empty =
+   POLICY. Active is the deceptive state: it means the TCP attempt FAILED.
+
+3. TTL IS A SECURITY CONTROL.
+   EBGP defaults to TTL 1 — only a directly-attached device can peer with you, so
+   spoofed SYNs from further away die in transit. IBGP defaults to 255, because
+   IBGP peers sit inside your own AS and routinely peer loopback-to-loopback
+   across several hops. Non-adjacent EBGP needs ebgp-enforce-multihop.
+
+4. ROUTER-ID TRAVELS IN THE OPEN MESSAGE.
+   A collision is therefore detected after TCP is already up → the session cycles
+   through OpenSent/OpenConfirm and never stalls in Active. Set it statically so
+   BGP stability is not a side effect of interface addressing.
+
+5. NETWORK-IMPORT-CHECK WANTS AN EXACT MATCH.
+   A config network prefix is only advertised if an active route with an exactly
+   matching destination subnet exists. A covering supernet advertises NOTHING,
+   silently, on a session that looks perfectly healthy.
+
+SEÑOR'S CLOSING LINE (memorise verbatim)
+   "Up is not peered. Peered is not exchanging. Exchanging is not installed.
+    Four different truths. Four different commands."
+
+
+################################################################################
+PART 2 — CHEAT SHEET
+################################################################################
+
+--- BASE CONFIGURATION -------------------------------------------------------
+
+config router bgp
+    set as 65001
+    set router-id 10.99.50.1
+    config neighbor
+        edit "203.0.113.1"
+            set remote-as 65100
+            set description "ISP-1 Parramatta"
+        next
+    end
+    config network
+        edit 1
+            set prefix 192.168.10.0 255.255.255.0
+        next
+    end
+end
+
+Four things: who I am (as) · what I'm called (router-id) · who I talk to
+(neighbor + remote-as) · what I'm willing to say (network).
+
+--- USEFUL EXTRAS ------------------------------------------------------------
+
+set network-import-check disable      advertise config network prefixes
+                                      regardless of the routing table
+set ebgp-enforce-multihop enable      required when the EBGP peer is not
+                                      directly attached (TTL 1 default)
+set graceful-restart enable           avoid route flap on HA failover
+config redistribute <protocol>        alternative origination path
+                                      (connected, static, rip, ospf, isis)
+
+--- THE FOUR COMMANDS --------------------------------------------------------
+
+get router info bgp summary
+    Are we peering, and with whom? Router identifier, local AS, one line per
+    neighbour: version, remote AS, MsgRcvd, MsgSent, TblVer, InQ, OutQ, Up/Down,
+    State/PfxRcd.
+
+get router info bgp neighbors <ip>
+    Why is THIS peer behaving this way? Peer IP and remote router-id, remote AS,
+    BGP state, negotiated capabilities, timers, last error.
+
+get router info bgp network
+    The BGP database (Local RIB) — everything learned and originated, BEFORE
+    best-path selection.
+
+get router info routing-table bgp
+    Only the BGP routes that won and got installed.
+
+get router info routing-table details <peer-ip>
+    Supporting command: prove you can reach the peer address at all.
+
+--- READING THE SUMMARY LINE -------------------------------------------------
+
+State/PfxRcd is ONE COLUMN DOING TWO JOBS.
+    Not Established  → it shows a STATE NAME
+    Established      → it shows a PREFIX COUNT
+A "0" there means Established with nothing received. Completely different problem
+from "Active".
+
+Counter shapes:
+    0 / 0, uptime "never"      → nothing ever happened. Transport.
+    climbing, uptime resetting → keeps happening, keeps failing. Parameters.
+    high, uptime stable, 0 pfx → session fine, policy wrong. Policy.
+
+--- DEFAULTS AND TIMERS ------------------------------------------------------
+
+BGP transport                 TCP port 179 (unicast)
+OSPF transport                IP protocol 89, multicast 224.0.0.5 / .6
+EBGP default TTL              1        (GTSM-style adjacency enforcement)
+IBGP default TTL              255
+KEEPALIVE interval            60 seconds
+Hold timer                    180 seconds
+network-import-check          ENABLED by default (exact match required)
+BGP origination               NOTHING advertised by default
+Private ASN range             64512 – 65534
+BGP refresh model             incremental — no periodic re-flooding
+OSPF refresh model            every LSA re-flooded every 30 minutes
+
+--- ROUTE FLOW (EF p.140) ----------------------------------------------------
+
+  BGP RX → RIB-in → [in filter] → Local RIB → [out filter] → RIB-out → BGP TX
+                                      ↑
+                               redistribute
+                     (connected, static, RIP, OSPF, IS-IS)
+
+Two filter points, either side of the Local RIB. Redistributed routes join at the
+Local RIB — subject to outbound filtering, never inbound.
+
+--- DIAGNOSTIC LADDER (the design rule to remember) --------------------------
+
+  Idle .......................... not trying: misconfigured, admin-down, no route
+  Connect / Active (stuck) ...... TRANSPORT   → route, local-in, ACL, source, TTL
+  OpenSent / OpenConfirm (cycling) PARAMETERS → AS, router-id, auth, capabilities
+  Established, 0 prefixes ....... POLICY      → import-check, prefix-lists,
+                                                nothing declared
+  Established, prefixes, wrong traffic ....... SELECTION → best-path, next-hop
+
+--- KEY BEHAVIOURS -----------------------------------------------------------
+
+* BGP peering is traffic TO the FortiGate → local-in policy and interface
+  allowaccess. NOT firewall policy (that governs traffic THROUGH the device).
+* FortiGate sources the BGP session from the egress interface IP by default. If
+  the peer expects a different address (e.g. a loopback), they ignore your SYN.
+* A route in the BGP database but not the routing table lost best-path selection
+  or has an unreachable next-hop. It is not missing and is not a fault.
+* A route filtered by an inbound prefix-list typically appears in NEITHER, since
+  the filter acts before the Local RIB.
+* Changing the router-id tears down and rebuilds every BGP session on the box.
+
+
+################################################################################
+PART 3 — FLASHCARDS
+################################################################################
+
+Q: What transport and port does BGP use?
+A: TCP, port 179. Unicast.
+
+Q: What transport does OSPF use?
+A: IP protocol 89, direct, with multicast to 224.0.0.5 / 224.0.0.6.
+
+Q: Name the two things BGP gives up by using TCP.
+A: Peer discovery (TCP is unicast, so neighbours must be declared by hand on
+   both sides) and self-bootstrapping (something else must already route to the
+   peer address).
+
+Q: Name the three things BGP gains from TCP.
+A: Sequencing, acknowledgement, retransmission — none of which it implements
+   itself, unlike OSPF.
+
+Q: Why can BGP carry a million routes when OSPF cannot?
+A: TCP guarantees delivery, so BGP is incremental — it sends an update once and
+   withdraws explicitly. OSPF re-floods every LSA every 30 minutes regardless of
+   change.
+
+Q: Recite the BGP finite state machine.
+A: Idle → Connect → Active → OpenSent → OpenConfirm → Established.
+
+Q: What does Active actually mean?
+A: The TCP connection attempt FAILED. Retrying, and also listening in case the
+   peer initiates.
+
+Q: What does Connect mean?
+A: A SYN has been sent to the peer on 179 and it is waiting. Nothing more.
+
+Q: What does OpenConfirm mean?
+A: OPEN messages have been exchanged and accepted; awaiting the first KEEPALIVE.
+
+Q: When do UPDATE messages carrying prefixes flow?
+A: Only in Established.
+
+Q: A session is stuck in Active. Which layer is broken?
+A: Transport — TCP never formed.
+
+Q: A session cycles repeatedly through OpenSent and OpenConfirm. Which layer?
+A: Parameters — TCP is fine, the two sides disagree on AS, router-id,
+   authentication, or capabilities.
+
+Q: A session is Established with 0 prefixes. Which layer?
+A: Policy — origination, network-import-check, or prefix-lists.
+
+Q: List the causes of a session stuck in Active.
+A: No route to the peer; local-in policy or allowaccess blocking 179; upstream
+   ACL; wrong neighbour IP; AS mismatch; source address mismatch; TTL expiry on
+   a non-adjacent peer.
+
+Q: Default TTL for EBGP? Why?
+A: 1. Only a directly-attached device can peer with you, so spoofed SYNs from
+   multiple hops away expire in transit.
+
+Q: Default TTL for IBGP? Why the difference?
+A: 255. IBGP peers are inside your own AS and routinely peer loopback-to-loopback
+   across several internal hops, so adjacency was never the assumption.
+
+Q: What command fixes a non-adjacent EBGP peering?
+A: set ebgp-enforce-multihop enable
+
+Q: Where is the router-id carried?
+A: Inside the OPEN message.
+
+Q: What state does a duplicate router-id produce, and why not Active?
+A: Cycling through OpenSent/OpenConfirm with a NOTIFICATION teardown. Not Active,
+   because the OPEN message is only sent after TCP is already established.
+
+Q: Why set the router-id statically?
+A: Unset, FortiGate derives it from interface addressing (highest IP, preferring
+   a loopback), so BGP stability becomes a side effect of unrelated interface
+   work. A changed router-id rebuilds every session on the box.
+
+Q: What is network-import-check, and is it on by default?
+A: It requires an active route with an EXACTLY matching destination subnet before
+   a config network prefix is advertised. Enabled by default.
+
+Q: config network declares 172.16.5.0/24; the table holds an active 172.16.0.0/16.
+   What is advertised?
+A: Nothing. A covering route is not an exact match.
+
+Q: What does set network-import-check disable do, and when is it justified?
+A: Advertises config network prefixes regardless of the routing table. Justified
+   narrowly — aggregation, or deliberate origination of a prefix not installed
+   locally. Using it to make a missing advertisement appear black-holes traffic.
+
+Q: Does BGP advertise anything by default?
+A: No. Origination is always explicit — config network or config redistribute.
+
+Q: Which command shows negotiated capabilities and the remote router-id?
+A: get router info bgp neighbors <ip>
+
+Q: Which command shows the BGP database before best-path selection?
+A: get router info bgp network
+
+Q: A prefix is in the BGP database but not the routing table. Two causes?
+A: It lost best-path selection (the loser stays in the database, valid and
+   unused), or its next-hop is unreachable so the path is invalid.
+
+Q: Why does that gap matter operationally?
+A: "We lost the route" and "we stopped preferring it" look identical in the
+   routing table and completely different in the database. Only one is a fault.
+
+Q: Where does an inbound prefix-list drop a route?
+A: Before the Local RIB — so it typically appears in neither the database nor the
+   routing table.
+
+Q: BGP peering fails. Which policy table do you check?
+A: Local-in policy and interface allowaccess. The FortiGate is the destination,
+   not the transit device. Firewall policy governs traffic THROUGH the box.
+
+Q: What address does FortiGate source a BGP session from by default?
+A: The egress interface IP.
+
+Q: What does the State/PfxRcd column show?
+A: A state name if the session is not Established; a prefix count if it is.
+
+Q: Private ASN range?
+A: 64512 – 65534.
+
+Q: Señor's four truths?
+A: Up is not peered. Peered is not exchanging. Exchanging is not installed.
+   Four different truths, four different commands.
+
+
+################################################################################
+PART 4 — EXAM QUESTIONS (answers at the end)
+################################################################################
+
+1.  BGP uses which transport?
+    A) IP protocol 89   B) UDP 520   C) TCP 179   D) TCP 646
+
+2.  A neighbour is stuck in Active. Which is the LEAST likely cause?
+    A) No route to the peer address
+    B) Local-in policy blocking 179
+    C) Duplicate router-id
+    D) Peer is multiple hops away without multihop enabled
+
+3.  Default TTL on an EBGP session?
+    A) 255   B) 1   C) 64   D) 32
+
+4.  Which command shows negotiated capabilities and the remote router-id for one
+    peer?
+    A) get router info bgp summary
+    B) get router info bgp neighbors <ip>
+    C) get router info bgp network
+    D) get router info routing-table bgp
+
+5.  config network declares 172.16.5.0/24. The routing table contains an active
+    172.16.0.0/16. With defaults, what is advertised?
+    A) 172.16.5.0/24   B) 172.16.0.0/16   C) Nothing   D) Both
+
+6.  What does set network-import-check disable do?
+    A) Disables inbound prefix filtering
+    B) Advertises config network prefixes regardless of the routing table
+    C) Skips best-path selection
+    D) Disables next-hop validation
+
+7.  Default TTL for IBGP?
+    A) 1   B) 2   C) 64   D) 255
+
+8.  A prefix appears in get router info bgp network but not in
+    get router info routing-table bgp. Most likely?
+    A) The session is in Active
+    B) It lost best-path selection or its next-hop is unreachable
+    C) It was filtered inbound
+    D) network-import-check is enabled
+
+9.  Which state means OPEN messages have been exchanged and accepted, awaiting
+    the first KEEPALIVE?
+    A) OpenSent   B) OpenConfirm   C) Connect   D) Established
+
+10. Compared with OSPF, BGP does not implement its own retransmission or
+    acknowledgement because:
+    A) It floods periodically instead
+    B) TCP provides reliable, sequenced delivery
+    C) Updates are idempotent
+    D) It uses multicast
+
+ANSWERS: 1-C  2-C  3-B  4-B  5-C  6-B  7-D  8-B  9-B  10-B
+
+EXAM TECHNIQUE
+* Identify the LAYER before evaluating any option. Any question quoting "Active"
+  is a transport question; "comes up and drops" is a parameter question; an
+  Established session with missing routes is a policy question. Layer-first
+  elimination usually removes two of four options before you consider content.
+* When a question shows both a config network prefix and a routing table, check
+  for an EXACT match first. A visible covering supernet is the distractor.
+* Any answer that would be correct for OSPF — multicast, auto-discovery, periodic
+  refresh, protocol 89 — is a distractor in a BGP question.
+
+
+################################################################################
+PART 5 — PODCAST PROMPT — "THE PACKET PATH"
+################################################################################
+
+Paste the following directly into an AI audio generator.
+
+--------------------------------------------------------------------------------
+
+Produce a single-host narrative technical podcast episode, approximately 12 to 15
+minutes, for a show called "The Packet Path." The host is warm, dry, unhurried,
+and slightly amused — a senior network engineer telling a story to a colleague
+over coffee, not a lecturer. Use short sentences. Let silences land. Never read
+configuration syntax aloud character by character; describe what it does.
+
+EPISODE TITLE: "Making Peers"
+
+COLD OPEN
+Open on the image, not the technology. A Tuesday morning, 08:14, in the network
+operations room of a company called LoFinance — a financial firm whose logo is
+stacks of banknotes frozen inside an ice cube. Someone has turned the good
+monitor outward on its arm so the whole room can see it, like a television in a
+pub before a grand final. A help desk analyst named Riley has dragged in a chair
+from the kitchen. Five people are about to spend a morning watching a single word
+on a screen.
+
+The word is "Active." And it is the worst word in the protocol.
+
+ACT ONE — WHY 179 MATTERS
+Explain that the previous day, a terse engineer in Singapore named Javier Lin had
+sent a four-word message: "179 tomorrow." Everyone assumed he was being rude.
+The senior engineer — known only as Señor, who wears a sombrero indoors and
+carries a wooden chair he rarely sits on — points out that Javier had in fact
+communicated the entire transport model of BGP in three characters.
+
+Now teach the core idea. OSPF runs directly on IP as protocol 89. It multicasts
+hellos, finds its own neighbours, and builds its own reliability — sequence
+numbers, acknowledgements, a retransmission list per neighbour. BGP does none of
+that. BGP opens a TCP session to a unicast address that a human typed in by hand.
+
+Draw out the trade in both directions, slowly:
+  - What BGP loses: peer discovery, because there is no such thing as a multicast
+    TCP session. OSPF finds its friends. BGP has to be introduced.
+  - What BGP also loses: self-sufficiency. Something else — a static route, a
+    connected interface, an IGP — must already know how to reach the peer.
+    Use the memorable framing: BGP is a routing protocol that requires routing to
+    already work before it can start.
+  - What BGP gains: sequencing, acknowledgement, retransmission, all for free.
+    And because delivery is guaranteed, BGP never has to say anything twice. It
+    sends an update once and withdraws explicitly. OSPF re-floods every LSA every
+    thirty minutes whether anything changed or not. That single difference is why
+    BGP carries a million internet routes and OSPF cannot.
+
+ACT TWO — THE TWO LIES
+Introduce the state machine: Idle, Connect, Active, OpenSent, OpenConfirm,
+Established. Deliver Señor's line: "Two of these are lies."
+
+Explain that Connect sounds finished but only means a SYN has been sent, and that
+Active sounds healthy but means the TCP attempt failed. Let that sit.
+
+Then deliver the real lesson of the episode — that the state is not trivia, it is
+a diagnostic ladder that tells you which layer to investigate:
+  - Stuck early means transport. The TCP session never formed.
+  - Cycling late means parameters. TCP is fine; the two sides disagree.
+  - Established but empty means policy. Peering works; nobody is saying anything.
+
+Work through the transport causes as a walk along a path: is there a route to the
+peer at all; is TCP 179 permitted inbound to the firewall itself; is an upstream
+ACL filtering it; is the neighbour address right; is the source address right;
+and finally, is the peer even directly attached — because EBGP defaults to a TTL
+of one. Explain that TTL of one is not a limitation but a security control: if a
+packet can only survive one hop, only a directly-attached device can ever peer
+with you, and a spoofed session from three hops away dies in transit. Note that
+IBGP defaults to 255, because IBGP peers sit inside your own network and often
+peer loopback to loopback across several hops. Adjacency was never the assumption
+there.
+
+ACT THREE — JUNIOR'S MISTAKE
+This is the heart of the episode. Take your time.
+
+A junior engineer — enthusiastic, two coffees deep, with an identical twin
+brother named J.R. who says nothing and writes everything down — spends ten
+minutes auditing the firewall policy. He checks it four times. He announces,
+repeatedly, that the policy is fine.
+
+The policy IS fine.
+
+Señor asks him a two-word question: "Which policy."
+
+Explain the distinction carefully, because it is the lesson that outlives the
+episode. Firewall policy governs traffic passing THROUGH the firewall. But a BGP
+peering session terminates ON the firewall — the device is the destination, not
+the corridor. Traffic to the device itself is governed by a different table
+entirely: local-in policy, and the interface's allowaccess settings.
+
+Reveal the root cause. The interface facing the ISP had been commissioned weeks
+earlier with allowaccess permitting ping and HTTPS, and nobody had updated it.
+The SYN packet was arriving at the firewall and being dropped by the firewall
+itself, one hop from success.
+
+Then make the general point, which is the one worth remembering: every diagnostic
+the junior ran was correct, well-executed, and structurally incapable of finding
+the fault. Being right about the wrong table is still being wrong. Before running
+any command, ask what result would change your mind. If no possible output could,
+you are querying the wrong thing.
+
+ACT FOUR — UP IS NOT WORKING
+The fix is one line. The state machine walks — Idle, Connect, OpenSent,
+OpenConfirm, Established. Riley claps once and then looks embarrassed.
+
+And the prefix count is zero.
+
+Explain that the session is now perfectly healthy and still doing nothing useful,
+and introduce network-import-check. A prefix declared for advertisement is only
+actually advertised if an active route with an exactly matching destination
+subnet exists in the routing table. Not a covering route — a match. If you
+declare a /24 and the table holds the /16 that contains it, you advertise
+nothing, silently, on a session that looks fine.
+
+Give the reason the behaviour exists, because the reason is the memorable part:
+advertising a prefix is a promise to carry traffic for it. Import check is BGP
+declining to write a cheque the routing table cannot cash. Warn that the setting
+can be disabled, that doing so makes the advertisement appear, and that it does
+not make it true.
+
+Close the technical content with the four commands and the four questions they
+answer: are we peering, why is this peer like that, what does BGP know, and what
+actually won. Explain that the gap between the last two is not a fault — it is
+best-path selection. The losing route stays in the database forever, perfectly
+valid and never used. And note why that matters during a real outage: "we lost
+the route" and "we stopped preferring it" look identical in the routing table and
+completely different in the database. Only one of them is a problem.
+
+CLOSING
+End on Señor's line, delivered plainly, without emphasis:
+"Up is not peered. Peered is not exchanging. Exchanging is not installed. Four
+different truths. Four different commands."
+
+TEASER
+Then, quieter, set up the next episode. The second ISP circuit starts billing on
+Monday, and the business manager wants to know why the company is paying for two
+roads and driving down one. The junior proposes using both at once and is, for
+the first time all season, correct — which alarms everyone who knows him. And at
+two in the morning, Singapore time, Javier sends four more words: "Peer to my
+loopback."
+
+Señor reads it, puts down the mandarin he has been peeling, and says the thing he
+says maybe twice a year.
+
+"Ah. He is serious."
+
+Next time on The Packet Path: many roads out.
+
+--------------------------------------------------------------------------------
+
+================================================================================
+END OF REVISION PACK — Session 55, Wednesday 22 July 2026
+================================================================================

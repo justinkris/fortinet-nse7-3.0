@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 57 Visual — Fast Recovery</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">›</span>
+      <a href="#">Season 5 · The Expansion</a><span class="breadcrumb-sep">›</span>
+      <span>Session 57 · Visual</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> SESSION 57 · VISUAL LEARNING · PACKET JOURNEY</div>
+    <h1>The Packet That <em>Nobody Watched</em></h1>
+    <p>Five illustrations that reconstruct the whole session — with full generation prompts.</p>
+  </div>
+</header>
+<div class="motivation-banner">
+  <div class="motivation-text">One packet. One dead router. <em>Two very different worlds.</em></div>
+  <p class="motivation-sub">Recommended style: Packet Journey with a fork — because the lesson of this session lives in the time dimension.</p>
+</div>
+
+<nav class="section-nav" id="section-nav"><a class="nav-tab active" href="#section-style">Style</a><a class="nav-tab" href="#section-images">Images</a><a class="nav-tab" href="#section-sequence">Sequence</a></nav>
+<main><div class="main-content">
+
+<div class="section-block" id="section-style">
+<div class="section-label">RECOMMENDED APPROACH</div>
+<h2>Visual Style: <em>Packet Journey</em></h2>
+<span class="approach-tag">Packet Journey · with a Fork</span>
+<p>Three styles were candidates for this session. <strong>Troubleshooting Decision Tree</strong> already lives in the troubleshooting guide. <strong>Enterprise Topology</strong> is covered by the HA scenario page. What is left uncovered — and what this session most needs burned into memory — is the <em>time dimension</em>: the same packet, on the same link, meeting two different outcomes depending on whether anyone was watching.</p>
+<p>So the chosen style is a <strong>Packet Journey with a fork</strong>: follow one trade from the trading floor to the carrier, then split the story into the world without BFD and the world with it. The fork is the lesson. Everything else on this page supports it.</p>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">The failover was always instant. The noticing was not. That single sentence is what these images exist to make unforgettable.</div></div></div>
+</div>
+
+<div class="section-block" id="section-images">
+<div class="section-label">ILLUSTRATIONS</div>
+<h2>Image Placeholders and <em>Generation Prompts</em></h2>
+<div class="image-placeholder">
+<div class="ip-filename">images/s57-v1-the-fork.png</div>
+<h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:6px;">1 · The Fork — Ninety-One Seconds vs Seven Hundred Milliseconds</h3>
+<p class="ip-caption">The central visual of the session. One packet, one dead router, two worlds.</p>
+<div style="border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:0;margin:14px 0;overflow:hidden;">
+<div style="padding:44px 20px;text-align:center;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;">Image not yet generated</div></div>
+<div style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Image Generation Prompt</div>
+<div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:14px 16px;font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.7;color:var(--text-soft);">Wide cinematic flat-vector illustration in a warm storybook-technical style. Cream #faf5e9 background, bold soft-brown outlines, muted gold and coral accents, sage green highlights, no gradients, no photorealism, generous spacing, clean enough to function as an educational diagram. COMPOSITION: a single road entering from the left edge, carrying three stylised coral packet-envelopes travelling right, with a small label at the road's start reading 'TRADE · 06:41'. The road reaches a fork marked by a simple stylised router icon that is visibly dead — draw it with a dark cracked X over its central processor area, but with its front-panel port LED still lit bright green and a tiny label beside it reading 'link: UP'. From the fork, TWO diverging roads split upward and downward, occupying roughly equal vertical halves of the frame. THE UPPER ROAD, labelled in clean sans-serif 'WITHOUT BFD · 91 SECONDS', continues straight into a bank of soft grey fog; packets are drawn tumbling off a broken road edge into the fog, six of them, some upside down, with small motion lines. Above this road place a large muted-amber analogue stopwatch showing an almost-full sweep and the text '180s hold timer'. Also above it, a row of five serene round green status lights with the caption 'every light honest, every light useless'. THE LOWER ROAD, labelled 'WITH BFD · 750 ms', shows a small coral sentry figure — a simple geometric watchtower or lighthouse shape, NOT a human — positioned right at the fork, emitting three tiny fast darts toward the dead router with motion lines. The road immediately curves smoothly upward and rejoins a second intact road labelled 'CHATSWOOD', with packets flowing confidently onward. Above this road, a small sage-green stopwatch showing a tiny sliver and the text '250ms × 3'. At the far right edge, both roads' destinations: the upper ends in fog, the lower ends at a simple building icon labelled 'MARKET'. Across the bottom of the frame, a thin banner in elegant serif italic: 'The failover was always instant. It was the noticing that cost six figures.' Do NOT include any human characters, vendor logos, real product photography, screenshots, or dense technical labelling. Purpose: fuse detection latency and business consequence into a single recallable image.</div>
+<table class="data-table" style="margin-top:14px;">
+<tbody>
+<tr><td>Aspect ratio</td><td>16:9</td></tr>
+<tr><td>Placement</td><td>Top of the visual page, immediately below the style explanation. This is the hero image.</td></tr>
+<tr><td>Accessibility description</td><td>A road carrying data packets forks at a dead router whose link light is still green; the upper branch shows packets falling into fog over 91 seconds, the lower branch shows a BFD sentry detecting the failure in 750 milliseconds and rerouting packets safely.</td></tr>
+<tr><td>Memory anchor</td><td>Detection time is not reconvergence time. The expensive part is noticing.</td></tr>
+</tbody></table>
+</div><div class="image-placeholder">
+<div class="ip-filename">images/s57-v2-two-messengers.png</div>
+<h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:6px;">2 · The Two Messengers</h3>
+<p class="ip-caption">Why BFD is fast: the same three-strikes logic, made cheap.</p>
+<div style="border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:0;margin:14px 0;overflow:hidden;">
+<div style="padding:44px 20px;text-align:center;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;">Image not yet generated</div></div>
+<div style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Image Generation Prompt</div>
+<div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:14px 16px;font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.7;color:var(--text-soft);">Flat-vector conceptual illustration, cream #faf5e9 background, bold soft-brown outlines, no gradients, no photorealism, generous white space, modern vector-art aesthetic. Two horizontal lanes running left to right between two simple stylised router icons, one labelled 'HQ' on the left and one labelled 'ISP-1' on the right. THE UPPER LANE is thick and muted blue, labelled 'BGP · TCP 179'. Along it, ONE large heavy sealed document is being carried by a slow, plodding, geometric courier figure — rendered as a simple rounded abstract shape with short legs and a visibly heavy load, NOT a realistic human — with a small muted-gold clock above reading '60 s'. Draw the courier mid-trudge with a slight forward lean to convey weight. THE LOWER LANE is thin and coral, labelled 'BFD · UDP 3784'. Along it, FOUR tiny identical sprinter figures — the same abstract geometric style but small, light and drawn with speed lines — dash in both directions, each carrying nothing but a single small dot. Above them a sage-green clock reading '250 ms'. Draw double-headed arrows at both ends of the lower lane, emphasised with slightly thicker strokes, and a small caption beneath reading 'both ends must run — or nobody is watching'. To the RIGHT of both lanes, a vertical comparison bracket in muted gold containing two stacked lines of clean sans-serif text: 'Same logic: three misses, declare dead' and 'Different weight: 24 bytes vs a full routing update'. Beneath the entire composition, an elegant serif caption: 'We did not invent a smarter idea. We made the same idea cheap enough to run two hundred and forty times faster.' Do NOT include realistic human characters, vendor logos, or packet-header field tables. Purpose: make the architectural separation of liveness-checking from routing intuitive and permanent.</div>
+<table class="data-table" style="margin-top:14px;">
+<tbody>
+<tr><td>Aspect ratio</td><td>3:2</td></tr>
+<tr><td>Placement</td><td>Immediately after the hero image, supporting the BFD section of the complete guide.</td></tr>
+<tr><td>Accessibility description</td><td>Two parallel lanes between routers: an upper blue lane where one heavy courier slowly carries a large document every 60 seconds, and a lower coral lane where four light sprinters dash back and forth every 250 milliseconds.</td></tr>
+<tr><td>Memory anchor</td><td>Separate the liveness question from the routing protocol and it becomes cheap enough to ask constantly.</td></tr>
+</tbody></table>
+</div><div class="image-placeholder">
+<div class="ip-filename">images/s57-v3-two-seatbelts.png</div>
+<h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:6px;">3 · Two Seatbelts, One Cuts the Other</h3>
+<p class="ip-caption">The BFD versus graceful restart conflict — the hardest idea of the session.</p>
+<div style="border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:0;margin:14px 0;overflow:hidden;">
+<div style="padding:44px 20px;text-align:center;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;">Image not yet generated</div></div>
+<div style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Image Generation Prompt</div>
+<div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:14px 16px;font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.7;color:var(--text-soft);">Flat-vector conceptual illustration with a slightly wry tone, cream #faf5e9 background, bold soft-brown outlines, no gradients, no photorealism, clean modern vector style. CENTRE: a simple stylised car seat viewed from the side, drawn in muted blue, with a single abstract geometric passenger shape seated in it — no facial features, no realistic human detail. TWO seatbelts cross the passenger. The FIRST belt, drawn in sage green and labelled with a small tag reading 'GRACEFUL RESTART · hold, he is only restarting', runs diagonally and looks protective and intact at its anchor points. The SECOND belt, drawn in coral and labelled 'BFD · he is dead, reroute now', crosses the first at a sharp angle — and at the crossing point the coral belt is visibly SLICING THROUGH the sage belt, with the sage belt's severed end curling loose and falling away. Draw a small pair of scissor-like teeth integrated into the coral belt at the crossing to make the cutting unambiguous. ABOVE the seat, a small stopwatch in coral reading '750 ms' with a short arrow pointing down at the coral belt, indicating it acts first. TO THE LEFT of the seat, a small inset vignette: two identical stacked firewall icons with a sync arrow between them and a tiny label 'HA failover — not a death', drawn faintly to indicate this is the event that triggered the conflict. TO THE RIGHT, a small routing-table icon showing three horizontal route lines with all three struck through in coral, labelled 'routes withdrawn anyway'. ACROSS THE BOTTOM, an elegant serif caption: 'You bought the seatbelt. Then you bought a second seatbelt that cuts the first one.' Colour discipline: only sage green, coral, muted blue and gold on cream. Do NOT include realistic humans, faces, vehicle interiors in detail, vendor logos, or CLI text. Purpose: make it impossible to forget that BFD overrules graceful restart when both are aggressive on the same neighbour.</div>
+<table class="data-table" style="margin-top:14px;">
+<tbody>
+<tr><td>Aspect ratio</td><td>4:3</td></tr>
+<tr><td>Placement</td><td>Beside the graceful restart section — this is the single most exam-relevant conceptual image on the page.</td></tr>
+<tr><td>Accessibility description</td><td>A seated figure wearing two seatbelts: a green graceful-restart belt and a coral BFD belt, where the coral belt is visibly cutting through and severing the green one at the crossing point.</td></tr>
+<tr><td>Memory anchor</td><td>BFD and graceful restart are opposite tools. Configure both aggressively and BFD wins.</td></tr>
+</tbody></table>
+</div><div class="image-placeholder">
+<div class="ip-filename">images/s57-v4-slower-peer.png</div>
+<h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:6px;">4 · The Slower Peer Sets the Floor</h3>
+<p class="ip-caption">Hardware asymmetry as a design constraint — anchored to the student's real topology.</p>
+<div style="border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:0;margin:14px 0;overflow:hidden;">
+<div style="padding:44px 20px;text-align:center;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;">Image not yet generated</div></div>
+<div style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Image Generation Prompt</div>
+<div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:14px 16px;font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.7;color:var(--text-soft);">Flat-vector illustration in a balanced-scales composition, cream #faf5e9 background, bold soft-brown outlines, no gradients, no photorealism, generous spacing. CENTRE: a simple balance beam or see-saw resting on a triangular fulcrum, drawn in muted brown. ON THE LEFT PAN: a solid, heavy, confident rectangular appliance icon labelled 'DC · 2601F', with a small coral silicon-chip motif on its face labelled 'NP7' and a tiny padlock icon beside it indicating hardware IPsec offload. Draw it with clean strong lines and a small sage-green tick above it. Beside it, a small speech-tag reading 'I can do 50 ms'. ON THE RIGHT PAN: a lighter, visibly more burdened cloud-server icon labelled 'SYDNEY · VM', drawn with FOUR small stacked burden-boxes piled on top of it, each labelled in tiny clean sans-serif: 'crypto', 'tunnel', 'BGP daemon', 'BFD'. Draw a small amber strain motif — two short curved stress lines — near its base. Beside it, a speech-tag reading 'I can do 500 ms'. THE BEAM TILTS toward the Sydney side, and where the beam meets the fulcrum place a muted-gold horizontal rule extending across the full width of the frame, labelled clearly in clean sans-serif: 'NEGOTIATED INTERVAL = the greater of the two'. Below that rule, a single sage-green marker at the 500 ms position with a small flag reading 'this is your floor'. ACROSS THE BOTTOM, elegant serif caption: 'The slower peer sets the floor. Always.' Include a small footnote-style line in the lower right in tiny text: 'BFD negotiates: actual interval = max(sender desired TX, receiver required RX)'. Do NOT include human characters, vendor logos, real product photography, or rack photographs. Purpose: convert an abstract negotiation rule into a physical intuition tied to the student's own production environment.</div>
+<table class="data-table" style="margin-top:14px;">
+<tbody>
+<tr><td>Aspect ratio</td><td>3:2</td></tr>
+<tr><td>Placement</td><td>Within the applied-topology section, alongside the DC and Sydney discussion.</td></tr>
+<tr><td>Accessibility description</td><td>A tilted balance beam with a powerful hardware firewall on one side and an overloaded virtual machine on the other, showing that the negotiated BFD interval is set by the slower of the two.</td></tr>
+<tr><td>Memory anchor</td><td>Your detection interval is bounded by whichever end struggles under load — never by the better ASIC.</td></tr>
+</tbody></table>
+</div><div class="image-placeholder">
+<div class="ip-filename">images/s57-v5-baz-speakerphone.png</div>
+<h3 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:6px;">5 · Baz on Speakerphone</h3>
+<p class="ip-caption">The business-layer memory hook: the sentence that was true and useless.</p>
+<div style="border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:0;margin:14px 0;overflow:hidden;">
+<div style="padding:44px 20px;text-align:center;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;">Image not yet generated</div></div>
+<div style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Image Generation Prompt</div>
+<div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:14px 16px;font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.7;color:var(--text-soft);">Flat-vector character illustration in a warm storybook style, cream #faf5e9 background, bold soft-brown outlines, no gradients, no photorealism, muted palette of coral, sage, gold and deep blue. SCENE: a modestly cluttered office interior at early morning — soft light entering from a window on the left suggesting dawn, a wall clock reading 06:52. FOREGROUND CENTRE: a desk with a black conference speakerphone unit, drawn as a simple rounded triangular puck with three small lights, and coral sound-wave arcs radiating from it. A speech bubble emerging from the speakerphone in cheerful rounded lettering reads: 'Mate, the link is UP.' LEFT OF FRAME: Señor, an older engineer wearing a large decorative sombrero, seated slightly turned away, calm and unhurried, holding a partially peeled mandarin, NOT looking at the phone, with a small quiet speech bubble reading 'The link is not the question.' Render him with warmth and restraint — no exaggerated comedy, no caricature. RIGHT OF FRAME: a younger help-desk engineer with a headset around his neck, three coffee cups beside him, staring at a monitor. ON THE MONITOR: a dashboard showing five large round GREEN indicator lights and a flat healthy-looking line graph — deliberately serene. BACKGROUND WALL: a neatly drawn network topology diagram with two carrier paths labelled only 'ISP-1' and 'ISP-2', plus a small taped index card reading 'RISK-56-01' with a hand-drawn circle around it. Somewhere on the desk, a small opened box of pastries, untouched. Include a subtle logo motif on a coffee mug: stacks of banknotes frozen inside an ice cube. MOOD: quiet, early, the calm before a difficult conversation. Do NOT include any real brand names, real people's likenesses, distressing imagery, or dense readable technical text. Purpose: anchor the session's central misconception to a memorable human moment so the concept is retrieved by story rather than by rote.</div>
+<table class="data-table" style="margin-top:14px;">
+<tbody>
+<tr><td>Aspect ratio</td><td>16:9</td></tr>
+<tr><td>Placement</td><td>At the end of the visual page, closing the session on the story beat.</td></tr>
+<tr><td>Accessibility description</td><td>An early-morning office where a speakerphone cheerfully announces that the link is up, while a calm engineer in a sombrero observes that the link is not the question, and a dashboard behind them displays entirely green status lights.</td></tr>
+<tr><td>Memory anchor</td><td>'The link is up' can be completely true and completely useless. Interface state says nothing about the device behind it.</td></tr>
+</tbody></table>
+</div>
+</div>
+
+<div class="section-block" id="section-sequence">
+<div class="section-label">HOW TO USE THESE</div>
+<h2>Revision <em>Sequence</em></h2>
+<p>The five images are ordered deliberately. Reviewed in sequence they reconstruct the whole session in about ninety seconds:</p>
+<ol>
+<li><strong>The Fork</strong> — recalls the problem and its cost. If you can see this image you can state why detection and reconvergence are different.</li>
+<li><strong>The Two Messengers</strong> — recalls the solution's architecture, and by extension the two-places configuration rule.</li>
+<li><strong>Two Seatbelts</strong> — recalls the conflict, which is the single most likely scenario question on this material.</li>
+<li><strong>The Slower Peer</strong> — recalls the design constraint and the negotiation rule behind it.</li>
+<li><strong>Baz on Speakerphone</strong> — recalls the misconception that started everything, which is the fastest route back into all four of the above.</li>
+</ol>
+<div class="callout callout-green"><strong>Exam use:</strong> if a question describes slow failover, picture image 1 and ask "was this detection or reconvergence?" If a question shows a config snippet, picture image 2 and ask "are both halves here?" If a question mentions HA, picture image 3 before answering.</div>
+<div class="mental-note-block"><div class="mental-note-block-icon">🧠</div>
+<div class="mental-note-block-inner"><div class="mental-note-block-label">MENTAL NOTE</div>
+<div class="mental-note-block-text">Five images, five sentences. If you can narrate the pictures, you can answer the questions.</div></div></div>
+</div>
+
+</div></main>
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="session-57-troubleshooting.html"><span class="page-nav-label">← PREVIOUS</span><span class="page-nav-title">Troubleshooting</span></a>
+  <a class="page-nav-btn page-nav-next page-nav-disabled" href="#"><span class="page-nav-label">NEXT →</span><span class="page-nav-title">—</span></a>
+</div>
+<footer>LoFinance<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Season 5 · Session 57 · Visual</footer>
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-session57-visual';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-style': 'Style',
+  'section-images': 'Images',
+  'section-sequence': 'Sequence'
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+</body>
+</html>

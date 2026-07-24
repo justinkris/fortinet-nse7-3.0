@@ -1,0 +1,193 @@
+SESSION 54 SUMMARY — "Singapore Calling"
+Season 5 "The Expansion" (opener) · SNA Domain 4 · EF Study Guide 05 Dynamic Routing
+Protocols, pp. 132-136
+Written for Claude, to continue the story in Session 55.
+NOTE: Student put Sessions 48-53 "on the shelf" (HA active-active, monitoring, hardware
+accel review, DR drill) — explicitly requested to skip ahead to BGP/Season 5. Do not assume
+that material was taught. HA core (FGCP modes, election, session sync/pickup) IS solid —
+see knowledge-register-session47.txt for full state.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Monday 08:31, the good conference room — catered, which is how everyone knows the news is
+big. Penny announces the Expansion: Brisbane, Perth, Singapore, London — eight sites total
+by spring, board-approved Friday. New character: J.R., Junior's identical twin, a career-
+changer from accounting, now doing branch rollouts — tidy notebook, calm under Penny's fire,
+visual foil to Junior without being a repeat of him. Singapore's senior hire, Javier Lin,
+replies to the engineer's warm three-paragraph introduction email in four minutes with four
+words: "What is your ASN." No greeting, no question mark. Señor identifies this as "the most
+important question of the season" and declares the day config-free — understanding first.
+
+Full whiteboard Socratic session: OSPF-as-household vs BGP-as-treaty-between-nations framing
+established early and reused throughout (Señor's line, echoed by Javier later: "And I am a
+nation" — flagged for Session 58 reuse). Covered why OSPF cannot extend across administrative
+boundaries (total topology exposure + no policy control, only SPF math), the AS as BGP's unit
+of abstraction, AS_PATH as the path-vector mechanism (route carries the sequence of ASes
+crossed, not a link-state map), AS_PATH self-lookup as loop prevention, the multihomed/transit
+distinction and the "accidental transit AS" trap, prefix/route filtering as the SEPARATE
+defence against unwanted transit, and private ASN range 64512-65534 (RFC 1918 analogy,
+student's own construction).
+
+Episode ends with the reply sent — LoFinance's (as-yet-unspecified, to be assigned S55) private
+ASN — and Javier's one-line response: "Good. 179 tomorrow." Nobody in-story explains it; Señor
+mutters "TCP port" and won't elaborate. Setup is deliberate for Session 55 opening on TCP 179
+and neighbor statements.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — carried nearly the entire session via derivation before
+  being taught. Named "scale + we don't control their routing" unprompted for Q1. Derived
+  AS_PATH's existence and function BEFORE it was introduced, prompting Señor's strongest
+  unscripted compliment of the season so far ("arrived at the mechanism before the slide").
+  Solved loop prevention via AS_PATH self-check cleanly. Correctly separated multihomed from
+  transit, and — the trap question — correctly identified that filtering, not AS_PATH, is
+  what prevents accidental transit. Named private ASN range via the RFC 1918 analogy
+  unprompted.
+- Señor — backwards chair (new tell — "somehow alarming"), mandarin peel on Junior's keyboard,
+  "Two brains become one" energy carried into new domain as "one truth vs negotiated policy."
+  Declared the session config-free by design. Ends on Javier's cryptic "179 tomorrow" tease.
+- Junior — comic relief this episode; drops croissant, has not yet made a BGP-specific mistake
+  (his instinct to treat BGP "like OSPF but bigger" is flagged/foreshadowed for Session 55, not
+  yet committed on-screen).
+- J.R. (NEW) — Junior's identical twin, ex-accountant, doing branch rollouts for the Expansion.
+  Catches Junior's dropped croissant one-handed. Calm, tidy, will likely recur through Season 5
+  branch-deployment episodes (Brisbane/Perth ZTP per master plan).
+- Penny — announces the Expansion cold, no numbers on the slide (the tell that the number is
+  huge). Signed off Saturday.
+- Riley — holds a croissant "like it might be a trap"; reads Javier's email over the student's
+  shoulder.
+- Javier Lin (NEW, referenced only by email) — Singapore hub-keeper. One-line, terse, always
+  precise. "What is your ASN." Later: "Good. 179 tomorrow." Established voice: minimal words,
+  maximal technical precision — future dialogue should stay in this register.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+LoFinance is expanding from a single-administration household network (one OSPF domain,
+one map, one authority — Penny) into a multi-site, multi-organisation topology: Brisbane,
+Perth (internal branches, same admin — J.R.'s territory) plus Singapore and London (new,
+separately-administered hubs requiring inter-organisation routing). OSPF cannot extend across
+that boundary — full topology exposure and no policy control. BGP is required to allow HQ,
+Singapore, and London to exchange only agreed prefixes, under policy, without merging trust
+domains. Immediate deliverable: agree private ASNs for HQ, Singapore, and London before actual
+peering configuration begins in Session 55.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (EF pp. 132-136)
+==================================================================
+1. Why OSPF cannot cross administrative boundaries: link-state protocols share the FULL
+   topology database with every neighbour and compute an identical, non-negotiable SPF result.
+   No mechanism exists to share a partial map or exert per-route policy.
+2. BGP as policy-based routing between independently-administered domains: advertise only what
+   you choose, accept only what you choose. "Routing as policy, not routing as geometry."
+3. Autonomous System (AS) definition: a set of routers/networks under one consistent
+   administration, free to run any IGP internally (OSPF unaffected), identified externally by
+   one AS number.
+4. BGP is a PATH VECTOR protocol (contrast with OSPF's link-state): no shared map; routes carry
+   an AS_PATH — the ordered list of AS numbers the route has traversed.
+5. Loop prevention mechanism: a BGP router rejects any route whose AS_PATH already contains its
+   own AS number. Automatic, per-route, requires no synchronised database.
+6. AS types (three): Stub (single AS connection, local traffic only), Multihomed (multiple AS
+   connections, but still only local traffic), Transit (routes local AND transit traffic —
+   traffic neither originating nor terminating locally; ISP is the textbook example).
+7. LoFinance becomes Multihomed once peering with Singapore + London + an ISP — NOT
+   automatically Transit. Multihoming is about NUMBER of external connections; transit is about
+   WHETHER traffic that isn't yours flows through you for someone else's benefit.
+8. The "accidental transit AS" trap: AS_PATH alone does NOT prevent LoFinance from
+   unintentionally advertising Singapore's routes onward to London (or vice versa). This
+   requires a SEPARATE, deliberate defence: prefix/route filtering on outbound advertisements.
+   Exam trap: don't confuse loop prevention (AS_PATH, automatic) with transit prevention
+   (filtering, configured).
+9. Private AS number range: 64512-65534 (IANA-reserved), directly analogous to RFC 1918
+   private IPv4 space — usable for privately-agreed inter-organisation BGP without registry
+   involvement or collision risk with real internet ASes (until/unless connected to the public
+   internet without translation).
+
+==================================================================
+MENTAL MODELS DEVELOPED
+==================================================================
+- "OSPF is a household sharing one map. BGP is nations negotiating treaties." (established
+  this session; Señor will reuse verbatim in Session 58 per the master plan, where Javier
+  responds "And I am a nation.")
+- Loop prevention vs transit prevention as two DISTINCT tools solving two DISTINCT problems —
+  the single most exam-relevant distinction from this session.
+- Private ASN range = RFC 1918 for AS numbers (student's own construction, unprompted).
+
+==================================================================
+IMPORTANT ANALOGIES
+==================================================================
+- OSPF household / BGP nations-and-treaties (Señor, reused into S58)
+- Private ASN ≈ RFC 1918 private IP space (student's own, keep reusing)
+- AS_PATH self-check as "one grep, functionally, replaces a distributed algorithm's worth of
+  loop prevention" (Señor)
+
+==================================================================
+KEY CLI / COMMANDS DISCUSSED
+==================================================================
+None — session was deliberately configuration-free by Señor's design ("we will configure
+nothing today"). First CLI (config router bgp, neighbor statements) begins Session 55.
+
+==================================================================
+TROUBLESHOOTING APPROACH
+==================================================================
+N/A this session (conceptual only, no lab/troubleshooting content).
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- LoFinance HQ, Singapore, and London will use PRIVATE ASNs (64512-65534 range), not public/
+  registered ASNs, since peering is inter-office/private, not with the public internet
+  backbone at this stage.
+- Specific ASN values NOT yet assigned in-story — reply sent to Javier references "a private
+  ASN" without the exact number being narrated. Session 55 should assign concrete numbers
+  (e.g. something in range, HQ vs Singapore vs London) as part of "Making Peers."
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+- Planned (not yet built): EBGP peering HQ↔Singapore, HQ↔London, HQ↔ISP.
+- Multihomed AS status pending for LoFinance HQ once these peerings exist.
+- Master plan changelog already establishes eventual scope for the season: dual ISP uplinks,
+  SD-WAN zones per site, Brisbane/Perth ZTP branches, FortiManager as SD-WAN Manager,
+  Melbourne DR promoted to second hub, Singapore+London as second region with EBGP between
+  hubs, ADVPN 2.0, NP7 IPsec offload with FEC. None of this configured yet — S54 is
+  conceptual/BGP-fundamentals only.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+LoFinance's private ASN sent to Javier Lin; Javier confirms readiness with "Good. 179
+tomorrow" — a deliberately cryptic line (TCP port 179, BGP's transport) that Session 55 will
+resolve. Groundwork laid for the Expansion's routing architecture without any live
+configuration risk.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- AS types (stub/multihomed/transit) are a classic multiple-choice target — student's
+  distinction (connections vs traffic direction/ownership) is textbook-accurate.
+- Loop prevention (AS_PATH) vs transit prevention (filtering) is flagged as a HIGH-VALUE exam
+  trap — a plausible wrong answer on "how do you prevent LoFinance becoming transit" is
+  "AS_PATH filtering," which is not the mechanism.
+- Private ASN range (64512-65534) worth a flashcard; likely appears as a "which range" MCQ.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+None committed on-screen this session — Junior's likely error (treating BGP as "OSPF but
+bigger," skipping the trust-model distinction) is FORESHADOWED for Session 55, not yet
+enacted. Track this open thread.
+
+==================================================================
+TEASER FOR SESSION 55
+==================================================================
+"Making Peers" — BGP neighbors, networks, and base configuration; BGP commands. EF pp.
+137-141. Business event: the first EBGP session to the ISP sits stubbornly in Active state;
+the whole office gathers to watch a state machine. Javier's "179 tomorrow" line should be
+resolved early (TCP port 179 — BGP's transport protocol) as a satisfying callback/payoff
+before new content begins. Junior's "BGP is just OSPF but bigger" instinct is queued to
+surface and be corrected in this episode.
+
+Date and Time completed: Wednesday, 22 July 2026.

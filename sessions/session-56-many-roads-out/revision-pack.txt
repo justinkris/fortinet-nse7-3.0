@@ -1,0 +1,527 @@
+================================================================================
+LoFINANCE · SESSION 56 REVISION PACK — "MANY ROADS OUT"
+BGP Use Cases: ECMP · Loopback as BGP Source · Multihop
+EF Study Guide 05 — Dynamic Routing Protocols, pp. 142-146 · SNA Domain 4
+================================================================================
+
+
+--------------------------------------------------------------------------------
+PART 1 — QUICK SUMMARY (one page)
+--------------------------------------------------------------------------------
+
+THE BUSINESS PROBLEM
+LoFinance now pays two carriers — ISP-1 Parramatta and ISP-2 Chatswood — but all
+internet traffic leaves via Parramatta. Separately, Singapore has two circuits to
+HQ and Javier requires loopback peering rather than two per-link sessions.
+Both are the same question: we bought redundancy, how do we spend it?
+
+THE FOUR IDEAS
+
+1. BGP LEARNS PLURALLY, INSTALLS SINGULARLY.
+   A routing table entry maps one prefix to one best next hop. Two ISPs advertising
+   0.0.0.0/0 produces two database entries and one installed route. The loser stays
+   in `get router info bgp network` forever — valid, formed, never forwarding.
+   With every attribute tied, selection falls to LOWEST ROUTER-ID: which paid
+   circuit sits idle is decided by someone else's addressing.
+
+2. ECMP NEEDS TWO THINGS, NOT ONE.
+   Equal attributes make multipath LEGAL. The config command makes it HAPPEN.
+   "Equal is permission. Enable is instruction."
+   ebgp-multipath  → peers in a DIFFERENT AS
+   ibgp-multipath  → peers in the SAME AS
+   Choose by comparing local AS to remote AS. Up to 10 routes shared.
+
+3. ECMP IS CAPACITY, NOT RESILIENCE.
+   A dead path only leaves the routing table when BGP withdraws it, which needs
+   session teardown, which needs the hold timer — default 180 seconds.
+   Single path : 100% of flows fail for 180s.
+   ECMP        : ~50% fail for 180s, hashed onto a hole — including half the
+                 traffic that would otherwise have been fine.
+   You traded a total outage for a partial one. Partial outages are harder to
+   diagnose because the phones only half ring.
+
+4. A LOOPBACK CANNOT GO DOWN BECAUSE IT WAS NEVER PHYSICALLY UP.
+   Two per-link sessions bind session state to a cable. A loopback-sourced session
+   reroutes underneath BGP when a cable dies — no withdrawal, no reconvergence, BGP
+   never notices. It also halves config, policy and neighbour management.
+   Requires FOUR things: a route to the peer loopback, update-source, multihop, and
+   a FIREWALL policy (because the session now crosses two interfaces).
+
+THE TRAP
+A missing firewall policy on a loopback session fails IDENTICALLY to Session 55's
+fault: stuck in Active. S55 was local-in (traffic TO the box, one interface).
+S56 is firewall policy (Loopback0 TO port2, two interfaces).
+SAME SYMPTOM, OPPOSITE TABLE.
+
+OUTCOME
+Both invoices now earn. Singapore survives loss of either underlay with zero BGP
+reconvergence. RISK-56-01 raised and accepted: 180s detection latency, unresolved.
+
+
+--------------------------------------------------------------------------------
+PART 2 — CHEAT SHEET
+--------------------------------------------------------------------------------
+
+### ECMP
+
+config router bgp
+    set ebgp-multipath enable            # peers in a different AS
+    set ibgp-multipath enable            # peers in the same AS
+end
+
+### LOOPBACK AS BGP SOURCE — the neighbour
+
+config router bgp
+    set as 65001
+    set router-id 10.99.50.1
+    config neighbor
+        edit "172.20.0.1"
+            set remote-as 65300
+            set update-source "Loopback0"
+            set ebgp-enforce-multihop enable
+            set description "Javier - SG DC"
+        next
+    end
+end
+
+### LOOPBACK AS BGP SOURCE — reachability (equal cost, both underlays)
+
+config router static
+    edit 0
+        set dst 172.20.0.1 255.255.255.255
+        set gateway <link-A-next-hop>
+        set device "port2"
+    next
+end
+
+### LOOPBACK AS BGP SOURCE — the piece people miss
+
+config firewall policy
+    edit 0
+        set name "BGP-Loopback-to-SG"
+        set srcintf "Loopback0"
+        set dstintf "port2"
+        set srcaddr "HQ-Loopback0"
+        set dstaddr "SG-Loopback"
+        set service "BGP"
+        set action accept
+        set schedule "always"
+    next
+end
+
+### HUB-AND-SPOKE SCALING (pp.145-146)
+
+config router bgp
+    set as 65100
+    set router-id 172.16.1.254
+    set ibgp-multipath enable
+    config neighbor-group
+        edit "SpokeISP1"
+            set interface "ISP1"
+            set remote-as 65100
+        next
+    end
+    config neighbor-range
+        edit 1
+            set prefix 10.1.0.0 255.255.255.0
+            set neighbor-group "SpokeISP1"
+        next
+    end
+end
+
+### VERIFICATION
+
+get router info bgp summary                     # are both peers Established?
+get router info bgp neighbors 172.20.0.1        # capabilities, router-id, last error
+get router info bgp network                     # the database — is the 2nd path there?
+get router info routing-table bgp               # TWO NEXT-HOPS = ECMP is live
+get router info routing-table details 172.20.0.1  # is the peer loopback reachable?
+diagnose sniffer packet any 'port 179' 4        # what SOURCE does the peer see?
+
+### GUI PATHS
+
+Network > Interfaces                       — create the loopback
+Network > Static Routes                    — routes to the peer loopback
+Network > BGP                              — neighbours, multipath, router-id
+Policy & Objects > Firewall Policy         — Loopback0 -> port2, service BGP
+Policy & Objects > Services                — BGP = TCP/179
+
+### DEFAULTS AND NUMBERS
+
+BGP transport                    TCP 179
+EBGP TTL                         1
+IBGP TTL                         255
+Hold timer                       180 seconds (keepalive 60)
+ECMP maximum BGP routes          10
+ebgp-multipath / ibgp-multipath  DISABLED by default
+network-import-check             ENABLED by default
+
+### ROUTE SELECTION TIE-BREAKERS (order)
+
+ 1. Highest weight
+ 2. Highest local preference
+ 3. Path originated locally
+ 4. Shortest AS path
+ 5. Lowest origin type
+ 6. Lowest MED
+ 7. Lowest IGP metric to the BGP next hop
+ 8. Prefer EBGP over IBGP
+ 9. If ECMP enabled, insert up to 10 routes
+10. Lowest router ID
+
+### DESIGN RULES
+
+- Never sell ECMP as redundancy. Detection latency is a separate purchase.
+- Bind BGP sessions to loopbacks whenever redundant links reach the same peer.
+- Route to the peer loopback over BOTH underlays, equal cost, or the design is
+  pointless.
+- update-source and multihop are SYMMETRIC requirements — half the config is on
+  the peer's box.
+- Multipath knob is chosen by comparing the two AS numbers, never by preference.
+
+
+--------------------------------------------------------------------------------
+PART 3 — FLASHCARDS
+--------------------------------------------------------------------------------
+
+Q: Two ISPs advertise 0.0.0.0/0, all attributes identical, FortiGate defaults.
+   How many routes are installed?
+A: One. ECMP is not automatic.
+
+Q: What are the TWO conditions for BGP multipath?
+A: (1) Every attribute must tie — permission. (2) Multipath must be enabled —
+   instruction.
+
+Q: Which command enables ECMP for peers in a different AS?
+A: set ebgp-multipath enable
+
+Q: How do you decide between ebgp-multipath and ibgp-multipath?
+A: Compare your local AS to the neighbour's remote-as. Same number = internal =
+   ibgp-multipath.
+
+Q: How many BGP routes can FortiGate share with ECMP?
+A: Up to 10.
+
+Q: With ECMP disabled and every attribute tied, what breaks the tie?
+A: Lowest BGP router ID.
+
+Q: ECMP is enabled across two carriers. One carrier's router fails. What happens
+   before the hold timer expires?
+A: Roughly half of flows are hashed onto the dead path and fail. Detection takes
+   up to 180 seconds.
+
+Q: Does ECMP improve failure behaviour?
+A: No. It changes who gets hurt — a total outage becomes a partial one, which is
+   harder to diagnose.
+
+Q: Why use a loopback as the BGP source?
+A: To keep the session up across redundant links to the same peer. The loopback
+   never goes down, so a link failure becomes a routing event rather than a
+   session event.
+
+Q: What is the alternative to loopback peering across two links, and why is it
+   worse?
+A: Two per-link sessions. Session state is bound to a cable, so a link failure
+   tears down the session, withdraws routes and forces reconvergence — and it
+   doubles the configuration on both sides.
+
+Q: Two routers share a single direct cable. You peer loopback-to-loopback. Does
+   it work by default?
+A: No. The loopback is not the next hop, so it is more than one routed hop, and
+   default EBGP TTL is 1. You need ebgp-enforce-multihop enable.
+
+Q: What does update-source do, and what breaks without it?
+A: It sources the TCP session from the named interface. Without it, FortiGate
+   sources from the egress interface IP, the peer sees an unexpected source and
+   ignores the SYN — the session sits in Active.
+
+Q: A loopback-sourced BGP session crosses which policy table?
+A: Firewall policy — the session originates on Loopback0 and exits a physical
+   port, so it crosses two interfaces. NOT local-in.
+
+Q: In Session 55, stuck-in-Active was caused by local-in policy. In Session 56,
+   by firewall policy. What is the lesson?
+A: Same symptom, opposite table. Memorise the packet path, not the fix.
+
+Q: List the four checks for a loopback peering stuck in Active, in order.
+A: (1) Route to the peer loopback exists. (2) Firewall policy permits
+   loopback→physical on TCP 179. (3) update-source configured. (4)
+   ebgp-enforce-multihop enabled. Then check the peer's side.
+
+Q: Which single command tells you whether ECMP is actually live?
+A: get router info routing-table bgp — look for two next-hops on one prefix.
+
+Q: Which command proves what source address the peer actually sees?
+A: diagnose sniffer packet any 'port 179' 4
+
+Q: What does config neighbor-range define?
+A: The IP range whose peers inherit the settings of a named neighbor-group.
+
+Q: Why is ibgp-multipath used in the hub-and-spoke overlay example?
+A: Hub and spokes share AS 65100 — same AS means the peering is internal.
+
+Q: A ping to the peer's loopback succeeds but the session is still Active. What
+   has the ping actually proven?
+A: Only that a route exists. Ping sources from the egress interface by default,
+   so it says nothing about whether a loopback-sourced session can get there.
+
+Q: ECMP is live but traffic splits 70/30. Is this a fault?
+A: No. ECMP hashes flows, not bytes. A small number of long-lived flows cannot
+   distribute evenly.
+
+Q: State the business translation of the 180-second exposure.
+A: "Two carriers means we have a spare road. It does not mean we notice quickly
+   when one closes — our equipment takes three minutes to work it out, and during
+   those three minutes half our trades fail."
+
+
+--------------------------------------------------------------------------------
+PART 4 — EXAM QUESTIONS
+--------------------------------------------------------------------------------
+
+1. Two EBGP peers advertise 0.0.0.0/0 with identical attributes. FortiGate
+   defaults. How many routes are installed in the routing table?
+   A) Two, ECMP is automatic   B) One   C) Zero, ambiguous   D) Up to 10
+
+2. Which command enables load balancing across equal-cost routes learned from
+   peers in a different AS?
+   A) set ibgp-multipath enable   B) set ebgp-multipath enable
+   C) set ecmp-max-paths 2        D) set multipath-relax enable
+
+3. Why does peering to a remote loopback require ebgp-enforce-multihop even when
+   the two routers share a direct cable?
+   A) Loopbacks use a different TCP port
+   B) The loopback is not the next hop, adding a routed hop
+   C) Multihop is required for all EBGP
+   D) The loopback has no MAC address
+
+4. A loopback-sourced EBGP session is stuck in Active. update-source and
+   ebgp-enforce-multihop are configured, and the remote loopback is reachable.
+   Most likely remaining cause?
+   A) Local-in policy on the physical interface
+   B) Router-id collision
+   C) Missing firewall policy between loopback and physical interface
+   D) network-import-check
+
+5. Primary production reason for using a loopback as BGP source?
+   A) Reduces CPU load
+   B) Keeps the session up across redundant links to the same peer
+   C) Required for ECMP
+   D) Shortens the AS path
+
+6. Without update-source, what source address does FortiGate use?
+   A) The router-id   B) Lowest-numbered interface IP
+   C) The egress interface IP   D) 0.0.0.0
+
+7. Hub and spokes all in AS 65100. Which enables ECMP?
+   A) ebgp-multipath   B) ibgp-multipath
+   C) ebgp-enforce-multihop   D) route-reflector-client
+
+8. What does config neighbor-range define?
+   A) Prefixes to advertise
+   B) The IP range whose peers inherit a neighbour group's settings
+   C) Permitted TTL range   D) ECMP path limit
+
+9. ECMP across two carriers; one fails. Before the hold timer expires:
+   A) None, traffic reroutes instantly   B) All traffic fails
+   C) Approximately half of flows fail until withdrawal
+   D) The session drops immediately
+
+10. ECMP not enabled and all attributes tie. Final tie-breaker?
+    A) Lowest MED   B) Highest local preference
+    C) Lowest router ID   D) Oldest route
+
+ANSWERS: 1-B · 2-B · 3-B · 4-C · 5-B · 6-C · 7-B · 8-B · 9-C · 10-C
+
+HIGHEST-VALUE THREE: Q1 (ECMP is not automatic), Q4 (local-in is the distractor,
+and it was the RIGHT answer one session ago), Q9 (leads directly into Session 57).
+
+
+--------------------------------------------------------------------------------
+PART 5 — PODCAST PROMPT · "THE PACKET PATH"
+--------------------------------------------------------------------------------
+
+Paste the following directly into an AI audio generator.
+
+--- BEGIN PROMPT ---
+
+Produce a single-host podcast episode, approximately 12-14 minutes, for a show
+called "The Packet Path" — a narrative technical podcast about enterprise
+networking told through the ongoing story of a company called LoFinance, an
+Australian financial services firm whose logo is stacks of banknotes frozen in an
+ice cube. The host is warm, dry, unhurried, and treats the listener as an
+intelligent colleague rather than a student. Avoid hype, avoid sound effects,
+avoid a co-host. Technical accuracy matters more than energy.
+
+EPISODE TITLE: "Many Roads Out"
+
+COLD OPEN (about 90 seconds)
+Open on a Thursday morning at LoFinance. There is a man in the office who does not
+work there. His name is Baz. He is a carrier account manager, he is wearing a
+quarter-zip with a logo on it, he has brought a box of pastries nobody asked for,
+and he has just sold LoFinance a second internet connection out of a suburb called
+Chatswood. Diversity, he says. Different exchange, different physical path. When
+Penny — LoFinance's operations lead, precise, unsentimental — asks about the
+service level agreement, Baz does a thing with his hand and says it is a
+"handshake product." Best effort. Same fibre, same engineers. "You'll never notice
+the difference." Penny has already signed. It bills from Monday.
+
+Let the host observe, lightly, that a sentence like "you'll never notice the
+difference" is the kind of sentence that comes back.
+
+THE PROBLEM (about 2 minutes)
+Penny's line is the spine of the episode: "I have signed for two roads. I would
+like us to drive down two roads." Because everything leaving LoFinance is going
+out through the first carrier, and the second circuit is sitting there being
+expensive.
+
+Junior — the junior engineer, enthusiastic, usually wrong — says "just use both at
+once." And he is right. The host should linger on how unusual this is. Señor, the
+senior engineer, a compact older man in a straw sombrero who is almost never
+surprised, puts down the mandarin he is peeling. "He is right. Write down the
+date." Then Junior explains his reasoning — "BGP already load balances, it's got
+two paths, it'll use two paths" — and the universe rebalances.
+
+CONCEPT ONE — WHY ONE ROAD (about 3 minutes)
+Explain, carefully and without jargon first, that a routing table entry is a
+mapping from a destination to a single next hop. One destination, one best answer.
+That is not a BGP rule; that is how forwarding works.
+
+So when two carriers each advertise a default route, BGP holds both in its
+database and installs exactly one. The loser does not vanish. It sits in the
+database indefinitely — perfectly valid, fully formed, never carrying a single
+packet.
+
+Give the listener the memorable form: BGP learns plurally and installs singularly.
+
+Then the detail that makes it sting: with both carriers one hop away and every
+attribute identical, the selection process runs all the way to the bottom of its
+tie-breaker list and settles on the lowest router ID. Which of two paid circuits
+sits idle is effectively decided by how somebody else numbered their equipment.
+
+CONCEPT TWO — ECMP (about 2 minutes)
+Introduce equal-cost multi-path. Be precise about the two conditions: the
+attributes have to tie, and multipath has to be explicitly enabled. Use the line:
+"Equal is permission. Enable is instruction." Mention the two commands and the
+rule for choosing between them — compare your own AS number to the neighbour's; if
+they match, the peering is internal.
+
+THE HONEST PART (about 3 minutes — the heart of the episode)
+Penny asks the good question: "So if the first carrier goes down, we're covered,
+yes?"
+
+Walk the listener through the answer slowly. Traffic does survive — eventually.
+But the dead path only leaves the routing table when BGP withdraws it, and BGP
+only withdraws it when the session tears down, and the session only tears down
+when the hold timer expires. Three minutes, by default.
+
+Now the analogy, and give it room. Imagine a fork in a road with a machine above
+it, sorting vehicles left and right. The left road ends in a clean drop fifty
+metres along. The traffic light at the top of the left road is still green. For
+three minutes, half of everything drives cheerfully into a road that stops.
+
+Then deliver the comparison honestly: with a single path, a failure breaks
+everything for three minutes. With ECMP, it breaks about half of everything — but
+that half includes traffic that would otherwise have been completely fine. You
+have not improved the failure. You have changed who gets hurt. And partial outages
+are harder to diagnose than total ones, because the phones only half ring.
+
+Señor's line, delivered flatly: "It is not a seatbelt. It is a wider road. If you
+want a seatbelt, you must buy a seatbelt separately."
+
+CONCEPT THREE — THE LOOPBACK (about 3 minutes)
+Pivot to the second half. A message arrives from Javier Lin, LoFinance's Singapore
+engineer, at two in the morning his time. Four words: "Peer to my loopback."
+Señor puts the mandarin down a second time — which has never happened twice in one
+morning — and says something he says maybe twice a year: "Ah. He is serious."
+
+Explain the setup: two physical circuits between the same two routers. Junior's
+proposal is to build two BGP sessions, one per link. The host should be fair to
+this idea — it is not stupid, it superficially gives both redundancy and load
+sharing.
+
+Then the reason it loses. BGP peering is a TCP connection. If that connection is
+bound to a physical interface, then losing the cable loses the session: routes
+withdraw, timers run, everything reconverges. But bind it to a loopback — an
+interface that exists only in software, with no cable, no transceiver, nothing to
+unplug — and the TCP connection simply reroutes underneath BGP over the surviving
+circuit. BGP never notices anything happened.
+
+Give the listener the line: a loopback cannot go down, because it was never
+physically up.
+
+Then the wrinkle that catches everyone. Even though the two routers are joined by
+a single cable, loopback-to-loopback peering does not work by default. Reaching
+the far loopback requires a routing decision on the far router — that is more than
+one hop, and external BGP starts life with a time-to-live of exactly one. So
+multihop must be enabled. The line: the cable is one hop, but the loopbacks are
+not on the cable.
+
+Mention update-source briefly — the session has to be sourced from the loopback,
+or the peer sees a connection attempt from an address it was not expecting and
+ignores it entirely.
+
+JUNIOR'S MISTAKE (about 90 seconds)
+Junior gets two things wrong this episode and both are instructive. The first is
+subtle: he reached the right conclusion — use both links — from the wrong model.
+He thought BGP load balances by nature. It does not. And being right about the
+outcome while wrong about the mechanism means that when it fails, you have nothing
+to troubleshoot with.
+
+The second is the good one. When the Singapore session would not come up, the
+instinct in the room was to check the same policy table that had been the answer
+one week earlier — the table that governs traffic destined to the firewall itself.
+But this session is different. It is born on the loopback and it leaves through a
+physical port. Two different interfaces. That is ordinary firewall policy, not the
+special table.
+
+And here is why this is genuinely nasty: it fails with exactly the same symptom.
+The same word on the screen. Same symptom, opposite table.
+
+Señor's closing line on it: "Last week the answer was not the firewall policy.
+This week the answer is the firewall policy. This is why you do not memorise
+answers. You memorise where the packet went."
+
+CLOSE AND TEASER (about 90 seconds)
+Wrap up the business outcome: both invoices now earn their keep, and Singapore
+survives losing either circuit without BGP so much as blinking. But the risk that
+was found today has not been fixed. Three minutes of detection latency, written on
+an index card and taped to the wall, unresolved.
+
+Then the teaser. Friday morning, nineteen minutes before the trading floor opens.
+The first carrier's far-end router dies — not the cable, the router — silently.
+The cable stays lit. Every indicator in the building stays green. For ninety-one
+seconds, half of LoFinance's trades go into a road that ends. And Baz, on
+speakerphone, cheerful as ever: "Mate, I'm looking at it right now, the link is
+up."
+
+To which Señor, very quietly, replies: "The link is not the question."
+
+End the episode there. Next time on The Packet Path: what to do when up is a lie.
+
+--- END PROMPT ---
+
+
+--------------------------------------------------------------------------------
+PART 6 — TOPOLOGY v5.2
+--------------------------------------------------------------------------------
+
+EBGP peering established: LoFinance HQ (AS 65001) <-> ISP-2 Chatswood (AS 65200).
+ebgp-multipath enabled on HQ-FGT; 0.0.0.0/0 now installed with two next-hops.
+EBGP peering established: LoFinance HQ (AS 65001) <-> Singapore DC (AS 65300),
+  loopback-to-loopback — HQ Loopback0 10.99.50.1 <-> SG 172.20.0.1 — with
+  update-source, ebgp-enforce-multihop, equal-cost static routes over both
+  underlay circuits, and a firewall policy permitting Loopback0 <-> port2 on
+  TCP 179.
+LoFinance is now a genuinely multihomed AS with a hop-independent international
+  peering.
+
+OPEN RISK — RISK-56-01
+  180-second detection latency. Approximately 50% of internet-bound flows fail
+  silently during that window. Documented, communicated to the business,
+  unresolved. This is Session 57.
+
+================================================================================
+Session 56 completed Wednesday, 22 July 2026.
+Next: Session 57 — "Fast Recovery" · timers, BFD, graceful restart · EF pp.147-151
+================================================================================

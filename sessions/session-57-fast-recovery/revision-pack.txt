@@ -1,0 +1,439 @@
+==================================================================
+LOFINANCE · SESSION 57 REVISION PACK — "FAST RECOVERY"
+Optimising BGP convergence: timers, BFD, graceful restart
+EF Study Guide 05 — Dynamic Routing Protocols, pp. 147-151
+==================================================================
+
+
+##################################################################
+PART 1 — QUICK SUMMARY (one page)
+##################################################################
+
+THE INCIDENT
+Friday 06:41. The far-end router at ISP-1 Parramatta suffered a control-plane
+death. The fibre stayed lit. The interface stayed UP. Every monitoring light
+stayed green. For 91 seconds, roughly HALF of LoFinance's outbound flows — every
+flow ECMP-hashed onto the dead next-hop — were handed to a road that ended.
+At 06:42:38 the BGP hold timer expired, the routes were withdrawn, and
+reconvergence onto Chatswood took under one second.
+
+THE INSIGHT
+The failover was always instant. It was the NOTICING that cost six figures.
+Detection and reconvergence are separate problems. Detection is usually the
+expensive one, and it is the one people forget to design for.
+
+WHY BGP IS SLOW ON PURPOSE
+BGP's only evidence of life is a KEEPALIVE arriving on a schedule (60s default).
+Its only evidence of death is the absence of that message for a full hold
+interval (180s default). The 3:1 ratio exists so two keepalives can be lost to
+congestion without tearing down a healthy session. BGP is deliberately patient.
+
+WHY YOU DON'T JUST LOWER THE TIMERS
+  (a) FLAPS — aggressive timers reclassify non-failures as failures. A teardown
+      withdraws every route from that peer, propagates the withdrawal, reruns
+      best-path, rewrites the FIB, then re-advertises everything on recovery.
+  (b) CPU — BGP runs in the routing daemon, in SOFTWARE, on the CPU. Not
+      NP-offloaded. Multiply across many peerings and you degrade convergence
+      precisely when routes are churning.
+
+THE THREE TOOLS
+  BGP TIMERS       60s / 180s. Baseline. Leave them alone.
+  BFD              250ms x 3 = 750ms. Detects a ONE-WAY DEVICE FAILURE in under
+                   a second, independent of media. Bidirectional — both ends.
+  GRACEFUL RESTART Stops a peer withdrawing routes during an HA failover,
+                   because the BGP daemon runs only on the primary.
+
+THE CONFLICT
+  BFD says:              "He's dead — reroute NOW."
+  Graceful restart says: "He's restarting — DON'T reroute."
+  On the same neighbour these are opposite instructions. BFD WINS. It hands BGP
+  a hard verdict; the session drops before graceful restart's stale-route logic
+  can apply.
+
+THE DESIGN RULE
+Match detection speed to the failure you actually EXPECT on that link, not to
+the fastest number the platform allows.
+
+BUSINESS OUTCOME
+RISK-56-01 closed. Carrier detection latency 180s -> 750ms. RISK-57-01 raised:
+ISP-2 BFD support is a verbal assurance from Baz, unconfirmed in writing.
+
+
+##################################################################
+PART 2 — CHEAT SHEET
+##################################################################
+
+------------------------------------------------------------------
+DEFAULTS AND TIMERS
+------------------------------------------------------------------
+BGP keepalive-timer            60 seconds
+BGP holdtime-timer             180 seconds  (3 x keepalive)
+Ratio rationale                two lost keepalives tolerated
+bfd-desired-min-tx             250 ms
+bfd-required-min-rx            250 ms
+bfd-detect-mult                3
+BFD detection time             250 ms x 3 = 750 ms
+BFD transport                  UDP 3784 single-hop / UDP 4784 multihop
+BFD control packet             24 bytes fixed header
+Single-hop BFD TTL             255, checked on receipt (GTSM)
+Graceful restart               disabled by default, must be negotiated
+EBGP default TTL               1        (carried from S55)
+IBGP default TTL               255      (carried from S55)
+
+------------------------------------------------------------------
+CLI — BFD (BOTH PLACES REQUIRED)
+------------------------------------------------------------------
+config router bgp
+    config neighbor
+        edit 100.64.1.254
+            set bfd enable
+        next
+    end
+end
+
+config system interface
+    edit "port1"
+        set bfd enable
+        set bfd-desired-min-tx 250
+        set bfd-required-min-rx 250
+        set bfd-detect-mult 3
+    next
+end
+
+------------------------------------------------------------------
+CLI — BFD MULTIHOP (non-adjacent peers, e.g. loopback-to-loopback)
+------------------------------------------------------------------
+config router bfd
+    config multihop-template
+        edit 1
+            set src 10.99.50.0 255.255.255.0
+            set dst 172.20.0.0 255.255.255.0
+            set auth-mode md5
+            set md5-key <password>
+        next
+    end
+end
+
+config router bgp
+    config neighbor
+        edit 172.20.0.1
+            set bfd enable
+            set ebgp-enforce-multihop enable
+        next
+    end
+end
+
+NOTE: multihop matches on SUBNETS via a template, not on an interface.
+NOTE: MD5 because the probe crosses networks you do not control.
+NOTE: multihop needs LOOSER timers than single-hop — jitter on hops you don't own.
+
+------------------------------------------------------------------
+CLI — GRACEFUL RESTART (BOTH COMMANDS REQUIRED)
+------------------------------------------------------------------
+config router bgp
+    set as 65001
+    set router-id 10.99.50.1
+    set graceful-restart enable                    <- global: enable feature
+    config neighbor
+        edit 100.64.1.254
+            set capability-graceful-restart enable <- per-neighbour: advertise it
+            set remote-as 65100
+        next
+    end
+end
+
+------------------------------------------------------------------
+CLI — VERIFICATION (in order of usefulness)
+------------------------------------------------------------------
+get router info bfd neighbor            Is BFD UP, or merely configured?
+get router info bgp neighbors <ip>      Negotiated capabilities incl. GR
+get router info routing-table bgp       Is there anything to reconverge onto?
+show router bgp                         Confirm neighbour half of BFD config
+show system interface port1             Confirm interface half of BFD config
+diagnose sniffer packet any 'port 3784' LAST RESORT — not first
+
+------------------------------------------------------------------
+BFD PACKET FIELDS THAT MATTER OPERATIONALLY
+------------------------------------------------------------------
+State (Sta)          AdminDown / Down / Init / Up — the whole handshake
+Diagnostic           WHY the last state change happened
+Detect Mult          missed intervals before declaring down (default 3)
+My Discriminator     this end's session identifier
+Your Discriminator   far end's identifier, echoed back. ZERO until learned
+Desired Min TX       microseconds — how often I want to send
+Required Min RX      microseconds — fastest I can accept receiving
+
+NEGOTIATION RULE: actual interval = GREATER of sender's Desired TX and
+receiver's Required RX. THIS is why the slower peer sets the floor.
+
+DIAGNOSTIC SHORTCUT:
+  Stuck Down, Your-Discriminator = 0   -> far end is not participating at all
+  Flapping, "detection time expired"   -> far end IS participating, path is lossy
+  Those are two completely different investigations.
+
+------------------------------------------------------------------
+KEY BEHAVIOURS AND DESIGN RULES
+------------------------------------------------------------------
+1. Interface state proves the optics work. Nothing about the device behind them.
+2. Detection time != reconvergence time. Diagnose which one you have.
+3. BFD must be enabled in TWO PLACES (neighbour + interface).
+4. BFD must be enabled on TWO SIDES (it is a negotiated bidirectional session).
+5. One-sided BFD fails SILENTLY — BGP stays Established, dashboard stays green.
+6. BFD without an alternative path = monitoring benefit, NOT availability.
+7. BFD relocates the CPU constraint rather than removing it (4 pps each way per
+   session; 50 spokes = 200 tx + 200 rx per second forever).
+8. Graceful restart needs the GLOBAL command AND the PER-NEIGHBOUR capability.
+9. BFD overrules graceful restart. Never deploy both aggressively on an HA peer.
+10. The slower peer sets the floor.
+11. Other convergence levers (p.148): stable network / no port flapping; reduce
+    RIB size with in-out filters; route reflectors in IBGP to concentrate updates.
+
+------------------------------------------------------------------
+PER-NEIGHBOUR DESIGN TABLE
+------------------------------------------------------------------
+Peer type                    Expected failure        Tool              Posture
+Multihomed carrier edge      silent device death     BFD               aggressive
+Peer behind an HA cluster    failover, not death     graceful restart  relaxed/none
+Standalone remote device     genuine loss            BFD               defaults
+Single-homed peer            anything                BFD = monitoring  say so
+Many low-value spokes        varies                  BFD               relaxed
+
+
+##################################################################
+PART 3 — FLASHCARDS
+##################################################################
+
+Q: FortiGate default BGP keepalive and hold timers?
+A: 60 seconds and 180 seconds. A 3:1 ratio.
+
+Q: Why 3:1 specifically?
+A: So two consecutive keepalives can be lost to congestion or a brief hiccup
+   without tearing down a healthy session.
+
+Q: What is BGP's only evidence that a peer is alive?
+A: A KEEPALIVE message arriving on schedule. (Not a "hello" — that is OSPF.)
+
+Q: Two reasons not to simply lower the BGP timers?
+A: Route flap (non-failures reclassified as failures, expensive teardowns), and
+   CPU (BGP runs in software in the routing daemon, not offloaded to the NP).
+
+Q: What exactly does BFD detect, and how fast?
+A: A one-way DEVICE failure, independent of media type, in under one second.
+
+Q: Default BFD transmit interval and detect multiplier? Resulting detection time?
+A: 250 ms and 3. Detection in 750 ms.
+
+Q: The two places BFD must be enabled on a FortiGate?
+A: Per neighbour under `config router bgp`, and per interface under
+   `config system interface`. Both, always.
+
+Q: BFD is configured, the session never comes Up, but BGP stays Established.
+   What is the cause?
+A: The far end is not running BFD. It is a negotiated bidirectional session.
+   BGP does not care, which is why the failure is silent.
+
+Q: Why is one-sided BFD worse than no BFD?
+A: It looks like a closed risk. You tell stakeholders detection is sub-second
+   while still running on a 180-second hold timer.
+
+Q: How is BFD configured for a non-adjacent (multihop) peer?
+A: config router bfd > config multihop-template, matching src and dst SUBNETS,
+   with auth-mode md5 and an md5-key. Paired with ebgp-enforce-multihop on the
+   neighbour.
+
+Q: Why does multihop BFD need looser timers than single-hop?
+A: Jitter and congestion on intermediate hops you do not own can make a healthy
+   path look identical to a dead peer.
+
+Q: Why MD5 on multihop BFD but not usually single-hop?
+A: The probe crosses networks you do not control and could be spoofed by someone
+   who does.
+
+Q: Where does the BGP daemon run in an HA cluster?
+A: Only on the primary unit.
+
+Q: Why doesn't FGCP session sync save the BGP peering?
+A: The synced session table is kernel state for TRANSIT traffic. A BGP peering
+   TERMINATES on the box, in a userland process's memory. Processes do not fail
+   over.
+
+Q: What does the peer do during an HA failover without graceful restart?
+A: Sees the TCP session die and withdraws every route learned from that cluster.
+   The new primary can forward fine — routing announced a death that was really
+   a change of shift.
+
+Q: The two commands required for graceful restart?
+A: `set graceful-restart enable` (global) and `set capability-graceful-restart
+   enable` (per neighbour). It is a negotiated capability.
+
+Q: BFD and graceful restart on the same neighbour — which wins on failover?
+A: BFD. It hands BGP a hard verdict; the session tears down before graceful
+   restart's stale-route logic can apply.
+
+Q: Is BFD an availability control on a single-homed peer?
+A: No. It is a monitoring benefit. There is nowhere to reconverge to.
+
+Q: What is the aggregate cost of BFD at defaults across 50 peerings?
+A: 4 packets per second each way per session = 200 tx + 200 rx every second,
+   forever, on the control plane. BFD relocates the CPU constraint, it does not
+   remove it.
+
+Q: In a BFD negotiation, what determines the actual interval used?
+A: The GREATER of the sender's Desired Min TX and the receiver's Required Min RX.
+   Hence: the slower peer sets the floor.
+
+Q: Your Discriminator is permanently zero on a Down session. What does that mean?
+A: Nothing is coming back. The far end is not participating.
+
+Q: Session flapping with diagnostic "control detection time expired"?
+A: The far end IS participating, but the path is losing packets. Likely timers
+   too aggressive for the path.
+
+Q: FGCP syncs IPsec SAs. What does that mean for a BGP peering over an IPsec
+   tunnel to an HA cluster?
+A: The tunnel survives the failover; the BGP daemon does not. Intact tunnel,
+   dead peering — which is why graceful restart, not BFD, is the tool there.
+
+Q: What is the first command when someone says "failover took three minutes
+   despite BFD"?
+A: get router info bfd neighbor. Configured and Up are different facts.
+
+Q: Three convergence levers from p.148 other than BFD and graceful restart?
+A: Keep the network stable (no port flapping), reduce RIB size with in/out
+   filters, and use route reflectors in IBGP to concentrate updates.
+
+Q: The one-sentence design rule for this session?
+A: Match detection speed to the failure you actually expect on that link, not to
+   the fastest number the platform allows.
+
+
+##################################################################
+PART 4 — PODCAST PROMPT ("THE PACKET PATH")
+##################################################################
+
+Paste the block below directly into an AI audio / podcast generator.
+
+------------------------------------------------------------------
+Generate an episode of "The Packet Path," a warm, wry, technically serious
+podcast about enterprise networking told through the story of a fictional
+financial firm called LoFinance. Two hosts: a curious, quick interviewer and a
+patient senior engineer who explains through analogy and never rushes. Target
+length 16-20 minutes. Conversational, no jargon without unpacking it, no
+corporate tone. Australian setting, light touch on the accent references.
+
+EPISODE TITLE: "Fast Recovery — The Ninety-One Seconds Nobody Saw"
+
+COLD OPEN
+Friday morning, 6:41am, nineteen minutes before the trading floor opens. In a
+carrier facility across town, a router's control plane dies. Not the fibre. Not
+the optics. Not the port. The brain. And here is the cruelty of it: the line card
+keeps the laser lit. The interface stays up. Every status light in LoFinance's
+office stays green.
+For the next ninety-one seconds, half the firm's outbound trades are handed to a
+road that ends in fog. Packets leave. Nothing comes back. No error. No dip in any
+graph until the graph is already a crime scene.
+Build the tension slowly. Emphasise that everything looked fine.
+
+BEAT 1 — THE PHONE CALL
+At 6:52 the carrier account manager, Baz — cheerful, unbothered, sells things on
+a handshake — is on speakerphone saying: "Mate, I'm looking at the circuit right
+now. The link is up." Have the hosts sit with that. He was RIGHT. The link WAS
+up. And it was completely useless information.
+Señor, the senior engineer in the corner peeling a mandarin, says quietly: "The
+link is not the question."
+KEY IDEA TO LAND: interface state proves the optics work. It proves nothing at
+all about the device behind them.
+
+BEAT 2 — THE MOST IMPORTANT SENTENCE
+Reveal that when BGP's hold timer finally expired at 6:42:38, the reconvergence
+onto the second carrier took less than a SECOND. The failover was always instant.
+It was the NOTICING that took ninety-one seconds.
+Have the interviewer be genuinely surprised by this. Let the senior engineer make
+the distinction explicit: DETECTION and RECONVERGENCE are two different problems,
+and detection is almost always the expensive one.
+
+BEAT 3 — WHY BGP IS SLOW ON PURPOSE
+Explain keepalives: BGP's only evidence a neighbour is alive is a small message
+arriving on a schedule — every 60 seconds by default. Its only evidence of death
+is the absence of that message for 180 seconds. Three strikes.
+The interviewer should ask the obvious question: why not just set it to three
+seconds? Let the senior engineer explain BOTH reasons.
+  - Flaps: aggressive timers reclassify congestion as death. Every teardown
+    withdraws routes, propagates withdrawals, reruns best-path, rewrites
+    forwarding tables, then re-advertises everything on recovery.
+  - CPU: BGP runs in software, on the processor, not in the dedicated networking
+    silicon. Sixty times more often, across every peering, all in software.
+USE THIS ANALOGY, it is the episode's best: "Turning the timers down is asking a
+slow man to run. He will run — and he will be slower than before, because now he
+is also tired."
+
+BEAT 4 — THE THREE LETTERS
+Vendor support replies in eleven minutes, the fastest anyone has seen, with three
+letters: B-F-D. Bidirectional Forwarding Detection.
+Explain it as: if BGP can't be the fast detector, build a separate one. Strip the
+liveness question OUT of the heavyweight routing protocol, give it a tiny
+24-byte packet doing exactly one job, and suddenly you can afford to ask it four
+times a second instead of once a minute.
+CRUCIAL POINT: BFD did not invent a smarter algorithm. It uses the SAME logic —
+send at an interval, multiply by three, declare death. 250 milliseconds times
+three equals 750 milliseconds. Same idea, made two hundred and forty times
+cheaper.
+Also land: BFD asks "does the DEVICE answer?" not "is the INTERFACE up?" — which
+is precisely the failure Baz couldn't see.
+
+BEAT 5 — JUNIOR'S MISTAKE (the engineer's mistake this week)
+This week the instructive error was not the junior's. It was subtler and more
+human. Having correctly argued minutes earlier that running BGP faster would burn
+CPU, the same engineer was asked whether BFD on fifty branch sites would be a
+good idea — and said yes, that sounds good.
+Have the hosts treat this generously and seriously, because it is the most
+relatable mistake on the show. He HAD the argument. He built it himself. He just
+didn't recognise the same constraint wearing different clothes.
+Do the arithmetic out loud: 250 milliseconds means four packets per second, each
+way, per session. One peering is nothing. Fifty is two hundred transmits and two
+hundred receives every second, forever, on the same processor.
+LESSON: BFD does not remove the CPU constraint. It RELOCATES it. And the general
+lesson, which is bigger than networking — when you build a good argument, name it
+and keep it, because the next situation that needs it will not look the same.
+
+BEAT 6 — THE TWO SEATBELTS
+Introduce the last twist. The help-desk engineer asks: fine, that's the carrier's
+router dying. What about when OUR redundant pair fails over?
+Explain that in a high-availability cluster, the BGP process runs only on the
+active unit. The standby inherits the traffic beautifully — but not the
+conversation. It starts a brand new process that has never spoken to anybody. The
+far end sees the session die and withdraws every route.
+The fix is called graceful restart: a promise negotiated IN ADVANCE that says
+"if my session drops, I'm restarting, not dying — hold my routes."
+NOW THE TWIST. Put both features on the same neighbour and they instruct the
+router to do opposite things. BFD shouts "he's dead, reroute now." Graceful
+restart whispers "he's restarting, don't." BFD WINS — it hands down a hard
+verdict before graceful restart's promise can apply.
+USE THIS LINE: "You bought the seatbelt. Then you bought a second seatbelt that
+cuts the first one."
+Land the design rule: match detection speed to the failure you actually EXPECT on
+that link, not to the fastest number the platform allows. And add the constraint
+that surprises people — when two devices negotiate, the interval is set by
+whichever end is slower. A powerful hardware appliance peering with a virtual
+machine cannot dictate the pace. The slower peer sets the floor.
+
+CLOSING
+Return to the risk register. The week before, the engineer had written down this
+exact exposure and explained it to the CFO in her own language. She'd asked what
+it costs to fix. This Friday, the risk collected its rent.
+Señor's line: "Nobody in this room is allowed to be surprised. You wrote it down."
+Close on the idea that good engineering is not preventing every failure — it is
+knowing which failures you have accepted, and being ready with the answer when
+one of them arrives.
+
+TEASER FOR NEXT EPISODE
+Next time on The Packet Path: routing gets political. A colleague flies in from
+Singapore — in person, which has never happened — carrying no laptop and one
+folder. Señor says: "OSPF is a family sharing one map. Everyone sees the same
+house. BGP is nations negotiating treaties. Everyone has a map, and everyone is
+lying about theirs — politely." And the newest engineer asks the best question of
+his career: why can't we just run OSPF everywhere and skip the whole business?
+Nobody answers him for six minutes.
+------------------------------------------------------------------
+
+END OF REVISION PACK — Session 57, Wednesday 22 July 2026.

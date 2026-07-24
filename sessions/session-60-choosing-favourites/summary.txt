@@ -1,0 +1,387 @@
+SESSION 60 SUMMARY — "Choosing Favourites"
+Season 5 "The Expansion" · SNA Domain 4 · EF Study Guide, Dynamic Routing Supplement,
+pp. 342-348 (BGP attributes, attribute categories, route selection tie-breakers,
+the network command / network-import-check, prefix lists).
+Written for Claude, to continue the story in Session 61 (COWBOY HAT — BGP boss battle).
+
+==================================================================
+STORY EVENTS
+==================================================================
+Thursday 06:12. Riley alone in a dark office with a ticket queue containing ONE entry,
+opened at 05:47 by someone with a London email signature — before London officially exists.
+TICKET #4471: "Latency to LON-DC: 340ms. Expected: ~90ms." Riley runs the traceroute himself
+because he does not believe it. Sydney → Sydney edge → 172.20.0.1 (SINGAPORE, Javier's border)
+→ long transoceanic silence → London. "It's going AROUND THE PLANET. The wrong way."
+
+08:00, good conference room. Penny has PRINTED the ticket (never a good sign) and has been
+shown "a picture of the Earth with an arrow on it." J.R. has written 340 and 90 in his notebook
+and drawn a line between them, twice (arithmetic-twice signature intact).
+
+Señor at the whiteboard — the one Junior wiped at the end of S59, now bearing one dot and eight
+radiating lines, which JUNIOR HAS BEEN QUIETLY MAINTAINING LIKE A SHRINE. Señor is NOT SMILING
+for the second consecutive day and people have noticed.
+Señor: "Because BGP chose it. And BGP is not wrong. BGP is NEVER wrong. BGP is only ever...
+badly advised."
+Javier Lin, on the line since 07:00 SGT, silent, delivers exactly one line early: "My path is
+shorter. Fewer autonomous systems. Ask your algorithm." Click. Never hung up.
+J.R.: "Can we just... tell it not to?"
+Señor: "You cannot TELL BGP anything, J.R. You can only make it PREFER."
+He produces the folded, coffee-ringed page — the ten-item tie-breaker list, item one circled
+twice in red — and does NOT show it yet. Folds it back up. Opens with the S59 retests instead.
+
+Mid-episode beats:
+- Riley quotes S58 back at Señor from memory: "Absence of errors is not evidence of
+  correctness." Señor turns around slowly: "WHO TAUGHT YOU THAT?" Riley: "You did. Session
+  fifty-eight. It's on a sticky note on my monitor." THIS IS A NEW AND KEEPABLE CHARACTER BEAT —
+  Riley has started retaining the senior lessons, not just supplying naive questions.
+- JUNIOR ANSWERS A TRAP BEFORE FALLING INTO IT. Asked why rule 2 exists in the route-map, he
+  reasons out the implicit deny from S15 knowledge: "I'd fix London and lose the rest of Europe."
+  Señor: "That is the first time you have answered a trap before falling into it." Junior sits
+  up about an inch. JUNIOR'S UPWARD ARC CONTINUES — THIRD CONSECUTIVE SESSION. DO NOT RESET HIM.
+- Junior's only other line is the callback: "You run out of board."
+- Fix verified live: Riley refreshing — "94 milliseconds."
+- Javier, after a pause: "You changed the argument." Click.
+  Señor: "I did not change the argument. I RAISED THE SUBJECT EARLIER." (Keeper line.)
+- Penny's board sentence, written on her pad: "We advertise only what we can actually reach."
+- Riley closes #4471 at 11:04 with resolution note: "Nobody at LoFinance had ever expressed a
+  preference."
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — see performance notes; carried the session, 7/10 on exam.
+- Señor — sombrero. NOT SMILING for two days (deliberate; the sombrero comes OFF at end of
+  episode, see teaser). Keeper lines: "BGP is never wrong, only badly advised." / "You cannot
+  tell BGP anything, you can only make it prefer." / "I raised the subject earlier." /
+  "The check is the difference between advertising a subnet and advertising a rumour." /
+  "Weight is a private opinion. Local preference is a company policy."
+- Penny — printed the ticket; needs one sentence for the board; got three.
+- Riley — opened the episode alone in the dark; NEW BEAT: retains and quotes senior lessons.
+  Fourth consecutive session where Riley's plain-English framing does real work.
+- J.R. — ex-accountant, notebook, arithmetic twice, wrote "weight — where does it live?" and
+  "It's a bucket, not a tap" and "Score first, count last."
+- Javier Lin — offscreen, TWO lines total, both perfect. Signature intact and now weaponised:
+  he is not an antagonist, he is CORRECT, which is worse.
+- Junior — maintaining the whiteboard shrine; answered the route-map trap correctly. UPWARD.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+London-bound traffic (LON-DC, AS 65400) is transiting Singapore (AS 65300, Javier) instead of
+the EU carrier (AS 65500). 340ms vs 90ms. Both paths are EXACTLY 2 AS hops. No fault exists.
+No misconfiguration exists. The path was decided by the LAST tie-breaker on the list — lowest
+router ID — i.e. by someone else's addressing choices. Secondary problem: LoFinance's new
+London-facing subnet 10.55.10.0/24 is not reaching the EU partner at all.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (pp. 342-348)
+==================================================================
+1. THE TIE-BREAKER LIST AS AN ARGUMENT CONDUCTED IN ORDER (p.344). Ten lines. BGP compares two
+   paths one line at a time, top to bottom, and THE FIRST LINE WHERE THEY DIFFER ENDS THE
+   ARGUMENT. Nothing below that line is ever read. Full list taught:
+     1 highest weight · 2 highest local pref · 3 originated locally · 4 shortest AS path ·
+     5 lowest origin type · 6 lowest MED · 7 lowest IGP metric to next hop ·
+     8 prefer EBGP over IBGP · 9 ECMP up to 10 routes · 10 lowest router ID.
+2. "ARGUE ABOVE THE LINE YOU ARE LOSING ON." The senior-engineering core of the episode.
+   Javier invited a contest on line 4 (AS path length) where we tie. We declined and competed
+   on line 2. CHOOSING THE BATTLEGROUND IS THE SKILL; the config is trivial afterwards.
+3. FALLING TO LINE 10 IS NOT A FAULT — IT IS AN ABSENCE OF POLICY. Direct extension of S56
+   ("a coin flip decided by someone else"). Student produced this himself, unprompted.
+4. BEST-PATH SELECTION IS A RIB-in → LOCAL RIB EVENT. Both candidates queue in RIB-in; only the
+   winner enters the Local RIB; the loser stays in RIB-in forever waiting for the winner to die.
+   "RIB-in = the candidates. Local RIB = the winner. The tie-breaker list is the doorman."
+5. ORDER OF OPERATIONS AT THE FIRST GATE: inbound route-map runs BEFORE best-path selection.
+   "POLICY RUNS FIRST. THE DOORMAN READS THE RESULT." If the list ran first you would be editing
+   the loser's paperwork after the verdict. This is WHY attribute manipulation works at all.
+6. WEIGHT vs LOCAL_PREF BY SCOPE — the selection criterion:
+     weight     = this FortiGate only. Never advertised anywhere. A PRIVATE OPINION.
+     LOCAL_PREF = entire local AS, carried in IBGP updates, STRIPPED at the AS edge.
+                  A COMPANY POLICY.
+   Because MEL/BNE/PER/ADL must all inherit the preference, LOCAL_PREF is the only viable tool.
+   Weight would require touching every firewall — "you run out of board."
+7. BGP ATTRIBUTE CATEGORIES (p.343) — TAUGHT LATE, AS REMEDIATION, AFTER THE EXAM. The student
+   flagged twice that he did not understand these and missed Q3 and Q9 on them. Taught as TWO
+   SEQUENTIAL QUESTIONS:
+     Q1: must every BGP router understand it?  well-known : optional
+     Q2 (if well-known): must it be on every route?  mandatory : discretionary
+     Q2 (if optional): may an ignorant router pass it on?  transitive : non-transitive
+   Table: ORIGIN / AS_PATH / NEXT_HOP = well-known mandatory. LOCAL_PREF / ATOMIC_AGGREGATE =
+   well-known discretionary. AGGREGATOR / COMMUNITY = optional transitive. MULTI_EXIT_DISC =
+   optional NON-transitive.
+   THE HOOK THAT LANDED: "ASK HOW FAR IT TRAVELS AND THE CATEGORY ANSWERS ITSELF."
+   LOCAL_PREF is stripped at the AS edge ⇒ cannot be mandatory ⇒ discretionary.
+   MED is advice for ONE neighbour ⇒ must not be passed on ⇒ non-transitive.
+   COMMUNITY exists to survive the boundary ⇒ transitive.
+   Memory line: "COMMUNITY travels. MED must not. LOCAL_PREF never leaves home."
+8. THE NETWORK COMMAND (p.347) — GENUINE NEW GROUND, as predicted. Student knew only
+   redistribution (S57). Framed as BUCKET vs TAP (J.R.'s phrasing, in-story):
+     redistribute = pour a whole CATEGORY of routes into BGP, then spend the afternoon
+                    taking back what you didn't mean to say
+     config network = originate EXACTLY ONE named prefix. Deliberate, auditable.
+   It is NOT a filter on redistribution — it is a second, INDEPENDENT origination method.
+9. network-import-check (p.347) — THE EXAM QUESTION AND THE EPISODE'S SECOND FAULT.
+   Default ENABLED. The prefix is advertised ONLY IF an active route with an EXACT matching
+   destination subnet exists IN THE ROUTING TABLE (not the Local RIB — student got this half
+   wrong and it was corrected: "network-import-check consults FortiGate's routing table, not
+   BGP's head. IMPORT — from outside BGP, into BGP.")
+   THE TRAP: routing table has 10.55.0.0/16 connected; network statement says 10.55.10.0/24.
+   PREFIX AND MASK MUST MATCH EXACTLY. A /16 does not satisfy a /24. FortiGate says NOTHING —
+   no log, no error, no alarm. Reachability is fine; origination is silent.
+   Two fixes offered and the student had to choose:
+     A) add a matching static route (NARROW, documents intent)
+     B) set network-import-check disable (GLOBAL, silent, removes the net for ALL statements)
+   Student chose A for the right reason (spotted it is a GLOBAL switch). Chosen for LoFinance.
+   Keeper line: "The check is not in your way. The check is the difference between advertising
+   a subnet and advertising a rumour."
+10. PREFIX LISTS (p.348) — per-neighbour, prefix-list-in / prefix-list-out.
+    THE IMPLICIT DENY ALL: anything not matching an entry is DENIED. Taught as a FAMILY
+    RESEMBLANCE with route-maps and access lists rather than as an isolated fact, and
+    deliberately paired with Junior's route-map rule-2 moment twenty minutes earlier.
+    "Every filtering construct in FortiOS ends in an implicit denial. Learn the family and you
+    will never be caught by any individual member."
+
+==================================================================
+MENTAL MODELS / ANALOGIES DEVELOPED
+==================================================================
+- THE TIE-BREAKER LIST IS AN ARGUMENT, NOT A SETTINGS PAGE. First difference wins; the rest is
+  never read.
+- "ARGUE ABOVE THE LINE YOU'RE LOSING ON."
+- "BGP IS NEVER WRONG. IT IS BADLY ADVISED."
+- "FALLING TO LINE TEN IS NOT A FAULT. IT IS AN ABSENCE OF POLICY."
+- THE DOORMAN: RIB-in = candidates queueing; Local RIB = who got in; list = doorman.
+- "POLICY RUNS FIRST. THE DOORMAN READS THE RESULT."
+- "WEIGHT IS A PRIVATE OPINION. LOCAL PREFERENCE IS A COMPANY POLICY."
+- "A BUCKET, NOT A TAP" (J.R.) — redistribute vs network.
+- "ADVERTISING A SUBNET VS ADVERTISING A RUMOUR" (network-import-check).
+- "ASK HOW FAR IT TRAVELS AND THE CATEGORY ANSWERS ITSELF" (attribute categories).
+- "COMMUNITY TRAVELS. MED MUST NOT. LOCAL_PREF NEVER LEAVES HOME."
+- THE FAMILY OF IMPLICIT DENIES (route-map / prefix-list / access-list).
+- Continued from S59 and used throughout: THE THREE DRAWERS / FILING CABINET.
+
+==================================================================
+KEY CLI COMMANDS DISCUSSED
+==================================================================
+get router info bgp network <prefix>        ← read "Paths: (N available, best #M)"
+get router info routing-table all           ← network-import-check verification
+get router info bgp summary / neighbors <ip>
+
+config router route-map
+    edit "PREFER-EU-TO-LONDON"
+        config rule
+            edit 1
+                set match-ip-address "LONDON-PREFIXES"
+                set set-local-preference 300
+            next
+            edit 2
+                set action permit          ← MANDATORY terminator (implicit deny)
+            next
+        end
+    next
+end
+
+config router bgp
+    config neighbor
+        edit "172.30.0.1"
+            set remote-as 65500
+            set route-map-in "PREFER-EU-TO-LONDON"
+            set prefix-list-out "LON-PARTNER-OUT"
+            set description "EU carrier - LON transit"
+        next
+    end
+end
+
+config router bgp
+    config network
+        edit 1
+            set prefix 10.55.10.0 255.255.255.0
+        next
+    end
+    set network-import-check disable        ← GLOBAL. Discussed and REJECTED.
+end
+
+config router prefix-list
+    edit "LON-PARTNER-OUT"
+        config rule
+            edit 1
+                set prefix 10.55.10.0 255.255.255.0
+                set action permit
+            next
+            edit 2
+                set prefix 0.0.0.0 0.0.0.0
+                set le 32
+                set action permit          ← "and everything else"
+            next
+        end
+    next
+end
+
+Verification output shown (memorise the shape):
+BGP routing table entry for 10.44.0.0/16
+Paths: (2 available, best #2)
+  65300 65400
+    172.20.0.1 from 172.20.0.1 (172.20.0.1)
+      Origin IGP, localpref 100, valid, external
+  65500 65400
+    172.30.0.1 from 172.30.0.1 (172.30.0.1)
+      Origin IGP, localpref 300, valid, external, best
+
+==================================================================
+TROUBLESHOOTING APPROACH (as taught)
+==================================================================
+"TRAFFIC TAKES A STRANGE PATH"
+1. Is BGP even choosing? Two paths in the database or one?  → get router info bgp network <p>
+2. Read "Paths: (N available, best #M)" — the whole diagnosis is in that line.
+3. Compare the two paths TOP-DOWN the tie-breaker list. Find the FIRST line where they differ.
+   That line and ONLY that line decided it.
+4. If they differ nowhere → you fell to line 10 (router ID). NOT A FAULT. ABSENCE OF POLICY.
+5. Fix ABOVE the line you were losing on. Never argue on the opponent's line.
+6. Verify: localpref/weight/AS-path changed in the output AND "best" moved.
+
+"PREFIX NOT ADVERTISED AT ALL"
+1. Is it originated? config network present? redistribute enabled?
+2. If network command → get router info routing-table all → EXACT prefix AND mask, ACTIVE.
+3. Originated but silent → prefix-list-out / route-map-out on THAT neighbour → implicit deny.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- LOCAL_PREF 300 inbound from EU carrier, NOT weight — because the whole AS must inherit it.
+- Static route added to satisfy network-import-check rather than disabling the check —
+  narrow fix preferred over global switch. Logged as a deliberate design decision on the risk
+  register (Session 15 principle: least powerful tool that meets the requirement).
+- Explicit permit-all terminator added to prefix-list-out.
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+SYD-HQ (AS 65100) applies inbound route-map PREFER-EU-TO-LONDON on EBGP neighbour 172.30.0.1
+(EU carrier, AS 65500), setting LOCAL_PREF 300 on LON-DC prefixes; propagated cluster-wide by
+IBGP from the route reflector so MEL/BNE/PER/ADL inherit the preference. Sydney→London now
+transits AS 65500 (94ms). The Singapore path via AS 65300 REMAINS IN RIB-in as a validated
+standby (this matters for S61). LoFinance originates 10.55.10.0/24 via config network on
+SYD-HQ, backed by a matching static route. prefix-list-out LON-PARTNER-OUT applied to
+172.30.0.1 with explicit permit-all terminator. network-import-check REMAINS ENABLED
+estate-wide.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+London latency 340ms → 94ms. No new circuits, no new hardware, no vendor call — one route-map
+on one firewall. London subnet now advertised to the EU partner, by name, deliberately.
+Penny's board sentence: "We advertise only what we can actually reach."
+
+==================================================================
+EXAM-RELEVANT NOTES / RESULTS
+==================================================================
+10 asked, 7 correct (70%). Missed Q3 (LOCAL_PREF category), Q7 (prefix-list implicit deny),
+Q9 (MED category).
+- Q1 CORRECT AND OVER-DELIVERED: asked only for the first tie-breaker, he supplied the correct
+  ORDER of the first four (weight → local pref → AS path → MED) unprompted.
+- Q7 IS THE IMPORTANT MISS. He answered this question CORRECTLY IN CONVERSATION twenty minutes
+  earlier, in his own words, with the drawer named ("they sit in local rib, never make it to
+  rib out"). On the exam, without scaffolding, the default assumption returned. THIS IS THE
+  ONE-CORRECTION-DOES-NOT-CONSOLIDATE PATTERN, now with its cleanest evidence yet.
+  RETEST IMPLICIT DENY COLD IN S61.
+- Q3 and Q9 are ONE root cause: attribute categories, which he honestly flagged twice as not
+  understood. Remediated AFTER the exam with the two-question decision tree and the "how far
+  does it travel" hook. NOT YET TESTED. TEST IN S61.
+- Q8 (multi-select, ABD-style) CORRECT — A and C.
+
+==================================================================
+THE MULTI-SELECT METHOD — RESOLVED AFTER THREE SESSIONS
+==================================================================
+FINALLY ANSWERED. He reported: "Eliminate, count what feels right."
+Diagnosis given in-session: elimination is a RELATIVE test — it ranks options against each
+other and answers "which looks most right," which fails precisely when a distractor is TRUE IN
+GENERAL but not true OF THE STATE IN THE STEM. That is his documented failure mode (strongest
+memories = most dangerous distractors). "Stop when you hit the number" also means the last
+option often goes unread — which is the S14 under-select and S15 over-select in both directions.
+REPLACEMENT METHOD PRESCRIBED (enforce from S61 onward):
+   1. Read the stem twice and WRITE DOWN THE STATE. (This is "name the drawer," exam form.)
+   2. Score EVERY option independently TRUE/FALSE against that state. Not against each other.
+   3. Count TRUEs LAST, then compare to the number requested.
+      Too few → you rejected something for unfamiliarity, not falsity. Re-read.
+      Too many → one is true in general but not of this state. Drop that one.
+   "The count is a CHECKSUM, not a stopping condition."
+   J.R.'s compression: "SCORE FIRST, COUNT LAST."
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+Junior made NO mistake this episode. For the first time he ANSWERED A TRAP BEFORE FALLING INTO
+IT — correctly explaining why the route-map needs a permit-all terminator, reasoning from S15
+knowledge about implicit denies, unprompted. Lesson delivered to the room: the trap that catches
+you once becomes the trap you can see coming, but only if you attach it to the FAMILY (all
+FortiOS filters deny by default) rather than to the INSTANCE. Junior's arc is now three
+consecutive sessions upward. He is becoming the character who demonstrates that corrections
+consolidate — which is a deliberate contrast with the student's Q7 miss. USE THIS.
+
+==================================================================
+STUDENT PERFORMANCE NOTES (detail in knowledge-register-session60.txt)
+==================================================================
+- HIGHEST-VALUE MOMENT: asked why HQ must reflect to clients, he did NOT recall the rule — he
+  FOLLOWED A WIRE. He traced Adelaide's single link and discovered the rule had to be true or
+  Adelaide would be a sealed box. Reasoning from consequence, not memory. Then he immediately
+  asked "so what's the point of having clients?" when his own answer produced a useless network.
+  SELF-GENERATED CONTRADICTION DETECTION, TWICE IN FIVE MINUTES. This is the S58 self-correction
+  habit recurring, now as a repeatable move rather than a one-off.
+- The S59 Q5 retest was FAILED COLD ("HQ does nothing since it's not a client") — over-tightening
+  again, third instance — but was then repaired BY REASONING within two turns, which is better
+  than being told. The RELAY RULE IS NOW OWNED: "a route is relayable if a CLIENT is on either
+  end; non-client to non-client is still plain IBGP."
+- ORIGINATOR_ID / CLUSTER_LIST retest PASSED COLD, and he volunteered "cluster list PREPEND" —
+  the verb nobody asked for, which is exactly the distinction between the two attributes.
+- WEIGHT vs LOCAL_PREF answered by SCOPE FIRST, choice second. Correct order of reasoning.
+- RECURRING ERROR, FOURTH OCCURRENCE — ANSWERING THE SHAPE OF THE QUESTION RATHER THAN THE STATE.
+  Asked which DRAWER best-path runs in, he answered "lowest neighbor router-id" — the right
+  answer to a question asked later. He pattern-matched on "tie-breakers" and retrieved the whole
+  topic. Corrected in-session by reducing the question to two fill-in-the-blank words, which he
+  then got instantly. THE HABIT IS NOT YET INSTALLED. ENFORCE HARD IN S61.
+- He also mis-sourced network-import-check (Local RIB instead of the routing table) — a
+  half-inch error on the right mechanism. Corrected.
+- Honest uncertainty signalling: SEVENTH consecutive session ("I don't understand tbh", twice,
+  on the attribute categories). This directly caused the remediation and is why he now has the
+  decision tree. KEEP REWARDING THIS LOUDLY.
+
+==================================================================
+TEASER FOR SESSION 61 — COWBOY HAT: "THE ROUTE THAT WASN'T"
+==================================================================
+DELIVERED AT THE END OF S60:
+Friday 04:50. Riley's phone lights up in the dark — not the ticket system, the ESCALATION line,
+which has rung four times in two years. By the time he gets in, Junior is already there, and
+Junior is NOT TALKING, which is worse.
+10.55.10.0/24 — Penny's London subnet, originated yesterday, verified yesterday, celebrated
+yesterday — IS VISIBLE FROM MELBOURNE AND BRISBANE. It is INVISIBLE from Perth, Adelaide,
+Singapore and the entire EU carrier. Half the world can see it. Half the world swears it never
+existed. Three RIBs on three different firewalls give three different answers and EACH ONE IS
+INTERNALLY CONSISTENT.
+Penny: "Where is Señor?"
+Riley points at the filing cabinet nobody uses. THE SOMBRERO IS SITTING ON TOP OF IT. Beside it,
+dust disturbed in a clean rectangle, is a space where something else used to be.
+Junior, very quietly: "He took the hat."
+"Somewhere in the building, a route that everybody configured correctly does not exist."
+
+S61 IS A BOSS BATTLE. MINIMAL HINTS. THE STUDENT DRIVES.
+Scope: BGP core + supplement (EF pp. 132-158, 331-348).
+S61 MUST:
+- Give REALISTIC command output for anything he runs and let him choose the commands.
+- LAYERED FAULTS ARE EXPECTED. Suggested layering that uses the season's scars, in order of
+  discovery difficulty: (a) a prefix-list-out on the RR toward one non-client with no permit-all
+  terminator — the implicit deny, which he MISSED ON Q7 and must now meet in the wild;
+  (b) a route-reflector-client statement removed from one neighbour block on the RR, making a
+  formerly-reflected site silently mute in one direction only; (c) optionally the
+  network-import-check exact-match trap re-armed by an "innocent" summarisation change.
+  The asymmetry (MEL/BNE see it; PER/ADL/SG/EU do not) should be explainable ONLY by combining
+  cluster membership with an outbound filter — no single fault explains the whole symptom.
+- ENFORCE "NAME THE DRAWER BEFORE YOU DIAGNOSE" as a hard gate. Do not accept a diagnosis that
+  does not begin by naming RIB-in / Local RIB / RIB-out. FOURTH SESSION OF THIS PATTERN.
+- ENFORCE "SCORE FIRST, COUNT LAST" on every multi-select. The method is now agreed; test it.
+- RETEST COLD: prefix-list implicit deny (Q7 miss); attribute categories (Q3/Q9 miss, taught
+  post-exam and never tested); LOCAL_PREF vs weight scope.
+- Junior's arc: he is now the character who consolidates corrections. He may quietly get one
+  thing right early that the student missed. Do not humiliate the student with it; play it warm.
+- Riley now quotes senior lessons back. Keep it.
+- Señor is WEARING THE COWBOY HAT and is NOT the mentor this session. He answers nothing
+  directly. The sombrero stays on the filing cabinet for the whole episode.
+
+Date and Time completed: Thursday, 23 July 2026.

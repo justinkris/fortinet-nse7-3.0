@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 63 Troubleshooting — When the Wrong Traffic Takes the Wrong Road</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --red:#a01b2b; --red-light:#fbe9ea; --red-border:#e8b4ba;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;padding:36px 20px 70px;line-height:1.65;}
+  .wrap{max-width:840px;margin:0 auto;}
+  .crumb{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:10px;}
+  h1{font-family:'Playfair Display',serif;font-size:34px;margin:0 0 4px;font-weight:700;}
+  .sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:var(--text-soft);margin:0 0 24px;}
+  h2{font-family:'Playfair Display',serif;font-size:23px;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  p{font-size:14.5px;color:var(--text-soft);}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;
+           padding:13px 18px;margin:14px 0;font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout.amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout.red{border-left-color:var(--red-border);background:var(--red-light);}
+  .callout.green{border-left-color:var(--green-border);background:var(--green-light);}
+  pre{background:#0d1a3a;color:#dfe8fb;border-radius:10px;padding:14px 16px;overflow-x:auto;
+      font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.6;margin:12px 0;}
+  pre .c{color:#8fa6d4;} pre .m{color:#ffb4a2;font-weight:600;} pre .g{color:#9be0b0;}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--surface-2);border:1px solid var(--border-dim);border-radius:4px;padding:1px 5px;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;background:var(--surface);}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border-dim);vertical-align:top;}
+  th{font-size:9.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:700;background:var(--surface-2);}
+  .tree{background:var(--surface);border:1px solid var(--border-dim);border-radius:12px;padding:18px 22px;margin:16px 0;
+        font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9;color:var(--text-soft);white-space:pre;overflow-x:auto;}
+  .tree b{color:var(--blue);}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);
+         display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumb">LoFinance · Season 5 · Session 63 · Troubleshooting Guide</div>
+<h1>When the Wrong Traffic Takes the Wrong Road</h1>
+<p class="sub">How a senior engineer troubleshoots SD-WAN steering. The emphasis is thinking, not commands.</p>
+
+<h2>Symptoms this guide covers</h2>
+<ul style="font-size:14px;color:var(--text-soft);">
+  <li>"Trades are slow but streaming is fine" (or the reverse) — traffic classes on the wrong members.</li>
+  <li>"The same N users are always slow; everyone else is perfect."</li>
+  <li>"A new link is up but carries nothing."</li>
+  <li>"A rule I wrote does nothing — traffic ignores it."</li>
+  <li>"Logs / FortiGuard / DNS from the firewall itself behave differently from user traffic."</li>
+  <li>"First session of an application misroutes, then it behaves."</li>
+</ul>
+
+<h2>Questions to ask before touching anything</h2>
+<div class="callout"><strong>1. Whose traffic, exactly?</strong> Everyone-sometimes, some-always, or the firewall itself? The population shape narrows the fault class before any command runs (hash pinning vs per-flow balancing vs local-out).</div>
+<div class="callout"><strong>2. Which rule do you believe caught it?</strong> Not which rule you wrote — which rule the box would read first. What sits above it?</div>
+<div class="callout"><strong>3. Is the affected traffic user-originated or self-originated?</strong> Self-originated traffic isn't playing this game at all unless someone opted it in.</div>
+<div class="callout"><strong>4. When did it start, and what changed?</strong> A new member changes the hash divisor for everyone. A new rule above changes matching for everyone below.</div>
+
+<h2>The decision tree (the ladder, operationalised)</h2>
+<div class="tree"><b>START:</b> "Traffic class X is on the wrong member."
+│
+├─ <b>RUNG 1 — MATCH.</b> show system sdwan → read services top-down as the box would.
+│    Does an EARLIER rule also match this traffic?
+│    ├─ YES → found it. Catch-all or overlap above. Fix ordering / delete catch-all. STOP.
+│    └─ NO, and NO rule matches → traffic is on the IMPLICIT rule.
+│         Implicit = global load-balance-mode, valid-route members, <b>NO SLA</b>.
+│         If the traffic matters, it needs an explicit rule. STOP (design fix).
+│
+├─ <b>RUNG 2 — UP.</b> get router info routing-table all
+│    Member route (via gateway) present for the intended member?
+│    └─ Connected route only → <b>no gateway on the member</b>. Fix, re-verify. STOP.
+│
+├─ <b>RUNG 3 — IN-SLA.</b> diagnose sys sdwan health-check
+│    ├─ Real bad numbers → carrier/path problem. (Evidence for Baz's renewal meeting.)
+│    └─ dead + 100% loss + 0.000 everything → nothing ever left → config (rung 2 missed).
+│
+├─ <b>RUNG 4 — ELIGIBLE.</b> Is the member in THIS rule's priority-members,
+│    and does it hold a route to THIS destination?
+│    └─ Alive in health-check, absent from service Members() → not invited. Add it. STOP.
+│
+└─ <b>RUNG 5 — PREFERRED.</b> diagnose sys sdwan service
+     Read Mode, selected flags, and whether an SLA is referenced AT ALL.
+     ├─ mode load-balance + "same users always" → hash-mode pinning (see below).
+     ├─ mode priority churning paths → no threshold; consider mode sla + hold-down-time.
+     └─ mode sla, all members out → traffic uses configured order (NOT skipped, NOT dropped).
+        If it went somewhere unexpected, re-read priority-members order.</div>
+
+<h2>Verification commands and what to read in them</h2>
+<table>
+  <tr><th>Command</th><th>Read specifically</th></tr>
+  <tr><td><code>show system sdwan</code></td><td>Rule order; src/dst breadth; <code>hash-mode</code>; the global <code>load-balance-mode</code> line (= the implicit rule).</td></tr>
+  <tr><td><code>diagnose sys sdwan service</code></td><td><code>Mode(...)</code>; which members show <code>selected</code>; src/dst ranges; <strong>presence or absence of the health check</strong> — absence in a rule that should be SLA-gated is itself the finding.</td></tr>
+  <tr><td><code>diagnose sys sdwan health-check</code></td><td>Per-member state and the <em>shape</em> of the numbers (real-bad vs all-zeroes).</td></tr>
+  <tr><td><code>get router info routing-table all</code></td><td>Auto-built member routes (proof of gateway); how many equal defaults exist (ECMP exposure for unclassified + local-out traffic).</td></tr>
+  <tr><td><code>diagnose sys sdwan internet-service-app-ctrl-list</code></td><td>Whether app-ctrl has learned destinations yet (explains first-session leaks).</td></tr>
+</table>
+
+<h2>The "same four users" fingerprint</h2>
+<pre><span class="c"># Expected: mode load-balance + deterministic hash</span>
+Service(1): ... Mode(<span class="m">load-balance</span>) ...
+  <span class="c">and in config:</span>  set hash-mode <span class="m">source-ip-based</span></pre>
+<p>Stable per-person misery = deterministic function of a stable identity input. Hash(source IP) mod member-count, and long DHCP leases keep the input constant. Confirm by correlating the affected users' IPs; fix by classifying the traffic that matters into an SLA-gated rule rather than fighting the hash.</p>
+<div class="callout amber"><strong>Before you "fix" it by adding a member:</strong> changing the member count changes the divisor — every host rehashes. You may cure four users and sicken four others. Announce it.</div>
+
+<h2>Common dead ends</h2>
+<div class="callout red"><strong>Dead end 1 — blaming the rule for a member problem.</strong> "It must be the rule" for port3 was plausible and wrong. Test: delete/ignore the rule mentally — does the symptom survive? If yes, the fault is below rung 1. (Señor's remove-the-explanation move.)</div>
+<div class="callout red"><strong>Dead end 2 — staring at the SLA when the implicit rule owns the traffic.</strong> If no explicit rule matches, no SLA is consulted anywhere. Tuning thresholds cannot help traffic the thermometer doesn't govern.</div>
+<div class="callout red"><strong>Dead end 3 — waiting for fall-through that will never come.</strong> All-out-of-SLA does not skip the rule. If you expected rule 2 to catch traffic when rule 1's members degrade, you designed against behaviour that doesn't exist.</div>
+<div class="callout red"><strong>Dead end 4 — adding routes for the firewall's own traffic.</strong> Static routes "fix" local-out only by accident and break on failover. The real control is <code>interface-select-method</code> per feature.</div>
+<div class="callout red"><strong>Dead end 5 — debugging an app-ctrl rule that can never match.</strong> No application-control profile in the firewall policy → no identification → the rule is inert while valid. Check the policy before the rule.</div>
+
+<h2>Likely root causes, ranked by how often they bite</h2>
+<ol style="font-size:14px;color:var(--text-soft);">
+  <li>A broad rule above a specific one (first match wins).</li>
+  <li>Member missing its gateway (all-zeroes signature).</li>
+  <li>Important traffic on the implicit rule (unclassified, therefore un-gated).</li>
+  <li>Hash-mode pinning misread as a link fault.</li>
+  <li>Local-out traffic never opted in.</li>
+  <li>App-ctrl steering without app control in the policy / first-session leak misread as flapping.</li>
+</ol>
+
+<h2>Exam traps</h2>
+<ul style="font-size:14px;color:var(--text-soft);">
+  <li>Output-to-rung mismatch: they show <code>health-check</code> output and ask a matching question. Name the rung the evidence belongs to first.</li>
+  <li>"The rule falls through when out of SLA" — distractor. Best effort via configured order.</li>
+  <li>"The implicit rule selects only in-SLA members" — distractor. Valid routes only; no SLA.</li>
+  <li>"Enable SD-WAN for local-out globally" — distractor. Per feature only.</li>
+  <li>Zone offered as the missing member field — gateway is the answer; zone is optional.</li>
+</ul>
+
+<div class="callout green"><strong>The senior habit underneath all of it:</strong> before commanding anything, say out loud which rung the symptom lives on and what evidence would prove you wrong. Symptom shape is evidence; the ticket pattern is your first diagnostic output, not noise before the real work.</div>
+
+<footer>
+  <span>LoFinance — Chill Bout Money · Session 63 "Rules of the Road"</span>
+  <span>SNA D4 · Rules &amp; Routing</span>
+</footer>
+
+</div>
+</body>
+</html>

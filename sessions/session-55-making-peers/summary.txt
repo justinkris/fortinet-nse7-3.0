@@ -1,0 +1,329 @@
+SESSION 55 SUMMARY — "Making Peers"
+Season 5 "The Expansion" · SNA Domain 4 · EF Study Guide 05 Dynamic Routing Protocols,
+pp. 137-141
+Written for Claude, to continue the story in Session 56.
+NOTE: Sessions 48-53 remain ON THE SHELF (student's explicit request). Do not assume that
+material was taught.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Tuesday 08:14, Network Ops. Someone has turned the good monitor outward on its arm so the
+whole room can watch it — "like a television in a pub before a grand final." Riley brings a
+chair from the kitchen. J.R. brings a notebook and a pen he actually clicks. Junior brings
+opinions. On screen: one line of `get router info bgp summary` output refreshing every four
+seconds, showing neighbor 203.0.113.1 in state **Active**, zero messages sent or received.
+
+Señor resolves Javier's cryptic S54 sign-off immediately as the cold-open payoff: "179" is
+TCP port 179, BGP's transport. "Javier was telling you the entire transport model of the
+protocol in three characters, and you all thought he was being rude." Señor fumbles the
+arithmetic of the number and waves it away "as though the arithmetic were an unrelated
+colleague."
+
+JUNIOR'S FORESHADOWED LINE LANDS (open thread from S54, now closed): "OSPF doesn't need a
+port, it's just protocol 89 straight on IP. So BGP's basically OSPF but—" Señor turns his
+head very slowly. "—but *bigger*," Junior finishes, quieter. J.R. writes what appears to be
+the word "bigger" with a box around it.
+
+Penny arrives with "the specific walk she has when a circuit is billing but not earning."
+Singapore link live at 06:00; ISP peering was meant to come up with it. "Active sounds good.
+Is it good?" — "It sounds tremendously good. It is the worst state in the protocol." Trading
+feed cuts over Friday. She demands it be "understood, not fiddled with," and asks the money
+question on the way out.
+
+RESOLUTION: Junior spends the first ten minutes checking firewall policies (port1→port3,
+permit any) and insists they're fine. Señor: "Which policy." — "That is *through*. The packet
+is not going through. The packet is going *to*." Root cause: the ISP handoff interface had
+`allowaccess` set for ping and https during commissioning and never updated; local-in was
+dropping inbound TCP 179 one hop from success. Every diagnostic Junior ran on the transit
+path was correct and irrelevant. One line, and the state machine walks all the way to
+Established. Riley claps once, then looks embarrassed.
+
+Señor's closing line (KEY — reuse this): "Up is not peered. Peered is not exchanging.
+Exchanging is not installed. Four different truths. Four different commands."
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — strong on transport reasoning, TTL, and the
+  network-import-check derivation (see LEARNING NOTES). Weakest moment was the router-id
+  question, answered at too high a level of generality.
+- Señor — backwards chair carried under one arm but NOT sat in this episode (he stays
+  standing; new variation on the tell). Mandarin peeled during the router-id question and
+  eaten during Junior's policy hunt. Wrote the state machine on the whiteboard "in his
+  handwriting, which slopes downhill," then capped the pen and said "Two of these are lies."
+- Junior — comic relief AND the episode's lesson-carrier. His "OSPF but bigger" instinct
+  (queued since S54) surfaced and was corrected. His policy-vs-local-in mistake is the
+  senior-engineering lesson of the session.
+- J.R. — notebook, clicking pen, silent annotation. Establishing as the character who writes
+  things down rather than speaking. Two beats this episode, both wordless.
+- Penny — doorway framing device, appears twice: opening (billing but not earning) and the
+  money-sentence gate. Left "without saying thank you, which from Penny is a commendation."
+- Riley — kitchen chair, reads over shoulders, asks the two civilian questions that let
+  Señor deliver his best lines ("So it's stuck before it's even BGP yet" / "So if it's not
+  stuck on transport and not stuck on parameters... it just works?").
+- Javier Lin — offscreen. His S54 line "179 tomorrow" is the cold open. New offscreen line
+  at the end setting up S56: "Peer to my loopback," sent at 02:00 Singapore time.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+The first EBGP session from LoFinance HQ to ISP-1 (Parramatta) would not establish, sitting
+in Active state, blocking the Friday trading-feed cutover. Circuit was billing from 06:00
+Tuesday and earning nothing. Five people spent a morning watching a state machine.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (EF pp. 137-141)
+==================================================================
+1. BGP transport: TCP port 179, unicast, manually configured neighbours. Contrast with OSPF
+   (IP protocol 89, multicast 224.0.0.5, self-discovering).
+2. THE TRADE-OFF (student derived both halves): BGP LOSES peer discovery (TCP is unicast, so
+   neighbours must be declared by hand on both sides) and acquires a bootstrap dependency
+   (something else — static route, connected interface, IGP — must already know how to reach
+   the peer address). BGP GAINS sequencing, acknowledgement, retransmission and flow control
+   for free from TCP, none of which it has to implement. Consequence: BGP sends updates
+   incrementally and never re-floods; OSPF refreshes every LSA every 30 minutes. This is why
+   BGP scales to a million routes and OSPF does not.
+3. THE STATE MACHINE as a diagnostic ladder:
+   Idle → Connect → Active → OpenSent → OpenConfirm → Established
+   - Idle: not trying / refusing to try
+   - Connect: SYN sent to peer on 179, waiting
+   - Active: TCP connection attempt FAILED, retrying and also listening
+   - OpenSent: TCP up, OPEN sent, awaiting theirs
+   - OpenConfirm: OPENs exchanged and accepted, awaiting first KEEPALIVE
+   - Established: peering complete, UPDATE messages now flow
+   Señor's framing: "Two of these are lies" (Active sounds healthy, Connect sounds finished).
+4. CAUSES OF STUCK-IN-ACTIVE (built as a list with the student): no route to peer address;
+   TCP 179 blocked upstream (ISP ACL) or locally (local-in policy / allowaccess); wrong
+   neighbour IP; AS number mismatch; source address mismatch (FortiGate sources from egress
+   interface IP by default — if peer expects a loopback, they ignore the SYN); TTL expiry on
+   a non-adjacent peer.
+5. EBGP TTL = 1 by default (GTSM security control — only a directly-attached device can peer
+   with you; spoofed SYNs from multiple hops away die in transit). IBGP TTL = 255 by default,
+   because IBGP peers are inside your own AS and frequently peer loopback-to-loopback across
+   internal hops — adjacency was never the assumption. Fix for non-adjacent EBGP:
+   `set ebgp-enforce-multihop enable`. PARKED as the centre of S56.
+6. ROUTER-ID: carried inside the OPEN message. A duplicate is therefore detected during OPEN
+   exchange and tears the session down with a NOTIFICATION — it does NOT hang in Active, it
+   cycles through OpenSent/OpenConfirm repeatedly. Set it statically because an unset
+   router-id is derived from interface addressing (highest IP, prefers loopback), making BGP
+   stability dependent on unrelated interface changes — an engineer adding a management VLAN
+   can drop your ISP peering without touching BGP config.
+7. `config network` and NETWORK-IMPORT-CHECK (enabled by default): FortiGate only advertises
+   a declared prefix if an EXACT-match active route is in the routing table. A covering route
+   (172.16.0.0/16 vs declared 172.16.5.0/24) advertises NOTHING, silently, with the session
+   showing healthy. `set network-import-check disable` overrides this. Justified only rarely
+   (aggregation, deliberate origination); using it to "fix" a missing advertisement
+   black-holes traffic.
+8. THE FOUR COMMANDS and the distinct question each answers:
+   - get router info bgp summary          → are we peering, and with whom?
+   - get router info bgp neighbors <ip>   → why is THIS peer behaving this way? (peer IP and
+                                             router-id, remote AS, state, negotiated
+                                             capabilities, timers, last error)
+   - get router info bgp network          → what's in the BGP database (Local RIB), before
+                                             best-path selection
+   - get router info routing-table bgp    → what actually won and got installed
+9. THE GAP BETWEEN DATABASE AND ROUTING TABLE: a prefix present in `bgp network` but absent
+   from `routing-table bgp` means either (a) it lost best-path selection — the loser stays in
+   the database forever, fully valid, never used — or (b) its next-hop is unreachable and the
+   path is marked invalid. Inbound-filtered prefixes typically appear in NEITHER. The
+   operational point: if you only look at the routing table you cannot distinguish "we lost
+   the route" from "we stopped preferring it," which look identical there and completely
+   different in the database.
+10. BGP flow diagram (p.140): BGP RX → RIB-in → in filter → Local RIB (+ redistributed routes)
+    → out filter → RIB-out → BGP TX.
+
+==================================================================
+MENTAL MODELS DEVELOPED
+==================================================================
+- **"Up is not peered. Peered is not exchanging. Exchanging is not installed. Four different
+  truths. Four different commands."** (Señor's closing line — THE takeaway of the session,
+  maps the four commands onto four distinct failure layers. Reuse verbatim.)
+- **"Stuck early = transport. Cycling late = parameters. Established but empty = policy."**
+  The state machine as a diagnostic ladder that tells you WHICH LAYER to investigate rather
+  than requiring you to guess. Student was explicitly told this is "the single most useful
+  thing on this whiteboard today."
+- BGP as a routing protocol with a bootstrap dependency — it requires routing to already work
+  before it can start (student's own observation, first five minutes).
+- Advertising a prefix as a COMMITMENT: "import check is BGP declining to write a cheque the
+  routing table can't cash."
+- TTL 1 as a security feature, not a limitation: reachability restricted to one hop means
+  only a directly-attached device can ever peer with you.
+
+==================================================================
+IMPORTANT ANALOGIES
+==================================================================
+- Monitor turned outward "like a television in a pub before a grand final" (the office
+  gathering to watch a state machine — the episode's central comic image).
+- Peering vs working: "Peering is not working. Peering is two nations agreeing to be in the
+  same room." (Señor — extends the S54 nations-and-treaties frame; keep the frame alive.)
+- Through vs to: firewall policy governs traffic THROUGH the box, local-in governs traffic TO
+  the box. Junior's entire diagnostic session was on the wrong preposition.
+- "Import check is BGP declining to write a cheque the routing table can't cash."
+- Carried from S54 and still available: OSPF-household / BGP-nations; private ASN ≈ RFC 1918
+  (STUDENT'S OWN — not yet handed back to him, still banked for a future opener).
+
+==================================================================
+KEY CLI COMMANDS DISCUSSED
+==================================================================
+config router bgp
+    set as 65001
+    set router-id 10.99.50.1
+    config neighbor
+        edit "203.0.113.1"
+            set remote-as 65100
+            set description "ISP-1 Parramatta"
+        next
+    end
+    config network
+        edit 1
+            set prefix 192.168.10.0 255.255.255.0
+        next
+    end
+end
+
+set network-import-check disable          (override exact-match requirement)
+set ebgp-enforce-multihop enable          (mentioned, parked for S56)
+
+get router info bgp summary
+get router info bgp neighbors <ip>
+get router info bgp network
+get router info routing-table bgp
+get router info routing-table details <peer-ip>    (to verify reachability to peer)
+
+==================================================================
+TROUBLESHOOTING APPROACH
+==================================================================
+Read the STATE first, and let the state select the layer:
+1. Idle              → BGP isn't trying: neighbour misconfigured, admin-down, no route at all
+2. Active (stuck)    → TCP failing: routing to peer, local-in policy / allowaccess, upstream
+                        ACL, source address mismatch, TTL/multihop
+3. OpenSent/OpenConfirm (cycling) → TCP works, parameters disagree: AS mismatch, router-id
+                        collision, authentication, capability mismatch
+4. Established, 0 prefixes → peering works, policy doesn't: network-import-check,
+                        prefix-lists, nothing to advertise
+Then: for traffic destined TO the FortiGate, check local-in policy and interface allowaccess,
+NOT firewall policy. This was the actual root cause and Junior's mistake.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- LoFinance HQ assigned **AS 65001** (private range, per S54 decision). ISP-1 Parramatta is
+  **AS 65100**. Singapore and London ASNs still unassigned — assign when those peerings are
+  built.
+- Peering transit link: **203.0.113.0/29**, FortiGate 203.0.113.2, ISP-1 203.0.113.1.
+- Router-ID set STATICALLY to **10.99.50.1** — a stable internal address on the existing
+  10.99.50.0/24 management range, deliberately NOT on any transit link, so no circuit change
+  can ever move it. This reasoning was taught explicitly and should be referenced when
+  Singapore/London peerings are configured.
+- Prefix originated: **192.168.10.0/24** via `config network` (existing HQ LAN from the
+  as-built topology).
+- Local-in policy on ISP-1 handoff amended to permit TCP 179 from the peer address only (not
+  a blanket allowaccess widening — note this restraint if it comes up later).
+- network-import-check LEFT AT DEFAULT (enabled). Explicitly discussed and deliberately not
+  disabled.
+
+==================================================================
+TOPOLOGY CHANGES (topology v5.1)
+==================================================================
+- EBGP peering ESTABLISHED: LoFinance HQ (AS 65001) ↔ ISP-1 Parramatta (AS 65100) over
+  203.0.113.0/29. Established 09:47 Tuesday 22 July.
+- Prefix 192.168.10.0/24 originated to ISP-1; ISP default route received and installed.
+- Router-ID 10.99.50.1 statically assigned.
+- Local-in policy amended on ISP-1 handoff interface.
+- LoFinance is now a **multihomed AS in progress** — one external peering live, Singapore
+  and London pending, ISP-2 Chatswood circuit billing from Monday (S56 driver).
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Session Established 09:47. Friday trading-feed cutover unblocked. Total cost of the outage:
+one morning of five people watching a word change on a screen. The engineer delivered the
+money sentence to Penny successfully (see below).
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- TCP 179 is near-certain to appear as a straight recall MCQ.
+- EBGP TTL 1 vs IBGP TTL 255 — high-value pair, likely tested as a "why does this session
+  fail" scenario rather than direct recall.
+- **THE BEST DISTRACTOR OF THE SESSION**: "neighbor stuck in Active — which is LEAST likely?"
+  with duplicate router-id as the answer. Tests whether the student understands the state
+  machine mechanically rather than as a list of words. He got the reasoning for this taught
+  rather than derived — worth re-testing cold in a later blueprint sweep.
+- network-import-check exact-match behaviour: classic "why is nothing being advertised"
+  scenario question. The covering-route trap (declared /24, table has /16) is the specific
+  form to expect.
+- The four-command mapping is a likely matching/identify-the-command question type.
+- Database-vs-routing-table gap → best-path selection. Sets up attribute material in S58.
+
+==================================================================
+JUNIOR'S MISTAKE AND WHAT IT TAUGHT
+==================================================================
+Junior spent ten minutes verifying firewall policy (port1→port3, permit any) and repeatedly
+insisted it was fine. It WAS fine. Firewall policy governs traffic passing THROUGH the
+FortiGate. BGP peering traffic is destined TO the FortiGate itself, and is governed by
+local-in policy and interface `allowaccess` — a completely different table. Every one of his
+diagnostics was technically correct and structurally incapable of finding the fault.
+LESSON: when the FortiGate is the endpoint, not the transit device, you are in a different
+policy table. Also closes his S54-foreshadowed "BGP is OSPF but bigger" instinct in the same
+episode.
+
+==================================================================
+STUDENT PERFORMANCE NOTES (see knowledge-register-session55.txt for full detail)
+==================================================================
+STRONG: derived both halves of the TCP trade-off (peer discovery lost, bootstrap dependency
+acquired) in his first answer; named sequence numbers / acks / retransmissions precisely when
+pushed; identified the multihop CONDITION unprompted ("the connection could be a few hops
+away") and correctly recalled TTL 1; and nailed network-import-check essentially unaided —
+"192.168.10.0/24 with the exact mask needs to be in its routing table to be injected into
+BGP" — with the word EXACT being the load-bearing part.
+WEAK: the router-id question was answered at too high a level of generality ("it would break
+things if two of the same router was in two different places" / "you need to have a design
+mindset"), requiring both parts to be taught rather than derived. Also needed two redirects
+on the database-vs-routing-table question before reaching best-path selection, and initially
+answered it about ADVERTISING when the question was about RECEIVING.
+MONEY-SENTENCE GATE: he stalled first ("I don't understand whats needed from me right now")
+and needed the drill re-explained with a worked example — IMPORTANT: this drill had gone one
+session without exercise and the stall confirms the S54 register's warning that it was going
+stale. On the second attempt he produced a genuinely good sentence ending "trading feeds from
+Singapore will make us money" — the revenue clause is exactly right. Refinement offered:
+"a policy" is vague; "a firewall rule protecting the firewall itself, not customer traffic"
+preempts the follow-up question. DO NOT let this drill lapse again — run it in S56 or S57,
+and consider signposting it ("Penny gate incoming") since the stall was about not recognising
+the format, not about inability.
+
+==================================================================
+EXAM QUESTIONS ASKED (10, per student's standing request)
+==================================================================
+1. BGP transport → C) TCP 179
+2. Stuck in Active, LEAST likely cause → C) Duplicate router-id
+3. Default EBGP TTL → B) 1
+4. Command showing negotiated capabilities + remote router-id → B) get router info bgp
+   neighbors <ip>
+5. Declared /24, table holds covering /16, defaults → C) Nothing
+6. network-import-check disable does what → B) advertises regardless of routing table
+7. Default IBGP TTL → D) 255
+8. In bgp network but not routing-table bgp → B) lost best-path or next-hop unreachable
+9. OPENs exchanged and accepted, awaiting first KEEPALIVE → B) OpenConfirm
+10. Why BGP has no retransmission of its own → B) TCP provides reliable sequenced delivery
+(Answers were provided inline as an answer key, not held back — student did not attempt them
+live this session. Consider running 3-4 of these as cold retrieval at the top of S56.)
+
+==================================================================
+TEASER FOR SESSION 56
+==================================================================
+"Many Roads Out" — BGP use cases: ECMP, loopback as BGP source, multihop. EF pp. 142-143.
+The ISP-2 Chatswood circuit bills from Monday. Penny wants to know why LoFinance is paying
+for two roads and driving down one. Junior proposes using both at once and is, for the first
+time this season, CORRECT — which alarms everyone (this is a deliberate beat: Junior being
+right should be treated as an omen, and he should still get the *reason* wrong or incomplete).
+Javier sends four words at 02:00 Singapore time: "Peer to my loopback." Señor reads it, puts
+down the mandarin, and says the thing he says maybe twice a year: "Ah. He is serious."
+The TTL/multihop material was DELIBERATELY HALF-TAUGHT this session — the student already
+derived the condition ("the connection could be a few hops away") and knows TTL 1 and TTL 255.
+S56 should open by handing that back to him and building loopback-as-source on top of it,
+including the requirement for a firewall policy permitting loopback↔physical interface traffic
+so the TCP 179 session can form.
+
+Date and Time completed: Wednesday, 22 July 2026.

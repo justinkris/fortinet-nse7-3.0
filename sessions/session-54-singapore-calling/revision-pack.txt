@@ -1,0 +1,158 @@
+SESSION 54 REVISION PACK — "Singapore Calling"
+BGP Fundamentals: Path-Vector Routing, AS Numbers, Peering
+EF Study Guide 05 Dynamic Routing Protocols, pp. 132-136
+
+==================================================================
+QUICK SUMMARY (one page)
+==================================================================
+Penny announces the Expansion — Brisbane, Perth, Singapore, London, eight sites by
+spring. Singapore's Javier Lin replies to an intro email with four words: "What is
+your ASN." This triggers a config-free deep dive into WHY that question matters.
+
+OSPF is a link-state protocol: routers share a full topology map and compute an
+identical answer. That works inside one household (one administration) but breaks
+across organisational boundaries — total exposure of internal topology, and zero
+ability to apply policy (accept some routes, reject others).
+
+BGP solves this by being a PATH-VECTOR protocol: no shared map. Every route carries
+an AS_PATH — the ordered list of Autonomous System numbers it has crossed. Loop
+prevention is simple: if a router's own ASN already appears in a route's AS_PATH,
+reject it. No synchronised database required.
+
+Autonomous Systems come in three flavours: Stub (one external connection, local
+traffic only), Multihomed (multiple external connections, still only local traffic),
+and Transit (carries traffic that isn't its own — the ISP model). LoFinance is
+becoming multihomed (Singapore + London + ISP) — NOT automatically transit. The key
+exam trap: AS_PATH does NOT prevent accidental transit. Only deliberate prefix/route
+filtering does. Two separate tools for two separate problems.
+
+Private AS numbers (64512-65534) are the correct choice for LoFinance's internal,
+non-internet-facing BGP deployment — directly analogous to RFC 1918 private IP space.
+
+==================================================================
+CHEAT SHEET
+==================================================================
+CONCEPT                          KEY FACT
+--------------------------------------------------------------------------------
+Autonomous System (AS)           Set of routers/networks under one administration,
+                                  identified externally by one AS number
+BGP type                         Path-vector (not link-state)
+AS_PATH                          Ordered list of AS numbers a route has crossed;
+                                  read right-to-left = origin first, latest hop last
+Loop prevention                  Router rejects any route with its own ASN already
+                                  in the AS_PATH — automatic, no config needed
+Transit prevention                Prefix / route filtering — NOT automatic, must be
+                                  configured on outbound advertisements
+Stub AS                          Single external connection, local traffic only
+Multihomed AS                    Multiple external connections, still only local
+                                  traffic
+Transit AS                       Carries traffic that neither originates nor
+                                  terminates locally (ISP example)
+Private ASN range                64512-65534 (IANA reserved) — analogous to RFC
+                                  1918 private IP space
+BGP session types                EBGP (between different AS) / IBGP (within same AS)
+                                  — IBGP not yet taught in depth (queued S58)
+
+DESIGN RULES
+- Never extend OSPF across an administrative boundary.
+- Multihoming ≠ transit. Filtering, not AS_PATH, is the transit safeguard.
+- Use private ASNs for internal/inter-office BGP unless public internet peering
+  is planned.
+
+==================================================================
+FLASHCARDS
+==================================================================
+Q: What kind of routing protocol is BGP — link-state or path-vector?
+A: Path-vector.
+
+Q: What does a BGP route carry instead of a shared topology map?
+A: AS_PATH — the ordered list of AS numbers the route has crossed.
+
+Q: How does BGP prevent routing loops?
+A: A router rejects any route whose AS_PATH already contains its own AS number.
+
+Q: Does multihoming automatically make an AS a transit AS?
+A: No. Multihoming is about number of external connections; transit is about
+   whether non-local traffic passes through for someone else's benefit.
+
+Q: What actually prevents an AS from becoming an accidental transit AS?
+A: Prefix / route filtering on outbound BGP advertisements — not AS_PATH.
+
+Q: What is the private AS number range?
+A: 64512-65534.
+
+Q: What's the IP-addressing analogy for private AS numbers?
+A: RFC 1918 private IP space (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16).
+
+Q: Why can't you simply extend your OSPF area to a newly-acquired company's network?
+A: OSPF shares the FULL topology with all neighbours and computes one non-negotiable
+   result — no way to expose only part of the map or apply policy.
+
+Q: What is an Autonomous System?
+A: A set of routers and networks under one consistent administration, free to run
+   any internal IGP, identified externally by a single AS number.
+
+Q: In AS_PATH "65100 4826 1299 65200", which AS originated the route?
+A: 65200 (read right to left — origin is the rightmost/last-listed AS).
+
+==================================================================
+PODCAST PROMPT — "The Packet Path", Episode 54
+==================================================================
+Generate a podcast episode using the following prompt, ready to paste into an AI
+audio generator:
+
+---
+You are producing Episode 54 of "The Packet Path," a technical storytelling podcast
+about a fictional finance company called LoFinance and the network engineers who
+keep it running. Two hosts, warm and conversational, alternate between telling the
+story and explaining the underlying networking concept — think of it like a
+technical narrative documentary with dry humour.
+
+STORY TO TELL:
+Monday morning at LoFinance. The company is expanding — Brisbane, Perth, Singapore,
+London, eight sites by spring. A new hire in Singapore, Javier Lin, gets his welcome
+email from our protagonist (the engineer) and replies with exactly four words: "What
+is your ASN." No greeting. The office is startled. But their mentor, a mandarin-
+eating, sombrero-wearing veteran named Señor, tells them this is "the most important
+question of the season" and refuses to let anyone touch a keyboard until they
+understand WHY.
+
+CONCEPTS TO EXPLAIN (in plain, memorable language):
+1. Why you can't just extend your internal routing (OSPF) to a company you don't
+   administer — use the analogy "OSPF is a household sharing one map; BGP is
+   nations negotiating treaties." Explain that OSPF shares EVERYTHING with trusted
+   neighbours, while BGP only shares what you choose to share.
+2. What an Autonomous System is — a company's network, represented to the outside
+   world by one number.
+3. AS_PATH — explain it as a route's "passport stamps." Every time a route crosses
+   into a new company's network, that company's number gets stamped onto it. By the
+   time it arrives, you can read the whole journey backwards.
+4. Loop prevention — if you ever see your OWN stamp already on a passport, you know
+   something looped back to you, so you refuse it. Simple, automatic, no complicated
+   negotiation needed.
+5. The "accidental ISP" trap — explain that being connected to multiple partners
+   doesn't automatically mean you're now shipping THEIR traffic to EACH OTHER. That
+   requires you to explicitly choose to forward it — like a company mailroom that
+   won't forward outside mail to other outside companies unless someone deliberately
+   sets that policy.
+6. Private AS numbers — compare directly to private IP address ranges (10.x.x.x,
+   192.168.x.x) that everyone recognizes: reserved numbers for private, non-internet
+   use.
+
+JUNIOR'S MOMENT: Include a brief, light aside where "Junior" (a lovable but
+overconfident junior engineer character) assumes BGP is "basically just OSPF but
+bigger" — and gets gently corrected, without being humiliated, setting up next
+episode's real mistake.
+
+TONE: Warm, curious, a little funny, respectful of the listener's intelligence.
+Avoid corporate-training blandness. This should feel like two friends who love
+networking explaining something they find genuinely fascinating.
+
+LENGTH: Approximately 8-10 minutes of spoken content.
+
+END ON A TEASER: Tomorrow, the office finally sends its first real BGP neighbor
+statement — and it doesn't come up the way anyone hoped. Something about a "state
+nobody wants to see." End on that note of anticipation, don't explain it.
+---
+
+Date and Time completed: Wednesday, 22 July 2026.

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 60 Visual — Choosing Favourites</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+<style>
+.main-content{max-width:1040px;margin:0 auto;}
+.rec{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--amber);border-radius:12px;padding:20px 24px;margin-bottom:28px;}
+.imgcard{border:1px solid var(--border);border-radius:14px;background:var(--surface);margin:22px 0;overflow:hidden;}
+.imgcard-h{background:var(--ink-dark);padding:14px 20px;}
+.imgcard-t{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:#fbf7ec;}
+.imgcard-t em{font-style:italic;color:var(--ink-accent);}
+.imgcard-m{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-accent);margin-top:5px;}
+.frame{border:2px dashed var(--border);border-radius:12px;background:var(--surface-2);margin:18px 20px;padding:44px 20px;text-align:center;font-family:'SF Mono','Fira Code',monospace;font-size:11px;letter-spacing:0.1em;color:var(--text-muted);}
+.imgcard-b{padding:0 20px 20px;}
+.plabel{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--blue);margin:14px 0 6px;}
+.prompt{background:var(--surface-2);border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;font-family:'SF Mono','Fira Code',monospace;font-size:11.5px;line-height:1.75;color:var(--text-soft);white-space:pre-wrap;user-select:all;}
+.meta-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+.meta-box{background:var(--blue-light);border-left:3px solid var(--blue-border);border-radius:0 8px 8px 0;padding:10px 14px;}
+.meta-k{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
+.meta-v{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);line-height:1.6;}
+@media(max-width:720px){.meta-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="#">Season 5 &middot; The Expansion</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <span>Session 60 &middot; Visual</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Session 60 &middot; Visual Learning Page &middot; NSE7 EF 7.6</div>
+    <h1>Seeing <em>the Argument</em></h1>
+    <p>Six illustrated anchors for BGP path selection, origination and the filters that deny by default.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Six images, one <em>staircase</em>, and a rectangle in the dust.</div>
+  <p class="motivation-sub">Placeholders only &mdash; each carries a full generation prompt. Generate them, drop them in, and the session becomes recallable in seconds rather than minutes.</p>
+</div>
+<main><div class="main-content">
+
+<div class="rec">
+  <div class="section-label">Recommended visual style for this session</div>
+  <h2 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text);margin:6px 0 12px;padding-left:14px;border-left:3px solid var(--amber);">Real-world Analogy, anchored by a <em style="color:var(--amber);">single vertical process illustration</em></h2>
+  <p style="font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);">Session 60's content is unusual: its central object is an <strong>ordered list with a stopping rule</strong>. That is not a topology and it is not a packet journey &mdash; a network diagram would actively hurt here, because the thing you must remember has no geography.</p>
+  <p style="font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);">What the material needs is a <strong>descending sequence with visible abandonment</strong>: ten stations, most of them skipped, and the eye dragged all the way to the bottom. A staircase of judges does this better than any flowchart, because the human eye reads vertical descent as loss of altitude &mdash; which is exactly the feeling of falling to line ten. Everything else this session (drawers, bucket/tap, border control, garden gate) is analogy-driven for the same reason: these are <em>rules about permission and scope</em>, and permission is easier to picture as architecture than as protocol.</p>
+  <p style="font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);"><strong>Rejected:</strong> Enterprise Topology (the topology barely changed and the lesson is not spatial); Packet Journey (the packet is not the subject &mdash; the <em>decision about</em> the packet is); Layer-by-Layer (no layering present).</p>
+</div>
+
+<div class="imgcard">
+  <div class="imgcard-h"><div class="imgcard-t">1 &middot; The Ten-Judge Staircase</div><div class="imgcard-m">Core visual &middot; route selection &middot; place at the top of any revision set</div></div>
+  <div class="frame">[ IMAGE PLACEHOLDER ]<br><br>s60-01-tiebreaker-staircase.png<br>16:9 &mdash; landscape</div>
+  <div class="imgcard-b">
+    <div class="plabel">Image generation prompt &mdash; copy in full</div>
+    <div class="prompt">Flat minimalist vector illustration, modern editorial style, cream off-white background (#faf5e9), bold clean brown outlines, no gradients, no photorealism, no 3D. A grand but slightly absurd courtroom rendered as a TEN-TIERED VERTICAL STAIRCASE of judges' benches, viewed straight-on in cross-section so all ten tiers are visible stacked from top to bottom of the frame, each tier smaller and lower than the one above.
+
+Each of the ten benches has a single stylised judge in a muted sage-green robe, and a small coral placard reading, from top to bottom: "1 WEIGHT", "2 LOCAL PREF", "3 LOCAL ORIGIN", "4 AS PATH", "5 ORIGIN", "6 MED", "7 IGP METRIC", "8 EBGP > IBGP", "9 ECMP", "10 ROUTER ID". Only these ten short labels appear as text; no other text in the image.
+
+Two identical-looking envelope-shaped "path" characters stand at the top of the staircase before the first judge: one envelope is coral-coloured and carries a tiny Singapore skyline motif, the other is muted gold and carries a tiny European rooftop motif. Both envelopes have a small "2" stamped on them to show equal AS-path length.
+
+Judges 1, 2 and 3 are asleep or looking bored with their gavels resting — these attributes were never set. Judge 4 (AS PATH) is wide awake, leaning forward, and is holding up BOTH envelopes at exactly equal height in a perfect tie, one in each hand. Judges 5 through 9 are also asleep. Judge 10, at the very bottom, is flipping a large coin, which is the visual punchline.
+
+A thin coral dotted line traces the envelopes' fall from tier 1 all the way down to tier 10, past every sleeping judge, emphasising that the argument descended the entire staircase.
+
+In the lower-left foreground, small and secondary: Señor, a warm-skinned older engineer in a large decorative sombrero and rumpled shirt, watching the staircase with folded arms and a distinctly unamused expression. Beside him a younger engineer in a plain shirt (the Intermediate Engineer) is looking UP toward judges 1 and 2 rather than down at the coin — the compositional hint that the fix lives at the top.
+
+Muted palette: cream, coral, muted gold, sage green, soft brown line work. Generous white space. Clear enough to read as an educational diagram. Do NOT include: dense technical labels, network device icons, cabling, packet diagrams, gradients, glossy rendering, or any text beyond the ten placards.</div>
+    <div class="meta-row">
+      <div class="meta-box"><div class="meta-k">Why this image matters</div><div class="meta-v">The tie-breaker list is the single highest-yield exam object in this session and the easiest to misremember as an unordered set of &ldquo;things BGP looks at.&rdquo; The staircase encodes ORDER, the sleeping judges encode &ldquo;never read,&rdquo; and the coin flip at the bottom encodes the absence-of-policy insight. One glance should reconstruct all three.</div></div>
+      <div class="meta-box"><div class="meta-k">Accessibility description</div><div class="meta-v">A ten-tier staircase of judges' benches numbered one to ten, each labelled with a BGP tie-breaker. Most judges are asleep. The fourth judge holds two identical envelopes at equal height. The tenth judge at the bottom flips a coin. Two engineers watch from below; one looks upward toward the top tiers.</div></div>
+    </div>
+    <div class="meta-box" style="margin-top:14px;border-left-color:var(--amber-border);background:var(--amber-light);"><div class="meta-k" style="color:var(--amber);">Memory anchor it reinforces</div><div class="meta-v"><strong>The first line where they differ ends the argument &mdash; and falling to line ten means nobody expressed a preference.</strong> Argue above the line you are losing on.</div></div>
+  </div>
+</div>
+<div class="imgcard">
+  <div class="imgcard-h"><div class="imgcard-t">2 &middot; Four Drawers and a Doorman</div><div class="imgcard-m">Structural visual &middot; where best-path runs &middot; extends the Session 59 filing cabinet</div></div>
+  <div class="frame">[ IMAGE PLACEHOLDER ]<br><br>s60-02-doorman-drawers.png<br>16:9 &mdash; landscape</div>
+  <div class="imgcard-b">
+    <div class="plabel">Image generation prompt &mdash; copy in full</div>
+    <div class="prompt">Flat minimalist vector illustration, modern editorial style, cream off-white background (#faf5e9), bold clean brown outlines, no gradients, no 3D, no photorealism. A cross-section of a wide wooden FILING CABINET with THREE open drawers arranged left to right, plus a FOURTH separate wall-mounted cabinet below and to the right.
+
+Drawer 1, labelled "RIB-IN" on a small coral plate: crowded with many upright paper folders, including two folders pushed forward and highlighted — one coral, one muted gold — both stamped with an identical small "2". This is the waiting room of candidates.
+
+Between drawer 1 and drawer 2 stands a DOORWAY with a uniformed doorman figure in a sage-green coat holding a clipboard. The clipboard is a tiny version of the ten-item numbered list, unreadable in detail but recognisably a numbered list. Just BEFORE the doorman, on the RIB-IN side, sits a small desk with a rubber stamp and ink pad, and the muted gold folder is being stamped with a large coral "300" — this is the inbound route-map setting local preference. The visual sequence must clearly read left to right: STAMP FIRST, THEN DOORMAN.
+
+Drawer 2, labelled "LOCAL RIB": contains only the muted gold folder, standing alone and upright, with a small coral ribbon. The coral folder is visibly still back in drawer 1, upright, undamaged, waiting — not in a bin.
+
+Drawer 3, labelled "RIB-OUT": contains a smaller selection of folders, with a second smaller doorman or gate between drawer 2 and drawer 3.
+
+Below, connected to drawer 2 by a short arrow, the separate wall cabinet labelled "ROUTING TABLE", containing folders of several different colours to show competing protocols.
+
+Small hand-lettered sign above the cabinet reads: "BELIEVING AND TELLING ARE DIFFERENT DRAWERS". No other text except the four drawer labels and the "300" stamp.
+
+Palette: cream, coral, muted gold, sage green, soft brown outlines. Do NOT include: server racks, network topology, cables, computer screens, gradients, or characters other than the two doormen.</div>
+    <div class="meta-row">
+      <div class="meta-box"><div class="meta-k">Why this image matters</div><div class="meta-v">Two errors this session came from this exact boundary: mislocating best-path selection, and confusing the Local RIB with the routing table. Adding the fourth cabinet, and showing the stamp physically BEFORE the doorman, fixes both in one picture &mdash; and it deliberately reuses last session's cabinet so the model grows rather than competes.</div></div>
+      <div class="meta-box"><div class="meta-k">Accessibility description</div><div class="meta-v">A filing cabinet in cross-section with three drawers labelled RIB-in, Local RIB and RIB-out, plus a separate cabinet below labelled Routing Table. A folder is stamped 300 at a desk, then passes a doorman with a numbered clipboard into the Local RIB drawer. The losing folder remains upright and intact in RIB-in.</div></div>
+    </div>
+    <div class="meta-box" style="margin-top:14px;border-left-color:var(--amber-border);background:var(--amber-light);"><div class="meta-k" style="color:var(--amber);">Memory anchor it reinforces</div><div class="meta-v"><strong>Best-path selection is a RIB-in &rarr; Local RIB event. Policy runs first; the doorman reads the result.</strong> The loser is not deleted &mdash; it waits.</div></div>
+  </div>
+</div>
+<div class="imgcard">
+  <div class="imgcard-h"><div class="imgcard-t">3 &middot; The Bucket and the Tap</div><div class="imgcard-m">Analogy visual &middot; origination &middot; place beside the network command</div></div>
+  <div class="frame">[ IMAGE PLACEHOLDER ]<br><br>s60-03-bucket-and-tap.png<br>3:2 &mdash; landscape</div>
+  <div class="imgcard-b">
+    <div class="plabel">Image generation prompt &mdash; copy in full</div>
+    <div class="prompt">Flat minimalist vector illustration, modern editorial style, cream off-white background (#faf5e9), bold brown outlines, no gradients, no 3D. A single wide scene split into two halves by a soft vertical sage-green divider, comparing two ways of getting water into a glass — used here as a metaphor for originating prefixes into BGP.
+
+LEFT HALF, labelled with a small coral placard "REDISTRIBUTE": a person in a plain shirt (Junior, young, slightly overconfident expression) is tipping an enormous galvanised BUCKET over a small drinking glass. Water is sloshing everywhere, overflowing the glass and pooling on the floor. Floating in the spilled water are small labelled paper tags reading only: "MGMT", "DMZ", "GUEST", "VPN", "OOB" — five short tags, no other text. A mop leans against the wall in the background, unused. Expression: dawning realisation.
+
+RIGHT HALF, labelled with a small coral placard "CONFIG NETWORK": the same person, calmer, turning a small brass TAP that fills the glass precisely to the line. A single paper tag hangs on the tap reading "10.55.10.0/24". Nothing is spilled.
+
+BELOW THE TAP, integrated into the right half as the visual punchline: the tap's pipe passes through a small brass INSPECTION VALVE with a magnifying glass built into it, labelled "IMPORT CHECK". Inside the magnifier, two paper cards are shown side by side being compared: one card reads "/16" and the other reads "/24", and a small coral X mark sits between them. A thin dotted line shows that the water has therefore STOPPED before reaching the glass — the tap is on but nothing is coming out.
+
+At the very bottom of the frame, a small hand-lettered sign: "COVERED IS NOT MATCHED".
+
+Palette: cream, coral, muted gold, sage green, soft brown line work. Generous spacing, storybook-professional. Do NOT include: network diagrams, routers, gradients, glossy rendering, or any text beyond the labels specified.</div>
+    <div class="meta-row">
+      <div class="meta-box"><div class="meta-k">Why this image matters</div><div class="meta-v">Genuinely new ground this session. The bucket/tap split makes redistribution-versus-network intuitive in one look, and building the import check into the tap's plumbing attaches the exact-match trap to the tool it belongs to, rather than leaving it as a free-floating fact to be forgotten.</div></div>
+      <div class="meta-box"><div class="meta-k">Accessibility description</div><div class="meta-v">A split illustration. On the left, an engineer overflows a small glass from an enormous bucket, spilling tagged water labelled with interface names. On the right, the same engineer fills the glass precisely from a tap, but an inspection valve in the pipe compares a slash-sixteen card against a slash-twenty-four card, marks a mismatch, and the flow has stopped.</div></div>
+    </div>
+    <div class="meta-box" style="margin-top:14px;border-left-color:var(--amber-border);background:var(--amber-light);"><div class="meta-k" style="color:var(--amber);">Memory anchor it reinforces</div><div class="meta-v"><strong>Redistribution is a bucket; <code>config network</code> is a tap &mdash; and COVERED IS NOT MATCHED.</strong> Exact prefix and mask, active, in the routing table.</div></div>
+  </div>
+</div>
+<div class="imgcard">
+  <div class="imgcard-h"><div class="imgcard-t">4 &middot; The Border Control</div><div class="imgcard-m">Analogy visual &middot; attribute categories &middot; the session's weakest topic</div></div>
+  <div class="frame">[ IMAGE PLACEHOLDER ]<br><br>s60-04-attribute-border-control.png<br>16:9 &mdash; landscape</div>
+  <div class="imgcard-b">
+    <div class="plabel">Image generation prompt &mdash; copy in full</div>
+    <div class="prompt">Flat minimalist vector illustration, modern editorial style, cream off-white background (#faf5e9), bold brown outlines, no gradients, no 3D, no photorealism. A stylised CUSTOMS AND BORDER CONTROL scene arranged as a horizontal journey from left to right across three zones separated by two vertical dashed sage-green border lines.
+
+ZONE 1 (left), a warm interior labelled "OUR AS": three small envelope-characters wait in line, each carrying a differently shaped luggage tag. Tags are labelled only: "AS_PATH", "LOCAL_PREF", "MED", "COMMUNITY" — four tags distributed among the envelopes.
+
+BORDER 1 (first dashed line), staffed by a sage-robed officer at a desk: the LOCAL_PREF tag is being cut off with small scissors and dropped into a coral basket beneath the desk labelled with a tiny "HOME" pictogram (a small house symbol, not text). The envelope continues onward without it.
+
+ZONE 2 (middle), labelled "NEIGHBOUR AS": the envelopes continue. Here a second officer at a small side desk removes the MED tag and places it in a drawer labelled with a tiny "ADVICE" pictogram (a small speech-bubble symbol). MED does not continue past this zone.
+
+BORDER 2 (second dashed line): only two tags remain travelling onward — AS_PATH and COMMUNITY. AS_PATH is being visibly LENGTHENED at this border, with a new small bead added to a beaded string, showing accumulation rather than removal. COMMUNITY passes through untouched and the officer waves it along.
+
+ZONE 3 (right), labelled "THE WIDER INTERNET", drawn as a lighter, more open space with a faint globe outline: only AS_PATH and COMMUNITY arrive.
+
+Across the top of the whole image, a hand-lettered banner reads: "HOW FAR DOES IT TRAVEL?"
+
+Palette: cream, coral, muted gold, sage green, soft brown outlines. Clean, calm, diagrammatic. Do NOT include: real national flags, passports with identifiable countries, dense text, gradients, network hardware, or any text beyond the specified labels.</div>
+    <div class="meta-row">
+      <div class="meta-box"><div class="meta-k">Why this image matters</div><div class="meta-v">Attribute categories were the two exam misses and they failed because they were presented as four labels with no structure. This image replaces the taxonomy with a journey: what gets confiscated, where, and what survives. Category becomes a consequence of travel range, which is the only handle that survives exam pressure.</div></div>
+      <div class="meta-box"><div class="meta-k">Accessibility description</div><div class="meta-v">A three-zone border-crossing scene. Envelope characters carry luggage tags labelled with BGP attributes. At the first border an officer cuts off the LOCAL_PREF tag. In the neighbouring zone another officer files away the MED tag. Only AS_PATH, which gains a bead at each crossing, and COMMUNITY reach the open zone on the right.</div></div>
+    </div>
+    <div class="meta-box" style="margin-top:14px;border-left-color:var(--amber-border);background:var(--amber-light);"><div class="meta-k" style="color:var(--amber);">Memory anchor it reinforces</div><div class="meta-v"><strong>Ask how far it travels and the category answers itself.</strong> COMMUNITY travels. MED must not. LOCAL_PREF never leaves home.</div></div>
+  </div>
+</div>
+<div class="imgcard">
+  <div class="imgcard-h"><div class="imgcard-t">5 &middot; The Gate with One Wicket</div><div class="imgcard-m">Consequence visual &middot; implicit deny &middot; the correction that did not consolidate</div></div>
+  <div class="frame">[ IMAGE PLACEHOLDER ]<br><br>s60-05-one-wicket-gate.png<br>16:9 &mdash; landscape</div>
+  <div class="imgcard-b">
+    <div class="plabel">Image generation prompt &mdash; copy in full</div>
+    <div class="prompt">Flat minimalist vector illustration, modern editorial style, cream off-white background (#faf5e9), bold brown outlines, no gradients, no 3D. A dramatic but tidy scene showing a row of TWELVE small houses along a street, each house with a chimney emitting a thin ribbon of smoke, representing twelve advertised prefixes.
+
+In the foreground, a large ornate GARDEN GATE stands across the street. The gate has exactly ONE small open wicket door cut into it, and above the wicket a coral sign reads "10.55.10.0/24 PERMIT". The rest of the gate is solid.
+
+Only ONE house's smoke ribbon passes through the wicket and continues to the right side of the frame. The other ELEVEN smoke ribbons hit the solid gate and curl back on themselves, greyed and dimmed but NOT erased — the houses are still standing, still lit from within, still perfectly healthy. This distinction is essential: the prefixes are not gone, they are merely unspoken.
+
+Beneath the gate, running along the bottom of the entire frame, a faint but legible engraved inscription in the stonework reads: "AND NOTHING ELSE".
+
+To the left of the gate, a small figure of an engineer stands holding a single sheet of paper, looking pleased with themselves, entirely unaware of the eleven curled-back ribbons behind them. Just visible in the shadow of the gate's frame, three small identical keystones are carved with tiny symbols and labelled only: "ROUTE-MAP", "PREFIX-LIST", "ACCESS-LIST" — indicating the same family trait built into all three.
+
+On the right side beyond the gate, one lone recipient figure waves, having received exactly one ribbon.
+
+Palette: cream, coral, muted gold, sage green, soft brown outlines, with the blocked ribbons in a desaturated warm grey. Do NOT include: fire, damage, alarms, red warning symbols, network equipment, gradients, or any text beyond the three keystone labels, the wicket sign, and the engraved inscription.</div>
+    <div class="meta-row">
+      <div class="meta-box"><div class="meta-k">Why this image matters</div><div class="meta-v">This is the concept answered correctly in conversation and incorrectly on the exam thirty minutes later, which makes it the highest-priority image in the set. The eleven curled-back-but-still-burning chimneys are the crucial detail: the prefixes are alive in the Local RIB and merely unspoken. The three keystones attach the behaviour to the whole family of FortiOS filters.</div></div>
+      <div class="meta-box"><div class="meta-k">Accessibility description</div><div class="meta-v">Twelve houses with smoking chimneys behind a solid gate containing a single small wicket door marked with one permitted prefix. One smoke ribbon passes through; eleven curl back, dimmed but not extinguished. Three keystones in the gate frame are carved with the names of route-map, prefix-list and access-list. An engineer stands in front, unaware.</div></div>
+    </div>
+    <div class="meta-box" style="margin-top:14px;border-left-color:var(--amber-border);background:var(--amber-light);"><div class="meta-k" style="color:var(--amber);">Memory anchor it reinforces</div><div class="meta-v"><strong>One permit rule does not mean &lsquo;also allow this&rsquo; &mdash; it means &lsquo;allow this and nothing else.&rsquo;</strong> Ask what a filter silently kills, not what it allows.</div></div>
+  </div>
+</div>
+<div class="imgcard">
+  <div class="imgcard-h"><div class="imgcard-t">6 &middot; The Rectangle in the Dust</div><div class="imgcard-m">Story visual &middot; episode close &middot; place at the very end</div></div>
+  <div class="frame">[ IMAGE PLACEHOLDER ]<br><br>s60-06-rectangle-in-the-dust.png<br>16:9 &mdash; landscape</div>
+  <div class="imgcard-b">
+    <div class="plabel">Image generation prompt &mdash; copy in full</div>
+    <div class="prompt">Flat minimalist vector illustration, modern editorial style, cream off-white background (#faf5e9), bold brown outlines, no gradients, no photorealism, no 3D. A quiet late-afternoon office scene rendered as a wide horizontal composition.
+
+LEFT THIRD: a help desk corner. Riley, a young engineer with a headset worn loosely around the neck like a scarf, is closing a ticket on a monitor. The monitor shows only a large green tick and the number "94" with a small "ms" beside it — no other screen text. Beside the monitor, a yellow sticky note is stuck to the bezel, and on it in small hand lettering: "ABSENCE OF ERRORS IS NOT EVIDENCE OF CORRECTNESS".
+
+CENTRE: a whiteboard bearing a single dot in the middle with eight straight lines radiating to the edges — the route-reflector star from the previous session, carefully maintained and clean. Standing before it, Junior, a young overconfident-looking engineer, is for once standing calmly with arms at his sides, not gesturing, wearing a small satisfied expression. Beside the whiteboard, Penny, a composed professional woman with a notepad, has written on her pad in small clear hand lettering: "WE ADVERTISE ONLY WHAT WE CAN ACTUALLY REACH".
+
+RIGHT THIRD, and the emotional focus: an old grey filing cabinet that nobody uses, standing slightly apart. On top of it, placed down deliberately and squarely, sits a large decorative SOMBRERO — unworn, at rest. In the dust on the cabinet top beside the sombrero, a clean empty RECTANGLE is visible where something else has just been lifted away. Nothing occupies that rectangle. No hat is shown being carried; the space is the point.
+
+The room's lighting is low and warm, long shadows, end-of-day. Nobody is looking at the filing cabinet.
+
+Palette: cream, coral, muted gold, sage green, soft brown outlines, warm grey shadows. Mood: satisfied, quiet, faintly ominous. Do NOT include: a cowboy hat visible anywhere in frame, Señor himself, dramatic lighting effects, gradients, or any text beyond the two hand-lettered notes and the "94 ms" figure.</div>
+    <div class="meta-row">
+      <div class="meta-box"><div class="meta-k">Why this image matters</div><div class="meta-v">Story images are memory scaffolding, not decoration: the emotional close of an episode is what lets you retrieve its technical content months later. This one also carries the two sentences worth keeping (Penny's board line and Riley's sticky note) inside the picture, and ends on the absence that sets up the boss battle.</div></div>
+      <div class="meta-box"><div class="meta-k">Accessibility description</div><div class="meta-v">A warm, low-lit office at end of day. A help desk monitor shows a green tick and ninety-four milliseconds, with a sticky note beside it. A clean whiteboard shows a central dot with eight radiating lines. On an unused filing cabinet, a sombrero rests beside a clean empty rectangle in the dust where something else used to sit.</div></div>
+    </div>
+    <div class="meta-box" style="margin-top:14px;border-left-color:var(--amber-border);background:var(--amber-light);"><div class="meta-k" style="color:var(--amber);">Memory anchor it reinforces</div><div class="meta-v"><strong>&ldquo;Nobody at LoFinance had ever expressed a preference.&rdquo;</strong> And: the sombrero is off. Session 61 has no mentor in it.</div></div>
+  </div>
+</div>
+<div class="section-block" style="margin-top:36px;">
+  <div class="section-label">How to use these</div>
+  <h2>Generate once, revise <em>forever</em></h2>
+  <ul>
+    <li><strong>Image 1 alone is the one-minute revision.</strong> If the staircase reconstructs, the section is intact.</li>
+    <li><strong>Images 2 and 5 are a pair.</strong> Both are about the difference between believing and telling. Review them together, always.</li>
+    <li><strong>Image 4 is the remedial one.</strong> Attribute categories cost two marks and were taught after the exam. Look at this one more often than it feels necessary.</li>
+    <li><strong>Image 6 is not revision.</strong> It is the hook that makes the other five retrievable.</li>
+  </ul>
+</div>
+
+</div></main>
+
+<footer>LoFinance &middot; Season 5 &middot; Session 60 &middot; <span>NSE7 EF 7.6 &middot; SNA Domain 4</span> &middot; EF Dynamic Routing Supplement pp.&nbsp;342&ndash;348</footer>
+
+</body>
+</html>

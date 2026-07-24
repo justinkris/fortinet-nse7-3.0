@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 55 Visual &mdash; The Journey of One SYN Packet</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);margin-bottom:12px;text-transform:uppercase;">
+      <a href="#" style="color:#9bb8e6;text-decoration:none;">Home</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">&rsaquo;</span>
+      <a href="#" style="color:#9bb8e6;text-decoration:none;">Season 5</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">&rsaquo;</span>
+      <span>Session 55 Visual</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> SESSION 55 &middot; VISUAL LEARNING &middot; PACKET JOURNEY</div>
+    <h1>The Journey of <em>One SYN Packet</em></h1>
+    <p>Six illustrations that turn the BGP state machine into a route you can walk in your head.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Recommended style for this session: <em>Packet Journey</em>, with a decision-tree spine.</div>
+  <p class="motivation-sub">The session's core insight is that a peering fails at a specific <em>place</em> along a path &mdash; and the state name tells you where. A journey visual encodes position, which is exactly the thing the FSM asks you to remember. A layer-by-layer breakdown would have shown the same facts without the geography, and the geography is the lesson.</p>
+</div>
+
+<main>
+  <div class="main-content">
+
+    <div class="section-block" id="section-img1">
+      <div class="section-label">VISUAL 01</div>
+      <h2>The Journey &mdash; one SYN, six gates</h2>
+      <p><strong>Purpose:</strong> The spine of the whole session. Shows a single TCP SYN packet attempting the full path from FortiGate to ISP peer, with every checkpoint that can stop it, so the student can locate a failure spatially rather than recalling a list.</p>
+      <div class="section-img-wrap">
+        <img src="images/v1-syn-journey.png" class="section-img" alt="A horizontal journey diagram showing a TCP SYN packet travelling from a FortiGate to an ISP router, passing six labelled checkpoints, with the third checkpoint shown blocking it."
+             onerror="this.style.display='none';this.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">The Journey &mdash; one SYN, six gates</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/v1-syn-journey.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image generation prompt</button>
+          <div class="prompt-content" hidden>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream off-white background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, deep navy ink for text. Clean bold line work. No gradients, no photorealism, no glossy 3D rendering, no lens flare. Generous spacing, professional but storybook-like, clear enough to function as an educational diagram. Recurring cast details must stay consistent: SENOR is an older engineer in a large decorative sombrero with a chaotic desk and immaculate diagrams behind him; JUNIOR is a young overconfident engineer, usually holding coffee; J.R. is Junior's identical twin but tidier, with a notebook and a clicking pen; PENNY is a business manager in a smart blazer holding a tablet; RILEY wears a help-desk headset; the INTERMEDIATE ENGINEER is competent and calm. The LoFinance logo is stacks of banknotes frozen inside a pale blue ice cube. COMPOSITION: a wide left-to-right journey across the full frame, like an illustrated board game path drawn as a winding road with clear stations. At the FAR LEFT, a stylised FortiGate appliance drawn as a friendly rounded box with a small face and status lights, labelled 'LoFinance HQ · AS 65001'. At the FAR RIGHT, a second appliance labelled 'ISP-1 Parramatta · AS 65100'. TRAVELLING ALONG THE ROAD: a single small character representing a TCP SYN packet — a rounded envelope with simple eyes and tiny legs, carrying a small suitcase labelled '179'. SIX GATES stand along the road, each drawn as a distinct illustrated barrier with a hand-lettered sign: GATE 1 'IS THERE A ROUTE?' drawn as a signpost with a folded map pinned to it; GATE 2 'RIGHT SOURCE ADDRESS?' drawn as a passport desk with a small stamp; GATE 3 'LOCAL-IN POLICY' drawn as a heavy closed portcullis in coral, clearly SHUT, with the SYN character bumping into it, one arm raised, expression startled — this gate must be visually the most prominent because it is the episode's actual fault; GATE 4 'TTL — CAN YOU SURVIVE ONE HOP?' drawn as a low tunnel with a height-limit bar and a small ticking hourglass; GATE 5 'UPSTREAM ACL' drawn as an open boom gate in sage green with a bored attendant; GATE 6 'DO THEY ANSWER?' drawn as a doorway with a bell. Beside GATE 3, a small inset speech bubble reads 'to the box, not through it'. A faint ghosted continuation of the road past the ISP router leads to a small banner reading 'ESTABLISHED' in muted gold, unreachable in this image. BOTTOM LEFT CORNER: the LoFinance logo. MUST NOT INCLUDE: configuration syntax, dense labels beyond those listed, photorealism, corporate stock art. LEARNING PURPOSE: convert an abstract list of failure causes into an ordered spatial walk, so the student checks causes in path order instead of at random.</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="width:180px;"><strong>Aspect ratio</strong></td><td>16:9</td></tr>
+          <tr><td><strong>Placement</strong></td><td>Top of the page, immediately after the introduction &mdash; this is the hero visual.</td></tr>
+          <tr><td><strong>Accessibility</strong></td><td>A horizontal journey diagram showing a TCP SYN packet travelling from a FortiGate to an ISP router, passing six labelled checkpoints, with the third checkpoint shown blocking it.</td></tr>
+        </tbody>
+      </table>
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MEMORY ANCHOR</div>
+          <div class="mental-note-block-text">This is the image to recall when a session sits in Active. Walk the path mentally from left to right and stop at the first gate you have not personally verified &mdash; that gate is your next command.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-img2">
+      <div class="section-label">VISUAL 02</div>
+      <h2>Two Lies on the Ladder</h2>
+      <p><strong>Purpose:</strong> Fixes the single most confusing thing about the FSM: two of the six state names imply progress that has not happened. Isolating the two liars makes the other four trustworthy.</p>
+      <div class="section-img-wrap">
+        <img src="images/v2-two-lies.png" class="section-img" alt="A vertical ladder of six BGP states with Connect and Active drawn as smiling masks concealing anxious faces, and the remaining four states drawn plainly."
+             onerror="this.style.display='none';this.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">Two Lies on the Ladder</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/v2-two-lies.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image generation prompt</button>
+          <div class="prompt-content" hidden>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream off-white background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, deep navy ink for text. Clean bold line work. No gradients, no photorealism, no glossy 3D rendering, no lens flare. Generous spacing, professional but storybook-like, clear enough to function as an educational diagram. Recurring cast details must stay consistent: SENOR is an older engineer in a large decorative sombrero with a chaotic desk and immaculate diagrams behind him; JUNIOR is a young overconfident engineer, usually holding coffee; J.R. is Junior's identical twin but tidier, with a notebook and a clicking pen; PENNY is a business manager in a smart blazer holding a tablet; RILEY wears a help-desk headset; the INTERMEDIATE ENGINEER is competent and calm. The LoFinance logo is stacks of banknotes frozen inside a pale blue ice cube. COMPOSITION: a tall vertical ladder centred in the frame, six rungs, labelled from bottom to top in clean sans-serif: 'Idle', 'Connect', 'Active', 'OpenSent', 'OpenConfirm', 'Established'. On the 'Connect' and 'Active' rungs, small character figures each hold up a cheerful theatrical smiling mask on a stick in front of their faces — behind each mask, partially visible around the edge, is an anxious worried expression. These two rungs are tinted pale coral and each has a small hand-lettered tag hanging from it: beside Connect the tag reads 'SYN sent. Nothing more.'; beside Active the tag reads 'The attempt FAILED.'. The four remaining rungs — Idle, OpenSent, OpenConfirm, Established — carry plain honest figures with no masks, tinted sage green, each with a short tag: Idle 'Not trying', OpenSent 'TCP is up', OpenConfirm 'They accepted us', Established 'Routes may now flow'. To the LEFT of the ladder, a vertical bracket spans Idle through Active labelled 'TRANSPORT'; a second bracket spans OpenSent and OpenConfirm labelled 'PARAMETERS'; a third bracket at the top beside Established labelled 'POLICY'. In the TOP RIGHT, a small figure of SENOR in his sombrero stands with arms folded looking at the ladder, a speech bubble reading 'Two of these are lies.' BOTTOM RIGHT: the LoFinance logo. MUST NOT INCLUDE: CLI output, additional states, photorealism. LEARNING PURPOSE: attach a strong emotional and visual marker to the two misleading state names so they are never again read as progress.</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="width:180px;"><strong>Aspect ratio</strong></td><td>3:2</td></tr>
+          <tr><td><strong>Placement</strong></td><td>Immediately after the journey visual, before the configuration material.</td></tr>
+          <tr><td><strong>Accessibility</strong></td><td>A vertical ladder of six BGP states with Connect and Active drawn as smiling masks concealing anxious faces, and the remaining four states drawn plainly.</td></tr>
+        </tbody>
+      </table>
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MEMORY ANCHOR</div>
+          <div class="mental-note-block-text">When you read a state name, ask whether the word is describing the protocol's intention or its achievement. 'Connect' and 'Active' describe intention. The other four describe achievement.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-img3">
+      <div class="section-label">VISUAL 03</div>
+      <h2>Through the Box vs To the Box</h2>
+      <p><strong>Purpose:</strong> Encodes Junior's mistake &mdash; the episode's central senior-engineering lesson &mdash; as a single unforgettable spatial contrast between two policy tables.</p>
+      <div class="section-img-wrap">
+        <img src="images/v3-through-vs-to.png" class="section-img" alt="A split illustration of a FortiGate: on the left, traffic passing through a corridor governed by firewall policy; on the right, traffic knocking at a front door governed by local-in policy."
+             onerror="this.style.display='none';this.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">Through the Box vs To the Box</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/v3-through-vs-to.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image generation prompt</button>
+          <div class="prompt-content" hidden>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream off-white background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, deep navy ink for text. Clean bold line work. No gradients, no photorealism, no glossy 3D rendering, no lens flare. Generous spacing, professional but storybook-like, clear enough to function as an educational diagram. Recurring cast details must stay consistent: SENOR is an older engineer in a large decorative sombrero with a chaotic desk and immaculate diagrams behind him; JUNIOR is a young overconfident engineer, usually holding coffee; J.R. is Junior's identical twin but tidier, with a notebook and a clicking pen; PENNY is a business manager in a smart blazer holding a tablet; RILEY wears a help-desk headset; the INTERMEDIATE ENGINEER is competent and calm. The LoFinance logo is stacks of banknotes frozen inside a pale blue ice cube. COMPOSITION: a single large stylised FortiGate drawn as an illustrated BUILDING, centred, split conceptually into two readable halves by a soft vertical divider line. LEFT HALF, labelled in hand-lettering at the top 'THROUGH THE BOX — firewall policy': a wide open CORRIDOR runs straight through the building from one side to the other; several small packet characters (rounded envelopes with faces) walk briskly along it carrying luggage, passing a uniformed guard checking them against a clipboard headed 'POLICY'. The corridor is drawn in sage green and clearly functioning. RIGHT HALF, labelled at the top 'TO THE BOX — local-in policy': a FRONT DOOR set into the building wall, firmly closed, with a small letterbox slot. A single packet character stands on the doorstep, suitcase labelled '179', hand raised mid-knock, with a small unanswered doorbell. Beside the door hangs a list headed 'ALLOWACCESS' with two ticked items reading 'ping' and 'https' and a conspicuously ABSENT third line. The door area is tinted coral. IN THE FOREGROUND at lower left, JUNIOR stands inside the corridor with a magnifying glass, inspecting the corridor guard's clipboard, entirely absorbed, with his back turned to the front door — a small speech bubble reads 'Policy's fine!'. At lower right, SENOR in his sombrero stands beside the front door, pointing at it, speech bubble reading 'Which policy.' BOTTOM CENTRE: the LoFinance logo. MUST NOT INCLUDE: CLI text, additional characters, photorealism. LEARNING PURPOSE: bind the abstract distinction between transit and local-in policy to a physical image of a corridor versus a doorstep, so the correct table is chosen reflexively.</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="width:180px;"><strong>Aspect ratio</strong></td><td>3:2</td></tr>
+          <tr><td><strong>Placement</strong></td><td>In the troubleshooting section, beside the dead-ends material.</td></tr>
+          <tr><td><strong>Accessibility</strong></td><td>A split illustration of a FortiGate: on the left, traffic passing through a corridor governed by firewall policy; on the right, traffic knocking at a front door governed by local-in policy.</td></tr>
+        </tbody>
+      </table>
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MEMORY ANCHOR</div>
+          <div class="mental-note-block-text">Ask one question before choosing a policy table: is this device the destination, or the corridor? BGP peering makes it the destination.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-img4">
+      <div class="section-label">VISUAL 04</div>
+      <h2>The Cheque the Routing Table Cannot Cash</h2>
+      <p><strong>Purpose:</strong> Makes network-import-check concrete, including the covering-route trap that the exam favours. Advertising is framed as a financial commitment rather than a configuration toggle.</p>
+      <div class="section-img-wrap">
+        <img src="images/v4-import-check.png" class="section-img" alt="An illustration of BGP as a bank teller refusing to countersign a cheque for a prefix that is not exactly present in the routing-table ledger."
+             onerror="this.style.display='none';this.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">The Cheque the Routing Table Cannot Cash</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/v4-import-check.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image generation prompt</button>
+          <div class="prompt-content" hidden>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream off-white background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, deep navy ink for text. Clean bold line work. No gradients, no photorealism, no glossy 3D rendering, no lens flare. Generous spacing, professional but storybook-like, clear enough to function as an educational diagram. Recurring cast details must stay consistent: SENOR is an older engineer in a large decorative sombrero with a chaotic desk and immaculate diagrams behind him; JUNIOR is a young overconfident engineer, usually holding coffee; J.R. is Junior's identical twin but tidier, with a notebook and a clicking pen; PENNY is a business manager in a smart blazer holding a tablet; RILEY wears a help-desk headset; the INTERMEDIATE ENGINEER is competent and calm. The LoFinance logo is stacks of banknotes frozen inside a pale blue ice cube. COMPOSITION: an illustrated BANK COUNTER scene, viewed from the customer side, occupying the centre of the frame. BEHIND THE COUNTER stands a calm teller character wearing a small visor and a name badge reading 'BGP', holding a rubber stamp poised but NOT yet stamping. ON THE COUNTER lies a large open LEDGER labelled 'ROUTING TABLE', in which one line is clearly written: '172.16.0.0/16 — ACTIVE'. IN FRONT OF THE COUNTER, a hopeful customer character (a small rounded figure in a scarf) slides across a CHEQUE made out for '172.16.5.0/24'. The teller's free hand is held up in a polite 'stop' gesture, and a small speech bubble reads 'Not an exact match.' TO THE RIGHT of the counter, a second smaller vignette shows the same teller cheerfully stamping a different cheque reading '192.168.10.0/24' beside a ledger line reading '192.168.10.0/24 — ACTIVE', with a small sage-green tick. ABOVE THE SCENE, a hand-lettered banner reads 'network-import-check'. IN THE LOWER LEFT CORNER, a small closed side-door labelled 'network-import-check disable' stands slightly ajar with a coral warning triangle beside it and a tiny tag reading 'promises you cannot keep'. BOTTOM RIGHT: the LoFinance logo. MUST NOT INCLUDE: real currency symbols or amounts, photorealism, dense text. LEARNING PURPOSE: make the exact-match requirement and its override memorable as an act of financial honesty rather than an arbitrary default.</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="width:180px;"><strong>Aspect ratio</strong></td><td>4:3</td></tr>
+          <tr><td><strong>Placement</strong></td><td>In the advertising section, next to the covering-route table.</td></tr>
+          <tr><td><strong>Accessibility</strong></td><td>An illustration of BGP as a bank teller refusing to countersign a cheque for a prefix that is not exactly present in the routing-table ledger.</td></tr>
+        </tbody>
+      </table>
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MEMORY ANCHOR</div>
+          <div class="mental-note-block-text">Advertising a prefix is promising to carry traffic for it. A covering /16 in the ledger does not authorise a /24 cheque &mdash; the amounts must match exactly.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-img5">
+      <div class="section-label">VISUAL 05</div>
+      <h2>Four Doors, Four Questions</h2>
+      <p><strong>Purpose:</strong> Separates the four show commands by the question each answers, and makes the database-versus-routing-table gap visible as a deliberate gate rather than a fault.</p>
+      <div class="section-img-wrap">
+        <img src="images/v5-four-doors.png" class="section-img" alt="Four illustrated doors in a corridor, each labelled with a different diagnostic question, with a best-path turnstile between the third and fourth."
+             onerror="this.style.display='none';this.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">Four Doors, Four Questions</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/v5-four-doors.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image generation prompt</button>
+          <div class="prompt-content" hidden>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream off-white background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, deep navy ink for text. Clean bold line work. No gradients, no photorealism, no glossy 3D rendering, no lens flare. Generous spacing, professional but storybook-like, clear enough to function as an educational diagram. Recurring cast details must stay consistent: SENOR is an older engineer in a large decorative sombrero with a chaotic desk and immaculate diagrams behind him; JUNIOR is a young overconfident engineer, usually holding coffee; J.R. is Junior's identical twin but tidier, with a notebook and a clicking pen; PENNY is a business manager in a smart blazer holding a tablet; RILEY wears a help-desk headset; the INTERMEDIATE ENGINEER is competent and calm. The LoFinance logo is stacks of banknotes frozen inside a pale blue ice cube. COMPOSITION: an illustrated interior CORRIDOR running left to right, with FOUR DOORS set into the far wall, evenly spaced, each with a hand-lettered sign above it and a small illustrated scene visible through its open frame. DOOR 1, sign 'ARE WE PEERING?': through it, two small router characters shaking hands. A small plaque beside the frame reads 'bgp summary'. DOOR 2, sign 'WHY THIS ONE PEER?': through it, a single router character seated under a bright interrogation lamp, with small floating tags around it reading 'AS', 'router-id', 'timers', 'capabilities'. Plaque reads 'bgp neighbors'. DOOR 3, sign 'WHAT DOES BGP KNOW?': through it, a vast card-index room stuffed with route cards, several visibly in duplicate pairs. Plaque reads 'bgp network'. DOOR 4, sign 'WHAT ACTUALLY WON?': through it, a small tidy shelf holding only two or three route cards. Plaque reads 'routing-table bgp'. BETWEEN DOOR 3 AND DOOR 4, standing in the corridor itself, a prominent TURNSTILE labelled 'BEST PATH', staffed by a small polite gatekeeper. One route card passes through the turnstile; a second card is being courteously waved aside and placed on a neat 'still valid' tray — the rejected card must look intact and healthy, never crumpled or damaged. ALONG THE TOP of the corridor, a hand-lettered banner reads 'Up is not peered · Peered is not exchanging · Exchanging is not installed'. IN THE FOREGROUND, seen from behind, the INTERMEDIATE ENGINEER stands facing the doors with hands in pockets, deciding which to open. BOTTOM LEFT: the LoFinance logo. MUST NOT INCLUDE: full CLI syntax, photorealism, more than four doors. LEARNING PURPOSE: prevent the four commands from collapsing into 'four ways of looking at BGP' by giving each its own door and its own question.</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="width:180px;"><strong>Aspect ratio</strong></td><td>16:9</td></tr>
+          <tr><td><strong>Placement</strong></td><td>In the commands section, replacing or beside the command table.</td></tr>
+          <tr><td><strong>Accessibility</strong></td><td>Four illustrated doors in a corridor, each labelled with a different diagnostic question, with a best-path turnstile between the third and fourth.</td></tr>
+        </tbody>
+      </table>
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MEMORY ANCHOR</div>
+          <div class="mental-note-block-text">Choose the command by choosing the question. If you cannot say what question you are asking, you are not troubleshooting, you are browsing.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-img6">
+      <div class="section-label">VISUAL 06</div>
+      <h2>The Morning Five People Watched a Word</h2>
+      <p><strong>Purpose:</strong> Story anchor. Emotional encoding for the whole session &mdash; the memory of the office gathered around a monitor is what will retrieve the technical content later.</p>
+      <div class="section-img-wrap">
+        <img src="images/v6-the-watch.png" class="section-img" alt="The LoFinance operations room at the moment the BGP state changes from Active to Established, with the whole team reacting."
+             onerror="this.style.display='none';this.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">The Morning Five People Watched a Word</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/v6-the-watch.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image generation prompt</button>
+          <div class="prompt-content" hidden>Flat minimalistic but highly detailed illustrated vector artwork. Warm cream off-white background (#faf5e9). Coral accents, muted gold highlights, sage greens, soft brown outlines, deep navy ink for text. Clean bold line work. No gradients, no photorealism, no glossy 3D rendering, no lens flare. Generous spacing, professional but storybook-like, clear enough to function as an educational diagram. Recurring cast details must stay consistent: SENOR is an older engineer in a large decorative sombrero with a chaotic desk and immaculate diagrams behind him; JUNIOR is a young overconfident engineer, usually holding coffee; J.R. is Junior's identical twin but tidier, with a notebook and a clicking pen; PENNY is a business manager in a smart blazer holding a tablet; RILEY wears a help-desk headset; the INTERMEDIATE ENGINEER is competent and calm. The LoFinance logo is stacks of banknotes frozen inside a pale blue ice cube. COMPOSITION: a warm wide interior scene of the LoFinance network operations room, mid-morning light. THE CENTRAL FOCUS is a monitor on an articulated arm swivelled outward to face the room like a pub television. On the screen, rendered large and clear, a single word: 'Established', in sage green, with a faint ghosted coral outline of the previous word 'Active' just visible behind it, as if it has only this second changed. AROUND THE MONITOR, five characters react, all in consistent flat vector style: RILEY, in a help-desk headset on a mismatched kitchen chair, caught mid-clap with a slightly embarrassed expression, shoulders raised; JUNIOR standing with both hands on his head, coffee mug abandoned on the desk, expression of delighted disbelief; J.R., his identical twin but tidier, seated calmly, writing one line in his notebook without looking up; PENNY in a blazer in the doorway, arms folded, allowing herself exactly one small nod and no smile; SENOR at the right, in his sombrero, already turning to leave with his wooden chair under one arm, not looking at the screen at all, a half-peeled mandarin in his other hand. IN THE FOREGROUND, seen from behind at the keyboard, the INTERMEDIATE ENGINEER sits still, one hand still resting on the keys. BACKGROUND DETAILS: a wall of immaculate hand-drawn network diagrams, a cluttered desk with mandarin peel, a wall clock reading 09:47, and the LoFinance logo of banknotes frozen inside a pale blue ice cube. MOOD: quiet triumph, slightly comic, understated rather than celebratory. MUST NOT INCLUDE: confetti, exaggerated cheering, photorealism, corporate stock-art faces, any readable text on screen other than the two state words. LEARNING PURPOSE: give the session a single emotional retrieval cue, so that encountering the word 'Active' in an exam or a rack recalls the whole diagnostic ladder.</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="width:180px;"><strong>Aspect ratio</strong></td><td>16:9</td></tr>
+          <tr><td><strong>Placement</strong></td><td>At the end of the page, closing the visual sequence.</td></tr>
+          <tr><td><strong>Accessibility</strong></td><td>The LoFinance operations room at the moment the BGP state changes from Active to Established, with the whole team reacting.</td></tr>
+        </tbody>
+      </table>
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MEMORY ANCHOR</div>
+          <div class="mental-note-block-text">The technical content of this session hangs off one image: a room full of people watching a single word. When you next see Active, you should feel the room.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  LoFinance<span>.</span> <span>NSE7 Enterprise Firewall 7.6</span><span>.</span> Session 55 &middot; Visual Learning Page
+</footer>
+
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-session55-visual';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-img1':'Journey','section-img2':'Two Lies','section-img3':'Through vs To','section-img4':'Import Check','section-img5':'Four Doors','section-img6':'The Watch',
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 64 Bite — Reading the Session Table</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{max-width:960px;margin:0 auto;padding:36px 60px 60px;}
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .data-table code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--blue-deep);}
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.85;color:#e8efff;display:block;}
+  .ln{color:rgba(232,239,255,0.35);}
+  .hl-sdwan{background:rgba(37,99,235,0.35);border-radius:3px;padding:1px 3px;}
+  .hl-flag{background:rgba(180,83,9,0.4);border-radius:3px;padding:1px 3px;}
+  .hl-nat{background:rgba(26,124,74,0.4);border-radius:3px;padding:1px 3px;}
+  .annot{color:#9bb8e6;font-style:italic;}
+  .analogy-box{border:1px solid var(--amber-border);background:var(--amber-light);border-radius:12px;padding:18px 22px;margin:18px 0;}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-eyebrow">SESSION 64 · BITE · SESSION TABLE ANATOMY</div>
+    <h1>The Session Table <em>Never Lies</em></h1>
+    <p>The dashboard shows the rule's opinion. The session table shows what each conversation is actually doing.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A session is a <em>decision that was already made</em> — and cached.</div>
+  <p class="motivation-sub">SD-WAN rules decide the path for the first packet. Every packet after that trusts the session table. When the network changes, the gap between those two is where "old calls sound like the ocean" lives.</p>
+</div>
+
+<main>
+<div class="main-content">
+
+<!-- ══════════ SECTION 1: THE ANNOTATED OUTPUT ══════════ -->
+<div class="section-block">
+  <div class="section-label">01 · The Specimen</div>
+  <h2>One Session, <em>Annotated</em></h2>
+  <p>This is Jam's stuck voice call from <code style="font-family:'SF Mono',monospace;font-size:13px;">diagnose sys session list</code>. Three highlight colours: <strong style="color:#2563eb;">blue = SD-WAN identity</strong>, <strong style="color:#b45309;">amber = state flags</strong>, <strong style="color:#1a7c4a;">green = NAT</strong>.</p>
+
+  <div class="code-block">
+    <div class="code-label">diagnose sys session list — one entry, annotated</div>
+    <pre><code>session info: proto=17 proto_state=01 duration=684 expire=175 timeout=180
+              <span class="annot">└ UDP (17) · state 01 = UDP reply seen · alive 684s · dies in 175s if idle</span>
+flags=00000000 socktype=0 sockport=0 av_idx=0 use=4
+state=<span class="hl-flag">may_dirty</span> npu
+       <span class="annot">└ may_dirty: this session is ALLOWED to be re-evaluated · npu: hardware offloaded</span>
+statistic(bytes/packets/allow_err): org=1284560/8036/1 reply=1301442/8122/1
+       <span class="annot">└ traffic flowing BOTH directions — the session is not dead, just miserable</span>
+orgin-&gt;sink: org pre-&gt;post, reply pre-&gt;post dev=7-&gt;3/3-&gt;7 gwy=192.0.2.254/10.0.20.44
+       <span class="annot">└ dev IN-&gt;OUT interface indexes · gwy = next-hop this session is USING right now</span>
+hook=post dir=org act=<span class="hl-nat">snat</span> 10.0.20.44:49712-&gt;198.51.100.20:3478(<span class="hl-nat">203.0.113.66</span>:49712)
+       <span class="annot">└ source NAT applied on egress — public identity 203.0.113.66 belongs to ONE link</span>
+hook=pre dir=reply act=<span class="hl-nat">dnat</span> 198.51.100.20:3478-&gt;203.0.113.66:49712(10.0.20.44:49712)
+       <span class="annot">└ the reply direction undoes it — the far end only knows 203.0.113.66</span>
+misc=0 <span class="hl-sdwan">policy_id=14</span> auth_info=0 chk_client_info=0 vd=0
+       <span class="annot">└ firewall policy that admitted this session — policy lookup is also cached</span>
+serial=00a3c1f2 tos=ff/ff app_list=0 app=0 url_cat=0
+<span class="hl-sdwan">sdwan_mbr_seq=2 sdwan_service_id=3</span>
+       <span class="annot">└ steered by SD-WAN rule 3, out MEMBER 2 — decided at session creation</span></code></pre>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 2: FIELD REFERENCE ══════════ -->
+<div class="section-block">
+  <div class="section-label">02 · Field-by-Field</div>
+  <h2>What Each Line <em>Is Evidence Of</em></h2>
+
+  <table class="data-table">
+    <tr><th>Field</th><th>Meaning</th><th>SD-WAN significance</th></tr>
+    <tr>
+      <td><code>proto / proto_state</code></td>
+      <td>IP protocol number and its state machine. TCP <code>proto=6</code> uses two digits (e.g. <code>01</code> = ESTABLISHED); UDP <code>proto=17</code> uses <code>00</code> (no reply yet) or <code>01</code> (reply seen).</td>
+      <td>Tells you whether the conversation is genuinely two-way. Voice/RTP = UDP, so no retransmission hides a bad path — users hear it.</td>
+    </tr>
+    <tr>
+      <td><code>duration / expire / timeout</code></td>
+      <td>Age of the session · seconds until it dies if idle · the configured idle timer.</td>
+      <td>A long <code>duration</code> that predates a failover event is your first hint the session was born on the old path. It will keep refreshing <code>expire</code> as long as packets flow — a limping session can live forever.</td>
+    </tr>
+    <tr>
+      <td><code>state=</code> flags</td>
+      <td>Behavioural flags. Key ones: <code>may_dirty</code>, <code>dirty</code>, <code>npu</code>, <code>log</code>, <code>local</code>.</td>
+      <td><strong>The failover story lives here.</strong> <code>may_dirty</code> = eligible for re-evaluation. <code>dirty</code> = a change has occurred; re-run route + policy lookup on the next packet. See section 03.</td>
+    </tr>
+    <tr>
+      <td><code>statistic org= / reply=</code></td>
+      <td>Bytes/packets each direction.</td>
+      <td>Counters incrementing both ways = path exists. Org climbing, reply frozen = one-way traffic — classic broken-return-path or dead-egress signature.</td>
+    </tr>
+    <tr>
+      <td><code>dev=7-&gt;3/3-&gt;7</code></td>
+      <td>Interface index pairs: original direction in→out, reply direction in→out.</td>
+      <td>The <em>physical</em> answer to "which interface is this session actually using?" Map indexes with <code>diagnose netlink interface list</code>. Cross-check against <code>sdwan_mbr_seq</code>.</td>
+    </tr>
+    <tr>
+      <td><code>gwy=</code></td>
+      <td>Next-hop gateway(s) cached for this session.</td>
+      <td>The session's routing decision, frozen at creation (or last re-evaluation). If the routing table says one thing and <code>gwy=</code> says another — the session hasn't been re-evaluated.</td>
+    </tr>
+    <tr>
+      <td><code>hook / act=snat / dnat</code></td>
+      <td>NAT actions per direction, with the translated address in parentheses.</td>
+      <td><strong>Critical.</strong> <code>act=snat</code> means this session's public identity is welded to one egress link's IP. Moving the session to another member means a new source IP — the far end has never heard of it. This is why SNAT sessions get special treatment on routing changes.</td>
+    </tr>
+    <tr>
+      <td><code>policy_id</code></td>
+      <td>Firewall policy that matched at session creation.</td>
+      <td>Proof that <em>policy lookup is cached too</em>. First packet: route lookup + policy lookup. Every later packet: session table only. Re-evaluation re-runs both.</td>
+    </tr>
+    <tr>
+      <td><code>sdwan_service_id</code></td>
+      <td>The SD-WAN rule (service) that steered this session.</td>
+      <td>Which line of Riley's clipboard made the decision. <strong>If these two fields are absent</strong>, the session matched no SD-WAN rule — it fell through to the implicit rule / plain FIB routing.</td>
+    </tr>
+    <tr>
+      <td><code>sdwan_mbr_seq</code></td>
+      <td>The SD-WAN member the session is pinned to.</td>
+      <td>The single most direct answer to "which road is Jam on?" Compare it with the member the rule <em>currently</em> prefers (<code>diagnose sys sdwan service</code>). A mismatch is not a bug — it is a cached decision that hasn't been invalidated.</td>
+    </tr>
+  </table>
+
+  <div class="callout callout-amber">
+    <strong>Absence is evidence.</strong> No <code style="font-family:'SF Mono',monospace;font-size:12px;">sdwan_mbr_seq</code> / <code style="font-family:'SF Mono',monospace;font-size:12px;">sdwan_service_id</code> in a session that <em>should</em> be steered means the rule never matched it — check for a catch-all above it, wrong matching criteria, or local-out traffic. You learned all three ways this happens in Session 63.</div>
+</div>
+
+<!-- ══════════ SECTION 3: THE FLAGS ══════════ -->
+<div class="section-block">
+  <div class="section-label">03 · The Flags That Decide Failover</div>
+  <h2>may_dirty, dirty, and the <em>Right to Change Your Mind</em></h2>
+
+  <table class="data-table">
+    <tr><th>Flag</th><th>When set</th><th>What it means</th></tr>
+    <tr>
+      <td><code>may_dirty</code></td>
+      <td>At session creation, when the session was matched by a policy and its routing can legitimately change (the normal case).</td>
+      <td>Permission slip: "if the world changes, you may re-evaluate me." Without it, the session will never be reconsidered.</td>
+    </tr>
+    <tr>
+      <td><code>dirty</code></td>
+      <td>When a relevant change occurs — a routing-table change, an SD-WAN member/rule change, a policy change — FortiGate stamps <code>dirty</code> onto sessions that carry <code>may_dirty</code>.</td>
+      <td>Marching orders: on the <em>next packet</em>, re-run the route lookup and the policy lookup. The session then either re-pins to the new best path or dies at policy if no policy allows the new path.</td>
+    </tr>
+    <tr>
+      <td><code>npu</code></td>
+      <td>Session offloaded to hardware.</td>
+      <td>Offloaded sessions get pulled back to the CPU for re-evaluation when flagged dirty. Also: an offloaded session's counters may update lazily — don't panic at stale-looking numbers.</td>
+    </tr>
+    <tr>
+      <td><code>local</code></td>
+      <td>Traffic originated by the FortiGate itself.</td>
+      <td>Local-out — the cobbler's children. Bypasses SD-WAN rules unless a feature opts in with <code>interface-select-method</code>.</td>
+    </tr>
+  </table>
+
+  <div class="analogy-box">
+    <div class="analogy-text">
+      <div class="analogy-summary">The gym membership card</div>
+      Your first visit, the front desk checks your ID, your payment, and assigns you a locker (route lookup + policy lookup + member). Then they hand you a card. Every visit after that, you swipe the card — <strong>nobody re-checks anything</strong>. <code>may_dirty</code> means your card <em>can</em> be revoked. <code>dirty</code> means the gym changed its rules overnight and your card is flagged: next swipe, you go back to the front desk for a full re-check. The question Session 64 answers: <em>which events actually flag the card — and why does paying by direct debit (SNAT) change the answer?</em>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 4: THE SD-WAN READING RITUAL ══════════ -->
+<div class="section-block">
+  <div class="section-label">04 · The Ritual</div>
+  <h2>Reading a Session with <em>SD-WAN Eyes</em></h2>
+  <p>When Riley says "old calls are broken, new calls are fine," this is the order a senior engineer reads a stuck session:</p>
+  <ol>
+    <li><strong>Filter first.</strong> <code style="font-family:'SF Mono',monospace;font-size:13px;">diagnose sys session filter dst 198.51.100.20</code> (also <code style="font-family:'SF Mono',monospace;font-size:13px;">src</code>, <code style="font-family:'SF Mono',monospace;font-size:13px;">dport</code>, <code style="font-family:'SF Mono',monospace;font-size:13px;">policy</code>) then <code style="font-family:'SF Mono',monospace;font-size:13px;">diagnose sys session list</code>. Never read the whole table.</li>
+    <li><strong>Which rule?</strong> — <code style="font-family:'SF Mono',monospace;font-size:13px;">sdwan_service_id</code> present? Right rule? Absent = fell through.</li>
+    <li><strong>Which member?</strong> — <code style="font-family:'SF Mono',monospace;font-size:13px;">sdwan_mbr_seq</code> vs the member the rule prefers <em>now</em> (<code style="font-family:'SF Mono',monospace;font-size:13px;">diagnose sys sdwan service</code>). Mismatch = pinned session.</li>
+    <li><strong>Is it NAT'd?</strong> — <code style="font-family:'SF Mono',monospace;font-size:13px;">act=snat</code> means its public identity belongs to that member's link. Note it before predicting behaviour.</li>
+    <li><strong>Could it move?</strong> — <code style="font-family:'SF Mono',monospace;font-size:13px;">may_dirty</code> present? Is <code style="font-family:'SF Mono',monospace;font-size:13px;">dirty</code> ever appearing? If the permission exists but the flag never fires, ask <em>what kind of change occurred</em> — and whether that kind of change triggers re-evaluation at all.</li>
+    <li><strong>Corroborate.</strong> — <code style="font-family:'SF Mono',monospace;font-size:13px;">dev=</code> pair and <code style="font-family:'SF Mono',monospace;font-size:13px;">gwy=</code> should agree with <code style="font-family:'SF Mono',monospace;font-size:13px;">sdwan_mbr_seq</code>. Counters both directions confirm the (bad) path still passes traffic.</li>
+  </ol>
+
+  <div class="callout callout-green">
+    <strong>The mismatch is the finding.</strong> Dashboard says the rule prefers member 1. The session says <code style="font-family:'SF Mono',monospace;font-size:12px;">sdwan_mbr_seq=2</code>. Neither is lying — they are answering different questions. The rule answers "where would a <em>new</em> session go?" The session table answers "where is <em>this</em> session going?" Old calls sound like the ocean precisely because those two answers are allowed to differ.
+  </div>
+
+  <div class="callout callout-amber">
+    <strong>Open question this bite deliberately does not answer:</strong> the SLA breached, the rule swung, <code style="font-family:'SF Mono',monospace;font-size:12px;">may_dirty</code> is set — so why was Jam's session never stamped <code style="font-family:'SF Mono',monospace;font-size:12px;">dirty</code>? What kind of change happened at 09:15, and what kind of change does the dirty machinery actually listen for? That is the heart of Session 64.
+  </div>
+</div>
+
+</div>
+</main>
+
+<footer>LoFinance · Season 5 · <span>Session 64 Bite</span> · The Session Table Never Lies</footer>
+<script>if(sessionStorage.getItem('pt')){sessionStorage.removeItem('pt');requestAnimationFrame(()=>{document.documentElement.classList.remove('pt-init')})}</script>
+</body>
+</html>

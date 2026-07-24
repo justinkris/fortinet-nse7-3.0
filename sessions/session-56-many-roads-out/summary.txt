@@ -1,0 +1,363 @@
+SESSION 56 SUMMARY — "Many Roads Out"
+Season 5 "The Expansion" · SNA Domain 4 · EF Study Guide 05 Dynamic Routing Protocols,
+pp. 142-146
+Written for Claude, to continue the story in Session 57.
+NOTE: Sessions 48-53 remain ON THE SHELF (student's explicit request). Do not assume that
+material was taught.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Thursday 10:52. The good monitor has been turned back around; nobody admits to doing it
+(callback to the S55 pub-television set piece).
+
+COLD OPEN — BAZ ARRIVES. New recurring character: Baz, carrier account manager. Quarter-zip
+with carrier logo, unrequested box of pastries, stands too close to Penny's desk "with the
+posture of someone who has already been told yes and is now just enjoying it." Says "mate"
+nineteen times over the episode; Riley counts on a sticky note (final count 19 — reusable
+running gag). Sells the ISP-2 Chatswood service on diversity ("different exchange, different
+physical path, you're not putting all your eggs in the Parramatta basket"). Penny asks about
+the SLA. Baz: "we don't do a hard SLA on the second service, mate, it's a HANDSHAKE product.
+Best effort. Same fibre, same NOC, same engineers. You'll never notice the difference." This
+line is a DELIBERATE PLANT — it is falsified in S57 when the far-end router dies silently.
+Penny has already signed. Bills from Monday.
+
+Señor is in the corner, NOT introduced to Baz and making no effort to correct this, peeling a
+mandarin "with the expression of a man listening to a weather report for a country he does not
+live in."
+
+Penny's framing line: "I have signed for two roads. I would like us to drive down two roads."
+
+JUNIOR IS RIGHT (the planned omen beat, executed): "Just use both at once. Load balance across
+them." Room goes silent. J.R. stops writing. Riley turns his chair. Señor PUTS DOWN THE
+MANDARIN — established as unprecedented. "Say that again." Then: "He is right. Write down the
+date. He will not be right about WHY. But he is right." Junior duly gets the reason wrong
+("BGP already load balances, it's got two paths, it'll use two paths"), and Señor:
+"Ah. There he is. The universe has rebalanced."
+
+JAVIER'S MESSAGE. Phone buzzes. Señor puts the mandarin down a SECOND time in one morning
+(twice in one episode = escalation of the tell) and says the twice-a-year line: "Ah. He is
+serious." Message from Javier Lin, 02:00 Singapore: "Peer to my loopback."
+
+Señor writes two problems on the whiteboard and frames the whole episode: "They look like
+different problems. They are the same problem wearing different hats."
+  1. Two roads. Why does BGP only drive down one?
+  2. Javier's loopback. Why does he want that, and what breaks?
+
+Baz leaves the pastries. Penny signs nothing further.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — very strong session. Best single moment: derived
+  loopback-as-source in ONE move from the TCP transport model. See PERFORMANCE NOTES.
+- Señor — mandarin put down twice (unprecedented, escalating tell). Whiteboard marker,
+  capped pen used for tapping the board. Never spoke to Baz. Key lines this episode:
+  "Equal is permission. Enable is instruction."
+  "A loopback cannot go down, because it was never physically up."
+  "The cable is one hop. The loopbacks are not on the cable."
+  "It is not a seatbelt. It is a wider road. If you want a seatbelt, you must buy a seatbelt
+   separately." (direct S57 setup)
+  "Last week the answer was not the firewall policy. This week the answer IS the firewall
+   policy. This is why you do not memorise answers. You memorise where the packet went."
+  "You do not choose IBGP or EBGP. You count the two numbers, and they tell you which you
+   already have."
+- Junior — RIGHT for once (ECMP), wrong on mechanism. Second wrong idea: "why not just peer
+  twice, one session per link" — which is the perfect wrong answer that sets up loopback
+  sourcing. Junior is now functioning as the question-generator rather than pure comic relief.
+- Baz — NEW. Carrier account manager. Cheerful, unbothered, structurally unreliable. Handshake
+  product, no SLA. Returns in S57 on speakerphone saying "mate, the link is up."
+- Penny — two appearances. Opening (two roads) and the money-sentence gate. Asked what it
+  costs to fix the 180s exposure — that question IS Session 57.
+- Riley — sticky-note "mate" counter (19). Chair-turning as reaction shot.
+- J.R. — notebook, stops writing when Junior is right (wordless reaction), continues the
+  established silent-annotator role.
+- Javier Lin — offscreen, four words again ("Peer to my loopback"). His terseness is now an
+  established character signature and a reliable episode-driver.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+LoFinance now pays two carriers (ISP-1 Parramatta AS 65100, ISP-2 Chatswood AS 65200) but all
+internet-bound traffic leaves via Parramatta. Second invoice earns nothing. Separately, the
+Singapore DC has two physical circuits to HQ and Javier requires loopback peering rather than
+two per-link sessions. Both problems are "we bought redundancy — how do we spend it?"
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (EF pp. 142-146)
+==================================================================
+1. WHY BGP INSTALLS ONE PATH BY DEFAULT: a routing table entry maps one prefix to one best
+   next hop. BGP learns plurally (RIB / database) and installs singularly (routing table).
+   The loser stays in `get router info bgp network` forever, valid, unused. Direct extension
+   of the S55 database-vs-routing-table gap.
+2. THE TIE-BREAKER TAIL: with two carrier defaults of equal AS-path length, no MED, no
+   local-pref, no weight, selection falls all the way to LOWEST ROUTER-ID — i.e. the idle
+   circuit is chosen by someone else's addressing. Framed to the student as "a coin flip
+   decided by someone else."
+3. ECMP: `set ebgp-multipath enable` / `set ibgp-multipath enable` under config router bgp.
+   Up to 10 BGP routes shared (per supplement p.344).
+   KEY SEQUENCING CORRECTION MADE THIS SESSION: the student said equal attributes mean both
+   install "and ECMP kicks in." Corrected to: equal attributes are the PRECONDITION that makes
+   multipath legal; the config command is what makes it happen. Both required.
+   Señor's phrasing: "EQUAL IS PERMISSION. ENABLE IS INSTRUCTION."
+4. ECMP IS NOT REDUNDANCY — the senior-engineering core of the episode. The route only leaves
+   the routing table when BGP withdraws it, which requires session teardown, which requires
+   hold-timer expiry (default 180s). During those 180s, ECMP hashes ~50% of flows onto a dead
+   path. Single-path: 100% broken for 180s. ECMP: ~50% broken for 180s, INCLUDING half of the
+   traffic that would otherwise have been fine. Trade a total outage for a partial one, and
+   partial outages are harder to diagnose "because the phones only half ring."
+   THE STUDENT DERIVED THE ~50% AND THE 180s HIMSELF. This is the strongest reasoning of the
+   session and directly sets up S57.
+5. LOOPBACK AS BGP SOURCE: loopbacks never go down because they were never physically up.
+   Two-per-link sessions bind session state to a cable; a loopback session reroutes underneath
+   BGP when a cable fails and BGP never notices — zero withdrawal, zero reconvergence. Also
+   halves config/policy/neighbour management versus two sessions.
+6. MULTIHOP FOR ADJACENT ROUTERS: even with a single direct cable, loopback-to-loopback is
+   >1 routed hop (arriving at the remote loopback is a separate routing decision on the peer),
+   so default EBGP TTL 1 kills it. `set ebgp-enforce-multihop enable` required.
+   NOTE: the student counted THREE hops; the strict count is TWO transits. He was corrected
+   gently — his conclusion and reasoning method were sound, only the arithmetic was off, and
+   the only thing TTL cares about is ">1".
+7. UPDATE-SOURCE: `set update-source "Loopback0"`. Without it FortiGate sources from the egress
+   interface IP; the peer sees an unexpected source address and ignores the SYN → stuck in
+   Active. This was ON THE STUDENT'S OWN S55 stuck-in-Active list ("source address mismatch")
+   and was explicitly handed back to him as no longer hypothetical.
+8. THE FIREWALL POLICY REQUIREMENT (the episode's stretch question, p.144): because the TCP 179
+   session is now sourced on Loopback0 and exits a physical port, it crosses TWO INTERFACES and
+   therefore requires a FIREWALL POLICY (loopback ↔ physical), not local-in policy. This is the
+   MIRROR of Junior's S55 mistake — same symptom (Active), opposite table.
+9. REACHABILITY PRECONDITION: a static route or IGP must resolve the remote loopback. The
+   student named this first, before the policy answer — correct and necessary, just answering
+   the routing question when a policy question was asked.
+10. neighbor-group / neighbor-range (pp.145-146): hub-and-spoke overlay scaling. `neighbor-range`
+    defines the prefix whose peers inherit the group's settings. `ibgp-multipath` used because
+    local AS == remote AS. Taught lightly, flagged as exam-visible, marked for depth when the
+    Singapore spokes multiply.
+
+==================================================================
+MENTAL MODELS DEVELOPED
+==================================================================
+- "EQUAL IS PERMISSION. ENABLE IS INSTRUCTION." (ECMP preconditions vs config. THE line of the
+  session — reuse verbatim.)
+- "A LOOPBACK CANNOT GO DOWN, BECAUSE IT WAS NEVER PHYSICALLY UP."
+- "THE CABLE IS ONE HOP. THE LOOPBACKS ARE NOT ON THE CABLE." (multihop for adjacent routers)
+- "ECMP IS CAPACITY, NOT RESILIENCE. It changes the SHAPE of an outage from total to partial."
+- "SAME SYMPTOM, OPPOSITE TABLE." Stuck-in-Active meant local-in in S55 and firewall policy in
+  S56. Memorise the packet path, not the fix.
+- "COUNT THE TWO AS NUMBERS. They tell you which protocol you already have, and therefore which
+  knob is yours." (ibgp- vs ebgp-multipath)
+- Carried and reinforced from S55: "Stuck early = transport. Cycling late = parameters." Used
+  live to close out the router-id cold-retrieval.
+
+==================================================================
+IMPORTANT ANALOGIES
+==================================================================
+- Two roads / driving down one (Penny's framing — the episode's spine and title source).
+- The seatbelt vs the wider road (Señor, ECMP vs BFD) — DIRECT S57 SETUP, reuse in the opener.
+- A hash with two buckets where one bucket is a hole (used to prompt the ~50% derivation).
+- "The phones only half ring" (why partial outages are harder than total ones).
+- Baz's "handshake product" (business analogy for no SLA; pays off in S57).
+
+==================================================================
+KEY CLI COMMANDS DISCUSSED
+==================================================================
+config router bgp
+    set ebgp-multipath enable
+    set ibgp-multipath enable
+end
+
+config router bgp
+    set as 65001
+    set router-id 10.99.50.1
+    config neighbor
+        edit "172.20.0.1"
+            set remote-as 65300
+            set update-source "Loopback0"
+            set ebgp-enforce-multihop enable
+            set description "Javier - SG DC"
+        next
+    end
+end
+
+config firewall policy
+    edit 0
+        set name "BGP-Loopback-to-SG"
+        set srcintf "Loopback0"
+        set dstintf "port2"
+        set srcaddr "HQ-Loopback0"
+        set dstaddr "SG-Loopback"
+        set service "BGP"
+        set action accept
+        set schedule "always"
+    next
+end
+
+config router bgp                      (hub-and-spoke, pp.145-146)
+    set ibgp-multipath enable
+    config neighbor-group
+        edit "SpokeISP1"
+            set interface "ISP1"
+            set remote-as 65100
+    end
+    config neighbor-range
+        edit 1
+            set prefix 10.1.0.0 255.255.255.0
+            set neighbor-group "SpokeISP1"
+    end
+end
+
+get router info bgp summary
+get router info bgp neighbors 172.20.0.1
+get router info routing-table bgp                  (look for two next-hops on one prefix)
+diagnose sniffer packet any 'port 179' 4           (confirm source IP is the loopback)
+
+==================================================================
+TROUBLESHOOTING APPROACH (as taught this session)
+==================================================================
+Both peers Established, one path installed  → are attributes truly equal? then: multipath
+                                               not enabled, or a tie-breaker fired above
+                                               router-id
+Loopback peering Active                     → WHERE DOES THE PACKET START, WHERE DOES IT
+                                               LEAVE? Two interfaces = firewall policy
+Loopback peering Active, policy verified    → what source IP does the peer SEE? (update-source)
+Loopback peering Active, source verified    → how many ROUTED HOPS between the loopbacks?
+                                               (ebgp-enforce-multihop)
+Peer loopback unreachable                   → is there a static/IGP route to it at all?
+
+The ordering question Señor used, and which worked: "Where does the packet start. Where does
+it leave. Say both out loud." Saying the two interfaces aloud produced the answer immediately.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- ISP-2 Chatswood assigned AS 65200. Singapore DC assigned AS 65300. London still unassigned.
+- `ebgp-multipath enable` set on HQ-FGT — both carrier defaults installed for 0.0.0.0/0.
+- Singapore peering built LOOPBACK-TO-LOOPBACK: HQ Loopback0 10.99.50.1 <-> SG 172.20.0.1.
+  NOTE the deliberate reuse: 10.99.50.1 was already the statically-set router-id from S55, on
+  the stable internal management range. The loopback now carries it. This continuity is worth
+  pointing at if router-id comes up again.
+- update-source Loopback0 + ebgp-enforce-multihop enable on the SG neighbour.
+- Static routes to 172.20.0.1 over BOTH underlay circuits (equal cost) so the TCP session can
+  reroute beneath BGP.
+- Firewall policy Loopback0 -> port2, service BGP, both directions as required.
+- RISK-56-01 RAISED AND ACCEPTED: 180-second detection latency, ~50% flow loss during that
+  window. Explicitly logged as open, explicitly told to Penny in business language. This is the
+  hook S57 resolves — DO NOT let S57 open without referencing RISK-56-01 by name.
+
+==================================================================
+TOPOLOGY CHANGES (topology v5.2)
+==================================================================
+- EBGP peering ESTABLISHED: LoFinance HQ (AS 65001) <-> ISP-2 Chatswood (AS 65200).
+- ebgp-multipath enabled; 0.0.0.0/0 now has two installed next-hops. Both invoices earning.
+- EBGP peering ESTABLISHED: LoFinance HQ (AS 65001) <-> Singapore DC (AS 65300), loopback-to-
+  loopback, multihop, over two underlay circuits.
+- LoFinance is now a genuinely multihomed AS with a hop-independent international peering.
+- Open risk RISK-56-01: 180s detection latency.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Both carrier invoices now earn. Singapore peering survives loss of either underlay circuit with
+zero BGP reconvergence. Penny was given the residual risk in her own language and responded by
+asking what it costs to fix — which is exactly the response the money-sentence drill is
+supposed to produce. Baz left the pastries.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- "Two equal paths, defaults, how many installed?" → ONE. High-probability recall question and
+  the single most likely place to lose a mark through assuming ECMP is automatic.
+- ebgp-multipath vs ibgp-multipath selection by comparing local AS to remote AS — likely
+  dressed as a config-snippet scenario question.
+- "Why multihop when they share a cable?" → because the loopback is not the next hop. This is
+  the study guide's own wording (p.144) and is near-certain to appear.
+- The four-cause ladder for a stuck loopback peering (policy / update-source / multihop /
+  reachability) is ideal scenario-question material; the DISTRACTOR to watch for is local-in
+  policy, which was the right answer in S55 and is the wrong answer here.
+- neighbor-range definition (IP range whose peers inherit group settings) — straight recall.
+- Route-selection tie-breaker tail ending in lowest router-id — sets up S58 attributes.
+- ECMP up to 10 routes (supplement p.344).
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+1. RIGHT ANSWER, WRONG MECHANISM: "BGP already load balances, it's got two paths, it'll use two
+   paths." Correct conclusion (use both links), wrong model. Lesson: BGP LEARNS PLURALLY AND
+   INSTALLS SINGULARLY. Being right about the outcome while wrong about the mechanism means you
+   cannot troubleshoot it when it doesn't work.
+2. "WHY NOT JUST PEER TWICE, ONE SESSION PER LINK?" — the productive wrong answer of the
+   episode. It is not absurd; it superficially delivers redundancy AND ECMP. It fails because
+   session state is bound to a cable, and because it doubles config on both sides. This is the
+   ideal setup for loopback sourcing and should be reused as a teaching device.
+
+==================================================================
+STUDENT PERFORMANCE NOTES (full detail in knowledge-register-session56.txt)
+==================================================================
+BEST SESSION OF THE SEASON SO FAR.
+- Both cold-retrieval questions correct with no hesitation (stuck-in-Active LEAST likely = C;
+  covering-route trap = nothing). The S55 register's instruction to run these cold was followed
+  and they paid off.
+- ROUTER-ID GAP CLOSED. In S55 this was answered as a slogan and had to be taught outright. In
+  S56 he named the OPEN message immediately when asked where the router-id travels. The
+  mechanism has moved from slogan to usable diagnostic.
+- THE 180s / ~50% DERIVATION was the peak of the session: given only a nudge about a hash with
+  a hole in it, he produced "3 minutes of roughly 50% of traffic going through a bad path."
+  He reasoned from mechanism to BLAST RADIUS unprompted — which is precisely the
+  mechanism-vs-rationale gap the S55 register flagged as the PRIMARY growth area. Explicitly
+  told him so in-session.
+- LOOPBACK DERIVED IN ONE MOVE from the TCP transport frame, entirely unaided.
+- MULTIHOP: correct conclusion, correct method (counted hops from the loopback, not the
+  interface — which is the trap), arithmetic slightly off (said 3, strictly 2).
+- WEAKNESS: the firewall-policy stretch question. He answered the ROUTING question (needs a
+  route to the loopback) when asked a POLICY question. Correct content, wrong question — this
+  is QUESTION-SCOPE DRIFT again, the same pattern as S55's advertising-vs-receiving slip. Two
+  redirects needed; the successful one was Señor's "where does the packet start, where does it
+  leave, say both out loud."
+- HONESTY: said "I am not sure about that one, I haven't encountered it" on ibgp-multipath
+  rather than guessing. Rewarded explicitly.
+- MONEY-SENTENCE GATE: SIGNPOSTED this time ("Penny gate incoming"), per the S55 register's
+  recommendation. NO STALL. He produced a sentence with the trading-floor revenue clause
+  unprompted. Two refinements offered: "without a route to the internet" overstates it (say
+  "half our connections silently fail"), and "the route does not get taken away" invites "is it
+  broken?" (say "our firewall takes three minutes to notice"). SIGNPOSTING WORKED — keep it for
+  S57, consider removing in S58.
+
+==================================================================
+EXAM QUESTIONS ASKED (10)
+==================================================================
+1. Two equal EBGP defaults, FortiGate defaults, routes installed → B) One
+2. ECMP across peers in a different AS → B) set ebgp-multipath enable
+3. Why multihop despite a direct cable → B) loopback is not the next hop
+4. Loopback session Active, update-source + multihop + reachability all OK → C) missing
+   firewall policy between loopback and physical interface
+5. Primary production reason for loopback source → B) keeps session up across redundant links
+6. Source address without update-source → C) egress interface IP
+7. Hub and spokes both AS 65100 → B) ibgp-multipath
+8. What neighbor-range defines → B) IP range whose peers inherit a neighbour group's settings
+9. ECMP, one carrier fails, before hold timer → C) ~half of flows fail until withdrawal
+10. Final tie-breaker with ECMP disabled → C) lowest router-id
+(Answers supplied as a key. Q1, Q4 and Q9 are the highest-value; run Q4 and Q9 cold at the top
+of S57 — Q4 because the local-in distractor is the trap, Q9 because it leads directly into BFD.)
+
+==================================================================
+TEASER FOR SESSION 57
+==================================================================
+"Fast Recovery" — Optimizing BGP convergence: timers, BFD, graceful restart. EF pp. 147-151.
+Friday 06:41, nineteen minutes before the trading floor opens. Parramatta drops — NOT the
+fibre, the FAR-END ROUTER, silently. The cable stays lit. The interface stays up. Every green
+light in the building is green. For 91 seconds half of LoFinance's trades go into a road that
+ends. Baz on speakerphone, cheerful: "Mate, I'm looking at it right now, the link is up."
+Señor, quietly: "The link is not the question." Riley's screen fills with alerts that arrived
+90 seconds too late to be useful. J.R. writes one thing and underlines it twice. Penny appears
+in the doorway with the walk and DOES NOT ASK A QUESTION. TAC replies in eleven minutes — the
+fastest anyone has seen — with three letters. Señor reaches past the sombrero. He does not put
+it on. Not yet. "Now we buy the seatbelt."
+
+S57 MUST: open by naming RISK-56-01; use the seatbelt/wider-road analogy as the bridge; exploit
+the fact that the student ALREADY DERIVED the 180s hold-timer problem himself, so BFD should be
+presented as the answer to HIS OWN question, not as new material. The "link is up but the
+router is dead" scenario is the exact failure mode BFD exists for and Baz's handshake-product
+line from S56 is the business-layer setup. Graceful restart connects back to HA material from
+Season 4. Run exam Q4 and Q9 from this session as cold retrieval first.
+
+Date and Time completed: Wednesday, 22 July 2026.

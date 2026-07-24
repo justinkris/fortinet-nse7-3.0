@@ -1,0 +1,341 @@
+SESSION 57 SUMMARY — "Fast Recovery"
+Season 5 "The Expansion" · SNA Domain 4 · EF Study Guide 05 Dynamic Routing Protocols,
+pp. 147-151
+Written for Claude, to continue the story in Session 58.
+NOTE: Sessions 48-53 remain ON THE SHELF (student's explicit request). Do not assume that
+material was taught.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Friday 06:41, nineteen minutes before the trading floor opens. Riley is in early because
+Fridays are settlement days and settlement days make him nervous.
+
+THE INCIDENT (as teased in S56, executed as promised):
+06:41:07 — the far-end router at ISP-1 Parramatta suffers a CONTROL-PLANE death. Not the
+fibre, not the optics, not the port. The line card keeps the laser lit. The interface stays
+UP. Riley's dashboard stays GREEN.
+For 91 seconds, ~half of LoFinance's outbound flows (every flow ECMP-hashed onto the
+Parramatta next-hop) are handed to a road that ends in fog. Packets leave, nothing returns,
+no error is raised.
+06:42:38 — BGP's hold timer finally expires. Parramatta routes withdrawn. Reconvergence onto
+Chatswood is sub-second. THE FAILOVER WAS ALWAYS INSTANT. It was the NOTICING that cost 91
+seconds. This distinction is the spine of the whole episode and should be reused.
+06:44 — trading desk calls Riley. 06:47 — Penny in the doorway with THE WALK, asks NOTHING.
+06:52 — Baz on speakerphone, cheerful and useless: "Mate, I'm looking at the circuit right
+now. The link is up. Green across the board, mate. Whatever happened, it's not the link."
+This FALSIFIES Baz's S56 handshake-product line exactly as planted.
+
+Señor, without looking up: "The link is not the question."
+J.R. writes one line and underlines it TWICE: "The cable was fine. The cable is always fine."
+TAC replies in ELEVEN MINUTES (fastest ever seen — a running joke about TAC latency inverted
+for one episode) with three letters: recommend enabling BFD on both EBGP peerings.
+
+Señor walks to the whiteboard and CIRCLES RISK-56-01 — the risk the STUDENT wrote and told
+Penny about last week. Key beat: "Today, the risk collected its rent. Nobody in this room is
+allowed to be surprised. You wrote it down." This is the emotional payoff of the S56
+money-sentence gate and validates the risk-register habit.
+"Last week I told you: two roads is not a seatbelt. It is a wider road. Today the wider road
+saved us — Chatswood carried everything. But we hit the windshield first, for ninety-one
+seconds, because we had no seatbelt. Today we buy the seatbelt. But first — you prove last
+week survived the weekend."
+
+Señor reaches PAST the sombrero and does not put on the cowboy hat. Not yet. (Kept in
+reserve. The cowboy hat has still not been deployed this season.)
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — very strong session again. Notable: brought his OWN
+  production topology into the session unprompted and asked for two custom artefacts. See
+  PERFORMANCE NOTES. This is a new behaviour and a significant one.
+- Señor — key lines this episode:
+  "The link is not the question."
+  "Turning the timers down is asking a slow man to run. He will run, and he will be slower
+   than before, because now he is also tired."
+  "You did not learn BFD. You needed BFD, and then someone told you its name. This is the
+   correct order."
+  "This is the worst kind of fix. Not the one that fails. The one that fails quietly, while
+   wearing the clothes of a fix."
+  "Notice what has not changed. Three keepalives, then declare dead. Same logic BGP uses. We
+   did not invent a smarter idea. We made the same idea cheap enough to run two hundred and
+   forty times faster."
+  "You bought the seatbelt. Then you bought a second seatbelt that cuts the first one."
+  "Every fast thing you buy, you buy with something. With BGP timers, you pay in flaps. With
+   BFD, you pay in packets. There is no free detection. There is only detection you have
+   decided is worth its price."
+- Baz — returns on speakerphone as planned. His S56 "handshake product, you'll never notice
+  the difference" line is falsified. Ends the episode owing LoFinance a WRITTEN statement of
+  BFD support on the ISP-2 service. Baz is now structurally useful: he is the character who
+  makes "does the far end support this?" a business problem rather than a CLI problem.
+- Penny — appears once, silently, in the doorway. DOES NOT ASK A QUESTION. Deliberately given
+  no dialogue; the silence lands harder than a demand. Her S56 question ("what does it cost to
+  fix?") is answered by the episode itself.
+- Riley — in early for settlement Friday. Green-dashboard-while-broken is his trauma this
+  episode. He asks the HA question that opens the graceful-restart material — Riley is now
+  reliably the character who asks the "but what about us?" question.
+- J.R. — notebook, one line, underlined twice. Silent-annotator role holding steady.
+- Javier Lin — offscreen this episode. Returns IN PERSON in S58.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+A 91-second detection gap on a silent far-end device failure cost six figures in missed fills
+before the market opened. The link never went down. Every monitoring green light was honest
+and every one of them was useless, because they were all watching the wrong layer.
+RISK-56-01 (180s detection latency, ~50% flow loss) materialised exactly as written.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (EF pp. 147-151)
+==================================================================
+1. BGP CONVERGENCE has multiple steps (p.148): fast failure detection and propagation;
+   processing and finding an alternate path; installing the new path in RIB/FIB. Levers:
+   stable network (no port flapping), reduce RIB size with in/out filters, route reflectors
+   in IBGP to concentrate updates, faster detection via keepalive tuning or BFD, and
+   graceful-restart for HA failover.
+2. KEEPALIVE / HOLD TIMERS: FortiGate defaults 60s / 180s. The 3:1 ratio exists so that TWO
+   keepalives can be lost to congestion without tearing down a healthy session. BGP is
+   DELIBERATELY, STRUCTURALLY PATIENT.
+   THE CENTRAL SENTENCE OF THE EPISODE (reuse this): "BGP's only evidence of life is a
+   message that arrives on a schedule. Its only evidence of death is the absence of that
+   message for a long time."
+3. WHY NOT JUST LOWER THE TIMERS (student derived both halves):
+   (a) FLAP RISK — aggressive timers detect non-failures as failures. Teardown is expensive:
+       every route from that peer withdrawn, withdrawal propagates, best-path reruns, FIB
+       rewritten, then full re-advertisement on re-establishment.
+   (b) CPU — BGP runs in the routing daemon, in SOFTWARE, on the CPU. Not NP-offloaded. Scales
+       badly across many peerings, and load is highest precisely when routes are churning.
+4. BFD (p.150): a probe checking peer status. Media-independent. Detects a ONE-WAY DEVICE
+   FAILURE in LESS THAN A SECOND. Originally single-hop/same-subnet; FortiGate now supports
+   multihop.
+   The key reframe: BFD asks "does the DEVICE answer?" not "is the INTERFACE up?" — which is
+   precisely the Friday failure mode.
+   ARCHITECTURAL POINT (student derived): separate the LIVENESS QUESTION from the ROUTING
+   PROTOCOL, and the liveness question becomes cheap enough to ask constantly.
+5. BFD CONFIG — TWO PLACES, BOTH REQUIRED:
+   - per neighbour: config router bgp > config neighbor > set bfd enable
+   - per interface: config system interface > set bfd enable
+   Interface timers: bfd-desired-min-tx (default 250ms), bfd-required-min-rx (default 250ms),
+   bfd-detect-mult (default 3). 250ms x 3 = 750ms detection.
+   NOTE the pedagogical point that landed: BFD uses the SAME 3x logic as BGP. Not a smarter
+   idea — the same idea made cheap.
+6. BFD IS BIDIRECTIONAL — negotiated session (Down -> Init -> Up), both ends must run it.
+   THE QUIET-FAILURE MODE (this landed hard): one-sided BFD means the BFD session never
+   reaches Up, BGP DOESN'T CARE, peering stays Established, dashboard stays green, and you
+   are still on a 180s hold timer having told Penny the risk is closed.
+7. BFD MULTIHOP (p.150): uses config router bfd > config multihop-template, matching src/dst
+   SUBNETS rather than binding to an interface, with auth-mode md5 + md5-key. Paired with
+   ebgp-enforce-multihop on the neighbour.
+   Student derived the risk unaided: latency/jitter across hops you don't own makes a healthy
+   path look dead. Therefore MULTIHOP BFD NEEDS LOOSER TIMERS THAN SINGLE-HOP.
+8. WHEN BFD IS A BAD IDEA (student-derived, three cases):
+   (a) NO ALTERNATIVE PATH — detection without reconvergence is a MONITORING benefit, not an
+       AVAILABILITY control. Student got this cleanly and unprompted.
+   (b) UNCOOPERATIVE/UNKNOWN PEER — your thresholds are only as good as the worst normal
+       behaviour of a path you don't own. Becomes a contract question, not a CLI question.
+   (c) MANY PEERINGS — student initially said "more BFD would be good," which was the one
+       miss of the session. Corrected: BFD relocates the CPU constraint rather than removing
+       it. 250ms = 4 pps each way PER SESSION. 50 spokes = 200 tx + 200 rx per second forever.
+       Design lever: TUNE THE INTERVAL TO THE VALUE OF THE ROUTE.
+9. GRACEFUL RESTART (p.151): the BGP daemon runs ONLY on the primary. FGCP syncs the session
+   table for TRANSIT traffic, but a BGP peering TERMINATES ON the box and lives in a userland
+   process's memory. Processes do not fail over. Therefore the peering must be re-established
+   from scratch, and the peer would normally withdraw all routes.
+   config router bgp > set graceful-restart enable (global) AND per-neighbour
+   set capability-graceful-restart enable. Both ends must negotiate it.
+   THE PARADOX worth reusing: the new primary can FORWARD perfectly; it is ROUTING that
+   announces a death which was actually a change of shift.
+10. BFD AND GRACEFUL RESTART ARE OPPOSITE TOOLS:
+    BFD shouts "he's dead, reroute NOW." Graceful restart whispers "he's restarting, DON'T
+    reroute." On the same neighbour they are in genuine tension. BFD WINS — it hands BGP a
+    hard verdict and the session tears down before graceful restart's stale-route logic can
+    apply. Student derived the conflict and then named the winner correctly when pushed.
+11. THE DESIGN RULE (the takeaway sentence): match detection speed to the failure you actually
+    EXPECT on that link, not to the fastest number the platform allows.
+
+==================================================================
+THE STUDENT'S OWN PRODUCTION TOPOLOGY (NEW — carry this forward)
+==================================================================
+The student volunteered his real environment and asked for it to be taught against. This is a
+FIRST and should be exploited in future sessions — it is the strongest engagement signal so
+far this season.
+  - DC: FortiGate 2601F, HA CLUSTER, NP7s, IPsec offloaded in hardware.
+  - Sydney: Active-Passive cluster, VM (all software — crypto, tunnel, BGP daemon, BFD state).
+  - Melbourne: SINGLE standalone FortiGate.
+  - Two IPsec tunnels from DC (one to Sydney, one to Melbourne), BGP peering over each.
+Teaching resolved per-neighbour:
+  - DC <-> carrier-type link: expected failure is silent far-end death, no HA behind it.
+    Aggressive BFD. Buy the 750ms.
+  - DC <-> Sydney (HA cluster over IPsec): FGCP DOES sync IPsec SAs, so the TUNNEL survives
+    failover — but the BGP daemon does not. Most likely interruption is a FAILOVER, not a
+    site death. GRACEFUL RESTART IS THE PRIMARY TOOL. BFD, if used, must be RELAXED — above
+    Sydney's realistic failover-and-reconverge time — so a shift change isn't read as a
+    funeral.
+  - DC <-> Melbourne (standalone): no HA, so graceful restart protects nothing. BFD is
+    straightforwardly useful; if that box is gone it is gone.
+THE HARDWARE POINT: the 2601F offloads IPsec to NP7 silicon; the Sydney VM does everything in
+software on shared vCPU. THE SLOWER PEER SETS THE FLOOR — always. The student was left on this
+question at the end of the technical phase and it should be retested cold in S58 or S59.
+THE INDISTINGUISHABILITY POINT (the hardest idea of the session, and it landed): HA failover
+and total site death are IDENTICAL at second zero from the DC's point of view. You cannot
+configure two behaviours for two events you cannot tell apart. The design question is
+therefore not "which tool per scenario" but "what makes them distinguishable, and how long am
+I willing to wait to find out?"
+
+==================================================================
+MENTAL MODELS AND ANALOGIES (KEEPERS)
+==================================================================
+- SEATBELT vs WIDER ROAD (carried from S56, paid off here): ECMP is a wider road; BFD is the
+  seatbelt. You must buy the seatbelt separately. THE EPISODE'S SPINE.
+- "The failover was always instant. It was the NOTICING that took 91 seconds." — separates
+  DETECTION from RECONVERGENCE. Highest-value framing of the session.
+- "Asking a slow man to run" — why lowering BGP timers backfires.
+- "A fix that fails quietly, while wearing the clothes of a fix" — one-sided BFD.
+- "A change of shift, announced as a death" — HA failover without graceful restart.
+- "You bought the seatbelt, then bought a second seatbelt that cuts the first one." — BFD
+  overruling graceful restart.
+- "The slower peer sets the floor" — 2601F NP7 vs Sydney VM.
+- "There is no free detection. Only detection you have decided is worth its price."
+
+==================================================================
+KEY CLI COMMANDS DISCUSSED
+==================================================================
+config router bgp / config neighbor / set bfd enable
+config system interface / set bfd enable
+  set bfd-desired-min-tx 250 / set bfd-required-min-rx 250 / set bfd-detect-mult 3
+config router bfd / config multihop-template / set src / set dst / set auth-mode md5 /
+  set md5-key
+config router bgp / set graceful-restart enable
+config router bgp / config neighbor / set capability-graceful-restart enable
+get router info bfd neighbor            <- is BFD actually UP, or merely configured?
+get router info bgp neighbors <ip>      <- negotiated capabilities incl. graceful restart
+get router info routing-table bgp       <- is there anything to reconverge ONTO?
+
+==================================================================
+TROUBLESHOOTING APPROACH (the ladder built this session)
+==================================================================
+Failover took ~180s              -> is BFD actually Up, or just configured?
+                                    get router info bfd neighbor
+BFD configured, still slow       -> enabled on BOTH the neighbour AND the interface?
+BFD session never comes Up       -> does the FAR END run BFD? (not a CLI problem)
+BFD flaps on a healthy path      -> multihop running single-hop timers? check jitter
+Routes withdrawn on HA failover  -> was graceful restart NEGOTIATED or only configured?
+Detection fast, no recovery      -> is there an alternative path at all?
+THE ORDERING PRINCIPLE: verify the detector is ALIVE before blaming the thing it watches.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- BFD enabled on BOTH carrier EBGP peerings (ISP-1 Parramatta, ISP-2 Chatswood) at defaults
+  250ms x 3 = 750ms detection.
+- BFD multihop template deployed for the Singapore loopback peering, RELAXED intervals,
+  MD5 authentication (crossing networks LoFinance does not own).
+- graceful-restart + capability-graceful-restart enabled on all peerings terminating on the
+  HQ HA cluster.
+- ISP-2 BFD support is VERBAL ONLY. Written carrier confirmation demanded from Baz.
+
+==================================================================
+TOPOLOGY CHANGES (topology v5.3)
+==================================================================
+- BFD active on both carrier peerings. Detection latency 180s -> 750ms.
+- BFD multihop + MD5 on the HQ<->Singapore loopback peering, relaxed timers.
+- Graceful restart negotiated on all HA-terminated peerings.
+- RISK-56-01 CLOSED.
+- RISK-57-01 RAISED: ISP-2 Chatswood BFD support is a verbal assurance from Baz. No written
+  confirmation. Until confirmed, the Chatswood peering may be silently unprotected — which is
+  exactly the quiet-failure mode taught this session. DO NOT let this quietly disappear; it is
+  a good candidate to bite back in a later session, ideally when Baz has moved to another
+  account and nobody can find the email.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Detection latency on carrier peerings falls from ~180 seconds to under one second. The next
+occurrence of Friday's failure becomes a sub-second reconvergence onto Chatswood that the
+trading floor never perceives. Penny's S56 question — "what does it cost to fix?" — is
+answered: a configuration change, and one uncomfortable conversation with a carrier about
+what a handshake product actually supports in writing.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- 60s / 180s defaults and the 3:1 RATIONALE (two lost keepalives tolerated) — high-probability.
+- "One-way device failure in less than a second" is the study guide's OWN wording (p.150) and
+  is near-certain to appear in some form.
+- BFD requires enabling in TWO places (neighbour AND interface). Classic partial-config trap.
+- 250ms x 3 = 750ms — expect an arithmetic question.
+- multihop-template with src/dst SUBNETS + md5 — distinguishes single-hop from multihop config.
+- graceful-restart needs BOTH the global command AND the per-neighbour capability command.
+  Expect a snippet with one of the two missing.
+- "BFD is configured but the session won't come Up while BGP stays Established" -> far end
+  isn't running BFD. Excellent scenario-question material.
+- THE DISTRACTOR TO WATCH: on any "failover was slow" question, the tempting answer is a BGP
+  timer value. The better answer is usually that BFD is not actually Up, or is enabled in only
+  one of the two required places.
+- BFD on a single-homed peer is NOT an availability control. Trap answer material.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+NOTE FOR CONTINUITY: Junior was DELIBERATELY LIGHT this episode — the student was carrying so
+much of the derivation that Junior's usual wrong-answer function was not needed, and the
+episode's misconception load was carried by BAZ instead ("the link is up, mate"), which is
+structurally the same device at the business layer. THIS WORKED. But S58 should restore Junior
+to full strength; he is teased as asking the best question of his career ("why can't we just
+run OSPF everywhere?") and that setup must be paid off.
+The instructive error of THIS session was the student's own (see below) — the "more BFD is
+better" answer — and it was more useful than a scripted Junior mistake because it was real.
+
+==================================================================
+STUDENT PERFORMANCE NOTES (full detail in knowledge-register-session57.txt)
+==================================================================
+- Both cold-retrieval questions correct. Loopback firewall-policy answer produced by
+  re-deriving from packet path rather than recall — exactly the behaviour S56's register said
+  to reward. The local-in vs transit-policy distinction was NOT initially articulated and had
+  to be supplied; he had the answer without the contrast.
+- DERIVED, essentially unaided: why lowering BGP timers backfires (BOTH halves — flaps AND
+  CPU); the three required properties of a fast detector (below BGP / lightweight / must
+  actually withdraw routes); the multihop latency risk; that BFD is pointless without a
+  redundant path; the BFD-vs-graceful-restart conflict.
+- ONE CLEAN MISS: "BFD for many peerings would be good?" — did not carry his OWN CPU argument
+  forward twenty minutes after making it. Pattern: he builds excellent models and does not
+  always REAPPLY them to a new instance of the same constraint. See register.
+- HEDGED CORRECTLY on the HA question ("unless the TCP session is still there and the
+  secondary takes over") — this is GOOD behaviour, not weakness. He named two hypotheses and
+  waited for the discriminating fact. Reward this explicitly again.
+- NEW BEHAVIOUR: volunteered his real production topology and requested custom artefacts.
+  Highest engagement signal of the season. Exploit it.
+
+==================================================================
+TEASER FOR SESSION 58
+==================================================================
+"The Politics of Routing" — BGP internals I: IBGP vs EBGP, path-vector fundamentals.
+EF Dynamic Routing Supplement, pp. 331-337.
+Monday. Javier Lin flies in from Singapore — IN PERSON, which has never happened. He brings no
+laptop. He brings a FOLDER. Inside is a routing proposal Señor reads twice, puts down, and does
+not comment on for a full minute.
+Señor: "OSPF is a family sharing one map. Everyone sees the same house. BGP is nations
+negotiating treaties. Everyone has a map, and everyone is lying about theirs — politely."
+Javier, without looking up: "And I am a nation."
+Junior asks why you can't just run OSPF everywhere and skip the whole business. It is the best
+question he has ever asked and nobody answers it for six minutes.
+Penny wants to know why the Singapore routes appear at HQ but never reach Melbourne. Riley
+wants to know why a route he can SEE isn't a route he can USE. J.R. writes one line and
+underlines it once: "A route you learned is not a route you may tell."
+
+S58 MUST:
+- PAY OFF Junior's OSPF question properly. It is the natural door into path-vector vs
+  link-state and into why BGP exists at all.
+- The IBGP split-horizon rule (a route learned from an IBGP peer is not re-advertised to
+  another IBGP peer) is the technical answer to Penny's Melbourne question AND to J.R.'s line.
+  Do NOT reveal it early; let the student derive it from the loop-prevention requirement.
+- AS_PATH loop prevention has now been deferred FOUR sessions. The S56 register recommended
+  FORMAL RETIREMENT as a retrieval target and reintroduction fresh during attribute material.
+  S58 IS THAT SESSION. Teach it fresh, do not treat it as a failed retrieval.
+- The student's own DC/Sydney/Melbourne topology is now live teaching material and maps
+  perfectly onto IBGP/EBGP boundaries. USE IT.
+- CONSIDER REMOVING THE MONEY-SENTENCE SIGNPOST (the S56 register flagged S58 as the session
+  to test whether recognition has become automatic).
+- Retest cold: "the slower peer sets the floor" and the two-places-for-BFD rule.
+
+Date and Time completed: Wednesday, 22 July 2026.

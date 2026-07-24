@@ -1,0 +1,535 @@
+==========================================================================
+LOFINANCE · SESSION 60 · "CHOOSING FAVOURITES" · COMBINED REVISION PACK
+NSE7 Enterprise Firewall 7.6 Administrator · SNA Domain 4 · Rules & Routing
+EF Study Guide — Dynamic Routing Supplement, pp. 342–348
+==========================================================================
+
+
+==========================================================================
+PART 1 — QUICK SUMMARY (one page)
+==========================================================================
+
+THE STORY
+London-bound traffic transits Singapore instead of the EU carrier. 340ms
+against an expected 90ms. Nothing is broken. Nothing is misconfigured.
+Both paths to London are exactly two AS hops long, so BGP's comparison ran
+all the way to the last tie-breaker — lowest router ID — and the winner was
+decided by a number in somebody else's configuration file.
+
+THE FIX
+An inbound route-map on the EU carrier neighbour setting LOCAL_PREF 300 on
+London prefixes. Local preference is compared at line 2; AS path length at
+line 4. The argument therefore ends before it ever reaches Javier's ground.
+Result: 94ms. One route-map, one firewall, no new circuits.
+
+THE SECOND PROBLEM
+LoFinance's own London subnet 10.55.10.0/24 was configured under
+config network but never advertised. The routing table contained
+10.55.0.0/16. network-import-check demands an EXACT prefix and mask match
+against an ACTIVE route in the ROUTING TABLE. Covered is not matched.
+FortiGate logged nothing at all.
+
+THE THIRD TRAP
+A prefix-list-out with a single permit rule does not mean "also allow this."
+It means "allow this and nothing else." Every filtering construct in FortiOS
+— route maps, prefix lists, access lists — ends in an implicit deny.
+
+THE SENIOR LESSON
+BGP is never wrong. It is badly advised. A path you did not choose is almost
+never a fault; it is the sound of nobody in your organisation having
+expressed a preference. And when you do argue with it: argue ABOVE the line
+you are losing on. Choosing the battleground is the engineering. The
+configuration afterwards is trivial.
+
+
+==========================================================================
+PART 2 — CHEAT SHEET
+==========================================================================
+
+--------------------------------------------------------------------------
+ROUTE SELECTION TIE-BREAKERS (p.344) — IN ORDER, FIRST DIFFERENCE WINS
+--------------------------------------------------------------------------
+ 1  Highest WEIGHT                        local to this FortiGate only
+ 2  Highest LOCAL PREFERENCE              AS-wide
+ 3  Prefer path that ORIGINATED LOCALLY
+ 4  Shortest AS PATH                      ← 4th, not 1st. The classic trap.
+ 5  Lowest ORIGIN type                    IGP < EGP < incomplete
+ 6  Lowest MULTI-EXIT DISCRIMINATOR (MED)
+ 7  Lowest IGP METRIC to the BGP next hop
+ 8  Prefer EXTERNAL (EBGP) over INTERNAL (IBGP)
+ 9  If ECMP enabled, install UP TO 10 BGP routes
+10  Lowest ROUTER ID
+
+Nothing below the first differing line is ever evaluated.
+If ECMP is NOT enabled and all attributes match → lowest router ID wins.
+
+--------------------------------------------------------------------------
+WEIGHT vs LOCAL_PREF
+--------------------------------------------------------------------------
+                    weight              LOCAL_PREF
+Scope               this box only       entire local AS
+To IBGP peers       NEVER               yes
+To EBGP peers       NEVER               stripped at the AS edge
+Tie-breaker line    1                   2
+Use when            one box must        everyone inside our AS
+                    differ locally      must agree
+
+DESIGN QUESTION THAT SELECTS THE TOOL: "Who needs to agree?"
+
+--------------------------------------------------------------------------
+BGP ATTRIBUTE CATEGORIES (p.343) — DERIVE, DON'T MEMORISE
+--------------------------------------------------------------------------
+Q1  Must EVERY BGP router understand it?
+      YES → WELL-KNOWN      Q2a  Present on every route?
+                                  YES → WELL-KNOWN MANDATORY
+                                  NO  → WELL-KNOWN DISCRETIONARY
+      NO  → OPTIONAL        Q2b  May an ignorant router pass it on?
+                                  YES → OPTIONAL TRANSITIVE
+                                  NO  → OPTIONAL NON-TRANSITIVE
+
+ORIGIN .............. well-known mandatory
+AS_PATH ............. well-known mandatory
+NEXT_HOP ............ well-known mandatory
+LOCAL_PREF .......... well-known DISCRETIONARY
+ATOMIC_AGGREGATE .... well-known discretionary
+AGGREGATOR .......... optional transitive
+COMMUNITY ........... optional transitive
+MULTI_EXIT_DISC ..... optional NON-TRANSITIVE
+
+MEMORY LINE: COMMUNITY travels. MED must not. LOCAL_PREF never leaves home.
+
+--------------------------------------------------------------------------
+FORTIGATE BGP IMPLEMENTATION FACTS (p.345)
+--------------------------------------------------------------------------
+· No hard limits — neighbours/routes/policies bounded by system memory only
+· By DEFAULT, BGP ORIGINATES NOTHING (redistribute or network required)
+· By DEFAULT, ALL RECEIVED PREFIXES ARE ACCEPTED (filtering is opt-in)
+
+--------------------------------------------------------------------------
+COMMANDS
+--------------------------------------------------------------------------
+get router info bgp network <prefix>    the database + "Paths: (N available,
+                                        best #M)" — read this line FIRST
+get router info bgp network             full BGP database
+get router info routing-table bgp       BGP routes installed
+get router info routing-table all       network-import-check verification
+get router info bgp summary             session state (looks fine in ALL of
+                                        this session's faults — a trap)
+get router info bgp neighbors <ip>      negotiated capabilities, state
+
+--------------------------------------------------------------------------
+CONFIG — SET LOCAL PREFERENCE INBOUND
+--------------------------------------------------------------------------
+config router route-map
+    edit "PREFER-EU-TO-LONDON"
+        config rule
+            edit 1
+                set match-ip-address "LONDON-PREFIXES"
+                set set-local-preference 300
+            next
+            edit 2
+                set action permit          <-- MANDATORY terminator
+            next
+        end
+    next
+end
+
+config router bgp
+    config neighbor
+        edit "172.30.0.1"
+            set remote-as 65500
+            set route-map-in "PREFER-EU-TO-LONDON"
+        next
+    end
+end
+
+--------------------------------------------------------------------------
+CONFIG — ORIGINATE A PREFIX
+--------------------------------------------------------------------------
+BUCKET (a whole category):
+config router bgp
+    config redistribute "static"
+        set status enable
+    end
+end
+   (options: bgp | connected | isis | rip | static — all disabled by default)
+
+TAP (one named prefix):
+config router bgp
+    config network
+        edit 1
+            set prefix 10.55.10.0 255.255.255.0
+        next
+    end
+end
+
+THE RULE: advertised ONLY IF an ACTIVE route with an EXACT matching
+destination subnet exists in the ROUTING TABLE. Prefix AND mask.
+A /16 does NOT satisfy a /24. No log, no error, no alarm.
+
+TO OVERRIDE (globally — every network statement on the box):
+config router bgp
+    set network-import-check disable
+end
+   → advertises all prefixes in the BGP network table regardless of active
+     routes. Prefer a matching static route instead.
+
+--------------------------------------------------------------------------
+CONFIG — PREFIX LIST
+--------------------------------------------------------------------------
+config router prefix-list
+    edit "LON-PARTNER-OUT"
+        config rule
+            edit 1
+                set prefix 10.55.10.0 255.255.255.0
+                set action permit
+            next
+            edit 2
+                set prefix 0.0.0.0 0.0.0.0
+                set le 32
+                set action permit          <-- "and everything else"
+            next
+        end
+    next
+end
+
+config router bgp
+    config neighbor
+        edit "172.30.0.1"
+            set prefix-list-in  "FROM-PARTNER"
+            set prefix-list-out "LON-PARTNER-OUT"
+        next
+    end
+end
+
+IMPLICIT DENY: anything not matching an entry is DENIED. Always.
+
+--------------------------------------------------------------------------
+FILTERING LADDER (pp.140, 348) — LEAST POWERFUL TOOL THAT WORKS
+--------------------------------------------------------------------------
+Access list   simple prefix match                    cannot modify attributes
+Prefix list   prefix match + ge / le operators       cannot modify attributes
+Route map     match objects + SET clauses            CAN modify attributes
+
+BGP parameters: distribute-list-in/out, prefix-list-in/out,
+                route-map-in/out  — all PER NEIGHBOUR.
+
+--------------------------------------------------------------------------
+DEFAULTS TO REMEMBER
+--------------------------------------------------------------------------
+network-import-check ......... ENABLED
+BGP originates prefixes ...... NO
+BGP accepts received prefixes . YES (all of them)
+redistribute (all protocols) .. DISABLED
+ECMP (ebgp/ibgp-multipath) .... DISABLED, max 10 routes when enabled
+Filters (all types) ........... implicit DENY for unmatched
+BGP hold timer ................ 180s (from S56 — still the withdrawal delay)
+
+
+==========================================================================
+PART 3 — FLASHCARDS
+==========================================================================
+
+Q: What is the FIRST BGP best-path tie-breaker?
+A: Highest weight. Local preference is second; AS path length is only fourth.
+
+Q: BGP compares two paths. Where does the comparison stop?
+A: At the first line of the tie-breaker list where the two paths differ.
+   Nothing below that line is ever evaluated.
+
+Q: All attributes are equal and ECMP is not enabled. What decides?
+A: Lowest router ID.
+
+Q: All attributes are equal and ECMP IS enabled. What happens?
+A: Up to 10 BGP routes are installed and traffic is shared.
+
+Q: Is weight advertised to IBGP peers?
+A: No. Weight is never advertised anywhere — not to IBGP, not to EBGP.
+
+Q: How far does LOCAL_PREF travel?
+A: To every router in the local AS, via IBGP. It is stripped at the AS edge.
+
+Q: Which attribute category is LOCAL_PREF?
+A: Well-known discretionary. Not mandatory — it does not survive the AS
+   boundary, so it cannot always be present.
+
+Q: Which attribute category is MED?
+A: Optional non-transitive. It is advice for one neighbour and must not be
+   passed on to a third AS.
+
+Q: Which attribute category is COMMUNITY?
+A: Optional transitive. Surviving the AS boundary is its entire purpose.
+
+Q: Name the three well-known mandatory attributes.
+A: ORIGIN, AS_PATH, NEXT_HOP.
+
+Q: Where in the RIB model does best-path selection happen?
+A: At the RIB-in → Local RIB boundary. Candidates queue in RIB-in; only the
+   winner enters the Local RIB.
+
+Q: What happens to the losing path?
+A: Nothing. It stays in RIB-in, valid and unused, until the winner is
+   withdrawn.
+
+Q: Does an inbound route-map run before or after best-path selection?
+A: Before. Policy runs first; the doorman reads the result. Otherwise you
+   would be editing the loser's paperwork after the verdict.
+
+Q: Does FortiGate BGP advertise any prefixes by default?
+A: No. You must redistribute, or name prefixes with config network.
+
+Q: Does FortiGate BGP accept received prefixes by default?
+A: Yes — all of them. Filtering is opt-in.
+
+Q: What does network-import-check verify, and against what?
+A: That an ACTIVE route with an EXACT matching destination subnet exists in
+   the ROUTING TABLE (not the Local RIB).
+
+Q: Routing table has 10.55.0.0/16. config network says 10.55.10.0/24.
+   What is advertised?
+A: Nothing. Covered is not matched — prefix AND mask must be exact. No log
+   is generated.
+
+Q: What does disabling network-import-check do, and what is its scope?
+A: FortiGate advertises all prefixes in the BGP network table regardless of
+   active routes. The setting is GLOBAL — it affects every network statement
+   on the device.
+
+Q: Preferred fix for a failing network-import-check?
+A: Add a static route matching the prefix exactly. Narrow, documents intent,
+   and leaves the safety check in place for all other statements.
+
+Q: A prefix list has one permit rule. What happens to everything else?
+A: It is denied. Every FortiOS filtering construct ends in an implicit deny.
+
+Q: Which of access list, prefix list and route map can modify attributes?
+A: Only the route map.
+
+Q: What do ge and le add to a prefix list rule?
+A: Mask-length range matching — greater-than-or-equal and less-than-or-equal
+   prefix lengths, for granularity beyond an exact prefix match.
+
+Q: Are prefix lists applied globally or per neighbour?
+A: Per neighbour, and per direction: prefix-list-in and prefix-list-out.
+
+Q: Traffic takes a suboptimal path and every router in the AS must be fixed.
+   Weight or local preference?
+A: Local preference. Weight would have to be configured on every device
+   individually and is never propagated.
+
+Q: What is the first command for "traffic is taking a strange path"?
+A: get router info bgp network <prefix> — and read the header line
+   "Paths: (N available, best #M)" before anything else.
+
+Q: After changing an attribute, what two things must you verify?
+A: That the attribute changed in the output, AND that the word "best" moved.
+
+Q: Falling to tie-breaker 10 — is that a fault?
+A: No. It is an absence of policy. Nobody in your organisation expressed a
+   preference, so a foreign router ID chose your path.
+
+Q: A peer's AS path is genuinely shorter. How do you win?
+A: Do not fight on line 4. Win on line 2 (local preference) or line 1
+   (weight), so line 4 is never reached.
+
+Q: Multi-select exam method?
+A: Score first, count last. Write down the state from the stem, mark every
+   option TRUE/FALSE against that state independently, then count. The count
+   is a checksum, not a stopping condition.
+
+
+==========================================================================
+PART 4 — PODCAST PROMPT: "THE PACKET PATH"
+==========================================================================
+
+Paste the following directly into an AI audio generator.
+
+--------------------------------------------------------------------------
+
+Produce an episode of the technical storytelling podcast "The Packet Path."
+Single warm narrator, conversational and dry, roughly 9–12 minutes. Aimed at
+network engineers studying for the Fortinet NSE7 Enterprise Firewall exam,
+but written so that a curious non-specialist stays engaged. Use character
+voices sparingly through narration rather than performing full dialogue.
+
+EPISODE TITLE: "Choosing Favourites"
+SERIES: LoFinance, Season 5 — The Expansion. Episode 60.
+
+COLD OPEN
+Open at 6:12 on a Thursday morning, in a dark office, with one man and one
+ticket. Riley works the LoFinance help desk. His queue this morning contains
+exactly one entry, and it was opened by someone in London — which is odd,
+because LoFinance's London office does not officially exist yet. The ticket
+says: latency to London, three hundred and forty milliseconds. Expected,
+ninety. He runs the traceroute himself because he does not believe it, and
+watches his company's traffic leave Sydney, cross to SINGAPORE, and only
+then turn around and go to London. Around the planet. The wrong way.
+Let the narrator sit on that image for a beat: nothing is broken. Every
+device is healthy. Every session is up. And the traffic is going the long way
+round the Earth.
+
+ACT ONE — THE PROBLEM IS NOT A PROBLEM
+By eight o'clock the conference room is full. Penny, who runs operations, has
+PRINTED the ticket, which is never a good sign. Señor — the senior engineer,
+sombrero, chaotic desk, immaculate diagrams — is not smiling, for the second
+day running, and people have noticed.
+Javier Lin, LoFinance's Singapore counterpart, is on the speakerphone. He has
+been on the line since seven. He says exactly one sentence: "My path is
+shorter. Fewer autonomous systems. Ask your algorithm." Then silence. Not
+hung up. Never hung up.
+Make the key point clearly here: Javier is not sabotaging anything. He is
+CORRECT. Both paths to London cross exactly two autonomous systems. BGP
+compared them fairly and picked one. Señor's line: "BGP is not wrong. BGP is
+NEVER wrong. BGP is only ever badly advised."
+And when J.R., the ex-accountant turned engineer, asks whether they can just
+tell it not to — Señor: "You cannot TELL BGP anything. You can only make it
+PREFER."
+
+ACT TWO — THE ARGUMENT
+Introduce the tie-breaker list, and this is the heart of the episode.
+Señor unfolds a creased, coffee-ringed page with ten numbered lines on it and
+pins it to the whiteboard. Narrator explains the crucial reframe: this is NOT
+a settings page. It is an ARGUMENT CONDUCTED IN ORDER. BGP compares two paths
+one line at a time, from the top, and the first line where they differ ends
+the argument. Everything below that line is never read at all.
+Use the courtroom analogy: ten judges on a descending staircase. Most of them
+are asleep, because most attributes were never set. Judge number four — AS
+path length — is wide awake, holding two identical envelopes at exactly the
+same height. A perfect tie. So the case falls past judges five, six, seven,
+eight and nine, all asleep, all the way down to judge number ten, who is
+flipping a coin. Judge ten is "lowest router ID."
+Land the insight hard: the reason LoFinance's traffic goes through Singapore
+is that NOBODY AT LOFINANCE EVER EXPRESSED A PREFERENCE. The decision was made
+by a number in someone else's configuration file. That is not a fault. It is
+an absence of policy.
+Then the tactical lesson, delivered as the episode's spine: Javier invited
+them to have the argument on line four, where he wins or ties. So don't fight
+on line four. ARGUE ABOVE THE LINE YOU ARE LOSING ON. Win on line two, and
+line four is never reached. Choosing the battleground is the engineering;
+the configuration afterwards takes ninety seconds.
+
+ACT THREE — PRIVATE OPINIONS AND COMPANY POLICIES
+Two candidates sit above line four: weight and local preference. Explain the
+difference purely by SCOPE, which is the memorable version.
+Weight is local to a single firewall and is never advertised anywhere — not
+to external peers, not even to your own internal ones. Local preference is
+carried to every router inside your own autonomous system, and is stripped at
+the boundary so the outside world never sees it.
+Señor's framing, which the narrator should quote: "Weight is a private
+opinion. Local preference is a COMPANY POLICY."
+Since Melbourne, Brisbane, Perth and Adelaide all send traffic to London too,
+weight would mean logging into every firewall in the estate. Local preference
+means one statement at the border, and the whole company inherits Sydney's
+opinion. One route-map. One firewall. Riley refreshes his monitor:
+NINETY-FOUR MILLISECONDS.
+Javier, after a long pause: "You changed the argument."
+Señor: "I did not change the argument. I raised the subject earlier."
+
+ACT FOUR — THE BUCKET AND THE TAP
+Second problem, and it is quieter. LoFinance's own new London subnet is not
+reaching the partner at all. This introduces something the team has never
+examined: how does a prefix get INTO BGP in the first place?
+Explain that FortiGate's BGP, by default, advertises NOTHING. There are two
+ways to change that. Redistribution takes a whole CATEGORY of routes and
+pours them in — J.R.'s line, which the narrator should use: "It's a bucket,
+not a tap." Turn on redistribute connected on a firewall with management,
+DMZ, guest wireless, three VPN tunnels and an out-of-band network, and you
+have just announced all of it in one command.
+The tap is the network command: one named prefix, deliberately, auditably.
+And the tap has a valve on it called network-import-check, which is on by
+default, and which asks a single question before letting anything out: is
+there an ACTIVE ROUTE IN THE ROUTING TABLE whose destination matches this
+prefix EXACTLY?
+Here is the trap, and it is beautiful. The routing table had ten dot
+fifty-five dot zero dot zero slash SIXTEEN. The network statement asked for
+ten dot fifty-five dot ten dot zero slash TWENTY-FOUR. Covered is not
+matched. Prefix AND mask. FortiGate found no exact match, advertised nothing,
+and — this is the part that costs people their evenings — LOGGED NOTHING. No
+error. No alarm. Reachability was perfect the whole time.
+Two fixes. Add a static route matching exactly, or disable the check. The
+narrator should dwell on why the second is dangerous: the disable switch is
+GLOBAL. It removes the safety net from every network statement on the box,
+today and forever, including the one somebody adds at two in the morning
+next March with a typo in it. Señor's keeper line: "The check is not in your
+way. The check is the difference between advertising a subnet and advertising
+a RUMOUR."
+
+ACT FIVE — JUNIOR'S MISTAKE, WHICH ISN'T ONE
+This is the episode's turn, and it should be delivered warmly.
+For three seasons, Junior has been the one who falls into traps. Here, Señor
+points at the second rule in the route-map — a bare permit statement that
+looks redundant — and asks him why it is there. And Junior, carefully, gets
+it right: because route-maps DENY BY DEFAULT. If you write only the rule you
+care about, you have not said "also allow this." You have said "allow this
+AND NOTHING ELSE." He would have fixed London and lost the rest of Europe.
+Señor: "That is the first time you have answered a trap BEFORE falling into
+it."
+The narrator should then generalise it, because this is the exam-relevant
+part: route maps, prefix lists, access lists — every filtering construct in
+FortiOS ends in an invisible deny-all. The lesson is not to memorise three
+separate facts. It is to learn the FAMILY RESEMBLANCE. Ask of any filter with
+only permit lines: not "what does this allow?" but "WHAT DOES THIS SILENTLY
+KILL?"
+
+CLOSE
+End quietly. Riley closes ticket 4471 at four minutes past eleven, with a
+resolution note that is also the episode's thesis: "Nobody at LoFinance had
+ever expressed a preference." Penny writes her sentence for the board: "We
+advertise only what we can actually reach."
+Then the last image, and hold it: it is Friday morning now. The escalation
+line — the one that has rung four times in two years — is ringing. A subnet
+that was configured correctly, verified correctly, and celebrated yesterday
+is visible from Melbourne and Brisbane, and invisible from Perth, Adelaide,
+Singapore, and the whole of Europe. Half the world can see it. Half the world
+swears it never existed.
+Penny asks where Señor is. Riley points at the old filing cabinet nobody
+uses. The sombrero is sitting on top of it, taken off and set down. And in
+the dust beside it there is a clean, empty rectangle where something else
+used to be.
+Junior, very quietly: "He took the hat."
+Final narrator line, then out: "Next week, nobody explains anything. Next
+week, you drive."
+
+TONE NOTES
+Dry, warm, unhurried. Let silences land. Do not over-explain the technical
+terms — explain each one exactly once, with its analogy, and then trust it.
+The emotional register is competence, not drama: these are people who are
+good at their jobs, dealing with a network that did precisely what it was
+told and produced a bad outcome anyway. Avoid sound effects beyond a simple
+musical sting between acts.
+
+
+==========================================================================
+PART 5 — TEN-QUESTION SELF TEST (redo cold before Session 61)
+==========================================================================
+
+1.  Which is evaluated FIRST: shortest AS path, highest local preference,
+    highest weight, or lowest MED?
+2.  Is weight advertised to IBGP peers?
+3.  What attribute category is LOCAL_PREF?
+4.  Two EBGP paths identical, ECMP disabled — what installs the route?
+5.  Routing table has 10.20.0.0/16 connected; config network specifies
+    10.20.5.0/24; network-import-check default. What happens?
+6.  What exactly does disabling network-import-check cause, and what is its
+    configuration scope?
+7.  prefix-list-out contains one permit rule. What happens to everything
+    that does not match?
+8.  Name two true statements about best-path selection on FortiGate.
+9.  What attribute category is MULTI_EXIT_DISC?
+10. Both received paths have AS path length 2. EVERY router in your AS must
+    prefer the alternative. What do you configure, and where?
+
+ANSWERS: 1 highest weight · 2 no, never anywhere · 3 well-known
+discretionary · 4 lowest router ID · 5 not advertised, nothing logged
+(covered is not matched) · 6 advertises all prefixes in the BGP network
+table regardless of active routes, and the setting is GLOBAL to the device
+· 7 denied · 8 it operates on RIB-in paths and admits the winner to the
+Local RIB; with ECMP enabled and equal attributes up to 10 routes may be
+installed · 9 optional non-transitive · 10 local preference, applied
+inbound via route-map on the border FortiGate's neighbour statement
+
+--------------------------------------------------------------------------
+Session 60 completed Thursday, 23 July 2026.
+Next: Session 61 — COWBOY HAT: "The Route That Wasn't". BGP boss battle.
+Minimal hints. You drive. Bring the drawers.
+==========================================================================

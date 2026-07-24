@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 60 Troubleshooting — Choosing Favourites</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+<style>
+.main-content{max-width:1040px;margin:0 auto;}
+.tree{background:var(--ink-dark);border-radius:12px;padding:20px 22px;margin:18px 0;overflow-x:auto;}
+.tree pre{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.7;color:#e8efff;}
+.sym{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:16px 20px;margin:14px 0;}
+.sym-h{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.sym-h em{font-style:italic;color:var(--blue);}
+.dead{border-left:3px solid #b45309;background:#fcf2c3;border-radius:0 10px 10px 0;padding:12px 18px;margin:10px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:#5c3d09;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="#">Season 5 &middot; The Expansion</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <span>Session 60 &middot; Troubleshooting</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Session 60 &middot; Troubleshooting Guide &middot; NSE7 EF 7.6</div>
+    <h1>Troubleshooting <em>Silence</em></h1>
+    <p>How a senior engineer diagnoses path preference and origination faults that produce no logs.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">The fault is rarely a fault. It is usually a <em>silence</em>.</div>
+  <p class="motivation-sub">Three of this session's four problems produce no log, no error and no alarm. Troubleshooting them is a discipline of reading state, not of hunting messages.</p>
+</div>
+<main><div class="main-content">
+
+<div class="section-block">
+  <div class="section-label">Before you type anything</div>
+  <h2>Questions to ask <em>first</em></h2>
+  <ul>
+    <li><strong>Is anything actually broken?</strong> &ldquo;Slow&rdquo; and &ldquo;unreachable&rdquo; are completely different investigations. A path that is merely suboptimal has no fault in it at all.</li>
+    <li><strong>Which direction?</strong> Traffic to a prefix, or advertisement of a prefix? These are opposite ends of the filing cabinet.</li>
+    <li><strong>Who else is affected?</strong> One site or the whole AS? That single fact separates a weight/local-pref question from a filter question.</li>
+    <li><strong>What changed, and when?</strong> BGP faults are overwhelmingly configuration events, not failures.</li>
+    <li><strong>Name the drawer.</strong> Before any hypothesis: is this RIB-in, Local RIB, RIB-out, or the routing table? Say it out loud. A diagnosis that does not begin with a drawer is a guess wearing a lab coat.</li>
+  </ul>
+  <div class="callout"><strong>The discipline that matters most here:</strong> read the state you were given before retrieving the fault you remember. The symptom that <em>looks</em> like next-hop resolution is very often something else that produces the same silence.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Symptom A</div>
+  <h2>&ldquo;Traffic is going the <em>scenic route</em>&rdquo;</h2>
+  <div class="sym">
+    <div class="sym-h">Presentation</div>
+    <p>Latency far above expectation. Traceroute shows a geographically absurd path. Everything works &mdash; it just works badly. No alarms anywhere.</p>
+  </div>
+  <div class="code-block"><div class="code-label">Step 1 &mdash; is BGP even choosing?</div><pre><code>get router info bgp network 10.44.0.0/16
+
+BGP routing table entry for 10.44.0.0/16
+Paths: (2 available, best #2)          ← THE WHOLE DIAGNOSIS IS IN THIS LINE
+  65300 65400
+    172.20.0.1 from 172.20.0.1 (172.20.0.1)
+      Origin IGP, localpref 100, valid, external
+  65500 65400
+    172.30.0.1 from 172.30.0.1 (172.30.0.1)
+      Origin IGP, localpref 100, valid, external, best</code></pre></div>
+  <p><strong>Read the header line before anything else.</strong> &ldquo;2 available&rdquo; means a competition happened. &ldquo;1 available&rdquo; means there was no competition &mdash; and that is a completely different investigation (the other path was never received, or was filtered inbound, or is invalid).</p>
+  <div class="tree"><pre>                    get router info bgp network &lt;prefix&gt;
+                                    │
+                ┌───────────────────┴───────────────────┐
+         "1 available"                            "N available"
+                │                                       │
+    The alternative never arrived               A competition ran.
+    or was rejected.                            Walk the list TOP-DOWN.
+                │                                       │
+    → prefix-list-in / route-map-in?            First line where the two
+    → is the session up to that peer?           paths DIFFER decided it.
+    → did the peer ever advertise it?                   │
+    → NEXT_HOP resolvable? (S58 scar)          ┌────────┴────────┐
+                                        They differ         They differ
+                                        somewhere           NOWHERE
+                                               │                 │
+                                    That line is your      Fell to line 10:
+                                    lever. Fix ABOVE it.   lowest ROUTER ID.
+                                                                 │
+                                                    NOT A FAULT.
+                                                    ABSENCE OF POLICY.</pre></div>
+  <table class="data-table">
+    <thead><tr><th>If they differ on&hellip;</th><th>What it tells you</th><th>Lever</th></tr></thead>
+    <tbody>
+      <tr><td>AS path length (line 4)</td><td>A peer genuinely has fewer AS hops &mdash; which says nothing about distance, latency or capacity</td><td>Win on line 2 (LOCAL_PREF) or line 1 (weight). Do not fight on line 4.</td></tr>
+      <tr><td>Nothing at all (line 10)</td><td>Nobody in your organisation has expressed a preference</td><td>LOCAL_PREF inbound at the border, propagated by IBGP</td></tr>
+      <tr><td>MED (line 6)</td><td>The neighbour is steering you between its own entry points</td><td>Usually leave it &mdash; but know it is advisory and non-transitive</td></tr>
+      <tr><td>Local pref, and it is wrong</td><td>Somebody already set policy, possibly years ago</td><td>Find the route-map before adding a second one</td></tr>
+    </tbody>
+  </table>
+  <div class="code-block"><div class="code-label">Step 2 &mdash; verify TWO things after the change</div><pre><code>get router info bgp network 10.44.0.0/16
+
+  ✓ the attribute changed        →  "localpref 300"
+  ✓ the word "best" MOVED        →  "best #2" → "best #1"
+
+Both. An attribute that changed without moving "best" means you
+influenced a line BELOW the line that was actually deciding.</code></pre></div>
+  <div class="dead"><strong>Dead end &mdash; checking the session.</strong> <code>get router info bgp summary</code> will look perfect throughout this entire fault. The neighbours are Established, prefixes are being received, counters are incrementing. Session health tells you nothing about path preference. Do not spend twenty minutes here.</div>
+  <div class="dead"><strong>Dead end &mdash; blaming the underlay.</strong> Latency of 340ms across the Pacific is not a circuit problem when the circuit is behaving exactly as a Pacific circuit should. The question is not &ldquo;why is this path slow&rdquo; but &ldquo;why is this path <em>chosen</em>.&rdquo;</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Symptom B</div>
+  <h2>&ldquo;Our prefix <em>isn't reaching them</em>&rdquo;</h2>
+  <div class="sym">
+    <div class="sym-h">Presentation</div>
+    <p>A partner or peer says they cannot see one of your subnets. Your side shows no errors. The subnet works perfectly internally. Reachability is fine; you are simply not <em>saying</em> it.</p>
+  </div>
+  <div class="tree"><pre>              "Peer cannot see prefix X"
+                          │
+        ┌─────────────────┴─────────────────┐
+   Do WE originate it at all?          We do originate it
+        │                                   │
+   get router info bgp network X       Peer-specific or global?
+        │                                   │
+   Not present anywhere        ┌────────────┴────────────┐
+        │                  Only ONE peer            NO peer sees it
+   → config network?       cannot see it                 │
+   → redistribute enabled? │                        → still an origination
+   → NETWORK-IMPORT-CHECK  → prefix-list-out on       or filter problem,
+     exact-match failure?    THAT neighbour             applied globally
+        │                  → route-map-out             (redistribute
+   get router info          → implicit DENY             route-map)
+   routing-table all        → RR relay rules
+        │                     (client vs non-client)
+   EXACT prefix AND mask,
+   ACTIVE?  /16 ≠ /24</pre></div>
+  <div class="code-block"><div class="code-label">The network-import-check check</div><pre><code>get router info routing-table all
+
+C       10.55.0.0/16 is directly connected, port12     ← what you HAVE
+        config network says 10.55.10.0/24              ← what you ASKED FOR
+
+COVERED IS NOT MATCHED. Prefix and mask, exactly, and ACTIVE.
+FortiGate advertises nothing and logs nothing.</code></pre></div>
+  <table class="data-table">
+    <thead><tr><th>Evidence</th><th>Root cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Prefix absent from <code>bgp network</code> entirely</td><td>Never originated, or import check failed</td><td>Add matching static route (narrow) &mdash; not the global disable</td></tr>
+      <tr><td>Present locally, invisible to one peer only</td><td><code>prefix-list-out</code> / <code>route-map-out</code> on that neighbour, implicit deny</td><td>Add the permit-all terminator</td></tr>
+      <tr><td>Present, visible to some IBGP peers only</td><td>Route reflector relay rules &mdash; client vs non-client</td><td>Check <code>route-reflector-client</code> on the RR's neighbour blocks</td></tr>
+      <tr><td>Present with <code>*</code> but no <code>&gt;</code></td><td>Valid but not best &mdash; or next hop unresolvable (S58)</td><td>Check NEXT_HOP resolution before assuming a filter</td></tr>
+    </tbody>
+  </table>
+  <div class="dead"><strong>Dead end &mdash; adding a second permit rule to the wrong list.</strong> If a prefix list is applied <em>outbound</em> and you edit the <em>inbound</em> one, everything will look busier and nothing will change. Confirm which parameter is applied on which neighbour before editing anything.</div>
+  <div class="dead"><strong>Dead end &mdash; assuming a filter because the symptom is silence.</strong> Origination failure and outbound filtering produce identical symptoms from the peer's side. The difference is visible only in <em>your</em> database: is the prefix there at all?</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Symptom C</div>
+  <h2>&ldquo;I fixed <em>one thing</em> and lost <em>everything else</em>&rdquo;</h2>
+  <div class="sym">
+    <div class="sym-h">Presentation</div>
+    <p>A targeted change &mdash; a route-map to set local preference, or a prefix list to add one advertisement &mdash; is applied, and a large amount of unrelated routing disappears immediately.</p>
+  </div>
+  <p>This is almost always the <strong>implicit deny</strong>, and it is the most predictable self-inflicted outage in FortiOS routing.</p>
+  <div class="code-block"><div class="code-label">The pattern, in both constructs</div><pre><code>ROUTE MAP with one match rule       →  everything not matched is DENIED
+PREFIX LIST with one permit rule    →  everything not matched is DENIED
+ACCESS LIST                         →  same family trait
+
+TERMINATORS:
+  route-map:    edit 2 / set action permit
+  prefix-list:  edit 2 / set prefix 0.0.0.0 0.0.0.0 / set le 32 / set action permit</code></pre></div>
+  <div class="callout callout-amber"><strong>The habit that prevents it:</strong> before applying any filter, ask not &ldquo;what does this allow?&rdquo; but <strong>&ldquo;what does this silently kill?&rdquo;</strong> Then count the things it kills. If the number is larger than one, you have written the wrong filter.</div>
+</div>
+
+<div class="section-block">
+  <div class="section-label">Method</div>
+  <h2>The workflow, <em>compressed</em></h2>
+  <div class="tree"><pre>  1.  Restate the business symptom.        "London is 340ms instead of 90ms."
+  2.  Slow or broken? To or from?          Direction decides which gate.
+  3.  NAME THE DRAWER.                     RIB-in / Local RIB / RIB-out / routing table.
+  4.  Gather evidence BEFORE changing.     get router info bgp network &lt;prefix&gt;
+  5.  Read the header line.                "N available, best #M"
+  6.  Find the FIRST differing line.       That line, and only that line, decided it.
+  7.  One hypothesis, one change.          Fix ABOVE the losing line.
+  8.  Verify TWO things.                   Attribute changed AND "best" moved.
+  9.  Verify the BUSINESS symptom.         Riley refreshes. 94ms.
+ 10.  Ask what else the change killed.     Every filter denies by default.</pre></div>
+  <h3 style="font-family:'Playfair Display',serif;font-size:22px;margin:26px 0 10px;color:var(--text);">Exam traps hidden in these symptoms</h3>
+  <table class="data-table">
+    <thead><tr><th>Stem says</th><th>What they want you to do</th><th>What is actually true</th></tr></thead>
+    <tbody>
+      <tr><td>&ldquo;The AS path is shorter via ISP-A&rdquo;</td><td>Conclude ISP-A wins</td><td>Only if lines 1&ndash;3 are equal. Weight and local pref are <em>above</em> AS path.</td></tr>
+      <tr><td>&ldquo;All attributes are identical&rdquo;</td><td>Reach for MED or IGP metric</td><td>Lowest <strong>router ID</strong>, unless ECMP is enabled &mdash; then up to 10 routes.</td></tr>
+      <tr><td>&ldquo;Every router in the AS must prefer&hellip;&rdquo;</td><td>Set weight (it is first on the list!)</td><td><strong>LOCAL_PREF.</strong> Weight is never advertised, not even internally.</td></tr>
+      <tr><td>&ldquo;The subnet is reachable and the session is up&rdquo;</td><td>Look for a session fault</td><td>Look at <code>network-import-check</code>: exact prefix and mask in the routing table.</td></tr>
+      <tr><td>&ldquo;A prefix list with a single permit entry&rdquo;</td><td>Assume the rest passes unchanged</td><td>The rest is <strong>denied</strong>.</td></tr>
+      <tr><td>&ldquo;Which tool can change the attribute?&rdquo;</td><td>Pick prefix list (it is mentioned in the stem)</td><td>Only a <strong>route map</strong> can set attributes.</td></tr>
+    </tbody>
+  </table>
+  <div class="mental-note-block"><div class="mental-note-block-icon">&#129504;</div><div class="mental-note-block-inner"><div class="mental-note-block-label">Mental note</div><div class="mental-note-block-text">Absence of errors is not evidence of correctness. Three of the four faults in this session log <strong>nothing at all</strong>. You will find them by reading state, never by reading messages.</div></div></div>
+</div>
+
+</div></main>
+
+<footer>LoFinance &middot; Season 5 &middot; Session 60 &middot; <span>NSE7 EF 7.6 &middot; SNA Domain 4</span> &middot; EF Dynamic Routing Supplement pp.&nbsp;342&ndash;348</footer>
+
+</body>
+</html>

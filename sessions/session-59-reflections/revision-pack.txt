@@ -1,0 +1,548 @@
+==================================================================
+LoFinance · SESSION 59 REVISION PACK — "Reflections"
+BGP Internals II: Route Reflectors · RIB-in / Local RIB / RIB-out
+EF Study Guide, Dynamic Routing Supplement, pp. 338-341
+Season 5 "The Expansion" · SNA Domain 4
+==================================================================
+
+
+==================================================================
+PART 1 — QUICK SUMMARY (one page)
+==================================================================
+
+THE PROBLEM
+Adelaide is four people and a printer. Bringing it online required an
+eleven-hour change window touching every firewall LoFinance owns,
+because IBGP demands a FULL MESH: n(n-1)/2 sessions. Eight sites = 28.
+Nine = 36. The ninth site adds eight sessions and requires configuring
+every existing router.
+
+WHY THE MESH EXISTS
+Not a limitation — the bill for a safety rule.
+
+  IBGP SPLIT HORIZON: a prefix learned from an IBGP peer is never
+  advertised to ANY OTHER IBGP peer.
+
+Inside an AS, AS_PATH is never prepended, so the loop check is
+structurally blind. No map, no hop count, no hold-downs, no working
+AS_PATH. Split horizon replaces all of it: a route takes exactly ONE
+IBGP hop, ever. You cannot build a circle from segments of length one.
+Loops become IMPOSSIBLE, not merely detected.
+
+If nobody may relay, everybody must hear everything first-hand.
+That is the mesh.
+
+WHERE ROUTES LIVE — THE THREE DRAWERS
+
+  RIB-in  --[IN filter + validity + best-path]-->  Local RIB
+          --[OUT filter]-->  RIB-out
+
+  RIB-in     = everything I was told, raw, pre-filter.       "Received"
+  Local RIB  = what I chose to believe. Feeds the RIB.       "Believed"
+  RIB-out    = what I am willing to say, and to whom.        "Told"
+
+Redistributed routes (connected, static, RIP, OSPF, IS-IS) join AFTER
+the Local RIB and before the OUT filter.
+
+THE FIX
+A ROUTE REFLECTOR is not a new mechanism. It is a deliberate RELAXATION
+of split horizon — it takes a route from one IBGP peer and gives it to
+another, which is precisely what the rule forbids.
+
+RR + its clients = a CLUSTER. Clients peer ONLY with the RR. The RR
+peers with other RRs and border routers. 36 sessions become 9.
+Adding a site: two routers touched, not nine.
+
+THE PRICE
+Delete impossibility and you must install detection.
+
+  ORIGINATOR_ID — router-ID of the client that ORIGINATED the route.
+                  See your own -> drop, silently, no log. ROUTER scope.
+  CLUSTER_LIST  — cluster-ID prepended by each reflecting RR.
+                  See your own -> drop. CLUSTER scope. Multi-RR guard.
+
+Nested rings, same question at three scales — "did this come from me?"
+  Between ASes      -> AS_PATH       -> is my AS in it?
+  Between clusters  -> CLUSTER_LIST  -> is my cluster-ID in it?
+  Within a cluster  -> ORIGINATOR_ID -> is my router-ID it?
+
+THE RELAY RULES
+  From a CLIENT              -> reflect to EVERYONE
+  From a NON-CLIENT IBGP peer-> reflect to CLIENTS ONLY
+  From an EBGP peer          -> advertise to EVERYONE
+
+  Compressed: DOWNWARD (to clients) ALWAYS. SIDEWAYS NEVER.
+  Señor:      "The reflector speaks freely to its own. To strangers,
+               it only repeats what its own told it."
+
+  And the CLIENT itself relays NOTHING. It believes, installs, and is
+  mute. That muteness is what makes the star safe.
+
+BUSINESS OUTCOME
+Eleven hours across nine firewalls becomes twenty minutes across two.
+Penny's board sentence: "Adding an office no longer means re-opening
+every office."
+
+
+==================================================================
+PART 2 — CHEAT SHEET
+==================================================================
+
+--- CONFIGURATION (RR only — the client gets nothing special) -----
+
+config router bgp
+    set as 65001
+    set router-id 10.99.10.1
+    config neighbor
+        edit "10.99.60.1"                    # the CLIENT's address
+            set remote-as 65001
+            set next-hop-self enable
+            set route-reflector-client enable
+            set description "MEL (RR client)"
+        next
+    end
+end
+
+--- THE CLIENT'S ENTIRE CONFIG ------------------------------------
+
+config router bgp
+    set as 65001
+    set router-id 10.99.80.1
+    config neighbor
+        edit "10.99.10.1"                    # the RR
+            set remote-as 65001
+        next
+    end
+end
+
+  ^ Nothing here says "client." It does not know. By design.
+
+--- THE READING RULE THAT FIXES ALL DIRECTION ERRORS --------------
+
+Everything inside  config neighbor / edit <ip>  describes THE PEER AT
+THAT ADDRESS, not the box you are typing on.
+
+  set remote-as 65001        = THAT NEIGHBOUR is in AS 65001
+  set next-hop-self enable   = I rewrite next hop WHEN I TALK TO THEM
+  set route-reflector-client = THAT NEIGHBOUR is a client OF MINE
+                               (so only an RR can say it)
+
+--- VERIFICATION COMMANDS -----------------------------------------
+
+get router info bgp network                     # database / RIB-in. "see"
+get router info bgp neighbors <ip> received-routes   # RIB-in from that peer
+get router info routing-table bgp               # installed. "use"
+get router info bgp neighbors <ip> advertised-routes # RIB-OUT toward peer
+                                                #   *** THE RR TEST ***
+get router info bgp summary                     # sessions only — LOOKS
+                                                #   PERFECT during RR faults
+get router info bgp neighbors <ip>              # capabilities, state, timers
+get router info routing-table details <nexthop> # resolution check
+
+--- STATUS CODES --------------------------------------------------
+
+   Network          Next Hop        Metric LocPrf Weight Path
+*>i 10.99.60.0/24    10.99.10.1          0    100      0 i
+*i  172.28.10.0/24   172.20.0.1          0    100      0 65300 i
+
+  *   valid
+  >   best
+  i   (leading) internal / IBGP-learned
+  i   (trailing, in Path) origin = IGP
+
+  *i WITHOUT > on a SINGLE-path prefix = not losing a competition.
+     INELIGIBLE. Read the NEXT HOP column next.
+
+--- GUI PATHS -----------------------------------------------------
+
+Network > BGP                      (AS, router-id, neighbours)
+Network > BGP > Neighbors          (per-neighbour settings incl. RR client)
+Dashboard > Network > Routing      (installed routes)
+  NOTE: RR client, next-hop-self and prefix-list-out are commonly
+  CLI-only or CLI-preferred in production. Know the CLI.
+
+--- DEFAULTS AND KEY BEHAVIOURS -----------------------------------
+
+  IBGP split horizon              ON, always, not configurable
+  route-reflector-client          DISABLE (must be explicitly set)
+  next-hop-self                   DISABLE (IBGP PRESERVES next hop)
+  BGP advertises redistributed
+    prefixes                      NO — must configure redistribution
+                                  or the network command
+  EBGP -> EBGP advertisement      YES by default (transit exposure!)
+  EBGP-learned -> IBGP peers      YES — split horizon does NOT apply
+  Client relays reflected routes  NEVER
+  ORIGINATOR_ID / CLUSTER_LIST
+    drops                         SILENT. No log. No counter. No alarm.
+
+--- TIMERS (carried, S57) -----------------------------------------
+
+  Keepalive default    60s
+  Hold time default   180s
+  Both negotiated to the LOWER of the two peers' values
+  BFD for sub-second detection; graceful-restart for HA failover
+
+--- DESIGN RULES --------------------------------------------------
+
+  1. RR is a control-plane concentrator, NOT a traffic concentrator.
+     Data still flows client-to-client directly if the path exists.
+  2. RRs concentrate the FAILURE DOMAIN. Two RRs for resilience in
+     production; LoFinance runs one for now, deliberately.
+  3. next-hop-self is STILL required. Reflection and resolution are
+     different drawers.
+  4. Do not decommission the full mesh until the RR is verified
+     advertising — the mesh masks a missing route-reflector-client.
+  5. Clients need no knowledge of the topology. That is the point:
+     a branch turn-up should not be a fleet-wide change.
+  6. Filters live at the RIB-out gate. Apply outbound prefix-lists
+     BEFORE a new EBGP peer exists, not after.
+
+
+==================================================================
+PART 3 — FLASHCARDS
+==================================================================
+
+Q: State the IBGP split-horizon rule exactly.
+A: A prefix learned from an IBGP peer is never advertised to any other
+   IBGP peer. (Not "back to the sender." Not "out the same interface.")
+
+Q: Why does IBGP need split horizon at all?
+A: AS_PATH is only prepended when a route leaves an AS, so inside the
+   AS the loop check is blind. There is no map, no hop count and no
+   hold-down either. Split horizon is the only loop prevention left.
+
+Q: How does split horizon make loops impossible rather than detected?
+A: A route can take exactly one IBGP hop. You cannot build a circle
+   out of segments of length one.
+
+Q: How many IBGP sessions for a full mesh of n speakers?
+A: n(n-1)/2. Nine sites = 36. (Derive by summation if unsure:
+   8+7+6+5+4+3+2+1.)
+
+Q: What is the real cost of the full mesh — the number, or something
+   else?
+A: The operational cost. Adding one branch requires configuring every
+   existing router, so a small turn-up becomes a fleet-wide change.
+
+Q: Name the three RIBs in order.
+A: RIB-in, Local RIB, RIB-out.
+
+Q: Define RIB-in.
+A: Routing information learned from inbound update messages —
+   unprocessed, before any filtering.
+
+Q: Define Local RIB.
+A: The routes the speaker selects after applying local policy to
+   RIB-in. What it chose to believe. Feeds the routing table.
+
+Q: Define RIB-out.
+A: The routing information the speaker selects to advertise to its
+   peers.
+
+Q: Which RIB holds routes AFTER the inbound filter is applied?
+A: The Local RIB.
+
+Q: What two gates guard the RIB-in to Local RIB boundary?
+A: The IN filter (local policy) and validity plus best-path selection
+   (does the NEXT_HOP resolve; which path wins).
+
+Q: Where do redistributed routes enter the process?
+A: After the Local RIB, before the outbound filter.
+
+Q: Name four controls that live at the Local RIB to RIB-out gate.
+A: IBGP split horizon, route-reflector relay rules, next-hop-self,
+   and prefix-list-out / route-map-out.
+
+Q: One sentence: what is the Local RIB to RIB-out gate for?
+A: Of the things I believe, what am I willing to say, and to whom?
+
+Q: What is a route reflector, in one sentence?
+A: A router permitted to break IBGP split horizon on purpose, so that
+   IBGP does not require a full mesh.
+
+Q: What is a cluster?
+A: A route reflector plus its clients.
+
+Q: Who do clients exchange routing updates with?
+A: Only their RR.
+
+Q: Which device is configured with route-reflector-client, and where?
+A: The RR, inside config neighbor, under each client's neighbour block.
+
+Q: What does a client's BGP configuration look like?
+A: An ordinary IBGP neighbour statement. Nothing indicates it is a
+   client. It does not know.
+
+Q: An RR learns a prefix from a CLIENT. Who receives it?
+A: Everyone — other clients, non-client IBGP peers, and EBGP peers.
+
+Q: Why must a client-learned route be reflected to everyone?
+A: The client is mute; if the RR does not relay it, nobody hears it
+   at all and the cluster is invisible.
+
+Q: An RR learns a prefix from a NON-CLIENT IBGP peer. Who receives it?
+A: Its clients only. Not its other non-client IBGP peers.
+
+Q: Why do clients still get non-client-learned routes?
+A: Clients peer with nobody but their RR. Without this the cluster
+   would be a sealed box learning nothing from outside.
+
+Q: Why NOT to other non-clients?
+A: Both are ordinary IBGP peers, so the original split-horizon rule
+   still binds.
+
+Q: An RR learns a prefix by EBGP. Who receives it?
+A: Everyone. It was never an IBGP-learned route, so split horizon
+   never applied.
+
+Q: Compress the relay rules to one line.
+A: Downward to clients: always. Sideways non-client to non-client:
+   never.
+
+Q: A client receives a reflected route. What does it advertise onward?
+A: Nothing. It believes it, installs it, and stays mute.
+
+Q: What does ORIGINATOR_ID contain and what does it do?
+A: The router-ID of the client that originally injected the route. A
+   router seeing its own router-ID drops the route, silently.
+
+Q: What does CLUSTER_LIST contain and what does it do?
+A: Cluster-IDs, prepended by each reflecting RR. An RR seeing its own
+   cluster-ID drops the route.
+
+Q: Distinguish ORIGINATOR_ID from CLUSTER_LIST by scope.
+A: ORIGINATOR_ID is router-scope — the originating router.
+   CLUSTER_LIST is cluster-scope — the reflecting RRs, between
+   clusters. Match the attribute to the scope word in the question.
+
+Q: Which of the two matters most in a multi-RR design?
+A: CLUSTER_LIST. In a single-RR design, plain split horizon on the
+   mute clients usually stops a route before CLUSTER_LIST is consulted.
+
+Q: What is the general principle these two attributes illustrate?
+A: When you relax a structural guarantee, you must replace it with a
+   detection mechanism. Loops stop being impossible and start being
+   caught.
+
+Q: Which command reveals what an RR is actually saying to a client?
+A: get router info bgp neighbors <client> advertised-routes
+
+Q: A client has zero prefixes and the session is Established. First
+   suspect?
+A: route-reflector-client is not set on the RR for that neighbour.
+
+Q: The RR shows the route as advertised, but the client received
+   nothing, and there are no logs. What happened?
+A: A silent loop-prevention drop — usually ORIGINATOR_ID matching the
+   client's own router-ID.
+
+Q: Why is get router info bgp summary misleading in RR faults?
+A: Sessions stay Established throughout. Established means the
+   conversation is happening, not that anything useful is being said.
+
+Q: Does configuring an RR remove the need for next-hop-self?
+A: No. Reflection and next-hop resolution are different drawers. The
+   RR still preserves the NEXT_HOP unless told otherwise.
+
+Q: Absent route versus present-but-unusable route — which drawer?
+A: Absent is an advertisement problem (RIB-out on the sender).
+   Present-but-unusable is a resolution or best-path problem
+   (RIB-in to Local RIB on the receiver).
+
+Q: What does "*i" without ">" mean on a single-path prefix?
+A: Valid but not best, with no competition — therefore ineligible.
+   Read the NEXT_HOP column.
+
+Q: Why is it dangerous to decommission the full mesh before verifying
+   the RR?
+A: The mesh masks a missing route-reflector-client statement. Removing
+   it exposes a fault that was there all along, appearing as a new one.
+
+Q: Business sentence for the change.
+A: Adding an office no longer means re-opening every office. Two
+   routers touched instead of nine.
+
+
+==================================================================
+PART 4 — PODCAST PROMPT
+==================================================================
+Paste the following directly into an AI audio generator.
+------------------------------------------------------------------
+
+Generate a single-host narrative technology podcast episode, roughly
+14 to 18 minutes, for a show called "THE PACKET PATH." The host is
+warm, dry, unhurried and slightly wry — the tone of an experienced
+network engineer telling a story over a coffee rather than delivering
+a lecture. Second person is used sparingly and deliberately. No sound
+effects, no music cues, no multiple voices.
+
+EPISODE TITLE: "Reflections"
+SERIES: LoFinance, Season 5 — The Expansion. Episode 59.
+
+COLD OPEN
+Open on the image, not the concept. Wednesday morning, 8:41. A young
+engineer called Junior has arrived early — which the host notes is
+itself an event — and has spent ninety minutes drawing on an eleven-
+foot whiteboard. Nine circles: Sydney, Melbourne, Brisbane, Perth,
+Auckland, Singapore, London, and Adelaide crammed in at a diagonal in
+the bottom-right corner because he ran out of room. And between them,
+lines. So many lines that the middle third of the board has become a
+grey smear where the marker crossed itself into unreadability. He is
+standing on a chair trying to draw the final connection — Adelaide to
+Auckland — and there is physically nowhere to put it. The marker slips
+out of his hand and hits the carpet. He says, to nobody: "I ran out
+of board."
+
+Host beat: nothing Junior drew was wrong. Every line was correct. The
+design was not.
+
+ACT ONE — THE ARITHMETIC
+Introduce J.R., a former accountant, who has written the number 28 in
+his notebook three times, each underlined, as though hoping it would
+be smaller on the next attempt. For nine sites: 36. He does the
+arithmetic twice, because he always does.
+
+Introduce the formula n(n-1)/2, but immediately move past it — insist
+the number is not the point. The point is that adding ONE branch
+requires configuring EVERY existing router. Penny, the operations
+lead, arrives with the business version: Adelaide is four people and
+a printer, and the quoted change window is eleven hours touching every
+firewall the company owns.
+
+ACT TWO — RILEY ASKS THE QUESTION
+Riley, from the help desk, asks the naive question that turns out to
+be the whole episode: "HQ already knows all of it. So why can't Sydney
+just TELL Adelaide? Why does Adelaide have to hear it from Perth and
+Auckland and Brisbane personally?"
+
+Answer it properly. IBGP split horizon: a prefix learned from an IBGP
+peer is never advertised to any other IBGP peer. Stress the exact
+wording and warn that the looser version — "not back to the sender" —
+is the wrong one and is a favourite exam distractor.
+
+Then explain WHY the rule is worth its price, because this is the
+heart of the episode. Inside an autonomous system, AS_PATH is never
+prepended. So BGP's loop check is structurally blind in there. No map.
+No hop count. No hold-down timers. Every loop-prevention tool BGP owns
+is inoperative inside its own AS. Split horizon replaces all of it
+with something elegant: a route can take exactly one internal hop,
+ever. And you cannot build a circle out of segments of length one.
+Loops are not detected. They are impossible.
+
+Host line to land clearly: every safety rule has a price, and the
+price is usually scale.
+
+ACT THREE — THE DRAWERS
+Señor — the senior engineer, wears a sombrero indoors, speaks in
+aphorisms — pulls a worn folded diagram from a filing cabinet nobody
+uses. Three boxes. RIB-in. Local RIB. RIB-out. His line: "For two
+sessions we have been asking what BGP KNOWS. Wrong question. Today we
+ask where it KEEPS it."
+
+Teach the three RIBs as three drawers in a room:
+  RIB-in    — everything I was told, raw, unfiltered. Received.
+  Local RIB — what I chose to believe. Survived my filter, next hop
+              resolves, won its competition. Feeds the routing table.
+  RIB-out   — what I am willing to say, and to whom.
+
+Emphasise the two gates: the first boundary is guarded by the inbound
+filter AND by validity plus best-path. The second boundary is guarded
+by policy — and that second gate is where almost everything lives.
+Split horizon lives there. Next-hop-self lives there. Outbound prefix-
+lists live there. Route reflector rules will live there.
+
+Host line to land: believing and telling are different drawers, and
+almost all of BGP policy is the door between them.
+
+ACT FOUR — THE RELAXATION
+Javier Lin, the counterpart in Singapore, has been on a speakerphone
+for forty silent minutes. He says one thing: "Because nobody told them
+they were allowed to listen to a reflection." Then he goes quiet again.
+
+Introduce the route reflector — but frame it correctly. It is not a
+new mechanism. It is the deliberate removal of a safety rule. The RR
+learns a route from one IBGP peer and hands it to another, which is
+precisely what split horizon forbids. An RR and its clients form a
+cluster. Clients peer only with the RR. Thirty-six sessions become
+nine. Junior's grey smear becomes a star.
+
+Then ask the listener the question directly: you have just deleted the
+mechanism that made loops impossible. What has to replace it?
+
+Answer: detection. ORIGINATOR_ID carries the router-ID of the client
+that originally injected the route — see your own, drop it, silently,
+no log. CLUSTER_LIST carries the cluster-ID of every RR that reflected
+it — see your own, drop it. Point out that both are AS_PATH's idea
+scaled down. Between autonomous systems: is my AS in it? Between
+clusters: is my cluster in it? Within a cluster: is that me? The same
+question at three different scales.
+
+ACT FIVE — JUNIOR'S MISTAKE, AND WHOSE IT ACTUALLY WAS
+This episode's mistake is unusual and worth dwelling on, because it
+was not a configuration error. Junior did everything right. He drew a
+correct full mesh, faithfully, for ninety minutes. Every line was
+legitimate. He simply ran out of whiteboard.
+
+Host reflection: the most dangerous failures in enterprise networking
+are not the ones where somebody typed the wrong thing. They are the
+ones where every individual step is correct and the architecture is
+still unsustainable. The symptom is not an error message. It is an
+eleven-hour change window, a marker smear, and a man standing on a
+chair discovering there is nowhere left to draw.
+
+Also mention the second, subtler mistake — one made by almost every
+engineer learning this topic — of going looking for the route
+reflector configuration on the CLIENT. It is not there. It will never
+be there. The client's configuration is an ordinary neighbour
+statement. The reflector declares who its clients are; the client does
+not know it is a client. Offer the reading habit that fixes it
+permanently: everything inside "config neighbor, edit an address"
+describes the PEER at that address, not the box you are typing on.
+
+CLOSING
+Señor tells Junior to wipe the board — ninety minutes of work — and
+draw one dot in the middle with eight lines to the edges. He writes a
+9 under the 28 on Penny's sticky note and says: "Adelaide costs you
+two routers and a coffee."
+
+Then his line for the relay rules: "The reflector speaks freely to its
+own. To strangers, it only repeats what its own told it."
+
+Riley, quietly, to nobody: "So Sydney can just tell everyone. Someone
+just had to say it was allowed."
+
+Javier, from the speakerphone: "Correct." Click.
+
+Recap in under sixty seconds: three drawers, received, believed, told.
+Split horizon costs you the mesh. The reflector breaks the rule on
+purpose and pays for it with two attributes. Downward always, sideways
+never. And only the centre is allowed to speak — the clients are
+deliberately, permanently mute, and that muteness is what makes the
+star safe.
+
+TEASER
+End on the next problem, already opened. Thursday morning, 6:12.
+Riley's ticket queue has exactly one entry, filed against a London
+office that does not officially exist yet. Latency to London: 340
+milliseconds. Expected: 90. The traceroute shows Sydney, then
+Singapore, then London. Around the planet and back.
+
+Penny asks why the company's London traffic is going through Javier.
+Señor, for the first time this season, is not smiling. "Because BGP
+chose it. And BGP is not wrong. BGP is never wrong. BGP is only ever
+badly advised."
+
+Javier, faintly amused: "My path is shorter. Fewer autonomous systems.
+Ask your algorithm."
+
+And Señor pulls out a second folded page — a numbered list, thirteen
+items long, the first one circled twice. "Tomorrow we learn how BGP
+argues. And then we learn how to win."
+
+Final host line, then out.
+
+------------------------------------------------------------------
+END REVISION PACK — Session 59, Thursday 23 July 2026
+Next: Session 60, "Choosing Favourites" — BGP attributes, route
+selection, the network command, and prefix lists. pp. 342-348.
+==================================================================

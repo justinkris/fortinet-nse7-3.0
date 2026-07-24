@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 54 Troubleshooting — BGP Design Reasoning</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--text);}
+  header{padding:36px 50px 28px;background:var(--ink-dark);}
+  .tag{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;color:var(--ink-accent);text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:36px;color:#fbf7ec;margin-top:8px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{color:rgba(251,247,236,0.6);margin-top:8px;font-style:italic;}
+  main{max-width:900px;margin:0 auto;padding:32px 50px 60px;}
+  .section-block{margin-bottom:36px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:24px;padding-left:14px;border-left:3px solid var(--blue);margin-bottom:12px;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p, .section-block li{font-size:17px;line-height:1.7;color:var(--text-soft);}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:10px;}
+  .section-block li{margin-bottom:6px;}
+  .decision-tree{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;}
+  .dt-step{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid #ebe1c2;align-items:flex-start;}
+  .dt-step:last-child{border-bottom:none;}
+  .dt-num{font-family:'Outfit',sans-serif;font-weight:700;color:var(--blue);min-width:24px;}
+  .callout-amber{border-left:3px solid var(--amber-border);background:var(--amber-light);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;}
+  .callout-green{border-left:3px solid var(--green-border);background:var(--green-light);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;}
+  .deadend{background:#fbe8e4;border-left:3px solid #c65b4e;border-radius:0 10px 10px 0;padding:12px 16px;margin:10px 0;font-size:15px;}
+  footer{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:18px 50px;border-top:1px solid var(--border);text-align:center;}
+</style>
+</head>
+<body>
+<header>
+  <div class="tag">SESSION 54 · TROUBLESHOOTING &amp; DESIGN REASONING</div>
+  <h1>How a Senior Engineer <em>Thinks About BGP Boundaries</em></h1>
+  <p>This session had no live fault — but the reasoning that catches design mistakes before they happen is the same muscle. Use this as a thinking framework for Session 55 onward.</p>
+</header>
+<main>
+
+  <div class="section-block">
+    <h2>The <em>Question Behind the Symptom</em></h2>
+    <p>The "symptom" this episode wasn't a broken link — it was a business decision (the Expansion) that silently created a wrong assumption: "we'll just extend our OSPF." Senior engineers catch design mistakes at the <strong>decision</strong> stage, before they become tickets.</p>
+    <ul>
+      <li><strong>Business trigger:</strong> new sites under different administration join the network</li>
+      <li><strong>Wrong instinct to watch for:</strong> "just add them to the existing routing domain" (Junior's likely move, flagged for S55)</li>
+      <li><strong>Right question:</strong> "who administers this network, and do we want to share our full topology with them?"</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <h2>Questions to <em>Ask Before Configuring Anything</em></h2>
+    <div class="decision-tree">
+      <div class="dt-step"><span class="dt-num">1</span><span>Is the remote network under the <strong>same administration</strong> as ours? If yes → IGP (OSPF) is fine. If no → BGP is required.</span></div>
+      <div class="dt-step"><span class="dt-num">2</span><span>Do we want to share our <strong>entire</strong> topology with them, or only <strong>specific</strong> reachability? If only specific → BGP, not OSPF, regardless of administration.</span></div>
+      <div class="dt-step"><span class="dt-num">3</span><span>Will we peer with the public internet eventually? If yes → plan for a registered public ASN later. If purely internal/inter-office → private ASN (64512–65534) now.</span></div>
+      <div class="dt-step"><span class="dt-num">4</span><span>Will we have more than one external BGP peer? If yes → we are multihomed. Ask explicitly: could routes from one peer leak to another?</span></div>
+      <div class="dt-step"><span class="dt-num">5</span><span>If leak risk exists → design prefix filters on every outbound advertisement BEFORE the session goes live, not after a leak is reported.</span></div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <h2>Common <em>Dead Ends</em></h2>
+    <div class="deadend"><strong>Dead end:</strong> "AS_PATH will stop bad routes from leaking between peers." — AS_PATH only stops loops (your own ASN reappearing). It does nothing to stop a legitimate, loop-free route from one peer being re-advertised to another.</div>
+    <div class="deadend"><strong>Dead end:</strong> "More peers automatically means more risk of becoming an ISP." — Multihoming alone doesn't create transit behaviour; the router will only forward routes it's advertising outward. The risk is in the OUTBOUND advertisement policy, not the peer count itself.</div>
+    <div class="deadend"><strong>Dead end:</strong> "We should just pick any number for our ASN." — If there's any chance of ever touching the public internet without translation, an unregistered "made up" number outside the private range risks colliding with a real organisation's registered ASN.</div>
+  </div>
+
+  <div class="section-block">
+    <h2>Likely <em>Root Causes</em> (for later sessions)</h2>
+    <p>When a BGP session or route-leak issue appears in a future troubleshooting scenario, these are the categories this session's fundamentals point toward:</p>
+    <ul>
+      <li><strong>Loop rejection unexpected:</strong> check whether the local AS number appears somewhere in the AS_PATH — likely a misconfigured private ASN reused across sites that should be distinct.</li>
+      <li><strong>Unexpected transit / route leak:</strong> check outbound prefix-lists / route-maps on each neighbor — the AS_PATH will look completely valid; only filtering reveals the gap.</li>
+      <li><strong>Peering won't establish (Session 55 preview):</strong> often a mismatch in configured AS numbers, not a Layer 3 reachability issue — always verify configured local-as and remote-as expectations first.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <h2>Exam Traps <em>to Watch For</em></h2>
+    <div class="callout-amber"><strong>Trap:</strong> a question describing a multihomed AS with a route-leak symptom will offer "enable AS_PATH checking" as a distractor. The correct fix is filtering.</div>
+    <div class="callout-green"><strong>Correct instinct:</strong> when asked "what determines whether a route is accepted," always check BOTH the AS_PATH (loop) AND the configured inbound/outbound policy (filtering) — they are evaluated independently.</div>
+  </div>
+
+</main>
+<footer>LoFinance Study Series · Session 54 Troubleshooting Guide</footer>
+</body>
+</html>

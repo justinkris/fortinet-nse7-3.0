@@ -1,0 +1,472 @@
+================================================================================
+SESSION 58 — "THE POLITICS OF ROUTING" — COMBINED REVISION PACK
+BGP internals I: IBGP vs EBGP, path-vector fundamentals
+EF Study Guide, Dynamic Routing Supplement, pp. 331-337
+================================================================================
+
+
+################################################################################
+PART 1 — QUICK SUMMARY (ONE PAGE)
+################################################################################
+
+WHY BGP EXISTS
+Link-state does not scale globally. Not because the map is big — you can buy RAM —
+but because every change must reach every router and every router must recompute.
+On a global network something is always flapping, and almost all of that
+computation produces NO CHANGE in the local forwarding decision. The work isn't
+merely expensive, it's wasted: the architecture forces every router to participate
+in the details of a problem that isn't theirs.
+
+If Sydney's answer is "the same way out" regardless of Frankfurt's internals, then
+Sydney doesn't need Frankfurt's MAP. It needs reachability and direction.
+
+THE THREE FAMILIES
+  RIP    distance vector   carries HOW FAR
+  OSPF   link state        carries THE MAP
+  BGP    path vector       carries WHICH WAY IT CAME (AS_PATH)
+
+BGP throws away the map, uses no hop count, and has no hold-down timers. Loop
+prevention is the AS_PATH self-check: reject any route whose AS_PATH already
+contains your own AS. This check is LOCAL and INSTANT — no timers, no shared
+state — which is exactly what you need once the map is gone.
+
+THE INTERNAL BLIND SPOT
+AS_PATH is prepended only when a route LEAVES an AS. Move a route internally and
+NOTHING is written. So inside an AS, BGP has: no map, no hop count, no hold-down,
+and no working AS_PATH check. Every loop-prevention tool is inoperative.
+
+THE ANSWER: IBGP SPLIT HORIZON
+  >>> A prefix learned from an IBGP peer is NEVER advertised to ANY other
+      IBGP peer. <<<
+Not "not back to the sender" — that's RIP's interface-scoped version and it is
+the exam's favourite distractor. BGP's version is peer-type-scoped.
+Consequence: a route takes ONE IBGP hop, EVER. You cannot build a circle from
+segments of length one, so the loop is IMPOSSIBLE, not detected.
+
+THE EXCEPTION THAT SAVES IT
+The rule says nothing about where the route ENTERED. EBGP-learned routes are
+freely advertised to IBGP peers — that's a border router's whole job. Only the
+SECOND internal hop is blocked.
+
+THE BILL: FULL MESH
+Nobody may relay, so everyone hears it first-hand. n(n-1)/2.
+8 sites = 28 sessions. The number isn't the point: the NINTH site adds EIGHT
+sessions and requires touching EVERY EXISTING ROUTER. A branch turnup becomes a
+fleet-wide change window.
+
+THE FAULT: VALID BUT NOT BEST
+IBGP PRESERVES the NEXT_HOP unchanged — the border router does not insert itself.
+So an internal router is told to send traffic to a loopback in a foreign AS and
+cannot reach it. A path with an unresolvable next hop is valid but never best:
+it sits in the database forever, never installed, never withdrawn, NEVER LOGGED.
+`get router info bgp summary` looks perfect throughout.
+
+FIX: resolve the next hop (IGP/static) or rewrite it (next-hop-self).
+next-hop-self goes on the BORDER router, toward IBGP peers, for EBGP-learned
+routes. Cost: traffic engineering gone, border becomes a failure domain.
+
+THE SILENT EXPOSURE: ACCIDENTAL TRANSIT
+EBGP-learned routes are advertised to OTHER EBGP PEERS by default. Bring up a
+second external peer and you silently backhaul traffic between two parties on
+behalf of neither — with zero misconfiguration. Prevented ONLY by outbound
+filtering (prefix-list-out / route-map-out). NEVER by AS_PATH.
+
+
+################################################################################
+PART 2 — CHEAT SHEET
+################################################################################
+
+--- EBGP vs IBGP -------------------------------------------------------------
+                          EBGP                    IBGP
+  Peers                   Different AS            Same AS
+  AS_PATH                 Prepended on exit       Untouched
+  Loop prevention         AS_PATH self-check      Split horizon (structural)
+  Re-advertise to IBGP?   Yes                     NO
+  NEXT_HOP                Set to self on exit     PRESERVED unchanged
+  Default TTL             1 (ebgp-enforce-multihop) Multi-hop by nature
+  Topology required       Point-to-point          FULL MESH n(n-1)/2
+
+--- AS TYPES (pp.336) --------------------------------------------------------
+  Stub         one exit,       local traffic only
+  Multihomed   multiple exits, local traffic only     <- LoFinance today
+  Transit      multiple exits, local AND other people's traffic (an ISP)
+  KEY: multihoming is about NUMBER OF CONNECTIONS.
+       transit is about WHOSE TRAFFIC flows through you.
+
+--- FULL MESH SESSION COUNT --------------------------------------------------
+  formula   n(n-1)/2
+  derive    (n-1)+(n-2)+...+2+1     <- more reliable under pressure
+  n=3  -> 3      n=4  -> 6      n=6  -> 15
+  n=8  -> 28     n=12 -> 66     n=20 -> 190
+
+--- BGP ATTRIBUTE CATEGORIES (p.343) -----------------------------------------
+  Well-known mandatory      ORIGIN, AS_PATH, NEXT_HOP
+  Well-known discretionary  LOCAL_PREF, ATOMIC_AGGREGATE
+  Optional transitive       AGGREGATOR, COMMUNITY
+  Optional non-transitive   MULTI_EXIT_DISC (MED)
+
+--- ROUTE SELECTION TIE-BREAKERS, IN ORDER (p.344) ---------------------------
+   1. Highest weight
+   2. Highest local preference
+   3. Prefer path that originated locally
+   4. Shortest AS path
+   5. Lowest origin type
+   6. Lowest MED
+   7. Lowest IGP metric to the BGP next hop
+   8. Prefer EBGP over IBGP
+   9. If ECMP enabled, insert up to 10 routes
+  10. Lowest router ID
+
+--- STATUS CODES (READ THE LEGEND, IT'S PRINTED ON EVERY OUTPUT) -------------
+  s suppressed   d damped   h history   * valid   > best   i internal
+  *>i  = valid, best, internal          HEALTHY
+  *i   = valid, NOT best                FAULT — read the NEXT_HOP column
+  absent = never arrived                 filter, split horizon, or not originated
+
+--- COMMANDS -----------------------------------------------------------------
+  get router info bgp network                  the DATABASE ("see")
+  get router info routing-table bgp            what's INSTALLED ("use")
+  get router info routing-table details <nh>   THE DECIDING COMMAND
+  get router info bgp neighbors <ip>           remote-as tells you IBGP vs EBGP
+  get router info bgp summary                  LOOKS PERFECT DURING THIS FAULT
+
+--- CONFIG: next-hop-self (on the BORDER router, toward IBGP peers) ----------
+  config router bgp
+      config neighbor
+          edit "10.99.60.1"
+              set remote-as 65001
+              set next-hop-self enable
+          next
+      end
+  end
+
+--- CONFIG: transit prevention (outbound, on every EBGP neighbour) -----------
+  config router prefix-list
+      edit "LOFI-OWN-PREFIXES"
+          config rule
+              edit 1
+                  set prefix 10.99.0.0 255.255.0.0
+                  set action permit
+                  set ge 16
+                  set le 24
+              next
+              edit 2
+                  set prefix 0.0.0.0 0.0.0.0
+                  set action deny
+                  set le 32
+              next
+          end
+      next
+  end
+
+  config router bgp
+      config neighbor
+          edit "172.20.0.1"
+              set remote-as 65300
+              set prefix-list-out "LOFI-OWN-PREFIXES"
+          next
+      end
+  end
+
+--- IMPORTANT DEFAULTS -------------------------------------------------------
+  BGP originates NOTHING by default (need network or redistribute)
+  BGP ACCEPTS everything by default (filter inbound if you care)
+  BGP ADVERTISES EBGP-learned routes to other EBGP peers by default (= transit)
+  A DEFAULT ROUTE does NOT satisfy next-hop resolution by default on FortiGate
+  No hardcoded limits on neighbors/routes/policies — system memory is the limit
+
+--- DESIGN RULES -------------------------------------------------------------
+  * Never rely on AS_PATH to prevent transit. Filter outbound. Always.
+  * Apply outbound filters BEFORE the second external peering exists, not after.
+  * next-hop-self is right when there is no alternative path anyway. It is wrong
+    in a genuine multi-exit topology — you'd be discarding paths you paid for.
+  * Full mesh is an operational ceiling, not a technical one. Count the change
+    window, not the sessions.
+
+
+################################################################################
+PART 3 — FLASHCARDS
+################################################################################
+
+Q: What does BGP carry that OSPF and RIP do not?
+A: AS_PATH — the ordered list of autonomous systems the route has already
+   crossed. Hence "path vector."
+
+Q: Why can't link-state scale to the internet?
+A: Every change must reach every router and every router must recompute SPF —
+   and almost all of that computation produces no change in the forwarding
+   decision. The work is wasted, not just expensive.
+
+Q: How does BGP prevent loops between autonomous systems?
+A: A router rejects any route whose AS_PATH already contains its own AS number.
+   Local, instant, needs no shared state or timers.
+
+Q: When is the AS number prepended to AS_PATH?
+A: Only when the route LEAVES the AS (EBGP advertisement). Never internally.
+
+Q: Why does AS_PATH fail as loop prevention inside an AS?
+A: Nothing is prepended internally, so the attribute never changes and the
+   self-check has nothing to detect.
+
+Q: State the IBGP split horizon rule exactly.
+A: A prefix learned from an IBGP peer is never advertised to ANY other IBGP peer.
+
+Q: How does IBGP split horizon differ from RIP's split horizon?
+A: RIP is interface-scoped and directional (don't send back out the interface you
+   learned it on). IBGP is peer-type-scoped: it goes nowhere internally at all.
+
+Q: Why does split horizon make loops impossible rather than merely detectable?
+A: A route can take only one IBGP hop. You cannot form a circle from segments of
+   length one.
+
+Q: If IBGP routes can't be relayed, how does anything propagate internally?
+A: EBGP-learned routes ARE freely advertised to IBGP peers. The rule only blocks
+   the SECOND internal hop.
+
+Q: What topology does split horizon force inside an AS?
+A: Full mesh — every IBGP speaker peered directly with every other.
+
+Q: How many IBGP sessions for n speakers? For 8?
+A: n(n-1)/2. For 8: 28.
+
+Q: What is the real operational cost of full mesh?
+A: Adding the ninth site adds eight sessions and requires touching every existing
+   router. A branch turnup becomes a fleet-wide change window.
+
+Q: What happens to NEXT_HOP when a route is passed over IBGP?
+A: Nothing — it is preserved unchanged. The border router does not insert itself.
+
+Q: A prefix shows "*i" but not ">". There is only one path. What does that mean?
+A: It is not losing a selection contest — it is INELIGIBLE. Almost always an
+   unresolvable next hop.
+
+Q: What must be true before a BGP path can be installed?
+A: The router must have a route in its routing table to that path's NEXT_HOP.
+
+Q: Why is an unresolvable next hop so hard to spot in production?
+A: Nothing fails. Session Established, prefix present and valid, no log, no alarm,
+   no down state. `get router info bgp summary` looks perfect.
+
+Q: Does a default route satisfy next-hop resolution on FortiGate?
+A: No — not by default. Engineers see 0.0.0.0/0 in the output and wrongly assume
+   the next hop resolves.
+
+Q: Where is next-hop-self applied, toward whom, and for which routes?
+A: On the BORDER router, toward its IBGP peers, for routes learned via EBGP.
+
+Q: What are the two costs of next-hop-self?
+A: Traffic engineering is lost (all traffic must transit the border), and the
+   border router becomes a concentrated failure domain.
+
+Q: When is next-hop-self the WRONG choice?
+A: In a genuine multi-exit topology, where internal routers had better direct
+   paths you'd be discarding.
+
+Q: What is the cost of the alternative (static/IGP routes to the next hop)?
+A: Foreign addressing leaks into your internal routing — you edit statics at every
+   site whenever the peer renumbers.
+
+Q: How does an AS become a transit AS by accident?
+A: EBGP-learned routes are advertised to other EBGP peers by default. Add a second
+   external peer and you silently backhaul their traffic, with no misconfiguration.
+
+Q: What prevents accidental transit — and what does NOT?
+A: Outbound route filtering (prefix-list-out / route-map-out) prevents it.
+   AS_PATH does NOT — it prevents loops, which is a different problem.
+
+Q: Difference between a multihomed AS and a transit AS?
+A: Multihomed = multiple external connections, still only your own traffic.
+   Transit = you carry traffic that neither originates nor terminates with you.
+
+Q: Which attributes are well-known mandatory?
+A: ORIGIN, AS_PATH, NEXT_HOP. (LOCAL_PREF is discretionary; MED is optional
+   non-transitive.)
+
+Q: Two commands that separate "arrived and rejected" from "never arrived"?
+A: get router info bgp network (database) vs
+   get router info routing-table bgp (installed).
+
+Q: The single command that ends a valid-but-not-best investigation?
+A: get router info routing-table details <next-hop-address>
+
+Q: What does a route sitting in the BGP database rule out immediately?
+A: Every advertisement-side hypothesis — split horizon, outbound filters at the
+   peer, session state, route reflectors. Telling worked. The fault is local.
+
+Q: Does BGP originate any prefix by default?
+A: No. You must use `network` or `redistribute`.
+
+Q: Does BGP accept received prefixes by default?
+A: Yes — all of them. Filtering inbound is optional and configured.
+
+
+################################################################################
+PART 4 — PODCAST PROMPT — "THE PACKET PATH"
+################################################################################
+
+Paste the following directly into an AI audio generator.
+
+--------------------------------------------------------------------------------
+Produce a single-host technical storytelling podcast episode, approximately 12-15
+minutes, for a show called "The Packet Path." The host is warm, dry, a little
+wry, and speaks to an intelligent engineer who does not need to be flattered. Use
+natural pauses. Do not read bullet points aloud. Never say "in this episode we
+will cover." Tell it as a story that happens to teach.
+
+EPISODE TITLE: "The Politics of Routing"
+
+COLD OPEN:
+Open on a whiteboard wall in a Sydney office, Tuesday morning, 9:14am. Someone has
+drawn two circles overnight — Sydney and Singapore — with a line between them and
+the number 179 written above it in handwriting nobody recognises. A senior engineer
+the team calls Señor is standing in front of it holding a coffee he has clearly
+forgotten about, because it is no longer steaming and he is still holding it at
+drinking height. He says, to nobody in particular: "OSPF is a family sharing one
+map. Everyone sees the same house. Everyone agrees where the kitchen is. If you
+move the kitchen, everyone's map updates and everyone believes you — because you
+are family." Then, after a beat: "BGP is nations negotiating treaties. Everyone has
+a map. Everyone is lying about theirs. Politely."
+A speakerphone on the wall crackles. It has been live the whole time. Javier Lin,
+in Singapore, four hours ahead: "And I am a nation."
+
+ACT ONE — THE QUESTION NOBODY ANSWERED FOR SIX MINUTES:
+A junior engineer arrives late holding a muffin and asks the best question of the
+year: "Why don't we just run OSPF everywhere? OSPF works. We built the whole
+company on it." Nobody answers for six minutes.
+Explain, conversationally, why the question deserves that silence. Walk through
+what link-state actually requires: every router holding an identical database,
+every change reaching every router, every router recomputing. Then land the real
+insight — the one that matters more than "it's too big." On a global network,
+something is always flapping. A fibre cut in Brazil. A reboot in Frankfurt. And a
+router in Sydney burning CPU to recompute because of Frankfurt will arrive at
+exactly the forwarding decision it already had. The computation is not merely
+expensive. It is WASTED. The architecture forces every router to participate in
+the details of a problem that isn't theirs.
+Then the pivot: if the answer is the same regardless of Frankfurt's internals, you
+don't need Frankfurt's map. You need reachability and direction.
+Introduce the three-family taxonomy as a memorable triple: RIP tells you how far.
+OSPF tells you the whole map. BGP tells you which way it came. Distance, map,
+path. Emphasise why the AS_PATH loop check is elegant: it's local and instant. No
+timers, no hold-downs, no waiting for the network to agree. One router, one
+attribute, one decision. Which is exactly what you need when you've deliberately
+thrown away the shared map.
+
+ACT TWO — THE BLIND SPOT:
+Now the twist that drives the episode. AS_PATH is prepended when a route LEAVES an
+AS. Cross a border, get stamped. But move a route INSIDE an AS — from headquarters
+to the disaster-recovery site, same company, same AS number — and nothing is
+written. The passport stays closed.
+Make the listener feel how bad this is. Inside an AS, BGP has no map, no hop count,
+no hold-down timers, and now no working AS_PATH check. Every loop-prevention tool
+it owns is inoperative.
+Reveal the answer as the only remaining option, and make it feel blunt rather than
+clever: a prefix learned from an IBGP peer is never advertised to any other IBGP
+peer. Not "not back to the sender" — that's the RIP version, and it's the wrong
+answer on the exam. It goes NOWHERE internally.
+Then the beautiful part: this doesn't detect loops, it makes them impossible. A
+route takes one internal hop, ever. You cannot build a circle out of segments of
+length one.
+Use Señor's line here: "EBGP says: I will tell you where it has been. IBGP says:
+I will not tell anyone at all."
+Then the bill. If nobody may relay, everybody must hear it first-hand. Full mesh.
+Eight sites is twenty-eight sessions. But make clear the number isn't the lesson —
+the ninth office adds eight sessions and requires touching every existing router.
+Use the line: "Every new office is a phone call to every old office. The ninth
+office costs eight conversations, and you cannot skip any of them."
+
+ACT THREE — THE FAULT THAT NEVER RANG AN ALARM:
+The business problem. The operations manager, Penny, reports that Singapore's
+routes are visible at headquarters but Melbourne cannot reach a single one of
+them. A help-desk engineer named Riley supplies the sentence that turns out to be
+the entire diagnosis: "I can SEE the route. I ran the command. It's THERE. Why
+isn't it a route I can USE?"
+Walk the listener through the investigation the way an engineer would actually do
+it. The database versus the routing table. The status codes legend — printed on
+every output, and worth reading rather than remembering. Star means valid. The
+angle bracket means best. Only the best path is offered to the routing table.
+Land the deduction slowly: there is only ONE path to this prefix, and it isn't
+best. So it isn't losing a competition. It is ineligible.
+Then the reveal. IBGP preserves the next hop unchanged — headquarters did not
+insert itself. Melbourne is being told to send traffic to a loopback address in
+Singapore, in another country, in another AS. And Melbourne has no route to it.
+Make the point that this is why the fault is so nasty: nothing fails. The session
+is Established. The prefix is present and valid. There is no log, no alarm, no
+down state. The summary command looks perfect. And the service is broken.
+Give the fix and its cost honestly. next-hop-self, applied on the border router,
+toward internal peers, for externally-learned routes. And what it costs: traffic
+engineering is gone, and the border becomes a failure domain. Señor's line: "Next-
+hop-self is a promise. Do not make it unless you can keep it."
+
+THE MISTAKE (this replaces the usual junior's blunder — be explicit that this one
+belongs to the intermediate engineer, and be generous about it):
+Mid-investigation, staring at the right evidence, the engineer reached for the
+wrong answer: "Do we need headquarters to be a route reflector?" It's a genuinely
+understandable guess, because the symptom SHAPE fits — one router has something
+another can't use. But the evidence already on screen had ruled it out. The route
+was in the database. It had already arrived. Advertisement worked fine. Route
+reflectors change who is allowed to TELL — they cannot help a router resolve an
+address it can't reach.
+Draw the general lesson, because it's the most valuable thing in the episode: most
+bad diagnoses aren't wrong facts. They're correct facts applied to the wrong
+evidence. So before offering a hypothesis, ask what the output you already have
+has ruled OUT. A prefix sitting in the database eliminates every theory about
+telling, in one move.
+And note, warmly, that the same engineer had — twenty minutes earlier — caught
+himself mid-sentence, tested a claim against a fact he already held, and reversed
+himself unprompted. Same session, both behaviours. The skill is there. The habit
+isn't yet. That gap is what improvement actually looks like.
+
+CLOSING — THE DOOR NOBODY OPENED:
+End on the exposure. Bring up a second external peer — London — with a perfectly
+correct configuration and no mistake anywhere, and headquarters starts telling
+London how to reach Singapore, and Singapore how to reach London. The company is
+now carrying traffic between two parties on behalf of neither. Its circuits have
+become the backhaul for a conversation that has nothing to do with it.
+Señor's line: "Nobody attacked you. Nobody misconfigured anything. You simply did
+not say no, and BGP took that as yes."
+The defence is outbound filtering. Advertise only what you originate. And note
+that it was applied BEFORE London existed rather than after — which is the whole
+difference between engineering and cleanup.
+Close with the principle: defaults have a direction. BGP's default is to tell. Not
+telling is the thing you configure.
+
+TEASER:
+Señor writes the number 28 on a sticky note and puts it on the corner of Penny's
+laptop. "That is how many phone calls," he says. "Brisbane makes it thirty-six."
+Riley asks the question that starts the next episode: "So if headquarters already
+knows everything — why can't it just tell everyone else? Why does everyone have to
+hear it themselves?"
+And Javier, still on the speakerphone, having said nothing for forty minutes:
+"Because nobody told them they were allowed to listen to a reflection."
+Señor pulls a worn diagram out of a drawer. Three boxes on it: RIB-in. Local RIB.
+RIB-out. "Next time," he says, "we stop asking what BGP knows. We ask where it
+keeps it."
+End the episode there. Do not explain route reflectors.
+--------------------------------------------------------------------------------
+
+
+################################################################################
+PART 5 — EXAM ANSWER KEY (SESSION 58)
+################################################################################
+
+  Q1  B    IBGP split horizon — not to ANY other IBGP peer
+  Q2  C    6x5/2 = 15
+  Q3  C    NEXT_HOP not resolvable
+  Q4  C    Path vector
+  Q5  B    Local AS prepended
+  Q6  B    IBGP neighbours, EBGP-learned routes
+  Q7  C    Outbound route filtering
+  Q8  B    Multihomed
+  Q9  A,B,D  ORIGIN, AS_PATH, NEXT_HOP
+  Q10 B    AS number not prepended within the same AS
+
+TECHNIQUE NOTE FOR Q9-STYLE QUESTIONS:
+Evaluate each option as an INDEPENDENT true/false against the definition. Do not
+assess the set as a whole and do not let a familiar-looking attribute name pull a
+tick out of you. This pattern has cost marks twice before — once by under-
+selecting, once by over-selecting. The root cause was the same both times.
+
+================================================================================
+Session completed: Wednesday, 22 July 2026
+Next: Session 59 — "Reflections" — route reflectors; RIB-in, local RIB, RIB-out
+================================================================================

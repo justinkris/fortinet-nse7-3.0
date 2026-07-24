@@ -1,0 +1,296 @@
+SESSION 58 SUMMARY — "The Politics of Routing"
+Season 5 "The Expansion" · SNA Domain 4 · EF Study Guide, Dynamic Routing Supplement,
+pp. 331-337 (AS review, AS types, IBGP split horizon) + p.343 attribute categories.
+Written for Claude, to continue the story in Session 59.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Tuesday 09:14, the whiteboard wall outside the good conference room. Two circles overnight —
+SYDNEY and SINGAPORE — a line between them and "179" written above it in unfamiliar
+handwriting (unresolved; deliberately left unattributed, could be Javier's, could be J.R.'s,
+could be Señor's — DO NOT resolve this unless the student asks).
+
+Señor delivers the season's thesis line in full for the first time: "OSPF is a family sharing
+one map. Everyone sees the same house. Everyone agrees where the kitchen is. If you move the
+kitchen, everyone's map updates and everyone believes you, because you are family. BGP is
+nations negotiating treaties. Everyone has a map. Everyone is lying about theirs. Politely."
+Javier Lin, on a speakerphone that has been live the entire time, four hours ahead: "And I am
+a nation." (Payoff of the S54 flag — DONE, do not reuse as a first-time reveal.)
+
+Penny arrives with the business symptom: Singapore prefixes visible at HQ, unreachable from
+Melbourne. Riley supplies the diagnostically-critical phrasing: "I can SEE the route. I ran
+the command. It's THERE. Why isn't it a route I can USE?" J.R. writes and underlines once:
+"A route you learned is not a route you may tell."
+
+Junior — holding a muffin, arriving late — asks the best question he has ever asked: "Why
+don't we just run OSPF everywhere?" Nobody answers for six minutes. Señor puts down cold
+coffee: "Because he is right to ask. And you are going to answer him." The entire first act
+of the Socratic phase is the student answering Junior's question. THIS WAS THE S57 HANDOFF
+INSTRUCTION AND IT WAS EXECUTED — Junior's question is now PAID OFF, close the thread.
+
+Episode closes with next-hop-self applied, prefix-list applied pre-emptively before London
+exists, and Señor writing "28" on a sticky note and putting it on Penny's laptop.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — carried the session. See performance notes below.
+- Señor — sombrero. Delivered three keeper lines this episode (see ANALOGIES).
+- Penny — business framing: "our own site can't reach our own routes."
+- Riley — help desk. His "see vs use" phrasing WAS the diagnosis and was explicitly named as
+  such in-session. Riley is becoming the character who accidentally states the fault.
+- J.R. — Junior's twin, ex-accountant, tidy notebook. Did the 28→36 arithmetic twice because
+  he didn't believe it. Calm, precise, numeric. Distinct from Junior and staying distinct.
+- Junior — muffin, late, asked the season's best question. NOT a mistake this episode; he was
+  the intellectual engine. This is a deliberate arc beat — Junior is improving.
+- Javier Lin — offscreen on speakerphone, silent for forty minutes, then one perfect line.
+  Terseness signature intact.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+Melbourne DR cannot reach Singapore's networks despite HQ holding them, all sessions
+Established, nothing logged, no alarm. Compounded by a latent exposure: once London's EBGP
+session comes up, LoFinance will silently become a transit AS carrying Singapore↔London
+traffic on Sydney circuits, with no misconfiguration anywhere.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED
+==================================================================
+1. WHY BGP EXISTS (answering Junior). Link-state does not scale globally because every change
+   must reach every router and every router must run SPF — and on a global network some link
+   is always flapping. STUDENT'S OWN INSIGHT: most of that computation produces NO CHANGE in
+   the local forwarding decision. The work isn't merely expensive, it's wasted. From there:
+   if the answer is the same regardless of Frankfurt's internals, you don't need Frankfurt's
+   map — only reachability and direction.
+2. PATH VECTOR, formally positioned against the other two families:
+   RIP = how far (distance). OSPF = the whole map (link state). BGP = which way it came (path).
+3. AS_PATH LOOP PREVENTION — retrieved COLD and COMPLETE with the check condition attached
+   ("if an AS sees its own AS in the AS_PATH it won't accept it"). This had been deferred four
+   sessions; the S56/S57 registers recommended formal retirement as a retrieval target and
+   fresh reteaching. It did NOT need reteaching. RETIRE THIS AS A CONCERN — it is owned.
+   Emphasised the property that matters: the check is LOCAL and INSTANT, needs no shared
+   state, no timers, no hold-downs. That's precisely what you need when you have no map.
+4. THE IBGP/EBGP BEHAVIOURAL SPLIT — not a label, a behaviour change.
+5. AS_PATH IS NOT PREPENDED WITHIN AN AS. Therefore the loop check is structurally BLIND
+   inside an AS. Inside AS 65001 BGP has no map, no hop count, no hold-down, and no working
+   AS_PATH check — every loop-prevention tool is inoperative.
+6. IBGP SPLIT HORIZON (p.337) — the answer to (5). Formulated precisely and contrasted with
+   the RIP version: RIP = don't advertise back out the interface you learned it on
+   (interface-scoped, directional). IBGP = a prefix learned from an IBGP peer is NEVER
+   advertised to ANY other IBGP peer (peer-type-scoped). Key framing: this makes a loop
+   STRUCTURALLY IMPOSSIBLE, not detected — a route can only take ONE IBGP hop ever, and you
+   cannot build a circle from segments of length one.
+7. THE CRITICAL EXCEPTION the student needed handed to him: split horizon says nothing about
+   where the route ENTERED the AS. EBGP-learned routes are freely advertised to IBGP peers.
+   The rule only bites on the SECOND internal hop. HQ→MEL is legal; MEL→BNE is not.
+8. FULL MESH REQUIREMENT as the forced consequence. n(n-1)/2. Student computed 28 for eight
+   sites by deriving the summation 7+6+5+4+3+2+1 rather than reciting the formula.
+   Operational framing (matters more than the number): adding the 9th site adds EIGHT sessions
+   and requires touching EVERY existing router — a branch turnup becomes a fleet-wide change
+   window. Study guide wording: "difficult to administer and not scalable."
+9. BGP NEXT-HOP RESOLUTION — the actual fault. IBGP PRESERVES the NEXT_HOP unchanged; HQ does
+   not insert itself. Melbourne was told to send to 172.20.0.1 (Javier's loopback, AS 65300)
+   and had no route to it. A path whose next hop is unresolvable is VALID BUT NOT BEST —
+   sits in the database forever, never installed, never withdrawn, NEVER LOGGED.
+10. STATUS CODE FORENSICS: `*` = valid, `>` = best, `i` = internal. `*i` without `>` on a
+    SINGLE-path prefix means it is not losing a competition — it is INELIGIBLE. The whole
+    diagnosis lived in one missing character.
+11. next-hop-self: applied on the BORDER router, toward IBGP peers, for EBGP-learned routes.
+    Trade-off taught explicitly: kills traffic engineering and concentrates the failure domain
+    on HQ. Correct for LoFinance ONLY because there is no direct MEL–SG circuit — "you are not
+    losing a path you had." Would be wrong in a real multi-exit topology.
+12. ACCIDENTAL TRANSIT AS, now with live topology. EBGP-learned routes are advertised to other
+    EBGP peers by default. The moment London comes up, with zero misconfiguration, LoFinance
+    backhauls SG↔LON. Defence is OUTBOUND route filtering (prefix-list/route-map), NOT
+    AS_PATH. Student retrieved this correctly and cold from S54.
+13. Attribute categories touched lightly for Q9 only (well-known mandatory: ORIGIN, AS_PATH,
+    NEXT_HOP; LOCAL_PREF = well-known discretionary; MED = optional non-transitive).
+    NOT taught in depth — S59/S60 material.
+
+==================================================================
+MENTAL MODELS DEVELOPED
+==================================================================
+- Distance / map / path — the three-family taxonomy, with BGP defined by what it carries.
+- "Correctness comes from AGREEMENT (OSPF) vs correctness comes from PROVENANCE (BGP)."
+- Loops made IMPOSSIBLE vs loops DETECTED. Structural prevention beats policing.
+- "Seeing is the database, using is resolution." (Riley's line, promoted to diagnostic rule.)
+- STRIP THE PROTOCOL. The student solved next-hop resolution the instant he stopped thinking
+  "BGP" and thought "a router being told to send something to an address." This was named
+  in-session as a transferable senior technique. REUSE THIS PHRASE IN FUTURE SESSIONS.
+- "Defaults have a direction." BGP's default is to TELL. Not telling is what you configure.
+
+==================================================================
+IMPORTANT ANALOGIES
+==================================================================
+- The family/one map vs nations/treaties (Señor — the season's spine, now fully delivered).
+- "EBGP says: I will tell you where it has been. IBGP says: I will not tell anyone at all."
+- "Every new office is a phone call to every old office. The ninth office costs eight
+  conversations, and you cannot skip any of them." (full mesh, delivered to Penny)
+- "Next-hop-self is a promise. Do not make it unless you can keep it."
+- "Nobody attacked you. Nobody misconfigured anything. You simply did not say no, and BGP
+  took that as yes." (accidental transit — Señor to J.R.)
+
+==================================================================
+KEY CLI COMMANDS DISCUSSED
+==================================================================
+get router info bgp network                    (database — "see")
+get router info routing-table bgp              (installed — "use")
+get router info routing-table details 172.20.0.1   (next-hop resolution check)
+get router info bgp summary                    (looks PERFECT during this fault — trap)
+get router info bgp neighbors <ip>
+
+config router bgp
+    config neighbor
+        edit "10.99.60.1"
+            set remote-as 65001
+            set next-hop-self enable
+            set description "MEL-DR (IBGP)"
+        next
+    end
+end
+
+config router prefix-list
+    edit "LOFI-OWN-PREFIXES"
+        config rule
+            edit 1
+                set prefix 10.99.0.0 255.255.0.0
+                set action permit
+                set ge 16
+                set le 24
+            next
+            edit 2
+                set prefix 0.0.0.0 0.0.0.0
+                set action deny
+                set le 32
+            next
+        end
+    next
+end
+
+config router bgp
+    config neighbor
+        edit "172.20.0.1"
+            set remote-as 65300
+            set prefix-list-out "LOFI-OWN-PREFIXES"
+            set description "Javier - SG DC (EBGP)"
+        next
+    end
+end
+
+Sample output shown to student (memorise the shape — status codes legend is the exam's gift):
+   Network          Next Hop         Metric  LocPrf  Weight  Path
+*i 172.28.10.0/24   172.20.0.1            0     100       0  65300 i
+
+==================================================================
+TROUBLESHOOTING APPROACH (as taught this session)
+==================================================================
+1. Prefix present or absent?           → get router info bgp network
+2. Present but unusable?               → read the STATUS CODES. `*` without `>`.
+3. Single path, not best?              → not losing a competition; INELIGIBLE.
+4. Ineligible how?                     → read the NEXT_HOP column.
+5. Can I reach that next hop?          → get router info routing-table details <nh>
+6. No?                                 → resolve it (IGP/static) or rewrite it (next-hop-self)
+
+Counter-lesson explicitly taught: session Established + prefix present + no logs + no alarms
++ service broken. ABSENCE OF ERRORS IS NOT EVIDENCE OF CORRECTNESS.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- next-hop-self on HQ toward MEL-FGT (chosen by student, Option B over static routes).
+  Rationale he supplied: Option A means editing statics at every site whenever Javier changes
+  addressing — foreign addressing leaking into internal routing.
+- Outbound prefix-list toward Javier applied BEFORE London exists. Closing the transit
+  exposure pre-emptively rather than after. Flagged in-session as senior behaviour.
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+AS 65001 (LoFinance): HQ-FGT ↔ MEL-FGT now IBGP peers. Full mesh trivially satisfied at 2
+speakers (1 session). HQ has next-hop-self toward MEL-FGT for EBGP-learned prefixes.
+EBGP: HQ ↔ Javier SG DC (AS 65300), prefix-list-out LOFI-OWN-PREFIXES applied.
+SG prefixes 172.28.10.0/24 and 172.28.20.0/24 now RESOLVED and INSTALLED at Melbourne.
+MEL-FGT router-id 10.99.60.1. MEL default gateway 10.99.60.254 via port1.
+LoFinance = MULTIHOMED AS, provably not transit.
+Full-mesh IBGP (28 sessions at 8 sites) formally documented as the primary scaling constraint
+on the Expansion — this is the open problem S59 solves.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Melbourne resolves and installs Singapore prefixes. Transit exposure closed before London
+turnup. Penny's board sentence: "Our own sites can now reach Singapore, and we've made sure
+Singapore's traffic can't quietly become our bandwidth bill."
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+10 questions asked. Answers: B, C, C, C, B, B, C, B, (A B D), B.
+- Q1 IBGP split horizon precise wording — "not to ANY other IBGP peer," not "not back to the
+  sender." High-value distractor pair.
+- Q2 n(n-1)/2 — student derives by summation, reliable under pressure.
+- Q3 valid-not-best + unresolvable next hop is THE classic IBGP scenario question.
+- Q6 next-hop-self direction (IBGP neighbours, EBGP-learned routes) — commonly inverted.
+- Q7 transit prevention = filtering, NOT AS_PATH. Flagged since S54, still live.
+- Q9 is his compound-role pattern (S14 Q3 under-selected, S15 Q5 over-selected). Warned
+  in-session to run each option as an independent true/false. TRACK THE OUTCOME NEXT TIME.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+NONE. Deliberate arc beat — Junior asked the strongest question of the season instead. His
+question ("why not OSPF everywhere?") was the door into path-vector fundamentals and drove
+the entire first act. Note for continuity: Junior is on an upward arc; do not reset him to
+pure comic-relief error generator. J.R. is now the one who checks arithmetic twice.
+
+==================================================================
+STUDENT PERFORMANCE NOTES (detail in knowledge-register-session58.txt)
+==================================================================
+- SELF-CORRECTION MID-ANSWER, UNPROMPTED. On "would HQ see its own AS?" he answered "It would
+  see its own AS right? but routers only prepend when it leaves the AS." He produced an
+  answer, tested it against a fact he already held, and caught the contradiction himself. This
+  is the exact discipline the register has been flagging as his growth edge. HIGHEST-VALUE
+  MOMENT OF THE SESSION. It was named explicitly in-session.
+- Two clean "I don't know" signals ("help me refresh my memz", "Not sure about the downsides
+  of Option B"). FOURTH consecutive session of honest ignorance signalling. Keep rewarding.
+- The wasted-computation insight (concept 1) was unprompted and is a genuinely sophisticated
+  systems observation, not a recalled fact.
+- ONE WRONG TURN: guessed "route reflector" for the next-hop problem. Reached forward for
+  S59 material. Redirected via "the route already arrived — advertisement worked fine."
+  Diagnosis of the error: he pattern-matched on the SYMPTOM SHAPE ("Melbourne can't use what
+  HQ has") rather than on the EVIDENCE ALREADY ON SCREEN (the route was in the database).
+  This is worth watching — see register.
+- Asked "How would Melbourne get the SG routes from HQ?" instead of answering the full-mesh
+  question. Correct instinct (he'd spotted a genuine hole in the rule as stated) but he
+  stopped to ask rather than reasoning it out. Mild dependency signal, not a pattern yet.
+
+==================================================================
+TEASER FOR SESSION 59
+==================================================================
+"Reflections" — BGP internals II: route reflectors; RIB-in, local RIB, RIB-out.
+EF Dynamic Routing Supplement, pp. 338-341.
+Set up in-story: Señor writes "28" on a sticky note, puts it on Penny's laptop, says "That is
+how many phone calls. Brisbane makes it thirty-six." J.R. does the arithmetic twice.
+Riley asks the question that opens S59: "So if HQ already knows everything — why can't it
+just tell everyone else? Why does everyone have to hear it themselves?"
+Javier, after forty minutes of silence: "Because nobody told them they were allowed to listen
+to a reflection."
+Señor pulls a worn diagram from a drawer with three boxes: RIB-in. Local RIB. RIB-out.
+"Tomorrow we stop asking what BGP knows. We ask WHERE IT KEEPS IT."
+
+S59 MUST:
+- Open by having the student state the full-mesh problem back (retrieval, he derived 28 here).
+- Route reflectors are the RELAXATION of the split-horizon rule taught today. Let him predict
+  the danger: if you relax loop prevention, what replaces it? (ORIGINATOR_ID / CLUSTER_LIST.)
+  He has the tools to predict that something must replace it — ASK BEFORE TELLING.
+- The three-RIB model is the natural home for the "see vs use" distinction he has now met
+  THREE times (S55, S58, S59). Third time should be reflex — TEST IT COLD in the opener,
+  do not reteach it.
+- His S58 wrong turn was reaching for route reflectors early. Acknowledge it warmly when the
+  topic arrives ("you were one session early").
+- Retest cold: IBGP split horizon exact wording; next-hop-self direction.
+- The status-code legend reading technique should be REUSED, not re-explained.
+
+Date and Time completed: Wednesday, 22 July 2026.

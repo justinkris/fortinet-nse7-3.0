@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 63 Nibble — What a Rule Can See</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;
+       padding:36px 20px 60px;line-height:1.6;}
+  .wrap{max-width:720px;margin:0 auto;}
+  .crumb{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:10px;}
+  h1{font-family:'Playfair Display',serif;font-size:30px;margin:0 0 6px;font-weight:700;}
+  .sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:var(--text-soft);margin:0 0 22px;}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;background:var(--surface);
+        border:1px solid var(--border-dim);border-radius:12px;overflow:hidden;}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border-dim);}
+  tr:last-child td{border-bottom:none;}
+  th{font-size:9.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);
+     font-weight:700;background:var(--surface-2);}
+  td:first-child{font-weight:600;width:44%;}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--surface-2);
+       border:1px solid var(--border-dim);border-radius:4px;padding:1px 6px;white-space:nowrap;}
+  tr.hi td{background:var(--blue-light);}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);
+           border-radius:0 10px 10px 0;padding:13px 18px;margin:16px 0;
+           font-family:'Cormorant Garamond',serif;font-size:16.5px;line-height:1.6;color:var(--text-soft);}
+  .callout strong{color:var(--text);}
+  .callout.amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout.green{border-left-color:var(--green-border);background:var(--green-light);}
+
+  .mental{border-radius:10px;padding:15px 18px;margin:18px 0;display:flex;gap:12px;
+          align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental .ic{font-size:18px;}
+  .mental .lbl{font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);
+               text-transform:uppercase;margin-bottom:4px;}
+  .mental .txt{font-family:'Cormorant Garamond',serif;font-size:16.5px;font-weight:600;
+               line-height:1.55;color:var(--text);}
+  footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--border);
+         font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="crumb">LoFinance · Season 5 · Session 63 · Nibble</div>
+  <h1>What a Rule Can See</h1>
+  <p class="sub">One minute. The menu of SD-WAN rule matching criteria — and the two that explain everything else.</p>
+
+  <table>
+    <tr><th>Match on</th><th>CLI</th></tr>
+    <tr><td>Source address / user / group</td><td><code>set src</code> · <code>set users</code> · <code>set groups</code></td></tr>
+    <tr><td>Destination address</td><td><code>set dst</code></td></tr>
+    <tr><td>Destination <em>service</em> (ISDB)</td><td><code>set internet-service enable</code> + <code>set internet-service-name</code></td></tr>
+    <tr><td>Destination <em>application</em></td><td><code>set internet-service-app-ctrl</code></td></tr>
+    <tr><td>Protocol + port range</td><td><code>set protocol</code> · <code>set start-port</code> / <code>set end-port</code></td></tr>
+    <tr><td>DSCP / ToS</td><td><code>set tos</code> · <code>set tos-mask</code></td></tr>
+    <tr class="hi"><td>Incoming interface</td><td><code>set input-device</code></td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>Why this beats a static route:</strong> a static route matches
+    <em>destination only</em>. This whole table is the gap SD-WAN rules exist to fill —
+    "who is asking" and "what kind of traffic" become steering inputs, not just "where to."
+  </div>
+
+  <div class="callout amber">
+    <strong>The highlighted row is a bomb.</strong> Traffic the FortiGate originates itself —
+    syslog, FortiGuard, DNS, SNMP — <em>never ingressed</em>. No incoming interface, no client
+    source address: nothing on this menu for a rule to read. So local-out traffic
+    <strong>bypasses SD-WAN rules by default</strong> and takes a plain routing-table lookup.
+    Opt it in per feature: <code>set interface-select-method sdwan</code>
+    (values: <code>auto</code> | <code>sdwan</code> | <code>specify</code>). There is no global switch.
+  </div>
+
+  <div class="callout green">
+    <strong>ISDB vs app-ctrl, one line:</strong> ISDB is a destination <em>lookup</em> — matches on
+    the <strong>first packet</strong>. App-ctrl needs to <em>inspect</em> (Client Hello / SNI /
+    cert) — the <strong>first session escapes</strong>, then the learned destinations are cached.
+    The first video pays for everyone else's.
+  </div>
+
+  <div class="mental">
+    <div class="ic">🧠</div>
+    <div>
+      <div class="lbl">Mental note</div>
+      <div class="txt">A rule can only match what the packet presents. Ask "what does this packet
+        carry with it?" and the local-out bypass, the app-ctrl delay, and the ISDB advantage all
+        fall out of the same question.</div>
+    </div>
+  </div>
+
+  <footer>
+    <span>LoFinance — Chill Bout Money · Session 63 "Rules of the Road"</span>
+    <span>SNA D4 · Rules &amp; Routing</span>
+  </footer>
+
+</div>
+</body>
+</html>

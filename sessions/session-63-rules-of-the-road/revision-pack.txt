@@ -1,0 +1,243 @@
+==================================================================
+SESSION 63 REVISION PACK — "Rules of the Road"
+SD-WAN rules: matching, strategies, lookup, implicit rule, local-out, app steering
+NSE7 Secure Networking 7.6 Architect · SNA Domain 4
+==================================================================
+
+------------------------------------------------------------------
+QUICK SUMMARY (one page)
+------------------------------------------------------------------
+J.R. wrote one catch-all rule (src all / dst all / load-balance / hash-mode
+source-ip-based) and added a member without a gateway. Result: every later
+rule dead, four traders deterministically pinned to Baz's bad link, a new
+circuit up all weekend carrying nothing, and the firewall's own syslog
+ignoring everything.
+
+CORE FACTS:
+1. A member needs INTERFACE + GATEWAY. The gateway lets FortiGate auto-build
+   the member's static route. No gateway → no route → probe can't leave →
+   100% loss → state(dead) → never eligible. Zone is optional.
+   Diagnostic signature: dead + 100% loss + latency/jitter 0.000 = nothing
+   ever left = CONFIG fault. Real bad numbers = carrier fault.
+2. Rules never create reachability. They choose among members that already
+   hold a valid route to the destination.
+3. Rule lookup: top-down by sequence, FIRST MATCH WINS, nothing below is
+   read. Catch-all in seat one = every later rule is dead config that looks
+   valid. Specific first, general last; delete catch-alls.
+4. Matching criteria: src/users/groups, dst, ISDB (internet-service),
+   app (internet-service-app-ctrl), protocol+port, ToS, input-device.
+   Static routes match destination only — that gap is why rules exist.
+5. Four strategies: manual (no SLA, blind) · priority/Best Quality (ranks
+   measurements, NO threshold) · sla/Lowest Cost (SLA as GATE, then cost,
+   then config order) · load-balance/Maximize Bandwidth (SLA gate + hash).
+   Dividing line: gate vs ranking vs blind.
+6. mode sla with ALL members out of SLA: rule STILL MATCHES (matching is
+   src/dst/service, not health); best effort via configured priority-members
+   order. Rules are skipped only with NO usable members (all dead/no route).
+   SICK ≠ DEAD.
+7. Implicit rule = the global `set load-balance-mode` under config system
+   sdwan. Catches unmatched traffic; balances across valid-route members;
+   CONSULTS NO SLA EVER. Out-of-SLA members still get implicit traffic.
+8. Hashing: hash(field) mod member-count. source-ip-based = deterministic
+   per host ("you are Jam or you are not Jam"). round-robin (default) =
+   per flow. Symptom fingerprint: "everyone sometimes" = round-robin;
+   "same four always" = source-ip pinning. Adding a member changes the
+   divisor → EVERY host rehashes.
+9. Local-out (syslog/FortiGuard/DNS/SNMP): never ingressed → no interface,
+   no client src → BYPASSES SD-WAN rules by default → plain routing lookup.
+   Opt in PER FEATURE: set interface-select-method {auto|sdwan|specify}.
+   No global switch.
+10. ISDB = destination lookup = matches FIRST PACKET. App-ctrl = needs
+    Client Hello/SNI/cert = FIRST SESSION ESCAPES, then learned destinations
+    cached (later sessions match packet one). App-ctrl steering requires an
+    application-control profile in the firewall policy or it matches nothing.
+
+THE LADDER (troubleshooting order — stop at first failing rung):
+1 MATCH → 2 UP → 3 IN-SLA → 4 ELIGIBLE → 5 PREFERRED  (S64 adds: 6 SESSION)
+
+------------------------------------------------------------------
+CHEAT SHEET
+------------------------------------------------------------------
+CLI — rule (service):
+  config system sdwan / config service / edit N
+    set mode {manual|priority|sla|load-balance}
+    set src / set dst / set users / set groups
+    set internet-service enable + set internet-service-name "Google-YouTube"
+    set internet-service-app-ctrl <app-id>
+    set protocol / set start-port / set end-port / set tos / set input-device
+    set health-check "Trading-SLA"  +  config sla / edit "Trading-SLA" / set id 1
+    set priority-members 1 2
+    set hash-mode {round-robin|source-ip-based|source-dest-ip-based|...}
+    set hold-down-time 30            (damp flap on recovery)
+
+CLI — member (from S62, completed here):
+  config members / edit N / set interface "portX" / set gateway A.B.C.D
+  (zone optional)
+
+CLI — implicit rule:
+  config system sdwan / set load-balance-mode source-ip-based
+
+CLI — local-out opt-in (per feature; three values auto|sdwan|specify):
+  config log syslogd setting  → set interface-select-method sdwan
+  config system fortiguard    → set interface-select-method sdwan
+  config system dns           → set interface-select-method sdwan
+  config system snmp sysinfo  → set interface-select-method sdwan
+
+VERIFY:
+  show system sdwan                                (order, breadth, hash, global mode)
+  diagnose sys sdwan service                       (Mode, selected, SLA present/absent)
+  diagnose sys sdwan health-check                  (state + SHAPE of numbers)
+  get router info routing-table all                (member routes = gateway proof)
+  diagnose sys sdwan internet-service-app-ctrl-list (app cache)
+
+GUI: Network > SD-WAN > SD-WAN Rules (order matters, drag to reorder)
+
+DEFAULTS & KEY BEHAVIOURS:
+  hash-mode default: round-robin
+  local-out default: interface-select-method auto (routing table, NOT SD-WAN)
+  implicit rule: cannot be deleted; algorithm = global load-balance-mode
+  all-out-of-SLA in mode sla: configured member order, best effort
+  rule skip condition: no usable members (all dead / no route)
+
+DESIGN RULES:
+  Specific rules first, general last, catch-alls deleted.
+  Anything the business cares about → explicit SLA-gated rule above fall-through.
+  ISDB for stable published services; app-ctrl only when necessary (accept leak).
+  Adding a member rehashes every host on hash-based balancing — announce it.
+  Best-available and acceptable are different claims; only one has a threshold.
+
+------------------------------------------------------------------
+FLASHCARDS
+------------------------------------------------------------------
+Q: SD-WAN member: which two fields are required?
+A: Interface + gateway. Zone optional. Gateway → auto-built member route.
+
+Q: Health check shows dead, 100% loss, latency 0.000, jitter 0.000. Meaning?
+A: Nothing ever left — no path out (usually missing gateway). Config fault,
+   not carrier fault.
+
+Q: Does an SD-WAN rule create a route to the destination?
+A: No. Rules choose among members that already have a valid route.
+
+Q: Rule lookup order?
+A: Top-down by sequence; first match wins; nothing below is read.
+
+Q: What catches traffic no rule matches?
+A: The implicit rule = global load-balance-mode; balances across members
+   with a valid route to the destination.
+
+Q: Does the implicit rule consult performance SLAs?
+A: Never. No health check can bind to it.
+
+Q: mode sla and ALL members out of SLA — what happens?
+A: Rule still matches; best effort using configured priority-members order.
+   Not skipped, not dropped.
+
+Q: When IS a rule skipped during lookup?
+A: When it has no usable members: all dead, or none with a route to the
+   destination.
+
+Q: Which strategy ranks measured quality but has no pass/fail threshold?
+A: priority (Best Quality).
+
+Q: Which strategies use the SLA as an eligibility gate?
+A: sla (Lowest Cost) and load-balance (Maximize Bandwidth).
+
+Q: "Same four users always slow, rest perfect" — what does it indicate?
+A: Deterministic hashing (source-ip-based); their IPs hash to the bad member.
+
+Q: What happens to hash assignments when you add a third member?
+A: Divisor changes (mod 2 → mod 3); every host rehashes.
+
+Q: Why does local-out traffic bypass SD-WAN rules?
+A: It never ingressed — no incoming interface, no client source address;
+   nothing for a rule to match.
+
+Q: How do you make syslog follow SD-WAN rules?
+A: config log syslogd setting → set interface-select-method sdwan
+   (per-feature; values auto|sdwan|specify; no global switch).
+
+Q: ISDB vs app-ctrl — first-packet behaviour?
+A: ISDB matches on packet one (destination lookup). App-ctrl needs
+   inspection: first session escapes, then destinations cached.
+
+Q: App-ctrl steering rule is valid but never matches. First check?
+A: Is application control actually running in the firewall policy?
+
+Q: What can an SD-WAN rule match that a static route cannot?
+A: Source/user/group, application/service, protocol+port, ToS,
+   input-device. (Static routes: destination only.)
+
+Q: hold-down-time does what?
+A: Delays traffic returning to a recovered member — damps flapping.
+   "Quick to distrust, slow to forgive."
+
+Q: The five rungs of the ladder, in order?
+A: Match → Up → In-SLA → Eligible → Preferred. Stop at first failure.
+
+------------------------------------------------------------------
+PODCAST PROMPT — "The Packet Path" Episode 63
+------------------------------------------------------------------
+Generate a 10–14 minute podcast episode of "The Packet Path", a serialized
+show following LoFinance, a Sydney trading firm, and its network team.
+Tone: warm, wry, technically precise. Two hosts trading narration and
+explanation.
+
+STORY: Pick up Monday morning after Session 62. Riley's eleven unclosable
+tickets are closed — replaced by nine new ones: trades slow, video wall
+"buttery." J.R. (ex-accountant, Junior's identical twin) confesses to
+writing one SD-WAN rule on Friday at 16:40 — source all, destination all,
+both members, "because I didn't want to leave anything out" — and to adding
+Baz's new third circuit as a member without a gateway. Deliver the season's
+payoff moment: Junior, after ten silent seconds, teaching his first-ever
+lesson: "Mate. Come here. Let me show you what an implicit rule does."
+
+TECHNICAL BEATS (in this order, each anchored in the story):
+1. Señor's remove-the-explanation move: delete the rule; port3 is still
+   silent — so the rule was never the reason. Teach: interface says WHERE,
+   gateway says HOW TO LEAVE. No gateway → no auto-built member route →
+   probe can't leave → 100% loss → dead → never eligible. The thermometer
+   in another room. Diagnostic: all-zeroes = config, real-bad-numbers =
+   carrier.
+2. Rules never create reachability — they choose among members that already
+   have a route.
+3. The four traders: Marcus, Aditi, Tom and Jam (who loves jam; the sandwich
+   press always tells you he's been in). Same people slow every day =
+   deterministic hashing: hash(source IP) mod member-count, stable DHCP
+   leases = stable misery. "You are Jam, or you are not Jam." Symptom shape
+   is evidence: everyone-sometimes = round-robin; same-four-always =
+   source-ip-based.
+4. First match wins: the catch-all in seat one made every later rule dead
+   config. Riley's clipboard has lines; J.R. wrote his one instruction
+   across all of them.
+5. The strategy argument: Best Quality asks "which is best?" (comparison,
+   no concept of acceptable, churns paths for 1ms); mode sla asks "is my
+   preferred road still acceptable?" (threshold, stable default). The
+   threshold is where the business requirement enters the network.
+   Crucial exam beat: all members out of SLA → rule NOT skipped → best
+   effort via configured order. Sick is not dead.
+6. The implicit rule: the un-erasable last line of the clipboard = the
+   global load-balance-mode. Balances across valid-route members and
+   consults NO SLA — so it happily posts unclassified traffic into Baz's
+   brownout.
+7. Cipher's missing syslog: local-out traffic never ingressed — "no
+   interface" — so it bypasses SD-WAN by default. Per-feature fix:
+   interface-select-method sdwan. The cobbler's children have no shoes.
+8. Riley's "first video after lunch misroutes, then behaves": ISDB matches
+   on packet one; app-ctrl needs Client Hello/SNI/cert, so the first
+   session escapes and the learned destinations are cached. The first video
+   pays for everyone else's.
+
+JUNIOR'S/J.R.'S MISTAKES: the missing gateway and the catch-all — both
+became exam questions.
+
+END: Penny's board sentence — "We stopped balancing traffic and started
+sending it somewhere on purpose." Then the teaser: Wednesday 09:15, Baz
+browns out, the SLA fails over perfectly, dashboard green — and Riley says
+"New calls are fine. Old calls sound like the ocean." Señor circles one hex
+flag in a session table: "The LINK failed over. Nobody asked the sessions
+if they agreed." Next episode: Sessions Have Memory.
+
+------------------------------------------------------------------
+END OF PACK
+------------------------------------------------------------------

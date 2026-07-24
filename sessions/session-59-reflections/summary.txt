@@ -1,0 +1,349 @@
+SESSION 59 SUMMARY — "Reflections"
+Season 5 "The Expansion" · SNA Domain 4 · EF Study Guide, Dynamic Routing Supplement,
+pp. 338-341 (route reflectors, clusters, RIB-in / Local RIB / RIB-out).
+Written for Claude, to continue the story in Session 60.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Wednesday 08:41, the whiteboard wall outside the good conference room. Junior arrived EARLY
+(an event in itself) and spent ninety minutes drawing the full-mesh IBGP topology for nine
+sites: SYDNEY, MELBOURNE, BRISBANE, PERTH, AUCKLAND, SINGAPORE, LONDON, and ADELAIDE squeezed
+in diagonally in the bottom-right corner because he ran out of room. The middle third of the
+board is a grey smear where the marker crossed itself too many times. He stands on a chair
+trying to draw Adelaide-to-Auckland, cannot fit it, drops the marker, and says to nobody:
+"I ran out of board." THIS IS THE EPISODE'S CENTRAL IMAGE — the whiteboard physically ran out.
+
+J.R. has written "28" three times in three places in his notebook, each underlined, "as though
+he keeps hoping it will be smaller on the next attempt." He recalculates for nine sites: 36.
+He always does arithmetic twice — signature intact from S58.
+
+Riley arrives with coffee and headset worn like a scarf, and asks the question that DEFINES the
+session: "HQ already knows all of it. So why can't Sydney just TELL Adelaide? Why does Adelaide
+have to hear it from Perth and Auckland and Brisbane personally?"
+
+Javier Lin, on a speakerphone live since 07:00 SGT, silent throughout, delivers one line:
+"Because nobody told them they were allowed to listen to a reflection." Click. Not hung up.
+(Terseness signature intact. He speaks exactly twice this episode — the second is "Correct.")
+
+Penny arrives carrying her laptop with Señor's yellow "28" sticky note still on the lid — she
+has been carrying it for a day and a half. Her business framing: Adelaide is "four people and
+a printer," and the quoted change window is ELEVEN HOURS touching every firewall LoFinance owns.
+She needs a sentence for the board.
+
+Señor retrieves a worn, furry-creased sheet from the filing cabinet nobody uses. Three boxes:
+RIB-in → Local RIB → RIB-out. His thesis: "For two sessions we have been asking what BGP KNOWS.
+Wrong question. Today we ask WHERE IT KEEPS IT." He refuses to let anyone solve anything until
+the student states the PROBLEM, not the fix.
+
+Episode closes with Señor telling Junior to wipe the board, draw one dot in the middle and eight
+lines to the edges. He writes "9" under the "28" on Penny's sticky note: "Adelaide costs you two
+routers and a coffee." Riley, quietly: "So Sydney CAN just tell everyone. Someone just had to say
+it was allowed." Javier: "Correct." Click.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — carried the session; see performance notes.
+- Señor — sombrero. Keeper line: "The reflector speaks freely to its own. To strangers, it only
+  repeats what its own told it." Also the drawer/filing-cabinet framing.
+- Penny — business framing throughout; "four people and a printer" vs eleven-hour change window.
+- Riley — help desk. SECOND CONSECUTIVE SESSION where Riley's naive question IS the diagnosis.
+  This is now a confirmed character pattern: Riley accidentally states the problem in plain
+  English. Keep it. His closing line ("someone just had to say it was allowed") is the episode's
+  emotional button.
+- J.R. — ex-accountant, notebook, does arithmetic twice, wrote 28 three times. Numeric, calm.
+- Junior — ARRIVED EARLY, worked ninety minutes, produced the grey smear. NOT a comic mistake
+  this episode — his failure was PHYSICAL and INSTRUCTIVE (the board ran out, which is the whole
+  point). Junior's upward arc from S58 CONTINUES. Do not reset him to error-generator.
+- Javier Lin — offscreen, two lines total, both perfect. Signature intact.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+Full-mesh IBGP does not scale. n(n-1)/2 = 28 sessions at 8 sites, 36 at 9. Adding Adelaide —
+four people and a printer — requires an eleven-hour change window touching every firewall in
+the estate, because every existing router must be individually configured to peer with the new
+one. The scaling constraint documented as a risk in S58 has now become an operational blocker
+on the Expansion.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED
+==================================================================
+1. THE THREE RIBs (pp. 340-341) — the session's spine. The student ASKED FOR THIS EXPLICITLY
+   ("Can you explain the RIB, I am getting confused"), which was the right call and was rewarded.
+   - RIB-in    = everything I was told, raw, unprocessed, pre-filter. "Received."
+   - Local RIB = what I chose to believe. Survived the IN filter, next hop resolves, won best-path.
+   - RIB-out   = what I am willing to say to my peers. NOT automatically the same as Local RIB.
+   Framing used: THREE DRAWERS, left to right, with a gate at each boundary.
+2. TWO GATES ON THE RIB-in → Local RIB BOUNDARY, taught as a pair because the student named
+   only one:
+   - Gate 1: the IN filter (prefix-list-in, route-map-in) — "do I even want this?"
+   - Gate 2: validity (is the NEXT_HOP resolvable?) + best-path selection.
+   The student derived Gate 2 from the S58 fault scar, unprompted and correctly.
+3. THE LOCAL RIB → RIB-out GATE AS THE HOME OF ALL POLICY. This was the session's biggest
+   structural payoff and should be REUSED CONSTANTLY IN S60+. Everything taught across S58/S59
+   lives at this one door: IBGP split horizon, RR relay rules, next-hop-self, prefix-list-out.
+   All of them answer ONE question: "of the things I believe, what am I willing to say, and to whom?"
+   Señor's frame: BELIEVING AND TELLING ARE DIFFERENT DRAWERS.
+4. IBGP SPLIT HORIZON AS THE CAUSE OF FULL MESH. Retrieved cold (after one prompt) in exact
+   wording: "a prefix learned from an IBGP peer is never advertised to ANY OTHER IBGP PEER."
+   The student had to be walked to it once but produced it verbatim. Now OWNED.
+5. ROUTE REFLECTORS AS A DELIBERATE RELAXATION OF SPLIT HORIZON — framed not as a new mechanism
+   but as the removal of a safety rule. "The RR is breaking the split-horizon rule on purpose."
+   An RR + its clients = a CLUSTER. Clients peer ONLY with the RR. The RR peers with other RRs
+   and border routers. Mesh collapses from n(n-1)/2 to n.
+6. THE CLIENT IS MUTE AND DOESN'T KNOW IT'S A CLIENT. Critical exam point, delivered twice.
+   `set route-reflector-client enable` is configured ONLY ON THE RR, under the neighbour block
+   for each client. Study guide wording: "The RR defines which neighbors are the clients."
+   The client's config is an ORDINARY IBGP neighbour statement. Nothing on it says "client."
+   Directional-trap teaching technique used: read the SHAPE of the command — everything inside
+   `config neighbor / edit <ip>` describes THE PEER AT THAT ADDRESS. Compared explicitly to
+   `set remote-as` and `set next-hop-self` to generalise the rule.
+7. REPLACEMENT LOOP PREVENTION. Taught by ASKING BEFORE TELLING per the S58 handoff instruction,
+   and the student PREDICTED IT (see performance).
+   - ORIGINATOR_ID — router-ID of the client that originally injected the route. If a router sees
+     its own router-ID here, it drops the route SILENTLY. Router-scope.
+   - CLUSTER_LIST — cluster-ID prepended by each reflecting RR. If an RR sees its own cluster-ID,
+     it drops the route. Cluster-scope. THIS IS THE INTER-CLUSTER / MULTI-RR GUARD.
+   Presented as three NESTED RINGS, all asking the same question at different scales:
+     Between ASes    → AS_PATH      → "is my AS in it?"
+     Between clusters→ CLUSTER_LIST → "is my cluster-ID in it?"
+     Within a cluster→ ORIGINATOR_ID→ "is my router-ID it?"
+   "Same question at every scale: did this come from me?"
+8. THE THREE RR RELAY CASES. Student over-tightened here twice; needed correcting.
+   - From a CLIENT → reflect to EVERYONE (other clients, non-client IBGP peers, EBGP peers).
+     Justification the student must hold: the client can't tell anyone itself, so if the RR
+     doesn't relay, NOBODY hears it.
+   - From a NON-CLIENT IBGP peer → reflect TO CLIENTS ONLY. Not to other non-clients (those are
+     ordinary IBGP peers; original split horizon still binds).
+   - From an EBGP peer → advertise to everyone. Split horizon never applied.
+   COMPRESSED RULE GIVEN TO THE STUDENT (reuse this exact line):
+     "Downward (to clients): always. Sideways (non-client to non-client): never."
+   Señor's version: "The reflector speaks freely to its own. To strangers, it only repeats what
+   its own told it."
+9. THE OPERATIONAL PAYOFF, stated in Penny's language: adding Adelaide = one neighbour block on
+   HQ with route-reflector-client enable, plus one ordinary neighbour block on Adelaide.
+   TWO ROUTERS TOUCHED, NOT NINE. Eleven hours becomes twenty minutes.
+
+==================================================================
+MENTAL MODELS DEVELOPED
+==================================================================
+- THREE DRAWERS: received / believed / willing to say. This is now the primary BGP mental model
+  and should anchor all of S60's attribute and best-path teaching.
+- "Believing and telling are different drawers. Almost all of BGP policy is the door between them."
+- EVERY SAFETY RULE HAS A PRICE, AND THE PRICE IS USUALLY SCALE. Split horizon buys structural
+  loop-freedom and charges n(n-1)/2. Engineering is choosing which bill to pay.
+- WHEN YOU RELAX A STRUCTURAL GUARANTEE, YOU MUST REPLACE IT WITH A DETECTION MECHANISM.
+  The student predicted this unprompted — flag it as a transferable senior principle.
+- Loops made IMPOSSIBLE (split horizon) vs loops DETECTED (ORIGINATOR_ID/CLUSTER_LIST). The RR
+  design deliberately downgrades from the first to the second in exchange for scale.
+- "THE MESH COLLAPSES BECAUSE ONLY THE CENTRE IS ALLOWED TO SPEAK. The clients are deliberately,
+  permanently mute. That muteness is what makes the star safe."
+- NAME THE DRAWER BEFORE YOU DIAGNOSE — introduced this session as the student's prescribed
+  corrective habit (see growth area). "The route is in the Local RIB, so this is a RIB-out question."
+
+==================================================================
+IMPORTANT ANALOGIES
+==================================================================
+- THE FILING CABINET / THREE DRAWERS (Señor, from the worn folded diagram). Dominant analogy of
+  the session. Reuse it.
+- "I ran out of board" (Junior). The physical failure of the full mesh. Strong memory anchor —
+  reference it whenever scaling limits come up.
+- "Adelaide costs you two routers and a coffee."
+- The student's OWN analogy, which he generated unprompted: OSPF's DR as the precedent for a
+  concentrator that everyone talks to so nobody has to talk to each other. STRUCTURALLY CORRECT
+  and it should be REUSED — but always with the caveat that was attached in-session: an RR is
+  NOT a DR, because an RR relaxes a loop-prevention rule and a DR does not. His own analogy is
+  the hook that makes the ORIGINATOR_ID/CLUSTER_LIST necessity feel inevitable.
+
+==================================================================
+KEY CLI COMMANDS DISCUSSED
+==================================================================
+config router bgp
+    config neighbor
+        edit "10.99.60.1"                      <-- the CLIENT's address
+            set remote-as 65001
+            set next-hop-self enable
+            set route-reflector-client enable   <-- configured ON THE RR ONLY
+        next
+    end
+end
+
+The client's config, for contrast (deliberately unremarkable — this contrast IS the lesson):
+config router bgp
+    config neighbor
+        edit "10.99.10.1"                       <-- HQ / the RR
+            set remote-as 65001
+        next
+    end
+end
+
+Verification / diagnosis:
+get router info bgp network                     (RIB-in + database view — "see")
+get router info routing-table bgp               (installed — "use")
+get router info bgp neighbors <ip> advertised-routes   (RIB-out toward that peer)
+get router info bgp neighbors <ip> received-routes     (RIB-in from that peer)
+get router info bgp summary                     (looks perfect during RR misconfig — trap)
+
+==================================================================
+TROUBLESHOOTING APPROACH (as taught this session)
+==================================================================
+RR-specific fault ladder:
+1. Client has no routes from its peers        → is route-reflector-client set ON THE RR under
+                                                 that client's neighbour block? Nothing on the
+                                                 client will ever tell you. Check the RR.
+2. Session Established, prefixes at RR, none  → check RIB-OUT on the RR, not RIB-in on the client.
+   at client                                    (get router info bgp neighbors <client> advertised-routes)
+3. Routes vanish silently at a client         → ORIGINATOR_ID matches the client's router-ID.
+                                                 SILENT DROP, NO LOG. Same signature as S58:
+                                                 absence of errors is not evidence of correctness.
+4. Two RRs, oscillation or missing inter-      → CLUSTER_LIST / cluster-ID mismatch.
+   cluster routes
+5. Reflection working, traffic still failing  → wrong drawer. Back to next-hop resolution.
+                                                 next-hop-self on the RR is almost always required.
+
+==================================================================
+CONFIGURATION DECISIONS
+==================================================================
+- HQ-FGT promoted to Route Reflector. Single cluster (cluster 1). Chosen over confederations
+  (not taught, not needed at this scale).
+- MEL-FGT and BNE-FGT converted to RR clients; the direct MEL-BNE IBGP session decommissioned.
+- next-hop-self RETAINED on HQ toward all clients — explicitly flagged that reflection does NOT
+  solve next-hop resolution; they are different drawers and both are needed.
+- ADL-FGT provisioned as the first branch built under the new model. Two devices touched.
+
+==================================================================
+TOPOLOGY CHANGES
+==================================================================
+AS 65001 (LoFinance): HQ-FGT is now a ROUTE REFLECTOR, cluster 1.
+Clients: MEL-FGT, BNE-FGT, ADL-FGT (new). Client-to-client IBGP sessions decommissioned.
+IBGP topology: FULL MESH → HUB AND SPOKE. 9 sessions at 9 sites, replacing 36.
+next-hop-self retained on HQ toward all clients.
+EBGP: HQ ↔ Javier SG DC (AS 65300) unchanged; prefix-list-out LOFI-OWN-PREFIXES still applied.
+LoFinance remains a multihomed, provably non-transit AS.
+OPEN THREAD FOR S60: London EBGP session is imminent and the path Sydney→Singapore→London is
+already being taken in preference to the direct path.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Adelaide turn-up drops from an eleven-hour fleet-wide change window touching nine firewalls to
+a twenty-minute change touching two devices. Penny's board sentence:
+"Adding an office no longer means re-opening every office."
+The primary scaling constraint on the Expansion, documented in S58, is CLOSED.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+10 questions asked. Answers: B, C, C, B, A, B, C, (A B D), B, C.
+STUDENT SCORED 8/10. Missed Q5 and Q7.
+- Q1 route-reflector-client placement (ON THE RR, under the client's neighbour block). CORRECT.
+  This is the single most commonly inverted RR question. He took it cleanly.
+- Q3 IBGP split horizon exact wording ("any other IBGP peer"). CORRECT. Second consecutive
+  session. RETIRE AS A CONCERN.
+- Q5 MISSED — chose C (nobody) instead of A (clients only) for "RR learns from a non-client IBGP
+  peer." Root cause: he reverted to his over-tight in-session position ("it can't reflect unless
+  explicitly defined"). The correction had not consolidated. Anchor given: if the RR doesn't pass
+  non-client routes down, the cluster is a sealed box and clients learn nothing from outside.
+  RETEST THIS COLD IN S60.
+- Q7 MISSED — chose CLUSTER_LIST instead of ORIGINATOR_ID for "the router that originally
+  injected it." Near-miss, not a gap; he had both attributes correctly placed in his live trace
+  twenty minutes earlier. Cause: CLUSTER_LIST was top-of-mind because HE had invoked it in his
+  own loop check. Fix given: MATCH THE ATTRIBUTE TO THE SCOPE IN THE STEM. "Originating router"
+  = router-ID = ORIGINATOR_ID.
+- Q8 was the compound-role/multi-select question (his S14 under-select / S15 over-select /
+  S58 warned pattern). HE GOT IT RIGHT (ABD). He was asked for his PROCESS and did not supply it
+  — he replied "Generate." PROCESS STILL UNVERIFIED. ASK AGAIN IN S60. This is the third
+  consecutive session this pattern has been tracked without confirmation of method.
+- Q4 correct (Local RIB = after inbound filter) confirms the drawer model landed as a MODEL,
+  not a memorised diagram.
+- Q9/Q10 both correct — the "client doesn't know it's a client" concept is solid.
+
+==================================================================
+JUNIOR'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+Junior's "mistake" this episode was PHYSICAL, not conceptual, and deliberately so: he spent
+ninety minutes faithfully and correctly drawing a full mesh, and the whiteboard ran out. He did
+nothing wrong. The DESIGN was wrong. Lesson delivered: a configuration that is individually
+correct at every step can still be architecturally unsustainable, and the symptom is
+operational (change windows, marker smears, running out of room) rather than technical.
+Junior's arc continues UPWARD — he was early, diligent, and the physical evidence he produced
+is what forced the redesign. Do not reset him.
+
+==================================================================
+STUDENT PERFORMANCE NOTES (detail in knowledge-register-session59.txt)
+==================================================================
+- HIGHEST-VALUE MOMENT: he PREDICTED ROUTE REFLECTORS FROM FIRST PRINCIPLES before being taught
+  them, by reaching across protocols: "You could do something similar to what OSPF does, where
+  there is a DR and all routers exchange information to the DR... HQ could be the DR in BGP's
+  world." He derived the SHAPE of an unknown feature from the shape of the problem. This is
+  senior behaviour and was named as such in-session.
+- SECOND-HIGHEST: he then PREDICTED THE NEED FOR REPLACEMENT LOOP PREVENTION and half-recalled
+  the mechanism — "there is some kind of tag created when the RR reflects a route, if it were to
+  see that same tag then it would just drop it." Correct in structure. The S58 handoff instruction
+  said ASK BEFORE TELLING on this point; it was followed and he delivered.
+- HE ASKED FOR HELP CLEANLY AND EARLY: "Can you explain the RIB, I am getting confused." This was
+  the right call at the right moment and materially improved the session. SIXTH consecutive
+  session of honest uncertainty signalling ("Not sure, it sounds like..."). KEEP REWARDING THIS.
+- S58 CALLBACK PAID OFF: his S58 wrong turn (guessing route reflectors for the next-hop problem)
+  was acknowledged warmly when the topic arrived — "you were one session early." He then reached
+  the same answer by reasoning rather than guessing. Good closure on that thread.
+- RECURRING ERROR, THIRD OCCURRENCE — ANSWERING THE SHAPE OF THE QUESTION RATHER THAN THE STATE
+  SPECIFIED. Twice this session:
+  (a) Asked which gate blocks a Local-RIB route from RIB-out toward Brisbane, he re-derived the
+      ENTIRE S58 next-hop-resolution fault instead. All of it true; none of it the question.
+      He pattern-matched on "Melbourne + Singapore route + something wrong."
+  (b) In the final trace, he had Adelaide (a CLIENT) performing a RIB-out advertisement onward.
+      Clients are mute.
+  Same species as the S58 route-reflector guess. PRESCRIBED CORRECTIVE HABIT, given in-session:
+  "NAME THE DRAWER BEFORE YOU DIAGNOSE" — say aloud "the route is in the Local RIB, so this is a
+  RIB-out question." ENFORCE THIS IN S60. Ask him to name the drawer before he answers.
+- OVER-TIGHTENING ON PERMISSIONS: twice he assumed reflection is forbidden unless explicitly
+  permitted per-route. The instinct ("reflection is a permission, not a default") is GOOD and
+  should be preserved; the calibration is wrong. He needs the downward/sideways rule drilled.
+- He self-closed a loop unprompted in the final trace ("if Adelaide tries to hand it back to HQ
+  it won't be accepted because it sees its own cluster ID"). Nobody asked him to verify the
+  safety mechanism. That checking instinct is the habit the register has been growing all season
+  and it is now appearing SPONTANEOUSLY.
+- DID NOT ANSWER THE Q8 PROCESS QUESTION. Replied "Generate." Not a red flag on its own (end of
+  a long session) but it is the third session where his multi-select METHOD remains unverified.
+
+==================================================================
+TEASER FOR SESSION 60
+==================================================================
+"Choosing Favourites" — BGP internals III: attributes, route selection, the network command,
+prefix lists. EF Dynamic Routing Supplement, pp. 342-348.
+
+Set up in-story and DELIVERED at the end of S59:
+Thursday 06:12. Riley's ticket queue has ONE entry, opened by London before London officially
+exists: "Latency to LON-DC: 340ms. Expected: 90ms." Traceroute shows Sydney → SINGAPORE →
+London. Around the planet and back.
+Penny: "Why is our London traffic going through Javier?"
+Señor, NOT SMILING for the first time this season: "Because BGP chose it. And BGP is not wrong.
+BGP is NEVER wrong. BGP is only ever... BADLY ADVISED."
+Javier, faintly amused: "My path is shorter. Fewer autonomous systems. Ask your algorithm."
+J.R.: "Can we just... tell it not to?"
+Señor: "You cannot TELL BGP anything. You can only make it PREFER." He pulls out a second folded
+page — a numbered list, thirteen items long, the first item circled twice.
+"Tomorrow we learn how BGP argues. And then we learn how to win."
+
+S60 MUST:
+- OPEN BY RETESTING Q5 COLD: an RR learns a route from a NON-CLIENT IBGP peer — who gets it?
+  He got this wrong on the exam after being corrected mid-session. Retest before teaching.
+- Also retest ORIGINATOR_ID vs CLUSTER_LIST by SCOPE ("originating router" vs "reflecting RR").
+- ENFORCE "NAME THE DRAWER BEFORE YOU DIAGNOSE." Route selection happens at the RIB-in → Local
+  RIB boundary (best-path); attribute manipulation happens at BOTH gates. Make him place each
+  new tool in a drawer as it is introduced. The three-drawer model is the scaffold for the
+  whole of S60 — do not introduce attributes without anchoring them to a drawer.
+- ASK FOR HIS MULTI-SELECT PROCESS on the first compound question. Third session unverified.
+- The AS_PATH-length tiebreaker is the villain of the episode (Javier's path is genuinely
+  shorter in AS hops). LOCAL_PREF is the intended weapon. Let him find that the shortest
+  AS_PATH is not the same as the shortest PATH — he has the tools.
+- The `network` command: he has NEVER been taught how prefixes are ORIGINATED into BGP. He has
+  only ever seen redistribution (S57) and has been living with prefixes that "just appear."
+  Expect a gap here. This is new ground, not retrieval.
+- Reuse the filing-cabinet analogy and Junior's "I ran out of board."
+- Junior's upward arc CONTINUES. Do not reset him.
+
+Date and Time completed: Thursday, 23 July 2026.

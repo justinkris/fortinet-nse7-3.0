@@ -1,0 +1,266 @@
+SESSION 63 SUMMARY — "Rules of the Road"
+Season 5 "The Expansion" · SNA Domain 4 · Rules & Routing
+Source: FortiOS 7.6 Administrator — SD-WAN lesson (rules) — NOT in project knowledge; taught
+from Claude's own FortiOS 7.6 knowledge, strictly on-blueprint: matching criteria, strategies,
+rule lookup process, implicit rule, local-out traffic, application steering.
+Written for Claude, to continue the story in Session 64 ("Sessions Have Memory").
+Completed: Friday 24 July 2026.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Monday 08:12. Riley's eleven old tickets closed (S62 payoff) — replaced by NINE new ones:
+"trades are slow" while the marketing video wall is "buttery." J.R. confesses immediately:
+Friday 16:40 he wrote one SD-WAN rule — src all, dst all, mode load-balance, members 1 2 —
+"because I didn't want to leave anything out."
+
+THE PROMISED JUNIOR MOMENT WAS DELIVERED (S62 teaser obligation met): Junior read the screen
+over J.R.'s shoulder, said nothing for ten seconds, then — first time in five seasons with
+genuine authority — "Mate. Come here. Let me show you what an implicit rule does." Señor did
+not interrupt, which everyone understood as a standing ovation. IMPORTANT NUANCE: Junior got
+partway and honestly stalled ("I know it's there... I've never worked out what it decides ON")
+and Señor handed the door to the student to open. Junior's arc: FIFTH consecutive session
+upward, now includes teaching + honest limits. DO NOT RESET HIM.
+
+SECOND J.R. MISTAKE DISCOVERED FIRST: Friday he also added Baz's newly delivered THIRD circuit
+(port3) as member 3 — interface + zone set, GATEWAY NEVER TYPED. Link up all weekend, zero
+packets. This was deliberately investigated BEFORE the rule (Señor: "is Friday even the crime
+scene?") and taught the member-route mechanism.
+
+CHARACTER CANON ADDED (student-authored, adopt permanently): the four always-slow traders are
+MARCUS, ADITI, TOM and JAM (bloke by the window). They went to high school together. Jam loves
+jam; you always know he's been in the kitchen because there is jam on the sandwich press —
+"every day since 2011" (Riley). Jam did not notice his own nine-minute degraded call in the
+S64 teaser because he was at the sandwich press. USE THESE FOUR AS RECURRING AFFECTED-USER
+CANARIES.
+
+Cipher spoke twice (a season record): "I have gaps in my audit trail. I would like them to
+stop." and "So the firewall is the only device on my network not following my policy." His
+syslog was ECMP'd across both links by local-out default behaviour.
+
+Baz did not appear; his third circuit did. Javier Lin absent (returns for overlay/multiregion).
+
+PENNY'S BOARD SENTENCE: "We stopped balancing traffic and started sending it somewhere on
+purpose."
+
+SEÑOR KEEPER LINES:
+  "Up is a fact. It is not a route." (extension of S62's keeper)
+  "The health check is a thermometer. But a thermometer must be able to touch the patient.
+   J.R. built a thermometer in another room."
+  "You are Jam, or you are not Jam. And you will not find out which until Baz has a bad
+   afternoon." (deterministic hashing)
+  "'Best available' and 'acceptable' are different claims."
+  "The cobbler's children have no shoes." (local-out)
+  "The first video pays for everyone else's." (app-ctrl caching)
+  "J.R. wrote his one instruction on the first line of the clipboard and then wrote it across
+   all the other lines too." (catch-all)
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+S62 built measurement; nothing consumed it. J.R.'s catch-all (seq 1, src all/dst all,
+load-balance, hash-mode source-ip-based) made every subsequent rule unreachable and steered by
+per-source-IP hash with NO SLA involvement — so trades landed on Baz deterministically for the
+four traders whose source IPs hash to member 2, while YouTube enjoyed the good link.
+Secondary faults: member 3 unusable (no gateway); FortiGate's own syslog/FortiGuard ignoring
+all rules (local-out defaults); streaming rule's first-session leak (app-ctrl identification
+delay).
+
+==================================================================
+TECHNICAL CONCEPTS COVERED
+==================================================================
+1. MEMBER GATEWAY MECHANISM. interface says where, GATEWAY says how to leave. Gateway is the
+   input FortiGate uses to AUTO-BUILD the member's static route. Collapse chain (student built
+   it from consequences): no gateway → no member route → probe cannot leave → 100% loss →
+   state(dead) → never eligible. DIAGNOSTIC SIGNATURE: dead + 100% loss + latency/jitter both
+   0.000 = nothing ever left = CONFIG symptom; a degraded link returns real numbers badly.
+2. RULES DO NOT CREATE REACHABILITY. SD-WAN will not steer to a member with no valid route to
+   that destination; rules choose AMONG members that already have one.
+3. RULE LOOKUP PROCESS. Top-down by sequence, FIRST MATCH WINS, nothing below is read.
+   J.R.'s catch-all in seat one = every later rule is dead config that looks valid.
+   Specific first, general last. Delete the catch-all, don't demote it.
+4. MATCHING CRITERIA (vs static route's destination-only): src/users/groups, dst,
+   internet-service (ISDB), internet-service-app-ctrl, protocol + start-port/end-port,
+   tos/tos-mask, input-device.
+5. FOUR STRATEGIES (GUI/CLI): Manual (`manual`, no SLA, steers into sick links); Best Quality
+   (`priority`, best MEASURED link-cost-factor, NO THRESHOLD); Lowest Cost SLA (`sla`, SLA as
+   ELIGIBILITY GATE, then lowest cost, then config order); Maximize Bandwidth (`load-balance`,
+   SLA gate + hash-mode spread). Dividing line: sla/load-balance use SLA as a GATE; priority
+   RANKS; manual doesn't look.
+6. A-vs-B DESIGN ARGUMENT (trading feed): Best Quality churns paths for 1ms prizes and cannot
+   say "both roads are unusable" (no concept of acceptable); mode sla is stable by default,
+   decisive on breach — but only as honest as its threshold. hold-down-time 30 as the
+   flap damper ("quick to distrust, slow to forgive" one layer up).
+7. HASH MODES. Per-rule `hash-mode` (round-robin default, source-ip-based,
+   source-dest-ip-based...). hash mod member-count → deterministic per-host assignment.
+   SYMPTOM SHAPE FINGERPRINT: "everyone occasionally slow" = round-robin; "same four always" =
+   source-ip pinning. Divisor change warning: fixing port3 changes mod 2 → mod 3, EVERY host
+   rehashes with no rule touched.
+8. IMPLICIT RULE. Cannot be deleted/edited as a rule; it IS the global `set load-balance-mode`
+   under config system sdwan. Balances across all members WITH A VALID ROUTE to the
+   destination. DOES NOT CONSULT ANY SLA — out-of-SLA members still receive implicit traffic
+   because their routes remain. (Ties to S62's "out-of-SLA does not remove the route.")
+9. LOCAL-OUT TRAFFIC. Student derived it in two words: "no interface." Self-originated traffic
+   never ingressed → nothing for rules to match → bypasses SD-WAN, plain routing lookup
+   (hence Cipher's 50/50 syslog). Fix is PER-FEATURE, no global switch:
+   `set interface-select-method {auto|sdwan|specify}` under log syslogd setting,
+   system fortiguard, system dns, snmp sysinfo, etc.
+10.APPLICATION STEERING. ISDB = destination lookup (IP/proto/port) → matches on FIRST packet.
+   app-ctrl = identification via Client Hello / SNI / server cert → several packets in →
+   FIRST SESSION ESCAPES to fall-through, then app-to-destination mapping is CACHED
+   (diagnose sys sdwan internet-service-app-ctrl-list) so later sessions match on packet one.
+   app-ctrl steering REQUIRES the firewall policy to run application control, or the rule
+   matches nothing forever while looking valid.
+11.MODE SLA ALL-MEMBERS-OUT BEHAVIOUR (exam miss, Q4): rule STILL MATCHES (matching is
+   src/dst/service, not health) and falls back to best effort = configured priority-members
+   order. Rules are skipped only when NO usable members (all dead / no route). Sick ≠ dead.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT WORKED
+==================================================================
+- THE CLIPBOARD WITH LINES (Riley's S62 clipboard extended): rules are lines read top-down;
+  the implicit rule is the last line, pre-written, un-erasable.
+- THERMOMETER IN ANOTHER ROOM (gateway/probe reachability).
+- "YOU ARE JAM OR YOU ARE NOT JAM" (deterministic hash assignment).
+- BEST-AVAILABLE vs ACCEPTABLE (comparison vs threshold) — the strategy dividing line.
+- COBBLER'S CHILDREN (local-out opts out of your own design).
+- "THE FIRST VIDEO PAYS FOR EVERYONE ELSE'S" (app-ctrl cache).
+- SENSOR vs ACTUATOR carried from S62 and finally cashed: SLA measures, RULES act.
+
+==================================================================
+KEY CLI
+==================================================================
+config system sdwan / config service / edit N
+  set mode {manual|priority|sla|load-balance} · set src/dst · set health-check "Trading-SLA"
+  config sla / edit "Trading-SLA" / set id 1 · set priority-members 1 2 · set hash-mode
+  set internet-service enable + set internet-service-name "Google-YouTube"
+  set internet-service-app-ctrl · set hold-down-time 30
+Global: set load-balance-mode source-ip-based   ← the implicit rule's algorithm
+Local-out: set interface-select-method sdwan (per feature)
+Verify: diagnose sys sdwan service (Mode, selected members, src/dst ranges — note ABSENCE of
+        SLA reference in J.R.'s rule was itself evidence)
+        diagnose sys sdwan health-check · get router info routing-table all
+        diagnose sys sdwan internet-service-app-ctrl-list
+        show system sdwan
+
+==================================================================
+TROUBLESHOOTING APPROACH — LADDER EXTENDED TO FIVE RUNGS
+==================================================================
+1. Does a rule MATCH? (and is a catch-all above it eating the match?)  ← NEW, top rung
+2. Is it UP? — get router info routing-table all
+3. Is it IN-SLA? — diagnose sys sdwan health-check
+4. Is it ELIGIBLE? — in this rule's priority-members AND has a route to THIS destination
+5. Is it PREFERRED? — diagnose sys sdwan service
+S64 adds rung 6: is the SESSION pinned?
+NEW SENIOR HABITS NAMED THIS SESSION:
+- "SYMPTOM SHAPE IS EVIDENCE" (ticket pattern → hash mode; zeroes → config fault).
+- "A PROBABILITY ACROSS USERS IS NOT A PROBABILITY ACROSS ATTEMPTS."
+
+==================================================================
+CONFIGURATION / DESIGN DECISIONS
+==================================================================
+- J.R.'s catch-all DELETED (not demoted).
+- Rule 1 "Trading": mode sla, src TRADING-FLOOR, dst EXCHANGE-FEEDS, health-check Trading-SLA,
+  priority-members 1 2 (port1 preferred, port2 escape hatch), hold-down-time 30 discussed.
+- Rule 2 "Streaming": ISDB Google-YouTube → priority-members 2 (Baz). ISDB chosen over
+  app-ctrl deliberately (first-packet match; stable published destinations).
+- Member 3 completed: set gateway 192.0.2.1 → alive. NOTE: divisor now 3; implicit-rule hash
+  assignments all changed (accepted knowingly).
+- Local-out opted in: syslogd, fortiguard, dns, snmp → interface-select-method sdwan.
+
+==================================================================
+TOPOLOGY CHANGE
+==================================================================
+SYD-EDGE: three SD-WAN members (port1 Carrier-A, port2 Baz-B, port3 Baz-C w/ gateway
+192.0.2.1), zone "underlay". Rules: #1 Trading (mode sla, Trading-SLA), #2 Streaming (ISDB
+YouTube → port2). Catch-all removed. Implicit rule = global source-ip-based. Local-out
+(syslog/FortiGuard/DNS/SNMP) via SD-WAN.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Trades on the good road with an SLA-gated escape hatch; YouTube pinned to Baz; Marcus, Aditi,
+Tom and Jam released from the hash; Cipher's audit-trail gaps closed. Penny's sentence: "We
+stopped balancing traffic and started sending it somewhere on purpose."
+
+==================================================================
+STUDENT PERFORMANCE — DETAIL FOR ADAPTIVE TEACHING
+==================================================================
+EXAM: 7/10. Q4 wrong (mode-sla all-out fallback — genuine gap, now taught, NEEDS 3-touch
+retest: reframe in S64 open + callback S65). Q3 and Q9: gave ONE answer to choose-TWO — BOTH
+missing options were things he said in his own words the same session (implicit-rule
+valid-route balancing; set src). SCORE-FIRST-COUNT-LAST STILL NOT RUNNING — the stem's count
+was never used as a checksum. Fourth consecutive session of this family of miss. ESCALATE:
+in S64, before he answers any multi-select, require him to state the count and show the
+per-option T/F scoring explicitly. Do not accept a bare letter.
+
+STANDOUT MOMENTS:
+- Rebuilt the gateway collapse chain from consequences (didn't recall the field; derived it
+  from the missing route). Then HELD IT under exam pressure (Q1) same session — a visible
+  three-touch success. Cite this to him as proof the method works.
+- HASH INFERENCE: from "same four people always," inferred deterministic function → hash →
+  odd/even bucket arithmetic → AND asked why the input is stable (long DHCP leases). Two-move
+  reasoning, unprompted. Best inference of the season so far.
+- JUMPED A WEEK EARLY, TWICE: session-table stickiness (S64 material) volunteered when asked
+  about first-packet choice; ISDB-vs-app-ctrl first-packet argument volunteered before app
+  steering was taught. Both times the content was right but ANSWERED A DIFFERENT QUESTION
+  than asked — the S58-60 "shape of the question" pattern in a new costume, though milder:
+  here the early answers were relevant and correct, just premature. Señor's counter ("you told
+  me why it STAYS; I asked why it WENT") worked; reuse that move.
+- SELF-CORRECTION MID-ANSWER on strategy A vs B: chose A, kept thinking, reversed to B
+  unprompted ("now that I think about it..."). B was correct. His stated REASON for switching
+  was wrong (both are dynamic) and was repaired via the comparison-vs-threshold frame.
+  Self-audit habit: now ~4 instances this season. ESTABLISHED STRENGTH — keep naming it.
+- "NO INTERFACE" — derived local-out bypass in two words from the matching-criteria table.
+  Fill-in-the-blank reduction worked instantly again.
+- HONEST "not sure how it deals with traffic on the FortiGate itself" — ninth consecutive
+  session of clean uncertainty signalling. Señor acknowledged the count in-story.
+- Creative investment rising: authored the Marcus/Aditi/Tom/Jam canon himself. Story
+  co-authorship correlates with his best sessions; invite more of it.
+
+WEAKNESSES:
+- Multi-select ritual absent (see above). Now the #1 exam-technique risk.
+- Q4 concept gap: conflated "all members out of SLA" with rule skip/fall-through. Sick≠dead
+  distinction needs the reframed retest.
+- Arithmetic reluctance not exercised this session (no two-number question) — keep the S62
+  note live: when a question has two numbers, prompt him to multiply.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- Member requires INTERFACE + GATEWAY; zone optional. (S62 miss → S63 exam PASS. Retired from
+  urgent list; spot-check once more ~S66.)
+- dead + 100% loss + 0.000 latency/jitter = no path out (config), not a bad carrier.
+- Implicit rule: uses global load-balance-mode; valid-route members only; NO SLA awareness.
+- mode sla, all members out: best effort via configured order; rule NOT skipped.
+- Rule skipped only when no usable members (all dead / no route) → lookup continues.
+- Local-out bypasses SD-WAN by default; per-feature interface-select-method {auto|sdwan|specify}.
+- ISDB matches first packet; app-ctrl first session escapes then caches; app-ctrl steering
+  requires app control in the firewall policy.
+- First-match-wins top-down; catch-all above = dead rules below.
+- SD-WAN rules match src/user/app/port/ToS/input-device; static routes match destination only.
+
+==================================================================
+JUNIOR'S / J.R.'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+J.R. ×2: (a) member without gateway → the entire member-route mechanism and the
+zeroes-diagnostic; (b) the catch-all with hash-mode source-ip-based → first-match-wins,
+strategy/SLA binding, and the Jam determinism lesson. Both became exam questions (Q1, Q2, Q10).
+Junior: taught his first lesson AND modelled honest limits — his stall on "what does the
+implicit rule decide on" handed the student the derivation. J.R.'s notebook: "green ≠ good"
+now joined by "ISDB ×2, app control ×2" (Señor: "write those down twice").
+
+==================================================================
+TEASER DELIVERED FOR SESSION 64 — "SESSIONS HAVE MEMORY"
+==================================================================
+Wednesday 09:15: Baz browns out, Trading-SLA breaches, rule swings to port1 — dashboard green.
+09:16 Riley: "New calls are fine. Old calls sound like the ocean." Señor: "The LINK failed
+over. Nobody asked the sessions if they agreed." He circles one hex flag in a session-table
+line. Jam has been on a degraded call for nine minutes and hasn't noticed — he is at the
+sandwich press. S64 topics: route lookup vs rule lookup, member/probe routes, session tables,
+session flags, reevaluation triggers, SNAT routing changes.
+NOTE FOR S64: the student ALREADY volunteered session-stickiness in S63 — open by crediting
+that and making him prove it with diagnose sys session list output. Cold retests owed at S64
+open: (1) Q4 reframed — mode sla with everything out of SLA, what happens; (2) multi-select
+with enforced visible scoring; (3) spot-check: which traffic bypasses SD-WAN rules by default
+and name the fix command family.
