@@ -180,6 +180,48 @@ serial=00a3c1f2 tos=ff/ff app_list=0 app=0 url_cat=0
     <strong>Absence is evidence.</strong> No <code style="font-family:'SF Mono',monospace;font-size:12px;">sdwan_mbr_seq</code> / <code style="font-family:'SF Mono',monospace;font-size:12px;">sdwan_service_id</code> in a session that <em>should</em> be steered means the rule never matched it — check for a catch-all above it, wrong matching criteria, or local-out traffic. You learned all three ways this happens in Session 63.</div>
 </div>
 
+<!-- ══════════ SECTION 2B: THE RULE'S SIDE ══════════ -->
+<div class="section-block">
+  <div class="section-label">02b · The Other Side of the Comparison</div>
+  <h2>Reading <em>diagnose sys sdwan service</em></h2>
+  <p>The session table tells you where a session <em>is going</em>. This command tells you where the rule <em>would send a new one</em>. Troubleshooting a pinned session means holding both outputs side by side. Each member line has <strong>four things, that is all</strong>:</p>
+
+  <div class="code-block">
+    <div class="code-label">diagnose sys sdwan service 3 — member lines, during the 09:15 brownout</div>
+    <pre><code>Members(2):
+  1: Seq_num(1 port1), alive, sla(0x1), gid(0), cfg_order(1), cost(0), <span class="hl-sdwan">selected</span>
+  2: Seq_num(2 port2), alive, <span class="hl-flag">sla(0x0)</span>, gid(0), cfg_order(0), cost(0)</code></pre>
+  </div>
+
+  <table class="data-table">
+    <tr><th>Piece</th><th>Meaning</th><th>Trap it defuses</th></tr>
+    <tr>
+      <td><code>Seq_num(1 port1)</code></td>
+      <td>Member number and its interface. Just the name tag.</td>
+      <td>Cross-reference target for the session's <code>sdwan_mbr_seq</code> — same numbering.</td>
+    </tr>
+    <tr>
+      <td><code>alive</code></td>
+      <td>The health check's probes are coming back. The link is <strong>up</strong>.</td>
+      <td>A browned-out link is still <code>alive</code>. Up is a fact — not a verdict.</td>
+    </tr>
+    <tr>
+      <td><code>sla(0x1)</code> / <code>sla(0x0)</code></td>
+      <td>Bitmap of which SLA targets this member currently <em>passes</em>. <code>0x1</code> = passes target 1. <code>0x0</code> = passes none.</td>
+      <td>The verdict. <code>alive</code> + <code>sla(0x0)</code> together = "up but failing thresholds" — the exact signature of a brownout. Up is a fact; good is a measurement.</td>
+    </tr>
+    <tr>
+      <td><code>selected</code></td>
+      <td>The rule's <em>current</em> choice for new sessions. Only one member per line carries it (in mode sla).</td>
+      <td>This is the dashboard's "failover complete." It is a promise about <em>future</em> sessions only — it says nothing about sessions already in the table.</td>
+    </tr>
+  </table>
+
+  <div class="callout">
+    <strong>The two-output ritual:</strong> <code style="font-family:'SF Mono',monospace;font-size:12px;">selected</code> on member 1 (rule's answer) + <code style="font-family:'SF Mono',monospace;font-size:12px;">sdwan_mbr_seq=2</code> in the session (session's answer) = the failover happened <em>and</em> the old session didn't follow it. Neither output is wrong. They answer different questions: <em>where would a new session go</em> vs <em>where is this session going</em>.
+  </div>
+</div>
+
 <!-- ══════════ SECTION 3: THE FLAGS ══════════ -->
 <div class="section-block">
   <div class="section-label">03 · The Flags That Decide Failover</div>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 59 Bite — The Three Buckets: RIB-in · Local RIB · RIB-out</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  main{max-width:1200px;margin:0 auto;}
+  .main-content{max-width:960px;margin:0 auto;padding:36px 60px 60px;}
+
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .data-table code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12px;background:var(--surface-2);border:1px solid var(--border-dim);border-radius:5px;padding:2px 6px;color:var(--blue-deep);white-space:nowrap;}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .code-block .c{color:#8fa3cc;}
+
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-text strong{font-style:normal;font-weight:600;color:#7a4f0c;}
+
+  /* ══════════ BUCKETS & GATES DIAGRAM ══════════ */
+  .pipeline{margin:28px 0 10px;}
+  .pipeline{overflow-x:auto;}
+  .pipe-row{display:flex;align-items:stretch;justify-content:center;gap:0;flex-wrap:nowrap;min-width:720px;}
+  .bucket{flex:1 1 0;min-width:0;max-width:230px;display:flex;flex-direction:column;align-items:center;}
+  .bucket-body{width:100%;border:3px solid var(--blue-deep);border-top-width:2px;border-radius:0 0 34px 34px;background:linear-gradient(180deg,var(--blue-light) 0%,#dce8f8 100%);padding:16px 14px 22px;text-align:center;position:relative;min-height:168px;display:flex;flex-direction:column;justify-content:flex-start;}
+  .bucket-rim{width:106%;height:12px;background:var(--blue-deep);border-radius:8px;margin-bottom:-4px;z-index:2;}
+  .bucket-name{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue-deep);margin-bottom:6px;margin-top:8px;}
+  .bucket-desc{font-family:'Cormorant Garamond',serif;font-size:13.5px;line-height:1.42;color:var(--text-soft);font-style:italic;}
+  .bucket-routes{display:flex;gap:5px;justify-content:center;margin-top:12px;flex-wrap:wrap;}
+  .route-drop{width:14px;height:18px;background:var(--blue-vivid);border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;opacity:0.85;}
+  .route-drop.faded{opacity:0.28;}
+  .route-drop.gold{background:var(--amber);}
+  .bucket-tag{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-top:10px;}
+  .bucket-tag code{font-family:'SF Mono','Fira Code',monospace;font-size:9.5px;color:var(--blue);letter-spacing:0;text-transform:none;display:block;margin-top:3px;}
+
+  .gate{flex:0 0 96px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px;position:relative;}
+  .gate-arch{width:88px;border:3px solid var(--amber);border-bottom:none;border-radius:44px 44px 0 0;background:var(--amber-light);padding:10px 6px 7px;text-align:center;}
+  .gate-bars{display:flex;justify-content:center;gap:7px;margin:4px 0 6px;}
+  .gate-bar{width:4px;height:30px;background:var(--amber);border-radius:2px;}
+  .gate-name{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--amber);}
+  .gate-sub{font-family:'Cormorant Garamond',serif;font-size:12px;font-style:italic;color:#7a4f0c;line-height:1.35;margin-top:3px;}
+  .gate-floor{width:96px;height:3px;background:var(--amber);}
+  .flow-arrow{font-size:18px;color:var(--blue-deep);margin-top:6px;font-weight:700;}
+
+  .side-inflow{display:flex;justify-content:center;margin-top:14px;}
+  .inflow-card{border:2px dashed var(--green-border);background:var(--green-light);border-radius:12px;padding:10px 18px;text-align:center;max-width:420px;}
+  .inflow-title{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);}
+  .inflow-desc{font-family:'Cormorant Garamond',serif;font-size:13.5px;font-style:italic;color:#14603a;line-height:1.4;margin-top:3px;}
+  .inflow-arrow{text-align:center;font-size:18px;color:var(--green);line-height:1;margin-top:2px;}
+
+  .pipe-endcap{flex:0 0 64px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .endcap-icon{font-size:24px;}
+  .endcap-label{font-family:'Outfit',sans-serif;font-size:8.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;line-height:1.4;}
+
+  @media (max-width:820px){
+    header{padding:36px 24px 28px;}
+    .motivation-banner{padding:18px 24px;}
+    .main-content{padding:28px 22px 48px;}
+    /* pipeline stays one row — scrolls horizontally on narrow screens */
+  }
+  .gate-label-mobile{display:none;}
+
+  footer{padding:28px 60px;border-top:1px solid var(--border);background:var(--surface);text-align:center;}
+  footer p{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="header-eyebrow"><span class="dot-live"></span>SESSION 59–60 · STUDY BITE · 5 MINUTES</span>
+    <h1>The Three <em>Buckets</em></h1>
+    <p>RIB-in → gate → Local RIB → gate → RIB-out. Every BGP route on a FortiGate lives in exactly one of three buckets — and every route-map you will ever write stands at one of the two gates between them.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Why this model matters: <em>you cannot troubleshoot what you cannot locate.</em></div>
+  <div class="motivation-sub">"Route received but not used" and "route used but not advertised" are two completely different faults in two different places. The buckets tell you which gate to inspect — before you touch any configuration. This is the frame behind the S59 next-hop fault, the S60 tie-breaker episode, and a whole family of NSE7 questions.</div>
+</div>
+
+<main>
+<div class="main-content">
+
+<!-- ═══════════ 1. THE DIAGRAM ═══════════ -->
+<div class="section-block">
+  <div class="section-label">The Model</div>
+  <h2>Three Buckets, <em>Two Gates</em></h2>
+
+  <div class="pipeline">
+    <div class="pipe-row">
+
+      <div class="pipe-endcap">
+        <div class="endcap-icon">📡</div>
+        <div class="endcap-label">BGP RX<br>updates from peers</div>
+      </div>
+
+      <div class="bucket">
+        <div class="bucket-rim"></div>
+        <div class="bucket-body">
+          <div class="bucket-name">RIB-in</div>
+          <div class="bucket-desc">Everything peers told you. Raw. Unfiltered. Unjudged. Losers wait here forever.</div>
+          <div class="bucket-routes">
+            <span class="route-drop"></span><span class="route-drop"></span><span class="route-drop"></span><span class="route-drop faded"></span><span class="route-drop faded"></span>
+          </div>
+          <div class="bucket-tag">The candidates<code>received-routes</code></div>
+        </div>
+      </div>
+
+      <div class="gate">
+        <div class="gate-label-mobile">GATE 1 ▼</div>
+        <div class="gate-arch">
+          <div class="gate-name">Gate 1 · IN</div>
+          <div class="gate-bars"><span class="gate-bar"></span><span class="gate-bar"></span><span class="gate-bar"></span></div>
+          <div class="gate-sub">in-filter → best-path selection</div>
+        </div>
+        <div class="gate-floor"></div>
+        <div class="flow-arrow">→</div>
+      </div>
+
+      <div class="bucket">
+        <div class="bucket-rim"></div>
+        <div class="bucket-body">
+          <div class="bucket-name">Local RIB</div>
+          <div class="bucket-desc">Only the winners. The routes this FortiGate actually believes and offers to the routing table.</div>
+          <div class="bucket-routes">
+            <span class="route-drop"></span><span class="route-drop"></span><span class="route-drop"></span><span class="route-drop gold"></span>
+          </div>
+          <div class="bucket-tag">The winners<code>get router info bgp network</code></div>
+        </div>
+      </div>
+
+      <div class="gate">
+        <div class="gate-label-mobile">GATE 2 ▼</div>
+        <div class="gate-arch">
+          <div class="gate-name">Gate 2 · OUT</div>
+          <div class="gate-bars"><span class="gate-bar"></span><span class="gate-bar"></span><span class="gate-bar"></span></div>
+          <div class="gate-sub">out-filter, per neighbor</div>
+        </div>
+        <div class="gate-floor"></div>
+        <div class="flow-arrow">→</div>
+      </div>
+
+      <div class="bucket">
+        <div class="bucket-rim"></div>
+        <div class="bucket-body">
+          <div class="bucket-name">RIB-out</div>
+          <div class="bucket-desc">What you choose to tell each neighbor. Different neighbors can be told different stories.</div>
+          <div class="bucket-routes">
+            <span class="route-drop"></span><span class="route-drop"></span><span class="route-drop gold"></span>
+          </div>
+          <div class="bucket-tag">The advertisement<code>advertised-routes</code></div>
+        </div>
+      </div>
+
+      <div class="pipe-endcap">
+        <div class="endcap-icon">📤</div>
+        <div class="endcap-label">BGP TX<br>updates to peers</div>
+      </div>
+
+    </div>
+
+    <div class="side-inflow">
+      <div class="inflow-card">
+        <div class="inflow-arrow">⬆</div>
+        <div class="inflow-title">Redistribution joins between the buckets</div>
+        <div class="inflow-desc">Connected, static, OSPF, RIP, IS-IS routes from the routing table are added to the BGP info <strong>after</strong> the Local RIB and <strong>before</strong> Gate 2 — so they face the out-filter, but never Gate 1. The gold drops above are redistributed routes.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="analogy-box">
+    <div class="analogy-label">🪣 The Anchor Analogy — Rainwater Tanks</div>
+    <div class="analogy-text">
+      <strong>RIB-in</strong> is the collection tank on the roof — every drop that falls lands here, clean or dirty. <strong>Gate 1</strong> is the filter and the tasting: some water is rejected outright (in-filter), and where two sources compete, only the best-tasting drop passes (best-path selection). <strong>Local RIB</strong> is the drinking tank — this is the water the house actually uses. A side pipe (<strong>redistribution</strong>) pours the house's own well water in at this point. <strong>Gate 2</strong> is the tap on the outflow — you decide, per neighbour, which water they get. <strong>RIB-out</strong> is the jug you hand over the fence.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 2. THE THREE BUCKETS ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Definitions — Study Guide p. 340</div>
+  <h2>What Lives in <em>Each Bucket</em></h2>
+  <table class="data-table">
+    <tr><th>Bucket</th><th>Contains</th><th>Key Property</th></tr>
+    <tr>
+      <td>RIB-in</td>
+      <td>All routing information received from peers in inbound UPDATE messages — <em>unprocessed</em>, before any filtering.</td>
+      <td>Nothing is ever thrown away just for losing. A losing path sits in RIB-in indefinitely, waiting for the winner to die. This is why BGP convergence after a failure can be fast — the backup is already sitting in the bucket.</td>
+    </tr>
+    <tr>
+      <td>Local RIB</td>
+      <td>Routes the BGP speaker selects <em>after</em> applying local policy to RIB-in — one best path per prefix (plus ECMP paths if enabled).</td>
+      <td>This is BGP's opinion, not yet the forwarding decision. The Local RIB is <em>offered</em> to the routing table, where it still competes on administrative distance with static, OSPF, and friends.</td>
+    </tr>
+    <tr>
+      <td>RIB-out</td>
+      <td>Routes the local speaker selects to advertise to peers, after the outbound filter — plus redistributed routes.</td>
+      <td>Built <em>per neighbor</em>. Melbourne and Javier can be told entirely different things about the same network. Advertisement is a choice, not a reflex.</td>
+    </tr>
+  </table>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Mental Note — From Session 60</div>
+      <div class="mental-note-block-text">RIB-in = the candidates. Local RIB = the winner. The tie-breaker list is the doorman at Gate 1 — and policy runs first, so the doorman reads the <em>result</em> of your inbound route-map, not the original attributes.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 3. THE TWO GATES ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Order of Operations</div>
+  <h2>What Happens <em>at the Gates</em></h2>
+
+  <p><strong>Gate 1 (RIB-in → Local RIB)</strong> is actually two checkpoints in strict order:</p>
+  <ol>
+    <li><strong>Inbound policy runs first</strong> — <code style="font-family:monospace;font-size:14px;">route-map-in</code>, <code style="font-family:monospace;font-size:14px;">prefix-list-in</code>, or <code style="font-family:monospace;font-size:14px;">distribute-list-in</code>. Routes can be dropped here, or have their attributes rewritten (weight, LOCAL_PREF...).</li>
+    <li><strong>Then best-path selection</strong> — the ten-line tie-breaker list compares surviving candidates for the same prefix. First line where they differ ends the argument. One winner per prefix enters the Local RIB.</li>
+  </ol>
+
+  <div class="callout">
+    <strong>Why the order matters:</strong> if the doorman ran first, your inbound route-map would be editing the loser's paperwork <em>after</em> the verdict. Because policy runs first, setting LOCAL_PREF inbound genuinely changes who wins. This single fact is <em>why attribute manipulation works at all</em> — and it is a favourite exam distractor.
+  </div>
+
+  <p><strong>Gate 2 (Local RIB → RIB-out)</strong> is the outbound filter — <code style="font-family:monospace;font-size:14px;">route-map-out</code>, <code style="font-family:monospace;font-size:14px;">prefix-list-out</code>, or <code style="font-family:monospace;font-size:14px;">distribute-list-out</code>, applied per neighbor. This is where you suppress prefixes (the accidental-transit fix), prepend AS_PATH, or set MED to influence how <em>others</em> choose. Redistributed routes merge in just before this gate, so they are subject to the out-filter too.</p>
+
+  <div class="callout callout-amber">
+    <strong>One-way gates.</strong> A route that fails Gate 1 never reaches the Local RIB, so it can never be advertised — no matter what Gate 2 says. A route that passes Gate 1 but loses best-path stays in RIB-in: <em>valid but not best</em>, marked <code style="font-family:monospace;">*</code> without <code style="font-family:monospace;">&gt;</code> — never installed, never advertised, never logged. That missing character was the entire Session 59 diagnosis.</div>
+</div>
+
+<!-- ═══════════ 4. CLI PER BUCKET ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Verification</div>
+  <h2>One Command <em>per Bucket</em></h2>
+
+  <div class="code-block">
+    <div class="code-label">FortiGate CLI — Inspecting the Pipeline Left to Right</div>
+    <pre><code><span class="c"># BUCKET 1 — RIB-in: what did this peer send me, before my policy?</span>
+get router info bgp neighbors 10.200.99.252 received-routes
+
+<span class="c"># BUCKET 2 — Local RIB: the BGP database. Status codes tell the story:</span>
+<span class="c">#   *  valid    >  best (only these are offered to the routing table)</span>
+<span class="c">#   i  learned via IBGP</span>
+get router info bgp network
+
+<span class="c"># BUCKET 3 — RIB-out: what am I actually telling this peer?</span>
+get router info bgp neighbors 10.200.99.252 advertised-routes
+
+<span class="c"># BEYOND THE BUCKETS — did BGP's winner survive the routing table?</span>
+<span class="c"># (Local RIB best paths still compete on administrative distance)</span>
+get router info routing-table bgp</code></pre>
+  </div>
+
+  <p style="font-size:15px;font-style:italic;color:var(--text-muted);"><strong>One footnote you must know:</strong> <code style="font-family:monospace;font-size:13px;">received-routes</code> only returns output when <code style="font-family:monospace;font-size:13px;">set soft-reconfiguration enable</code> is configured on that neighbor — otherwise FortiGate does not keep the pre-policy copy, and the command comes back empty. Empty output ≠ empty bucket.</p>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🔍</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Troubleshooting Reflex</div>
+      <div class="mental-note-block-text">"Peer sent it but I'm not using it" → compare <em>received-routes</em> against <em>bgp network</em>: the fault is at Gate 1. "I'm using it but my neighbor doesn't have it" → compare <em>bgp network</em> against <em>advertised-routes</em>: the fault is at Gate 2. Two commands bracket the gate; the difference between their outputs <em>is</em> the fault.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 5. ATTRIBUTES AT THE GATES ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Attributes</div>
+  <h2>Where Attributes Are <em>Set and Read</em></h2>
+
+  <p>Attributes are not free-floating facts — each one is <strong>written</strong> at a specific gate and <strong>read</strong> at a specific gate. Map them onto the pipeline and half the confusion disappears:</p>
+
+  <table class="data-table">
+    <tr><th>Attribute</th><th>Typically SET at</th><th>READ at</th><th>Scope — how far it travels</th></tr>
+    <tr>
+      <td>Weight</td>
+      <td>Gate 1 (inbound route-map / per-neighbor)</td>
+      <td>Gate 1 doorman — line 1</td>
+      <td>This FortiGate only. Never enters any UPDATE. Never reaches RIB-out. A <em>private opinion</em>.</td>
+    </tr>
+    <tr>
+      <td>LOCAL_PREF</td>
+      <td>Gate 1 (inbound route-map, usually on the border router)</td>
+      <td>Gate 1 doorman — line 2</td>
+      <td>Whole local AS: carried through IBGP, <strong>stripped at Gate 2 toward EBGP peers</strong>. A <em>company policy</em> that never leaves the building.</td>
+    </tr>
+    <tr>
+      <td>AS_PATH</td>
+      <td>Gate 2 — prepended automatically toward EBGP peers; extra prepends via outbound route-map</td>
+      <td>Gate 1 — loop check (my AS in the list?) and doorman line 4</td>
+      <td>Global — the one attribute the whole internet reads. Not prepended within an AS (why IBGP needs split horizon).</td>
+    </tr>
+    <tr>
+      <td>MED</td>
+      <td>Gate 2 (outbound route-map) — a suggestion to the <em>neighbor</em> AS</td>
+      <td>The neighbor's Gate 1 doorman — line 6</td>
+      <td>One AS hop only: crosses to the adjacent AS, is not passed further. You set it going out; they read it coming in.</td>
+    </tr>
+    <tr>
+      <td>NEXT_HOP</td>
+      <td>Rewritten at Gate 2 toward EBGP; <strong>preserved unchanged</strong> toward IBGP (unless next-hop-self)</td>
+      <td>Gate 1 — must be resolvable or the path is <em>valid but not best</em></td>
+      <td>Travels with the route. The Session 59 fault lived here.</td>
+    </tr>
+    <tr>
+      <td>ORIGIN / COMMUNITY</td>
+      <td>Set at origination / any route-map (either gate)</td>
+      <td>Doorman line 5 (origin); communities read by whatever policy you write</td>
+      <td>Travel with the route; community is a tag other routers may act on or ignore.</td>
+    </tr>
+  </table>
+
+  <div class="callout callout-green">
+    <strong>The pattern worth memorising:</strong> inbound tools (weight, LOCAL_PREF) shape <em>your own</em> Gate 1 decision. Outbound tools (AS_PATH prepend, MED) are letters you post through Gate 2 to shape <em>someone else's</em> Gate 1 decision. You control your doorman directly; you can only write persuasive mail to theirs.</div>
+
+  <h2 style="font-size:24px;margin-top:32px;">The Four <em>Categories</em> — Two Questions</h2>
+  <p>Study guide p. 343. Don't memorise the table — run the two-question flow from Session 60:</p>
+  <ul>
+    <li><strong>Q1:</strong> Must every BGP router understand this attribute? Yes → <em>well-known</em>. No → <em>optional</em>.</li>
+    <li><strong>Q2 (well-known):</strong> Must it appear on every route? Yes → <em>mandatory</em>. No → <em>discretionary</em>.</li>
+    <li><strong>Q2 (optional):</strong> May a router that doesn't understand it still pass it on? Yes → <em>transitive</em>. No → <em>non-transitive</em>.</li>
+  </ul>
+
+  <table class="data-table">
+    <tr><th>Category</th><th>Attributes (FortiGate-supported)</th><th>Memory Hook</th></tr>
+    <tr><td>Well-known mandatory</td><td>ORIGIN · AS_PATH · NEXT_HOP</td><td>The three a route cannot exist without — where it came from, how it got here, where to send traffic.</td></tr>
+    <tr><td>Well-known discretionary</td><td>LOCAL_PREF · ATOMIC_AGGREGATE</td><td>Everyone understands them, but they're optional on a given route. LOCAL_PREF only appears inside the AS.</td></tr>
+    <tr><td>Optional transitive</td><td>AGGREGATOR · COMMUNITY</td><td>"I don't get it, but I'll pass the parcel." Survives crossing an ignorant AS.</td></tr>
+    <tr><td>Optional non-transitive</td><td>MULTI_EXIT_DISC (MED)</td><td>Dies at the border of understanding — consistent with MED only travelling one AS hop.</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════ 6. WHY IT MATTERS ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Why This Model Earns Its Place</div>
+  <h2>What the Buckets <em>Buy You</em></h2>
+  <ul>
+    <li><strong>Troubleshooting location.</strong> Every BGP fault is a route stuck in the wrong bucket or blocked at the wrong gate. Name the bucket, and you've named the two commands and the one config section to inspect. No bucket model → shotgun debugging.</li>
+    <li><strong>Exam scenario reading.</strong> NSE7 questions love "the route appears in <code style="font-family:monospace;font-size:14px;">get router info bgp network</code> but not in the routing table" or "the neighbor is not receiving prefix X." Each phrasing pins the fault to one gate. Distractors offer fixes at the <em>other</em> gate.</li>
+    <li><strong>Filter placement.</strong> The p. 141/340 flowchart is the exam's picture of where <code style="font-family:monospace;font-size:14px;">route-map-in</code>, <code style="font-family:monospace;font-size:14px;">route-map-out</code>, and redistribution filters actually sit. Knowing that redistribution enters <em>after</em> the Local RIB explains why <code style="font-family:monospace;font-size:14px;">route-map-in</code> can never filter your own redistributed routes.</li>
+    <li><strong>Attribute reasoning.</strong> "Why didn't my MED work on the far AS's far side?" and "why did weight need configuring on every firewall?" both answer themselves once you know which gate each attribute is set at and how far it travels.</li>
+    <li><strong>Status-code fluency.</strong> <code style="font-family:monospace;font-size:14px;">*</code> valid, <code style="font-family:monospace;font-size:14px;">&gt;</code> best, <code style="font-family:monospace;font-size:14px;">i</code> internal. A <code style="font-family:monospace;font-size:14px;">*i</code> with no <code style="font-family:monospace;font-size:14px;">&gt;</code> on a single-path prefix is not losing a competition — it is <em>ineligible</em>. Whole diagnoses live in one missing character.</li>
+  </ul>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🎯</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">The One-Sentence Version</div>
+      <div class="mental-note-block-text">RIB-in is everything you were told, the Local RIB is everything you believe, RIB-out is everything you're willing to say — and the two gates between them are where every route-map you will ever write does its work.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</main>
+
+<footer>
+  <p>LoFinance NSE7 Enterprise Firewall 7.6 · Sessions 59–60 companion bite · Source: EF Dynamic Routing Supplement pp. 340–343 &amp; Dynamic Routing Protocols pp. 140–142<br>"Only the winner enters the Local RIB. The loser waits in RIB-in for the winner to die." — Señor</p>
+</footer>
+
+</body>
+</html>
