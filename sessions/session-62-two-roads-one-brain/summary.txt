@@ -1,0 +1,304 @@
+SESSION 62 SUMMARY — "Two Roads, One Brain"
+Season 5 "The Expansion" · SNA Domain 1 · SD-WAN Setup
+Source: FortiOS 7.6 Administrator — SD-WAN lesson (NOT in project knowledge; taught from
+Claude's own FortiOS 7.6 knowledge, strictly on-blueprint: members, zones, performance SLAs,
+DIA topologies and best practices).
+Written for Claude, to continue the story in Session 63 ("Rules of the Road").
+Completed: Thursday 23 July 2026.
+
+==================================================================
+CONTINUITY NOTE FOR FUTURE SESSIONS — READ THIS FIRST
+==================================================================
+The master plan's Session 62 hook described J.R. as "a familiar face walks in" — a NEW HIRE.
+This was overtaken by events: J.R. has been an established cast member since ~S58 and was fully
+present in S60. He was therefore played as ESTABLISHED, not introduced. Do not re-introduce him.
+
+Session 61 (COWBOY HAT — BGP boss battle) has NO summary file in project knowledge. Its outcome
+is unknown to this session. The only carried detail: Señor's sombrero came OFF at the end of S61
+(per the S60 teaser) and is BACK ON in S62 — noted in-story as something everyone noticed and
+nobody mentioned. If S61 details surface later, reconcile.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Tuesday 14:20, the BAD conference room (the one with the chair that sighs).
+
+BAZ APPEARS IN PERSON — first time. Baz only appears in person when he wants something signed.
+He brings a satchel, a LAMINATED COVERAGE MAP, and "the confidence of a man who has never once
+looked at a graph." His line, repeated: "Links are up, mate. Both of 'em. Green across my
+dashboard. I checked this morning."
+
+PENNY'S HANDWRITTEN LIST — not a printout this time, which is worse. Five entries, all
+"trades lagging," clustered around 09:40 and 11:05 across two days plus today at 14:15.
+Penny: "Written by hand, by me, because our monitoring says nothing is wrong. Our monitoring
+AGREES with Baz. Both of you are green."
+
+RILEY: eleven tickets this month, all "It was slow. It's fine now." Cannot close them, cannot
+escalate them. "By the time I look, it's better." This is the episode's emotional engine —
+the unclosable ticket.
+
+SEÑOR at the whiteboard, SOMBRERO BACK ON. Draws two horizontal lines from SYD-EDGE. Nothing
+else. Taps them: "Two roads. One goes to the internet. The other also goes to the internet.
+Baz says both roads are open." / "Yes. And this is the problem."
+KEEPER: "Baz is not lying. His link is UP. The link being up is the only thing he has ever
+promised us, and he has delivered it perfectly."
+JUNIOR (quiet, good): "So what did we think he promised?" Señor points marker at him:
+"THAT is the episode." — Junior's upward arc CONTINUES, fourth consecutive session.
+
+J.R. writes "green ≠ good" in his notebook, then writes it AGAIN underneath (arithmetic-twice
+signature intact, now generalised to notes-twice). Junior catches this and SAYS NOTHING.
+"There is a détente." The twins are no longer in conflict. Keep this.
+
+CIPHER speaks ONCE, late, and it lands: "I'll accept DIA. I want the same profile set on every
+one of them, and I want to be told when one differs." Penny writes it down. This is Cipher's
+pattern — silent all episode, one sentence that becomes a requirement.
+
+BAZ'S EXIT: after Señor's "Failing is one bad afternoon. Recovering is a promise" — delivered
+looking directly at him — Baz packs his laminated map without saying anything. No line. Better
+than a line.
+
+==================================================================
+CHARACTERS
+==================================================================
+- Intermediate Engineer (student) — carried the session; 8/10 on exam. See performance notes.
+- Señor — sombrero RESTORED. Keeper lines this episode:
+    "Up is a fact. Good is a measurement."
+    "The threshold is a business decision wearing a technical costume."
+    "Cipher does not want to know how many links Baz has sold us. Cipher wants to know that
+     traffic leaving through ANY of them was inspected."
+    "You do not buy a bigger firewall in Sydney because Brisbane discovered YouTube."
+    "Failing is one bad afternoon. Recovering is a promise."
+    "The clipboard says: these are your options, in this order, and here is how to tell if the
+     first one is lying to you."
+- Penny — handwritten list (escalation of the S60 printed ticket). Board sentence obtained:
+  "We now measure the roads, not just count them."
+- Riley — eleven unclosable tickets. NEW BEAT CONTINUES from S60 (he retains lessons). This
+  episode he supplied the winning framing: "Like a bloke at a fork in the road with a
+  clipboard?" — Señor: "Riley. Sí. Exactly like that. Now — what is written on the clipboard?"
+  RILEY'S PLAIN-ENGLISH FRAMING DID THE HEAVY LIFTING FOR THE FIFTH CONSECUTIVE SESSION.
+- J.R. — ex-accountant. Notebook entries: "green ≠ good" (×2), "members?" (×2).
+  Asked the pivotal naive question: "If a link fails an SLA, do we lose it? Does it go down?"
+- Junior — asked "So what did we think he promised?" (excellent) and pre-empted the answer to
+  the SLA question: "It can't go down, it's still up. That's the whole thing." UPWARD ARC
+  INTACT — FOURTH SESSION. DO NOT RESET HIM. He gets his authority moment in the S63 teaser.
+- Cipher — one line, becomes policy. Baz — first in-person appearance; laminated map.
+- Javier Lin — did not appear this episode (deliberate; he returns for overlay/multiregion).
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+SYD-EDGE has two internet links (port1 = Carrier-A, port2 = Baz/Carrier-B), both default routes,
+ECMP splitting traffic. Baz's link BROWNS OUT ~40 min/day: interface up, route valid, but ~400ms
+latency and ~5% loss. Because the routing table has no field for quality, the FortiGate keeps
+using it. Trading traffic lands on it half the time and lags. By the time anyone looks, it has
+recovered — so there is never evidence, and Riley's tickets can never be closed.
+The problem is NOT a fault. Nothing is broken. The problem is that NOTHING WAS MEASURING.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED
+==================================================================
+1. THE ROUTING TABLE KNOWS REACHABILITY, NOT QUALITY. Central mental model of the episode.
+   A route entry = next-hop + interface + distance + priority. There is NO FIELD for latency.
+   The routing table is not ignoring quality; it has no vocabulary for it. Student derived this
+   unprompted and correctly, by reasoning about the CONTENTS OF THE DATA STRUCTURE.
+2. PERFORMANCE SLA / HEALTH CHECK — the thing that goes and measures. `config system sdwan` →
+   `config health-check`. Actively probes a target via each member.
+3. THE THREE METRICS: LATENCY, JITTER, PACKET LOSS. Derived by the student from Riley's two
+   tickets rather than delivered as a list (see Learning Notes — this worked extremely well).
+   Also mentioned: mos (7.6, composite voice score), bandwidth / remote-bandwidth.
+4. PROBE PROTOCOL IS CONFIGURABLE: ping/ICMP (default), tcp-echo, udp-echo, http, https, dns,
+   twamp, ftp. Student volunteered "probe the protocol the traffic actually uses" UNPROMPTED,
+   ahead of schedule. Reason it matters: carriers queue ICMP differently; ICMP can lie in
+   either direction.
+5. THRESHOLDS + link-cost-factor. `set link-cost-factor latency jitter packet-loss` with
+   latency-threshold / jitterthreshold / packetloss-threshold. **AND LOGIC** — all listed
+   factors must pass; one breach = out-of-SLA. (Exam Q1, student correct.)
+6. failtime / recoverytime / interval. failtime × interval = time to declare out-of-SLA.
+   RECOVERY SLOWER THAN FAILURE. "Quick to distrust, slow to forgive."
+7. OUT-OF-SLA DOES NOT REMOVE THE ROUTE. The route stays. What changes is the member's
+   ELIGIBILITY inside SD-WAN rule selection. Student held this line consistently all session
+   and got it right on the exam.
+8. THREE DISTINCT STATES: UP / ELIGIBLE / PREFERRED. A member can be up and in the routing
+   table and still ineligible, simply because it isn't in this rule's member list.
+9. SD-WAN RULE vs POLICY ROUTE. Student volunteered the PBR comparison (flagged as inherited:
+   "I read somewhere"). Resolved as: PBR is right about the MATCHING half (src, dst, user,
+   app, protocol/port, evaluated before the routing table) and WRONG about the output.
+   KEEPER FORMULATION: "A policy route picks an interface. An SD-WAN rule picks from a GROUP
+   of interfaces, and KEEPS PICKING." Decision made at config time; ANSWER made at packet time.
+10.MEMBERS. `config members` — interface + gateway (+ optional zone, cost, priority). The
+   gateway is what lets FortiGate build the member's static route automatically.
+11.ZONES. Two purposes, both surfaced: (a) grouping for SD-WAN rule selection, (b) THE SEAM
+   BETWEEN NETWORK AND SECURITY TEAMS — policies reference the zone, membership changes
+   underneath without touching a single policy. Add port3 to the zone, every policy covers it.
+   Also: SD-WAN rules can target a zone, not just members (matters for multi-hub, S70+).
+12.DIA vs BACKHAUL. FOR DIA: no backhaul latency; no hub link load; **no hub INSPECTION load**
+   (the stronger form of the student's point). AGAINST DIA: loses the SINGLE POINT OF
+   ENFORCEMENT — one chokepoint becomes eight, eight must agree forever, drift is invisible.
+   THE ONE THE STUDENT MISSED AND SHOULD BE RE-TESTED ON: **THE RETURN PATH / NAT IDENTITY** —
+   each DIA site NATs to its own local public IP, breaking partner allowlists, geo-restrictions
+   and "we only accept your Sydney range" agreements. (He got this on exam Q8 immediately once
+   framed as a scenario — so it's a PROMPTING gap, not a knowledge gap. Retest cold in S63/64.)
+13.BEST PRACTICES delivered as doctrine: one SLA per thing-you-care-about not per link; probe
+   PAST the ISP gateway; probe with the real protocol; recovery slower than failure; members in
+   a zone and policies reference the zone; thresholds come from the business.
+
+==================================================================
+MENTAL MODELS AND ANALOGIES THAT WORKED
+==================================================================
+- "UP IS A FACT. GOOD IS A MEASUREMENT." — the spine of the episode. Use it as a cold retest.
+- THE THERMOMETER. The SLA is a thermometer; it reads 39 and says red. A THERMOMETER DOESN'T
+  TAKE ANYONE TO HOSPITAL. This is what finally separated "SLA" from "SD-WAN rule" in his head
+  when he answered "SLA" to the question of what ACTS on the measurement.
+- RILEY'S CLIPBOARD AT THE FORK. "The clipboard doesn't say 'go left.' It says 'go left, unless
+  left is bad, in which case go right.'" Riley generated the frame; the student's understanding
+  clicked on it. REUSE THIS IN S63 for rule strategies.
+- BAZ AS AN HONEST WITNESS. Baz is not lying, he is answering a different question. Extremely
+  effective — it converted a villain into an epistemology lesson.
+- "THE THRESHOLD IS WHERE THE BUSINESS REQUIREMENT ENTERS THE NETWORK." 150ms is a LoFinance
+  number, not a Fortinet number.
+- THE DIAL (BFD ↔ graceful restart). See retrieval note below — this became the session's
+  best synthesis moment.
+
+==================================================================
+KEY CLI DISCUSSED
+==================================================================
+config system sdwan
+    set status enable
+    config zone
+        edit "underlay"
+    end
+    config members
+        edit 1 / set interface "port1" / set zone "underlay" / set gateway 203.0.113.1
+        edit 2 / set interface "port2" / set zone "underlay" / set gateway 198.51.100.1
+    end
+    config health-check
+        edit "Trading-SLA"
+            set server "10.99.1.10"
+            set protocol http
+            set interval 500
+            set failtime 5
+            set recoverytime 10
+            config sla
+                edit 1
+                    set link-cost-factor latency jitter packet-loss
+                    set latency-threshold 150
+                    set jitterthreshold 30
+                    set packetloss-threshold 2
+            end
+    end
+end
+
+Verification (taught as a FOUR-LAYER ORDER, not a command list):
+  1. get router info routing-table all      → is it UP? (reachability)
+  2. diagnose sys sdwan health-check        → is it IN-SLA? (quality)
+  3. (inspect rule member list)             → is it ELIGIBLE?
+  4. diagnose sys sdwan service             → is it PREFERRED?
+
+==================================================================
+TROUBLESHOOTING APPROACH TAUGHT
+==================================================================
+THE FOUR-LAYER LADDER: UP → IN-SLA → ELIGIBLE → PREFERRED. Four different failures that produce
+the SAME user symptom ("it's slow"). Riley's ticket tells you the symptom and NEVER the layer.
+This is deliberately the SD-WAN analogue of the "three drawers" device from the BGP sessions
+(S59/S60) — the student responds well to a named, ordered set of boxes. It will be extended in
+S63 (add: does the rule MATCH?) and S64 (add: is the SESSION pinned?).
+
+==================================================================
+CONFIGURATION / DESIGN DECISIONS MADE
+==================================================================
+- SD-WAN enabled at SYD-EDGE; both WAN links become members.
+- Single zone "underlay" for both members — chosen explicitly so Cipher's policies never have
+  to change when Baz sells a third link.
+- Baz's link RETAINED, not removed. Design principle: a bad link is still a useful link; it
+  just must not carry trades while it is lying. Penny accepted this as cost-effective.
+- DIA accepted for the branch rollout, conditional on Cipher's requirement (identical profile
+  sets, alerting on drift) — which is the business justification for FortiManager in S65.
+- NO SD-WAN RULES YET. Deliberate cliffhanger — implicit behaviour only. This sets up S63.
+
+==================================================================
+TOPOLOGY CHANGE
+==================================================================
+SYD-EDGE — SD-WAN enabled. Members: port1 (Carrier-A), port2 (Baz/Carrier-B), both in zone
+"underlay". Performance SLA "Trading-SLA" active: HTTP probe, 500ms interval, thresholds
+latency 150ms / jitter 30ms / loss 2%, failtime 5 / recoverytime 10. Both default routes remain
+in the routing table. No SD-WAN rules configured — implicit rule behaviour only.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Penny's handwritten list becomes a graph. Riley's eleven unclosable tickets become one closable
+one. Baz's link stays in the design but can no longer carry trades while degraded. Cipher's
+DIA condition is on the record and becomes the S65 mandate.
+PENNY'S BOARD SENTENCE: "We now measure the roads, not just count them."
+
+==================================================================
+STUDENT PERFORMANCE — DETAIL FOR ADAPTIVE TEACHING
+==================================================================
+EXAM: 8/10. Missed Q2 (member required fields) and Q5 (failtime arithmetic).
+
+STANDOUT MOMENTS:
+- Q1 of the session answered by reasoning about DATA STRUCTURE CONTENTS ("the route entry
+  contains next hop and metric, not latency measurements"). This is the correct senior instinct
+  and he reached it in one move, cold. Best opening answer of the season.
+- DERIVED the three SLA metrics from Riley's two tickets, including the TCP-vs-UDP mechanism
+  underneath ("TCP retransmits so the user feels freeze-and-catch-up; UDP has no recovery so
+  the gap is permanent"). He was not taught this; he built it. Genuinely strong.
+- Volunteered probe-protocol matching AHEAD of the curriculum.
+- FLAGGED HIS OWN SOURCE unprompted: "I read somewhere that it is just policy based routing."
+  Marked inherited knowledge as inherited. This is the honest-uncertainty habit maturing —
+  it is now happening WITHOUT BEING ASKED. Eighth consecutive session of honest "I don't know"
+  (Q5) plus this new variant: honest "I don't know WHERE I know this from."
+- Named BFD and graceful restart when asked for a cross-topic principle. Slightly off-target
+  (they are the two POLES of the dial, not the principle itself) but the retrieval was fast,
+  correct, and from four+ sessions back. Converting it into "detection speed vs stability,
+  chosen by the cost of being wrong in each direction" was the session's best synthesis.
+
+WEAKNESSES OBSERVED:
+- Q2 MISS — chose "zone + interface" over the correct "interface + gateway". THIS IS THE
+  S59/S60 PATTERN RECURRING: under multiple-choice pressure, THE MOST VISIBLE / MOST RECENTLY
+  DISCUSSED OPTION BEATS THE STRUCTURALLY CORRECT ONE. Zone had just been the subject of a
+  whole teaching block. His strongest recent memory became his distractor. THIRD SEASON-
+  CONSECUTIVE INSTANCE. The "score first, count last" method from S60 was NOT visibly applied.
+- Q5 MISS — arithmetic, not concept. He knew failtime = consecutive failures and interval =
+  probe spacing. He did not MULTIPLY THEM. Consistent with the S60 note that he reasons well
+  and computes reluctantly. WHEN A QUESTION HAS TWO NUMBERS IN IT, PROMPT HIM TO MULTIPLY.
+- Answered "SLA" when asked what ACTS on the measurement — conflating the sensor with the
+  actuator. Recovered fully once given the thermometer analogy. Watch for sensor/actuator
+  conflation again in S63 (rules) and S64 (sessions).
+- Did not reach the DIA return-path/NAT-identity issue unprompted, but got it instantly as a
+  scenario question. PROMPTING GAP, NOT KNOWLEDGE GAP.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- link-cost-factor is AND logic. One breach = out-of-SLA. Classic exam item.
+- Out-of-SLA does NOT withdraw the route. Classic distractor.
+- Member requires INTERFACE + GATEWAY. Zone is OPTIONAL. (Student's miss — retest.)
+- failtime × interval = detection time. Expect arithmetic. (Student's miss — retest.)
+- Zone membership changes require NO firewall policy change.
+- SD-WAN rules match src/dst/user/app/protocol/port; static routes match destination only.
+- Probing the ISP next-hop gateway is a classic wrong answer — proves only the ISP router lives.
+
+==================================================================
+JUNIOR'S / J.R.'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+No hard mistake this episode — deliberate, to bank J.R.'s catastrophe for S63. J.R.'s
+"green ≠ good, green ≠ good" is the episode's thesis in a notebook. Junior's near-answer
+("It can't go down, it's still up") was RIGHT and he faltered only on finishing it — which is
+the fourth consecutive session of Junior being closer than he expects. His S63 payoff is
+already written (see teaser).
+
+==================================================================
+TEASER DELIVERED FOR SESSION 63 — "RULES OF THE ROAD"
+==================================================================
+The links are measured. Nothing yet tells the trades to use the good one.
+J.R., armed with exactly one session of SD-WAN knowledge, writes a rule at 16:40 on a Friday:
+source 0.0.0.0/0, destination 0.0.0.0/0, every member listed. Technically a valid rule.
+Monday morning: YouTube is on the trading link and the trades are on Baz.
+Junior reads it over his shoulder, says nothing for a full ten seconds, then — for the first
+time in five seasons with genuine authority — "Mate. Come here. Let me show you what an
+implicit rule does."
+SESSION 63 TOPICS: SD-WAN rules — matching criteria, strategies, rule lookup process, implicit
+rule, local-out traffic, application steering.
+NOTE FOR S63: this teaser PROMISES Junior teaching J.R. Deliver it. It is the payoff of four
+sessions of Junior's arc and it must not be quietly dropped.

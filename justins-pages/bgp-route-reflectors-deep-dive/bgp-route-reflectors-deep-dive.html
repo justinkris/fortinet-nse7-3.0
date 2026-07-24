@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Dive — BGP Route Reflectors</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin:22px 0 10px;}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .code-block code .cm{color:#7f95c4;font-style:italic;}
+  .code-block code .hl{color:#ffd98a;}
+
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:4px;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .mental-note-block-text strong{color:var(--text);}
+
+  /* ── THREE-DRAWER DIAGRAM ── */
+  .drawer-diagram{background:var(--ink-dark);border-radius:16px;padding:34px 28px 26px;margin:20px 0;border:1px solid var(--border);}
+  .drawer-row{display:flex;align-items:stretch;gap:0;justify-content:center;flex-wrap:wrap;}
+  .drawer{flex:1;min-width:200px;max-width:280px;background:rgba(155,184,230,0.07);border:1px solid rgba(155,184,230,0.35);border-radius:12px;padding:18px 16px;text-align:center;position:relative;}
+  .drawer-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-dark);background:var(--ink-accent);padding:3px 12px;border-radius:12px;margin-bottom:10px;}
+  .drawer-name{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:#fbf7ec;margin-bottom:6px;}
+  .drawer-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:rgba(251,247,236,0.65);line-height:1.55;margin-bottom:10px;}
+  .drawer-detail{font-family:'Outfit',sans-serif;font-size:10.5px;color:rgba(251,247,236,0.55);line-height:1.6;text-align:left;padding-top:10px;border-top:1px solid rgba(155,184,230,0.2);}
+  .drawer-gate{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 8px;min-width:120px;}
+  .gate-arrow{font-size:22px;color:var(--ink-accent);line-height:1;}
+  .gate-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#ffd98a;text-align:center;margin-top:4px;line-height:1.5;}
+  .gate-sub{font-family:'Cormorant Garamond',serif;font-size:12px;font-style:italic;color:rgba(251,247,236,0.5);text-align:center;line-height:1.45;margin-top:2px;max-width:130px;}
+  .drawer-caption{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:rgba(251,247,236,0.55);text-align:center;margin-top:20px;line-height:1.6;}
+
+  /* ── NESTED RINGS ── */
+  .rings-wrap{display:flex;gap:18px;margin:20px 0;flex-wrap:wrap;}
+  .ring-card{flex:1;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;border-top:3px solid var(--blue);}
+  .ring-scope{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .ring-attr{font-family:'SF Mono','Fira Code',monospace;font-size:14px;font-weight:700;color:var(--blue);margin-bottom:8px;}
+  .ring-q{font-family:'Playfair Display',serif;font-size:16px;font-style:italic;color:var(--text);margin-bottom:8px;line-height:1.4;}
+  .ring-note{font-family:'Cormorant Garamond',serif;font-size:14.5px;color:var(--text-soft);line-height:1.6;}
+
+  /* ── TRACE STEPS ── */
+  .trace-step{display:flex;gap:18px;margin:22px 0;align-items:flex-start;}
+  .trace-num{flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--ink-dark);color:var(--ink-accent);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:20px;font-weight:700;}
+  .trace-body{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;}
+  .trace-router{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:4px;}
+  .trace-drawer{display:inline-block;font-family:'SF Mono','Fira Code',monospace;font-size:11.5px;font-weight:700;color:#5c3d09;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:6px;padding:2px 10px;margin-bottom:8px;}
+  .trace-rule{display:inline-block;font-family:'SF Mono','Fira Code',monospace;font-size:11.5px;font-weight:700;color:#0f4d2e;background:var(--green-light);border:1px solid var(--green-border);border-radius:6px;padding:2px 10px;margin-bottom:8px;margin-left:6px;}
+  .trace-body p{margin-bottom:8px;}
+  .trace-body p:last-child{margin-bottom:0;}
+
+  /* SOCRATIC BLOCK */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  .senor-quote{font-family:'Playfair Display',serif;font-size:18px;font-style:italic;font-weight:500;color:var(--text);border-left:3px solid var(--amber-border);background:var(--amber-light);border-radius:0 10px 10px 0;padding:16px 22px;margin:18px 0;line-height:1.6;}
+  .senor-quote span{display:block;font-family:'Outfit',sans-serif;font-style:normal;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--amber);margin-top:8px;}
+
+  footer{padding:26px 60px;background:var(--ink-dark);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.1em;color:rgba(251,247,236,0.45);text-align:center;}
+  footer span{color:var(--ink-accent);margin:0 6px;}
+
+  @media (max-width:820px){
+    header,.motivation-banner,.main-content,footer{padding-left:22px;padding-right:22px;}
+    header h1{font-size:34px;}
+    .drawer-row{flex-direction:column;align-items:stretch;}
+    .drawer{max-width:none;}
+    .drawer-gate{padding:10px 0;min-width:0;}
+    .gate-arrow{transform:rotate(90deg);}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-eyebrow"><span class="dot-live"></span> DEEP DIVE · DYNAMIC ROUTING · SESSION 59 COMPANION</div>
+    <h1>BGP <em>Route Reflectors</em></h1>
+    <p>The three drawers, the rules that guard them, and the mirror that lets one router speak for nine.<br>
+    "Believing and telling are different drawers. Almost all of BGP policy is the door between them."</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Adding an office no longer means <em>re-opening every office.</em></div>
+  <div class="motivation-sub">Full mesh charges n(n−1)/2 sessions. The route reflector relaxes IBGP split horizon — and everything on this page exists because when you relax a structural guarantee, you must replace it with a detection mechanism.</div>
+</div>
+
+<nav class="section-nav">
+  <a class="nav-tab" href="#section-drawers">The Three Drawers</a>
+  <a class="nav-tab" href="#section-ibgp">IBGP Rules</a>
+  <a class="nav-tab" href="#section-valid">Valid Routes</a>
+  <a class="nav-tab" href="#section-guards">The Two Guards</a>
+  <a class="nav-tab" href="#section-trace">The Melbourne Trace</a>
+  <a class="nav-tab" href="#section-tworr">Two RRs at HQ</a>
+  <a class="nav-tab" href="#section-ref">Quick Reference</a>
+</nav>
+
+<main><div class="main-content">
+
+<!-- ══════════════ SECTION 1 — THE THREE DRAWERS ══════════════ -->
+<div class="section-block" id="section-drawers">
+  <div class="section-label">Section 01 · The Filing System</div>
+  <h2>RIB-in → Local RIB → <em>RIB-out</em></h2>
+
+  <p>Every BGP question on this page — and most BGP questions on the exam — comes down to <strong>naming the drawer before you diagnose</strong>. A BGP router does not have "a routing table" for BGP. It has three distinct stores per neighbour relationship, and a route must pass through a <em>gate</em> to move between them.</p>
+
+  <div class="drawer-diagram">
+    <div class="drawer-row">
+      <div class="drawer">
+        <div class="drawer-tag">Drawer 1</div>
+        <div class="drawer-name">RIB-in</div>
+        <div class="drawer-sub">"What I was told."<br>Everything received, per neighbour.</div>
+        <div class="drawer-detail">
+          · Raw updates, exactly as the peer sent them<br>
+          · One RIB-in per neighbour<br>
+          · Contains valid AND invalid routes<br>
+          · <b>Loop checks happen at the door</b> — a route that fails ORIGINATOR_ID / CLUSTER_LIST / AS_PATH never even lands here
+        </div>
+      </div>
+      <div class="drawer-gate">
+        <div class="gate-arrow">➜</div>
+        <div class="gate-label">Gate 1</div>
+        <div class="gate-sub">Validity check + inbound policy + best-path selection</div>
+      </div>
+      <div class="drawer">
+        <div class="drawer-tag">Drawer 2</div>
+        <div class="drawer-name">Local RIB</div>
+        <div class="drawer-sub">"What I believe."<br>The winners. One best path per prefix.</div>
+        <div class="drawer-detail">
+          · Only <b>valid</b> routes compete here<br>
+          · Best-path algorithm picks one winner<br>
+          · The winner is offered to the routing table<br>
+          · Seeing a route ≠ using it — a route can sit in RIB-in and never make it here
+        </div>
+      </div>
+      <div class="drawer-gate">
+        <div class="gate-arrow">➜</div>
+        <div class="gate-label">Gate 2</div>
+        <div class="gate-sub">Advertisement rules: split horizon, reflection, outbound policy</div>
+      </div>
+      <div class="drawer">
+        <div class="drawer-tag">Drawer 3</div>
+        <div class="drawer-name">RIB-out</div>
+        <div class="drawer-sub">"What I'm willing to say."<br>Per neighbour, after policy.</div>
+        <div class="drawer-detail">
+          · One RIB-out per neighbour<br>
+          · Only best paths are candidates<br>
+          · Split horizon, RR reflection rules, and prefix-lists all live at <b>this</b> gate<br>
+          · Attributes get stamped here (ORIGINATOR_ID, CLUSTER_LIST, next-hop-self)
+        </div>
+      </div>
+    </div>
+    <div class="drawer-caption">Received → Believed → Willing to say. A route must win Gate 1 before it is even a candidate at Gate 2.<br>Almost every "the route is missing" ticket is really the question: <b>which drawer is it stuck in, and which gate refused it?</b></div>
+  </div>
+
+  <div class="callout">
+    <strong>Verification maps directly onto the drawers:</strong><br>
+    <code>get router info bgp neighbor &lt;ip&gt; routes</code> → that neighbour's <strong>RIB-in</strong> (post-policy)<br>
+    <code>get router info bgp network</code> → the <strong>Local RIB</strong> view (look for the <code>&gt;</code> best marker and <code>*</code> valid marker)<br>
+    <code>get router info bgp neighbor &lt;ip&gt; advertised-routes</code> → that neighbour's <strong>RIB-out</strong><br>
+    <code>get router info routing-table bgp</code> → what actually made it into the forwarding decision
+  </div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Mental Note</div>
+      <div class="mental-note-block-text"><strong>Name the drawer before you diagnose.</strong> Say it aloud: "the route is in the Local RIB, so this is a RIB-out question." Selection problems live at Gate 1. Advertisement problems live at Gate 2. Reflection is a Gate 2 mechanism — it never fixes a Gate 1 problem like an unresolvable next hop.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION 2 — IBGP RULES ══════════════ -->
+<div class="section-block" id="section-ibgp">
+  <div class="section-label">Section 02 · The Law Inside the AS</div>
+  <h2>IBGP Rules — and the <em>Relaxation</em></h2>
+
+  <h3>Rule 1 — IBGP split horizon</h3>
+  <p>Exact wording matters, because the exam's favourite distractor swaps it: <strong>a route learned from an IBGP peer is never re-advertised to <em>any other</em> IBGP peer.</strong> Not "not back to the sender" — to <em>anyone</em> inside the AS. IBGP carries no AS_PATH change within the AS, so there is no loop detector inside the borders. Split horizon is the substitute: if nobody relays, nothing can loop.</p>
+
+  <h3>Rule 2 — Therefore, full mesh</h3>
+  <p>If nobody relays, everybody must hear everything first-hand. Every IBGP speaker peers with every other IBGP speaker: <strong>n(n−1)/2 sessions</strong>. Nine LoFinance sites is 36 sessions, and adding Adelaide meant touching all nine firewalls — an eleven-hour change window for one new branch.</p>
+
+  <div class="callout callout-amber"><strong>Every safety rule has a price, and the price is usually scale.</strong> Split horizon buys structural loop-freedom and charges n(n−1)/2. Engineering is choosing which bill to pay.</div>
+
+  <h3>Rule 3 — The route reflector relaxation</h3>
+  <p>A route reflector (RR) is a router that is <em>permitted to break split horizon</em> for a defined set of peers — its <strong>clients</strong>. The client set is defined <strong>on the RR</strong>, under each client's neighbour block. The client itself carries an ordinary IBGP config; nothing on the client says "client." Everything inside <code>config neighbor / edit &lt;ip&gt;</code> describes <em>the peer at that address</em> — same shape as <code>set remote-as</code> and <code>set next-hop-self</code>.</p>
+
+  <div class="code-block">
+    <div class="code-label">HQ-FGT — promoting to Route Reflector (configured on the RR, per client)</div>
+    <pre><code>config router bgp
+    set as 65001
+    set cluster-id 0.0.0.1        <span class="cm">// optional; defaults to the router-ID</span>
+    config neighbor
+        edit "10.0.1.2"           <span class="cm">// MEL-FGT</span>
+            set remote-as 65001
+            set next-hop-self enable
+            <span class="hl">set route-reflector-client enable</span>
+        next
+        edit "10.0.4.2"           <span class="cm">// PER-FGT — ordinary IBGP + one extra line</span>
+            set remote-as 65001
+            set next-hop-self enable
+            <span class="hl">set route-reflector-client enable</span>
+        next
+    end
+end</code></pre>
+  </div>
+
+  <h3>Rule 4 — The three relay cases</h3>
+  <p>When a best path sits in the RR's Local RIB and reaches Gate 2, the RR classifies <em>where it came from</em> and applies one of three behaviours:</p>
+
+  <table class="data-table">
+    <tr><th>Route learned from…</th><th>RR advertises to…</th><th>Why</th></tr>
+    <tr><td>A client</td><td><strong>Everyone</strong> — other clients, non-client IBGP peers, EBGP peers</td><td>The client cannot tell anyone itself. If the RR doesn't relay, nobody hears it.</td></tr>
+    <tr><td>A non-client IBGP peer</td><td><strong>Clients only</strong></td><td>Non-clients are ordinary IBGP peers of each other — original split horizon still binds sideways.</td></tr>
+    <tr><td>An EBGP peer</td><td>Everyone</td><td>Split horizon never applied to EBGP-learned routes in the first place.</td></tr>
+  </table>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">The Compressed Rule</div>
+      <div class="mental-note-block-text"><strong>Downward (to clients): always. Sideways (non-client to non-client): never.</strong> And its shadow: <strong>clients are mute.</strong> A client that learns a route via IBGP is still bound by ordinary split horizon — it advertises it to no IBGP peer, not even back to the RR as a relay.</div>
+    </div>
+  </div>
+
+  <div class="senor-quote">"The reflector speaks freely to its own. To strangers, it only repeats what its own told it."<span>— Señor, taping the diagram back into the drawer</span></div>
+</div>
+
+<!-- ══════════════ SECTION 3 — WHAT MAKES A ROUTE VALID ══════════════ -->
+<div class="section-block" id="section-valid">
+  <div class="section-label">Section 03 · Gate 1</div>
+  <h2>What Makes a Route <em>Valid</em></h2>
+
+  <p>Validity is the entry ticket to the best-path contest. An invalid route can sit in RIB-in forever — visible in <code>get router info bgp neighbor routes</code>, missing the <code>*</code> marker, and never competing. <strong>Valid ≠ best ≠ installed.</strong> Three separate hurdles.</p>
+
+  <p>A route is <strong>valid</strong> when all of the following hold:</p>
+  <ul>
+    <li><strong>The NEXT_HOP is resolvable.</strong> The router must already have a route (IGP, static, or connected) to the next-hop address. This is the classic IBGP failure: EBGP routes arrive with an external next hop nobody inside the AS can reach. Reflection does not fix this — <em>next-hop-self on the RR is almost always still required.</em></li>
+    <li><strong>It passes the loop checks.</strong> Three nested rings, one question at every scale — "did this come from me?" (next section). A failure here is a <em>silent drop</em>.</li>
+    <li><strong>It survives inbound policy.</strong> Prefix-lists, route-maps, and filters at Gate 1 can discard or mark it before it ever competes.</li>
+  </ul>
+
+  <div class="callout callout-amber"><strong>The trap pairing:</strong> "valid but not best" (lost the contest — look at attributes) versus "not valid at all" (usually an unresolvable next hop, or a loop-check drop). A route that is present-but-unusable and a route that was silently rejected produce the <em>same business symptom</em> and completely different fixes. Name the drawer first.</div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Mental Note</div>
+      <div class="mental-note-block-text">In <code>get router info bgp network</code>: <strong><code>*</code> = valid</strong>, <strong><code>&gt;</code> = best</strong>. A line with <code>*</code> and no <code>&gt;</code> is a route the router believes but did not choose. A prefix with no <code>*</code> line at all was refused at Gate 1 — and if it never appears, suspect a silent loop-check drop. <em>Absence of errors is not evidence of correctness.</em></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION 4 — ORIGINATOR_ID & CLUSTER_LIST ══════════════ -->
+<div class="section-block" id="section-guards">
+  <div class="section-label">Section 04 · The Replacement Guards</div>
+  <h2>ORIGINATOR_ID &amp; <em>CLUSTER_LIST</em></h2>
+
+  <p>Split horizon was a <em>structural</em> guarantee: loops were impossible because relaying was impossible. The route reflector relaxes that structure — so something must replace it. The replacement is <strong>detection</strong>: two new optional attributes that a route reflector stamps onto every route it reflects, so any router can later recognise its own work coming back around.</p>
+
+  <div class="rings-wrap">
+    <div class="ring-card">
+      <div class="ring-scope">Ring 1 · Between ASes</div>
+      <div class="ring-attr">AS_PATH</div>
+      <div class="ring-q">"Is my AS in it?"</div>
+      <div class="ring-note">The original guard. Prepended at every EBGP hop. Useless inside one AS — which is why IBGP needed split horizon in the first place.</div>
+    </div>
+    <div class="ring-card">
+      <div class="ring-scope">Ring 2 · Between Clusters</div>
+      <div class="ring-attr">CLUSTER_LIST</div>
+      <div class="ring-q">"Is my cluster-ID in it?"</div>
+      <div class="ring-note"><strong>Each reflecting RR prepends its cluster-ID</strong> as it reflects. If an RR receives a route already carrying its own cluster-ID, it drops it. This is the multi-RR / inter-cluster guard. Checked by <em>reflectors</em>.</div>
+    </div>
+    <div class="ring-card">
+      <div class="ring-scope">Ring 3 · Within a Cluster</div>
+      <div class="ring-attr">ORIGINATOR_ID</div>
+      <div class="ring-q">"Is my router-ID it?"</div>
+      <div class="ring-note"><strong>Set once</strong> by the first RR to the router-ID of the router that originally injected the route. If any router sees its <em>own</em> router-ID here, it drops the route — <strong>silently, no log</strong>. Protects the originator from being fed its own route.</div>
+    </div>
+  </div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Mental Note</div>
+      <div class="mental-note-block-text"><strong>Same question at every scale: "did this come from me?"</strong> Scope tells them apart under exam pressure — ORIGINATOR_ID names the <em>originating router</em> (router-scope, set once); CLUSTER_LIST names every <em>reflecting RR</em> (cluster-scope, grows at each reflection).</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Reading the guards on a reflected route (Perth's view)</div>
+    <pre><code>PER-FGT # get router info bgp network 10.99.60.0/24
+BGP routing table entry for 10.99.60.0/24
+Paths: (1 available, best #1, table Default-IP-Routing-Table)
+  Local
+    10.0.0.1 from 10.0.0.1 (172.16.1.1)
+      Origin IGP metric 0, localpref 100, valid, internal, best
+      <span class="hl">Originator: 172.16.3.1</span>          <span class="cm">// MEL-FGT's router-ID — the true source</span>
+      <span class="hl">Cluster list: 0.0.0.1</span>           <span class="cm">// one reflection, by cluster 1 (HQ)</span></code></pre>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION 5 — THE MELBOURNE TRACE ══════════════ -->
+<div class="section-block" id="section-trace">
+  <div class="section-label">Section 05 · The Worked Trace</div>
+  <h2>Melbourne → HQ → <em>Perth</em></h2>
+
+  <p><strong>The setup:</strong> MEL-FGT and PER-FGT are both route-reflector clients of HQ-FGT (cluster-ID 0.0.0.1). Neither client peers with the other — the hub-and-spoke replaced full mesh. Melbourne originates <code>10.99.60.0/24</code> via the <code>network</code> command. Trace it into Perth's routing table: <em>which drawer, on which router, and which rule fires, at each of the three steps.</em></p>
+
+  <div class="socratic-block">
+    <div class="socratic-header"><span class="socratic-icon">🤔</span><span class="socratic-label">Think First — before scrolling to the answer</span></div>
+    <div class="socratic-insight">There are exactly three routers and exactly three gate decisions between Melbourne's <code>network</code> statement and Perth's routing table. A wrong trace almost always makes one of two errors: giving a client a voice it doesn't have, or expecting reflection to solve a next-hop problem.</div>
+    <ul class="socratic-questions">
+      <li>Melbourne learned this route from nobody — it originated it. Does IBGP split horizon restrict what Melbourne may say about it, and why not?</li>
+      <li>When the route reaches HQ's Gate 2, which of the three relay cases applies — and what two attributes does HQ stamp before the route leaves?</li>
+      <li>At Perth's Gate 1, three checks run before the route can enter the Local RIB. What are they, and which config decision on HQ makes the next-hop check pass?</li>
+      <li>Step four doesn't exist: why does the route stop at Perth and go no further?</li>
+    </ul>
+    <div class="answer-area" data-section="trace">
+      <textarea class="answer-textarea" placeholder="Trace it drawer by drawer before revealing…"></textarea>
+      <div class="answer-buttons">
+        <button class="btn-add-answer" onclick="saveSocAnswer(this)">Save My Answer</button>
+        <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 Answer First</button>
+      </div>
+      <div class="model-answers" style="display:none;">
+        <div class="model-answer-item">
+          <div class="model-answer-q">Q1 — Origination and split horizon</div>
+          <div class="model-answer-text">No restriction. Split horizon binds routes <em>learned from an IBGP peer</em>. An originated route was learned from nobody — Melbourne may tell every IBGP peer it has. It only has one: HQ.</div>
+        </div>
+        <div class="model-answer-item">
+          <div class="model-answer-q">Q2 — HQ's relay case</div>
+          <div class="model-answer-text">Learned <strong>from a client</strong> → reflect to <strong>everyone</strong>. HQ stamps ORIGINATOR_ID = Melbourne's router-ID and prepends its cluster-ID (0.0.0.1) to CLUSTER_LIST. next-hop-self rewrites the next hop to HQ.</div>
+        </div>
+        <div class="model-answer-item">
+          <div class="model-answer-q">Q3 — Perth's Gate 1</div>
+          <div class="model-answer-text">Loop checks (ORIGINATOR_ID isn't Perth's router-ID; Perth isn't a reflector so CLUSTER_LIST doesn't apply to it), inbound policy, and next-hop resolution — which passes <em>because HQ set next-hop-self</em>, not because of reflection. Different drawers, both needed.</div>
+        </div>
+        <div class="model-answer-item">
+          <div class="model-answer-q">Q4 — Why it stops</div>
+          <div class="model-answer-text">Perth learned the route via IBGP and Perth is a client, not a reflector. Ordinary split horizon binds it. <strong>Clients are mute.</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>The trace, step by step</h3>
+
+  <div class="trace-step">
+    <div class="trace-num">1</div>
+    <div class="trace-body">
+      <div class="trace-router">MEL-FGT — the originator</div>
+      <span class="trace-drawer">Local RIB → RIB-out (toward HQ)</span><span class="trace-rule">Rule: origination is exempt from split horizon</span>
+      <p>The <code>network 10.99.60.0/24</code> statement injects the prefix into Melbourne's Local RIB (it must already exist in Melbourne's routing table — the network command advertises, it does not create). At Gate 2, split horizon has nothing to say: it only restricts routes <em>learned from</em> an IBGP peer, and this one was learned from nobody. The route is placed into the RIB-out for Melbourne's only IBGP neighbour, HQ, and sent. No ORIGINATOR_ID, no CLUSTER_LIST yet — <strong>clients stamp nothing</strong>.</p>
+    </div>
+  </div>
+
+  <div class="trace-step">
+    <div class="trace-num">2</div>
+    <div class="trace-body">
+      <div class="trace-router">HQ-FGT — the route reflector</div>
+      <span class="trace-drawer">RIB-in (from MEL) → Local RIB → RIB-out (toward PER)</span><span class="trace-rule">Rule: from a client → reflect to everyone</span>
+      <p>The update lands in HQ's per-neighbour RIB-in for Melbourne. <strong>Gate 1:</strong> next hop resolvable (Melbourne's tunnel address, reachable), loop checks pass, no filter blocks it — valid; it's the only path, so best; into the Local RIB and the routing table. <strong>Gate 2:</strong> HQ classifies the source. Melbourne is a <em>client</em>, so the first relay case fires: reflect to everyone — Perth, the other clients, and any EBGP peers (subject to outbound filters).</p>
+      <p>As it reflects, HQ stamps the guards: <strong>ORIGINATOR_ID = 172.16.3.1</strong> (Melbourne's router-ID) and <strong>CLUSTER_LIST = 0.0.0.1</strong> (prepends its own cluster-ID). Because <code>next-hop-self</code> is enabled toward clients, the next hop is rewritten to HQ's own address. The stamped route enters the RIB-out for Perth and is sent. Note what reflection did <em>not</em> do: it never touched the next-hop problem — that was next-hop-self, a separate decision at the same gate.</p>
+    </div>
+  </div>
+
+  <div class="trace-step">
+    <div class="trace-num">3</div>
+    <div class="trace-body">
+      <div class="trace-router">PER-FGT — the receiving client</div>
+      <span class="trace-drawer">RIB-in (from HQ) → Local RIB → routing table</span><span class="trace-rule">Rule: loop checks pass + next hop resolves → valid → best → installed</span>
+      <p>The update arrives at Perth's RIB-in for HQ. <strong>Loop checks at the door:</strong> ORIGINATOR_ID is Melbourne's router-ID, not Perth's — pass. CLUSTER_LIST contains 0.0.0.1, but Perth is not a reflector and has no cluster-ID to match — the check is a reflector's check, so it passes trivially. <strong>Gate 1:</strong> next hop is HQ (thanks to step 2's next-hop-self), which Perth can resolve — valid. Only path — best. Into the Local RIB, offered to the routing table, installed. Riley can now reach 10.99.60.0/24.</p>
+      <p><strong>And there is no step 4.</strong> Perth learned this route from an IBGP peer, and Perth is a client. Original split horizon binds it completely: the route enters no RIB-out toward any IBGP peer. Clients are mute — which is exactly why, back in step 2, the RR had to reflect to <em>everyone</em>.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-green"><strong>The whole trace in one line:</strong> Melbourne <em>speaks once</em> (origination is free), HQ <em>relays with a receipt</em> (client → everyone, stamped with ORIGINATOR_ID + CLUSTER_LIST, next hop rewritten), Perth <em>listens and stops</em> (valid → best → installed, then mute). Three routers, three drawer transitions, three different rules.</div>
+</div>
+
+<!-- ══════════════ SECTION 6 — TWO RRs AT HQ ══════════════ -->
+<div class="section-block" id="section-tworr">
+  <div class="section-label">Section 06 · Redundancy Without Regret</div>
+  <h2>Two Route Reflectors at HQ — <em>why the guards exist</em></h2>
+
+  <p>One RR is a single point of failure for the entire AS's route distribution — Penny would not sign off on that for long. So: <strong>HQ-FGT-1</strong> and <strong>HQ-FGT-2</strong>, both route reflectors. Every client (Melbourne, Perth, Brisbane, Adelaide…) peers with <em>both</em>. The two RRs also peer with each other as ordinary non-client IBGP peers. Now every route has two paths through the hub, and losing one HQ firewall loses nothing.</p>
+
+  <p>But look at what we just built. Melbourne announces <code>10.99.60.0/24</code> to <em>both</em> RRs. RR1 reflects to everyone — including RR2. RR2 reflects to everyone — including its clients, one of whom is <em>Melbourne itself</em>. We deliberately created relay paths that lead straight back to their own sources. Without the guards, this is an update carousel that never stops. With them, every dangerous copy dies exactly one hop before it does damage.</p>
+
+  <h3>The scenario: one prefix, four dangerous copies</h3>
+
+  <div class="trace-step">
+    <div class="trace-num">A</div>
+    <div class="trace-body">
+      <div class="trace-router">RR2 reflects Melbourne's route back down… to Melbourne</div>
+      <span class="trace-rule">Guard: ORIGINATOR_ID — the originator's shield</span>
+      <p>RR2 learned the route (directly from MEL, or reflected via RR1 — either way). Its relay rules say reflect to clients, and Melbourne is a client. The update genuinely goes out. At Melbourne's door, the loop check runs: <strong>ORIGINATOR_ID = 172.16.3.1 = my own router-ID.</strong> Silent drop. No log, no error, no entry in RIB-in. Melbourne is never tricked into believing a second-hand copy of its own announcement.</p>
+    </div>
+  </div>
+
+  <div class="trace-step">
+    <div class="trace-num">B</div>
+    <div class="trace-body">
+      <div class="trace-router">RR1 and RR2 hand the route back and forth</div>
+      <span class="trace-rule">Guard: CLUSTER_LIST — the reflectors' shield</span>
+      <p>RR1 reflects the client-learned route to RR2 (client → everyone includes the non-client peer RR2). If that copy could ever find its way back to RR1 — via RR2's reflection, or through a third reflector in a bigger design — the receiving RR checks CLUSTER_LIST at the door. <strong>My own cluster-ID is already in the list → I have handled this copy before → drop.</strong> Every reflection prepends another cluster-ID, so the list is a receipt trail: the carousel can never complete a lap.</p>
+    </div>
+  </div>
+
+  <h3>The design choice: same cluster-ID or different?</h3>
+
+  <table class="data-table">
+    <tr><th>Design</th><th>Behaviour</th><th>Trade-off</th></tr>
+    <tr>
+      <td>Same cluster-ID on both RRs<br>(one logical cluster)</td>
+      <td>RR2 <strong>rejects</strong> RR1's reflected copy at the door — it sees its own cluster-ID in CLUSTER_LIST immediately. Each RR keeps only the copies it heard directly from clients.</td>
+      <td>Smaller RIB-in, less churn. But redundancy now <em>depends entirely on every client peering with both RRs</em> — a client sessioned to only one RR loses its routes if that RR dies.</td>
+    </tr>
+    <tr>
+      <td>Different cluster-IDs<br>(two clusters)</td>
+      <td>RR2 <strong>accepts</strong> RR1's reflected copy as an extra path — CLUSTER_LIST contains only RR1's ID, not its own. Loops are still impossible: any copy arriving back at a reflector it has already visited is dropped.</td>
+      <td>More paths, more memory, more updates — but the reflectors back each other up even for a client that lost one of its two sessions. The common enterprise default.</td>
+    </tr>
+  </table>
+
+  <div class="callout"><strong>Notice the division of labour.</strong> CLUSTER_LIST is checked by <em>reflectors</em> and stops reflector-to-reflector loops. ORIGINATOR_ID is checked by <em>everyone</em> and protects the one router the CLUSTER_LIST can't: the client that started it all, which has no cluster-ID to match. Two guards, two scopes, zero laps of the carousel — and the price of both is the same price as always: <strong>the drops are silent.</strong> When routes "vanish" in a two-RR design, check for a client whose router-ID collides with another device, or a cluster-ID mismatch between the RRs, before you blame the tunnel.</p></div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">Mental Note</div>
+      <div class="mental-note-block-text">When you relax a structural guarantee, you must <strong>replace it with a detection mechanism</strong>. Full mesh + split horizon made loops <em>impossible</em>. Reflectors made them <em>possible but detectable</em> — and two reflectors is where that trade finally gets tested. The redundancy design works <em>because</em> the guards exist, not despite them.</div>
+    </div>
+  </div>
+
+  <div class="senor-quote">"Two mirrors facing each other should reflect forever. These do not. Ask yourself what each mirror writes on the back of the glass before it passes the image along."<span>— Señor, standing between the two HQ racks</span></div>
+</div>
+
+<!-- ══════════════ SECTION 7 — QUICK REFERENCE ══════════════ -->
+<div class="section-block" id="section-ref">
+  <div class="section-label">Section 07 · Quick Reference &amp; Exam Traps</div>
+  <h2>Keep This <em>In the Top Drawer</em></h2>
+
+  <table class="data-table">
+    <tr><th>Trap</th><th>The truth</th></tr>
+    <tr><td>Where is <code>route-reflector-client</code> configured?</td><td><strong>On the RR</strong>, inside the <em>client's</em> neighbour block. The client's own config is ordinary IBGP. The most commonly inverted RR question.</td></tr>
+    <tr><td>"Reflection fixed our next-hop problem"</td><td>Never. Reflection is a Gate 2 (advertisement) mechanism; next-hop resolution is Gate 1 (validity). <code>next-hop-self</code> on the RR is almost always still required. Different drawers, both needed.</td></tr>
+    <tr><td>Split horizon exact wording</td><td>Not re-advertised to <strong>any other IBGP peer</strong> — not merely "not back to the sender."</td></tr>
+    <tr><td>RR learns a route from a <em>non-client</em> IBGP peer</td><td>Reflects to <strong>clients only</strong>. Sideways (non-client → non-client) is still forbidden. Downward: always. Sideways: never.</td></tr>
+    <tr><td>Client learns a route via the RR</td><td>Clients are <strong>mute</strong> — ordinary split horizon still binds them. They advertise IBGP-learned routes to nobody.</td></tr>
+    <tr><td>ORIGINATOR_ID vs CLUSTER_LIST</td><td>ORIGINATOR_ID = the <em>originating router's</em> router-ID, set once, checked by everyone. CLUSTER_LIST = every <em>reflecting RR's</em> cluster-ID, prepended per reflection, checked by reflectors. Scope is the tell.</td></tr>
+    <tr><td>What does a loop-check drop look like?</td><td><strong>Nothing.</strong> Silent, no log. Absence of errors is not evidence of correctness — if a route never appears in RIB-in, suspect a router-ID or cluster-ID collision.</td></tr>
+    <tr><td>Valid vs best vs installed</td><td><code>*</code> = valid (entered the contest), <code>&gt;</code> = best (won it), routing table = installed (offered and accepted). Three hurdles, three failure modes.</td></tr>
+  </table>
+
+  <div class="code-block">
+    <div class="code-label">Verification — one command per drawer</div>
+    <pre><code><span class="cm"># Drawer 1 — what did this neighbour tell me?</span>
+get router info bgp neighbor 10.0.0.1 routes
+
+<span class="cm"># Drawer 2 — what do I believe? (look for * valid, > best, Originator, Cluster list)</span>
+get router info bgp network 10.99.60.0/24
+
+<span class="cm"># Drawer 3 — what am I telling this neighbour?</span>
+get router info bgp neighbor 10.0.4.2 advertised-routes
+
+<span class="cm"># The final word — what is actually forwarding?</span>
+get router info routing-table bgp</code></pre>
+  </div>
+
+  <div class="callout callout-green"><strong>The business line, for Penny:</strong> full mesh meant adding Adelaide touched nine firewalls in an eleven-hour window. Under the reflector, it is one neighbour block on the RR and one ordinary block on the branch — two devices, twenty minutes. Adding an office no longer means re-opening every office. And two reflectors mean that promise survives an HQ failure.</div>
+</div>
+
+</div></main>
+
+<footer>
+  LoFinance<span>·</span><span>NSE7 Enterprise Firewall 7.6</span><span>·</span>Deep Dive — BGP Route Reflectors · Session 59 Companion
+</footer>
+
+<script>
+const PAGE_KEY = 'nse7-deepdive-route-reflectors';
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  try { localStorage.setItem(PAGE_KEY+'-socans-'+area.dataset.section, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    try {
+      const saved = localStorage.getItem(PAGE_KEY+'-socans-'+area.dataset.section);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,439 @@
+================================================================================
+SESSION 62 — COMBINED REVISION PACK
+"Two Roads, One Brain"
+Season 5 · The Expansion · SNA Domain 1 — SD-WAN Setup
+FortiOS 7.6 · Members, Zones, Performance SLAs, DIA
+================================================================================
+
+
+################################################################################
+PART 1 — QUICK SUMMARY (one page)
+################################################################################
+
+THE PROBLEM
+Baz's link at SYD-EDGE browns out for ~40 minutes a day. The interface stays up,
+the gateway stays reachable, the static route stays valid — and the FortiGate
+keeps sending trading traffic down it. Nobody notices until trades lag, and by
+the time anyone looks, it has recovered. Riley has eleven tickets that all say
+"it was slow, it's fine now" and cannot close any of them.
+
+WHY IT HAPPENS
+The routing table knows REACHABILITY. It does not know QUALITY. A route entry
+contains a destination, next-hop, interface, distance and priority. There is no
+field for latency, jitter or loss. Baz is not lying — he promised the link would
+be up, and it is. The firewall was answering the same question Baz was.
+
+THE FIX
+A PERFORMANCE SLA (health check) actively probes a target through each member and
+records latency, jitter and packet loss. Thresholds convert those numbers into a
+verdict: in-SLA or out-of-SLA. That verdict changes a member's CANDIDACY inside
+SD-WAN — it does NOT remove the route.
+
+THE MODEL
+Three states, not two:
+  UP        — a route exists. Routing-table fact.
+  ELIGIBLE  — this member is in the matched rule's member list. Config fact.
+  PREFERRED — of the eligible members, the one currently selected. Runtime fact.
+A brownout moves a member from PREFERRED to merely ELIGIBLE. It never touches UP.
+
+THE STRUCTURE
+MEMBER = interface + gateway (required). Zone, cost, priority = optional.
+ZONE   = a named group of members. Two jobs: a selection target for rules, and
+         the seam between the network team and the security team. Policies
+         reference the zone; membership changes underneath without policy edits.
+
+THE DESIGN CALL
+DIA (Direct Internet Access) gains: no backhaul latency, no branch internet on
+the WAN link, no branch internet consuming the HUB FIREWALL'S INSPECTION CAPACITY.
+DIA loses: the single point of enforcement (one chokepoint becomes eight that
+must agree forever) — and it MULTIPLIES YOUR NAT IDENTITY, breaking every partner
+allowlist and geo-restriction written against a single public IP.
+
+OUTCOME
+SD-WAN enabled at SYD-EDGE. Both links are members of zone "underlay". Trading-SLA
+probes both. Baz's link stays in the design — it just can't carry trades while it
+is lying. Penny's board sentence: "We now measure the roads, not just count them."
+
+
+################################################################################
+PART 2 — CHEAT SHEET
+################################################################################
+
+--- CLI: ENABLE + ZONE + MEMBERS ----------------------------------------------
+config system sdwan
+    set status enable
+    config zone
+        edit "underlay"
+        next
+    end
+    config members
+        edit 1
+            set interface "port1"
+            set zone "underlay"
+            set gateway 203.0.113.1
+            set cost 0                 (optional)
+            set priority 1             (optional)
+        next
+        edit 2
+            set interface "port2"
+            set zone "underlay"
+            set gateway 198.51.100.1
+        next
+    end
+end
+
+--- CLI: PERFORMANCE SLA / HEALTH CHECK ---------------------------------------
+config system sdwan
+    config health-check
+        edit "Trading-SLA"
+            set server "10.99.1.10"
+            set members 1 2
+            set protocol http
+            set interval 500
+            set failtime 5
+            set recoverytime 10
+            set probe-timeout 500
+            config sla
+                edit 1
+                    set link-cost-factor latency jitter packet-loss
+                    set latency-threshold 150
+                    set jitterthreshold 30
+                    set packetloss-threshold 2
+                next
+            end
+        next
+    end
+end
+
+--- VERIFICATION: THE FOUR-LAYER LADDER ---------------------------------------
+1. UP?         get router info routing-table all
+2. IN-SLA?     diagnose sys sdwan health-check
+3. ELIGIBLE?   (read the matched rule's member list — no command)
+4. PREFERRED?  diagnose sys sdwan service
+
+Supporting:
+   diagnose sys sdwan member
+   diagnose sys sdwan health-check status
+   diagnose sniffer packet <intf> '<filter>' 4
+   diagnose sys virtual-wan-link          ← pre-7.x alias, still in older docs
+
+--- GUI PATHS ------------------------------------------------------------------
+Network > SD-WAN > SD-WAN Zones          (zones and members)
+Network > SD-WAN > Performance SLAs      (health checks and thresholds)
+Network > SD-WAN > SD-WAN Rules          (Session 63)
+Dashboard > Network > SD-WAN             (live member status)
+Policy & Objects > Firewall Policy       (dstintf = the ZONE, not the members)
+
+--- PROBE PROTOCOLS ------------------------------------------------------------
+ping (ICMP) ← DEFAULT · tcp-echo · udp-echo · http · https · dns · twamp · ftp
+Rule of thumb: probe with the protocol the real traffic uses. Carriers queue ICMP
+differently, so ICMP can lie in either direction.
+
+--- METRICS --------------------------------------------------------------------
+latency-threshold      ms       default 5
+jitterthreshold        ms       default 5
+packetloss-threshold   %        default 0
+mos-threshold          score    (7.6, composite voice quality)
+bandwidth / remote-bandwidth    (bandwidth-based measurement)
+
+--- KEY DEFAULTS AND TIMERS ----------------------------------------------------
+interval        500 ms   (probe spacing)
+failtime        5        (consecutive failures → out-of-SLA)
+recoverytime    5        (consecutive successes → back in-SLA) — RAISE THIS
+probe-timeout   500 ms
+
+DETECTION TIME = failtime × interval
+   5 × 500ms  = 2.5 seconds
+   10 × 500ms = 5 seconds
+   20 × 500ms = 10 seconds
+   10 × 1000ms = 10 seconds
+
+--- CRITICAL BEHAVIOURS --------------------------------------------------------
+* link-cost-factor is AND logic. ALL listed factors must pass. One breach fails.
+* Out-of-SLA does NOT remove the route from the routing table.
+* A member with no gateway generates no route.
+* Adding a member to a zone requires NO firewall policy change.
+* SD-WAN rules match src, dst, user/group, application, protocol, port.
+  A static route matches destination only.
+* SD-WAN rules can target a ZONE, not just individual members.
+
+--- DESIGN RULES ---------------------------------------------------------------
+1. One SLA per THING YOU CARE ABOUT, not one per link. Same target, same
+   thresholds, or the comparison between members is not fair.
+2. Probe PAST the carrier's gateway. Probing the gateway proves the gateway lives.
+3. Probe with the protocol the traffic uses.
+4. recoverytime > failtime. Quick to distrust, slow to forgive.
+5. Members in a zone; policies reference the zone.
+6. Thresholds come from the business, never from the defaults.
+
+
+################################################################################
+PART 3 — FLASHCARDS
+################################################################################
+
+Q: What does a routing table know, and what can it never know?
+A: Reachability. Never quality — there is no field for latency, jitter or loss.
+
+Q: Why does a brownout survive routing?
+A: Carrier, ARP and the static route all remain valid during congestion. A
+   brownout is a working link performing badly, not an outage.
+
+Q: What are the three metrics a performance SLA measures?
+A: Latency, jitter, packet loss. (7.6 adds mos and bandwidth-based options.)
+
+Q: Riley: "it freezes then catches up." Which metric, which protocol?
+A: Packet loss on TCP. TCP retransmits and recovers — recovery costs time and
+   the user perceives a stall.
+
+Q: Riley: "calls sound like the ocean." Which metrics, which protocol?
+A: Jitter and loss on UDP. Nothing recovers, so the gap is permanent.
+
+Q: link-cost-factor lists latency, jitter and packet-loss. Latency and jitter
+   pass; loss fails. In-SLA or out?
+A: OUT-OF-SLA. It is AND logic — every listed factor must pass.
+
+Q: A member goes out-of-SLA. What happens to its static route?
+A: Nothing. It stays. What changes is its candidacy inside SD-WAN.
+
+Q: Name the three states a member can be in.
+A: UP (a route exists) → ELIGIBLE (in the matched rule's member list) →
+   PREFERRED (currently selected given SLA state and ordering).
+
+Q: What are the two REQUIRED fields of an SD-WAN member?
+A: Interface and gateway. Zone is OPTIONAL.
+
+Q: Why does a member need a gateway?
+A: It is the next-hop for the static route FortiOS auto-generates for that member.
+   No gateway, no route.
+
+Q: What are the two jobs of an SD-WAN zone?
+A: (1) A selection target — rules can name a zone instead of listing members.
+   (2) The seam between network and security teams — policies reference the zone
+   so membership can change without any policy being edited.
+
+Q: You add port3 to zone "underlay". What must be changed in the firewall policies
+   that reference that zone?
+A: Nothing. That is the point.
+
+Q: What is the real cost of NOT using zones?
+A: Not tedium — the policy somebody forgets. That is a WAN link carrying
+   uninspected traffic, and nothing alerts on it because nothing is broken.
+
+Q: failtime 10, interval 1000ms. How long before out-of-SLA?
+A: 10 seconds. failtime × interval.
+
+Q: Should recoverytime be higher or lower than failtime, and why?
+A: HIGHER. The costs are asymmetric: being slow to leave a bad link costs one bad
+   window; being fast to return to a still-degraded link costs a flap, and every
+   session moves twice. Quick to distrust, slow to forgive.
+
+Q: What is the default probe protocol, and why is it often the wrong choice?
+A: ping/ICMP. Carriers de-prioritise, rate-limit or slow-path ICMP, so it can
+   report problems real traffic never sees — or miss ones it does.
+
+Q: An admin sets the health-check server to the ISP's next-hop gateway. Flaw?
+A: It proves only that the carrier's router responds. It says nothing about the
+   path beyond it, which is where brownouts live.
+
+Q: Health check shows 3ms and 0% loss but users are suffering. Suspect what?
+A: The probe is not experiencing what the user experiences. Check the target
+   (too close?) and the protocol (ICMP sailing through a queue punishing TCP).
+
+Q: What does state(alive) with sla_map=0x0 mean?
+A: The member is UP and answering, but satisfies no SLA. This is the exact
+   signature of a brownout, and the exact thing routing cannot see.
+
+Q: What is sla_map?
+A: A bitmask — one bit per SLA entry under that health check. 0x1 = SLA 1
+   satisfied; 0x0 = none satisfied.
+
+Q: Three benefits of DIA.
+A: No backhaul latency; no branch internet on the WAN link; no branch internet
+   consuming the HUB FIREWALL'S INSPECTION CAPACITY.
+
+Q: What does DIA cost security?
+A: The single point of enforcement. One chokepoint, one log source, one place a
+   regulator can be shown becomes eight that must agree forever — and drift at
+   one of them is invisible.
+
+Q: The DIA consequence most people forget?
+A: NAT IDENTITY. Each site breaks out with its own public IP. Every partner
+   allowlist, geo-restriction and "we only accept your registered range" clause
+   breaks. It fails in production, never in design review.
+
+Q: DIA vs backhaul — failure domain?
+A: DIA: a site failure affects one site. Backhaul: a hub failure removes internet
+   for every site.
+
+Q: General principle connecting failtime/recoverytime, BFD, and graceful restart?
+A: Detection speed trades against stability. Choose the setting by the COST OF
+   BEING WRONG in each direction. BFD = twitchy on purpose (blackholes are
+   expensive). Graceful restart = patient on purpose (tearing down a healthy
+   network for a blip is expensive).
+
+Q: The four-layer troubleshooting ladder?
+A: UP → IN-SLA → ELIGIBLE → PREFERRED.
+
+Q: Why is "the route is withdrawn" such a durable wrong answer?
+A: Because it is what a TWO-state mental model predicts. If a link is either good
+   or gone, a failed health check must remove it. SD-WAN has three states.
+
+Q: Where does a threshold actually come from?
+A: The business. 150ms is a LoFinance number, not a Fortinet number. The threshold
+   is the exact point where a business requirement enters the network as config.
+
+
+################################################################################
+PART 4 — PODCAST PROMPT — "THE PACKET PATH"
+################################################################################
+
+Copy everything below into an AI audio generator.
+
+--------------------------------------------------------------------------------
+Produce a single-host narrative technical podcast episode for a show called
+"The Packet Path." Warm, dry, slightly wry delivery. Around 11–13 minutes.
+No music cues, no sponsor reads. The host speaks directly to one listener who is
+studying for the Fortinet NSE7 Secure Networking Architect exam and who learns
+best by following a chain of cause and effect rather than by hearing lists.
+
+EPISODE TITLE: "Two Roads, One Brain"
+
+COLD OPEN
+Open on a handwritten list. Not a printout — handwritten, five entries, all
+saying the same thing: trades lagging. 09:41. 11:02. 14:15. Explain that the
+list was written by hand because the monitoring system had nothing to write.
+Establish the tension immediately: a company where the network is slow every day
+and every dashboard is green.
+
+ACT ONE — THE HONEST WITNESS
+Introduce LoFinance, a financial firm whose logo is a stack of banknotes frozen
+inside an ice cube. Introduce Baz, the carrier sales rep, who has come to the
+office in person carrying a laminated coverage map, and who says — repeatedly and
+with total sincerity — "Links are up, mate. Both of 'em. Green across my
+dashboard."
+
+Make the central point of the episode here and make it generous rather than
+scornful: BAZ IS NOT LYING. His link is up. Carrier is present, the gateway
+answers, the static route is installed and valid. Every promise Baz has ever made
+has been kept. He is simply answering a different question from the one being
+asked — and the reason nobody caught it for a month is that the firewall was
+answering the same question Baz was.
+
+Introduce Riley from the help desk, who has eleven tickets that all read "it was
+slow, it's fine now," and who cannot close a single one because there is nothing
+to escalate to.
+
+ACT TWO — THE MISSING FIELD
+This is the heart of the episode. Walk the listener through a route entry as if
+opening a filing card. Destination. Next-hop. Interface. Distance. Priority.
+Then ask them to point at the field that would hold "this path was four hundred
+milliseconds this morning." There isn't one. There has never been one.
+
+Land the line: THE ROUTING TABLE KNOWS REACHABILITY. IT DOES NOT KNOW QUALITY.
+It is not ignoring quality — it has no vocabulary for quality at all.
+
+Then: if the routing table cannot know, something has to go and find out. That is
+the performance SLA. Describe it as a probe that leaves through each link and
+comes back, and derive the three metrics from what can physically happen to it —
+it comes back slowly (latency), it comes back at uneven intervals (jitter), or it
+doesn't come back (packet loss). Tie each to a human complaint: TCP meets loss and
+the user gets freeze-and-catch-up, because TCP recovers and recovery costs time;
+UDP meets loss and jitter and the call sounds like the ocean, because nothing
+recovers and the gap is permanent.
+
+ACT THREE — THE THERMOMETER
+Deliver the analogy that carries the episode: THE SLA IS A THERMOMETER, AND A
+THERMOMETER DOES NOT DRIVE ANYONE TO HOSPITAL. It reads thirty-nine degrees and it
+says red, and then it stops, because measuring is all it does. Something else has
+to read that verdict and act on it — and that something is the SD-WAN rule, which
+is a completely separate machine.
+
+Introduce the three states and make the middle one land hardest: UP, ELIGIBLE,
+PREFERRED. A link can be up, in the routing table, perfectly healthy — and still
+never carry a single packet of trading traffic, simply because it was never
+listed as an option. Out-of-SLA does not remove a route. It removes a candidate.
+
+Cover members briefly and precisely: a member is an interface plus a gateway, and
+the gateway is there because FortiOS builds that member's route for you. Then
+zones, framed operationally: policies reference the zone, so when the carrier
+sells you a third link next quarter, you add it to the zone and not one firewall
+policy moves. Make the cost concrete — the real risk is not the tedium, it's the
+policy someone forgets, which is a link carrying uninspected traffic that nothing
+alerts on because nothing is broken.
+
+ACT FOUR — EIGHT DOORS
+Handle Direct Internet Access as a trade rather than a trend. In favour: no
+backhaul detour, no branch internet on the WAN link, and — the strongest one —
+no branch internet eating the hub firewall's inspection capacity. Use the line:
+you do not buy a bigger firewall in the head office because a branch discovered
+video streaming.
+
+Against: you lose the single point of enforcement. One chokepoint becomes eight
+that must agree forever, and drift at one of them is invisible.
+
+Then deliver the one people forget, and give it room: DIA MULTIPLIES YOUR IDENTITY
+ON THE INTERNET. Each site breaks out with its own public address. Every partner
+allowlist, every geo-restriction, every "we only accept connections from your
+registered range" clause is written against a NAT identity — and this failure
+never appears in design review. It appears on a Tuesday, in production, as a
+partner's API quietly refusing a branch.
+
+THE JUNIOR MOMENT
+There are two juniors at LoFinance: Junior, who has been there since the
+beginning, and J.R., his identical twin, a career-changing former accountant who
+writes everything in his notebook twice. This episode J.R. makes no catastrophic
+mistake — but he does write one thing in that notebook, twice, one line under the
+other: "GREEN IS NOT GOOD." Note that this is the entire thesis of the episode,
+written by the least experienced person in the room, because he was the only one
+who hadn't yet learned to trust a dashboard.
+
+And note Junior's moment: asked what happens when a link fails its SLA, he gets
+halfway there and stalls — "it can't go down, it's still up, that's the whole
+thing." He is right. He just doesn't yet know he's right. Say something warm
+about the difference between having the idea and trusting it.
+
+CLOSE — THE LESSONS
+Deliver these slowly, as the closing beats:
+  Up is a fact. Good is a measurement.
+  The threshold is a business decision wearing a technical costume.
+  Zones are the seam between teams — design them so the other team never has to
+  hear about your changes.
+  Be quick to distrust and slow to forgive. Failing is one bad afternoon.
+  Recovering is a promise.
+Then the outcome: the handwritten list becomes a graph. Eleven unclosable tickets
+become one closable one. And the bad link stays in the design — because a bad link
+is still a useful link, it just must not carry trades while it's lying.
+
+TEASER
+End on the cliffhanger. The links are now measured. Nothing yet tells the trades
+to use the good one. Next episode: J.R., armed with exactly one session of SD-WAN
+knowledge, writes a rule at twenty to five on a Friday. Source: everything.
+Destination: everything. Every member listed. It is, technically, a valid rule.
+Monday morning, the video streaming is on the trading link and the trades are on
+the bad one. And Junior — who has been the junior for five seasons — reads it over
+his shoulder, says nothing for a full ten seconds, and then, for the first time,
+with genuine authority: "Mate. Come here. Let me show you what an implicit rule
+does."
+Final line, delivered flat: "Rules of the Road. Next time, on The Packet Path."
+--------------------------------------------------------------------------------
+
+
+################################################################################
+PART 5 — SELF-TEST BEFORE SESSION 63
+################################################################################
+
+Answer these cold, without notes. All four were identified as targeted retests.
+
+1. FortiOS builds the static route for an SD-WAN member automatically. What must
+   you give it in order to be able to do that?
+2. Baz's link is out-of-SLA. Name everywhere it is still present.
+3. failtime 10, interval 1000ms. How many seconds before out-of-SLA?
+4. Up, eligible, preferred — which of the three does the SLA change?
+
+Then one stretch question:
+5. A rule prefers port1. port1 is up and in-SLA. Traffic is still leaving via
+   port2. Give two explanations that do not involve a fault.
+
+================================================================================
+END OF REVISION PACK — SESSION 62
+================================================================================
