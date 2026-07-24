@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Up, But Not Good — NSE7 EF 7.6</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9;
+    --surface:#ffffff;
+    --surface-2:#f4ecd8;
+    --ink:#1c2432;
+    --ink-dark:#0d1a3a;
+    --ink-accent:#9bb8e6;
+    --muted:#5c6373;
+    --border:#d9cfb7;
+    --blue:#1e40af;
+    --blue-vivid:#2563eb;
+    --blue-light:#dbeafe;
+    --blue-border:#bfdbfe;
+    --plum:#7c1a5f;
+    --plum-light:#f7e5f0;
+    --plum-border:#d8a7c5;
+    --gold:#a68321;
+    --gold-light:#fcf2c3;
+    --gold-border:#f3d68a;
+    --green:#166534;
+    --green-light:#dcfce7;
+    --green-border:#a7d8b0;
+    --amber:#b45309;
+    --amber-light:#fcf2c3;
+    --amber-border:#f3d68a;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;scroll-padding-top:180px;}
+  body{font-family:'Cormorant Garamond',serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+
+  header{padding:56px 60px 40px;background:var(--ink-dark);color:#fbf7ec;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:14px;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{color:#fbf7ec;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);margin:0 2px;}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.12em;margin-bottom:16px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:56px;font-weight:700;line-height:1.02;letter-spacing:-0.015em;margin-bottom:12px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:19px;font-style:italic;color:rgba(251,247,236,0.6);max-width:760px;line-height:1.55;}
+
+  /* Sticky player + jump-bar wrapper */
+  .sticky-shell{position:sticky;top:0;z-index:40;background:var(--bg);border-bottom:1px solid var(--border);box-shadow:0 6px 18px -12px rgba(10,24,56,0.18);}
+  .player{max-width:1080px;margin:0 auto;padding:14px 60px 12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+  .player-meta{flex:0 0 auto;min-width:180px;}
+  .player-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;line-height:1.15;}
+  .player-sub{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+  .player audio{flex:1;min-width:240px;height:40px;border-radius:8px;}
+
+  .jump-bar{max-width:1080px;margin:0 auto;padding:0 60px 12px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+  .jump-bar::-webkit-scrollbar{height:4px;}
+  .jump-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .jump-btn{flex:0 0 auto;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:999px;cursor:pointer;transition:all .15s;text-decoration:none;white-space:nowrap;}
+  .jump-btn:hover{color:var(--blue);border-color:var(--blue-border);background:var(--blue-light);}
+  .jump-btn.active{color:#fff;background:var(--blue);border-color:var(--blue);box-shadow:0 2px 8px -2px rgba(30,64,175,0.4);}
+
+  main{flex:1;padding:36px 60px 72px;max-width:960px;margin:0 auto;width:100%;}
+
+  /* Cheatsheet */
+  .cheatsheet{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:32px;overflow:hidden;}
+  .cheatsheet summary{list-style:none;cursor:pointer;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--ink);}
+  .cheatsheet summary::-webkit-details-marker{display:none;}
+  .cheatsheet summary::after{content:'▼';font-family:'Outfit',sans-serif;font-size:10px;color:var(--muted);transition:transform .2s;}
+  .cheatsheet[open] summary::after{transform:rotate(180deg);}
+  .cheatsheet summary em{font-style:italic;font-weight:500;color:var(--blue);}
+  .cheat-sub{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
+  .cheat-body{padding:8px 22px 22px;}
+  table.cheat-table{width:100%;border-collapse:collapse;font-size:14.5px;}
+  .cheat-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 12px;text-align:left;border-right:1px solid rgba(155,184,230,0.15);}
+  .cheat-table th:last-child{border-right:none;}
+  .cheat-table td{font-family:'Cormorant Garamond',serif;font-size:15.5px;padding:10px 12px;border-bottom:1px solid var(--border);color:var(--ink);line-height:1.5;vertical-align:top;}
+  .cheat-table td:first-child{font-style:italic;color:var(--blue);font-weight:600;}
+  .cheat-table tr:last-child td{border-bottom:none;}
+  .cheat-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:var(--surface-2);color:var(--muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border);margin-left:4px;white-space:nowrap;}
+
+  .lyrics-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 40px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  h2.lyrics-heading{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1.15;margin-bottom:8px;padding-left:14px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  h2.lyrics-heading em{font-style:italic;font-weight:500;color:var(--blue);}
+  .lyrics-tip{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--muted);margin-bottom:22px;padding-left:14px;}
+  .lyrics-tip kbd{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--ink);}
+
+  .lyrics{font-family:'Cormorant Garamond',serif;font-size:19px;line-height:1.72;color:var(--ink);}
+
+  /* Stanza block — clickable to seek */
+  .part{position:relative;margin:20px 0;padding:16px 22px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);cursor:pointer;opacity:0;transform:translateY(12px);transition:opacity .5s ease, transform .5s ease, box-shadow .25s ease, border-color .25s ease, background-color .25s ease;}
+  .part.in-view{opacity:1;transform:none;}
+  .part:hover{border-color:var(--blue-border);}
+  .part.playing{background:linear-gradient(180deg, #eef4ff 0%, var(--blue-light) 100%);border-color:var(--blue);box-shadow:0 0 0 3px rgba(30,64,175,0.12), 0 6px 18px -8px rgba(30,64,175,0.28);}
+  .part.playing .part-label{color:var(--blue);}
+  .part-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .part-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--blue);}
+  .part-time{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.06em;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 8px;}
+  .part.chorus{background:var(--blue-light);border-color:var(--blue-border);}
+  .part.chorus .part-label{color:var(--blue);}
+  .part.bridge{background:var(--plum-light);border-color:var(--plum-border);}
+  .part.bridge .part-label{color:var(--plum);}
+  .part.crowd{background:var(--amber-light);border-color:var(--amber-border);text-align:center;}
+  .part.crowd .part-label{color:var(--amber);}
+  .part.outro{background:var(--surface);border-style:dashed;}
+  .line{display:block;margin:0;}
+  .line-strong{font-weight:600;color:var(--ink-dark);}
+  .divider{border:0;border-top:1px dashed var(--border);margin:14px 0;}
+
+  footer{padding:18px 60px;border-top:1px solid var(--border);background:var(--surface);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--muted);text-transform:uppercase;text-align:center;}
+  footer span{color:var(--blue);}
+
+  @media(max-width:760px){
+    html{scroll-padding-top:220px;}
+    header{padding:36px 24px 28px;}
+    header h1{font-size:34px;}
+    header p{font-size:16px;}
+    .player{padding:12px 20px 8px;}
+    .jump-bar{padding:0 20px 10px;}
+    main{padding:24px 20px 44px;}
+    .lyrics-wrap{padding:24px 22px;}
+    .lyrics{font-size:17px;}
+    .cheat-table th, .cheat-table td{padding:8px 10px;font-size:14px;}
+    footer{padding:14px 24px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="breadcrumb">
+    <a href="../../index.html">Study Hub</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html">Fun Songs</a><span class="breadcrumb-sep">›</span>
+    <span>Up, But Not Good</span>
+  </div>
+  <div class="eyebrow">Study Anthem · SD-WAN · Measurement over Reachability</div>
+  <h1>Up, But <em>Not Good</em></h1>
+  <p>Baz was never lying — <em>UP</em> was the only thing he promised. The SD-WAN anthem for CAN vs SHOULD, the thermometer that measures but never acts, and the routing table that stays asleep while the rule does the deciding.</p>
+</header>
+
+<div class="sticky-shell">
+  <div class="player">
+    <div class="player-meta">
+      <div class="player-title">"Up, But Not Good"</div>
+      <div class="player-sub">SD-WAN Study Anthem</div>
+    </div>
+    <audio id="song" controls preload="metadata">
+      <source src="up-but-not-good.mp3" type="audio/mpeg">
+      Your browser doesn't support the audio element.
+    </audio>
+  </div>
+  <div class="jump-bar" id="jumpBar"></div>
+</div>
+
+<main>
+
+  <details class="cheatsheet">
+    <summary>
+      <span>Cheatsheet — <em>Hook Line ↔ Concept</em></span>
+      <span class="cheat-sub">Tap to open</span>
+    </summary>
+    <div class="cheat-body">
+      <table class="cheat-table">
+        <thead>
+          <tr><th>Line from the song</th><th>What it encodes</th><th>Where it lives</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>"Up, but not good"</td>
+            <td>Reachability ≠ health. UP means the link is alive. It says nothing about latency, jitter, or loss.</td>
+            <td><span class="cheat-tag">SLA — the sensor</span></td>
+          </tr>
+          <tr>
+            <td>"Routing says I can get there, SD-WAN says should I though"</td>
+            <td>CAN vs SHOULD. Routing answers reachability; SD-WAN answers fitness — and keeps re-answering.</td>
+            <td><span class="cheat-tag">The two brains</span></td>
+          </tr>
+          <tr>
+            <td>"The table stays asleep — the rule's the one alive"</td>
+            <td>Out-of-SLA never removes the route. It removes the member's <em>eligibility</em> for the rule.</td>
+            <td><span class="cheat-tag">Rules vs routes</span></td>
+          </tr>
+          <tr>
+            <td>"A member's just a road and a ramp to get you on it"</td>
+            <td>Member = interface + gateway. The gateway is what FortiGate uses to auto-generate the static route.</td>
+            <td><span class="cheat-tag">S63 nibble</span></td>
+          </tr>
+          <tr>
+            <td>"The health check is a thermometer, it reads but doesn't act"</td>
+            <td>Sensor vs actuator. SLA measures. Rule acts. They must never be confused.</td>
+            <td><span class="cheat-tag">S62 flagged</span></td>
+          </tr>
+          <tr>
+            <td>"Failtime times interval, don't forget to multiply"</td>
+            <td>Time to declare out-of-SLA. 5 × 500ms = 2.5s of consistent evidence. Recoverytime is longer on purpose.</td>
+            <td><span class="cheat-tag">Timer math</span></td>
+          </tr>
+          <tr>
+            <td>"Quick to call it broken, slow to say goodbye"</td>
+            <td>Failtime is fast, recoverytime is slow. One good reading proves nothing.</td>
+            <td><span class="cheat-tag">Asymmetric hysteresis</span></td>
+          </tr>
+          <tr>
+            <td>"A zone's the seam between the wires and the gate"</td>
+            <td>Zones are the organisational boundary between network and security teams. Add a member, no policy edit.</td>
+            <td><span class="cheat-tag">Zone as seam</span></td>
+          </tr>
+          <tr>
+            <td>"The rule's a dispatcher working from a shortlist every time"</td>
+            <td>Decision at config time; answer at packet time. Every packet re-tests the shortlist.</td>
+            <td><span class="cheat-tag">Dispatcher</span></td>
+          </tr>
+          <tr>
+            <td>"Up, eligible, preferred — three gates and not one less"</td>
+            <td>Three states, in order: UP (link alive) → ELIGIBLE (in rule's list AND in-SLA) → PREFERRED (wins strategy right now).</td>
+            <td><span class="cheat-tag">Member gates</span></td>
+          </tr>
+          <tr>
+            <td>"Out at the edge, count the badges — that's the test"</td>
+            <td>DIA gives every site its own public identity. Partner allowlists shatter. Eight badges instead of one.</td>
+            <td><span class="cheat-tag">S62 flagged</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <div class="lyrics-wrap">
+    <div class="section-label">Lyrics</div>
+    <h2 class="lyrics-heading">The Anthem — <em>Line by Line</em></h2>
+    <p class="lyrics-tip">Click any stanza to jump the audio there. Use the pill-bar above to skip between sections. Space bar pauses. Timings are best-effort — tune <kbd>data-start</kbd> in the source if any stanza drifts.</p>
+
+    <div class="lyrics" id="lyrics">
+
+      <div class="part" data-start="0" data-jump="Intro">
+        <div class="part-header"><span class="part-label">Intro</span><span class="part-time">0:00</span></div>
+        <span class="line">(Yeah...)</span>
+        <span class="line">Green lights...</span>
+        <span class="line">Don't mean good nights...</span>
+        <span class="line">S-D... W-A-N...</span>
+      </div>
+
+      <div class="part crowd" data-start="6" data-jump="Crowd">
+        <div class="part-header"><span class="part-label">Crowd</span><span class="part-time">0:06</span></div>
+        <span class="line line-strong">Up!</span>
+        <span class="line line-strong">But not good!</span>
+        <span class="line line-strong">Up!</span>
+        <span class="line line-strong">But not good!</span>
+      </div>
+
+      <div class="part" data-start="14" data-jump="Verse 1">
+        <div class="part-header"><span class="part-label">Verse 1</span><span class="part-time">0:14</span></div>
+        <span class="line">A link can stay up, green across the screen,</span>
+        <span class="line">Board looks perfect, cleanest you've ever seen.</span>
+        <span class="line">But somewhere out there, trades are running slow,</span>
+        <span class="line">Same two windows, hour after hour, though.</span>
+        <hr class="divider">
+        <span class="line">The table only picked a road and locked it into place,</span>
+        <span class="line line-strong">It never learned the timing, only learned the space.</span>
+      </div>
+
+      <div class="part" data-start="46" data-jump="Pre-Chorus">
+        <div class="part-header"><span class="part-label">Pre-Chorus</span><span class="part-time">0:46</span></div>
+        <span class="line">Just because the road still lives,</span>
+        <span class="line">Doesn't mean it's fit to give.</span>
+        <span class="line">Packets care about the ride,</span>
+        <span class="line">Not the sign that's outside.</span>
+      </div>
+
+      <div class="part chorus" data-start="56" data-jump="Chorus">
+        <div class="part-header"><span class="part-label">Chorus 🎵</span><span class="part-time">0:56</span></div>
+        <span class="line line-strong">Up, but not good — that's the lie in the middle,</span>
+        <span class="line">A road that still works but plays a different fiddle.</span>
+        <span class="line line-strong">Routing says "I can get there," SD-WAN says "should I though?"</span>
+        <span class="line">One road, two truths — now you know.</span>
+        <hr class="divider">
+        <span class="line">Measure it, match it, steer it while it's live,</span>
+        <span class="line line-strong">The table stays asleep — the rule's the one alive.</span>
+      </div>
+
+      <div class="part bridge" data-start="82" data-jump="Bridge">
+        <div class="part-header"><span class="part-label">Bridge</span><span class="part-time">1:22</span></div>
+        <span class="line">Can I reach?</span>
+        <span class="line line-strong">That's routing.</span>
+        <span class="line">Should I use?</span>
+        <span class="line line-strong">That's steering.</span>
+        <hr class="divider">
+        <span class="line">Same destination...</span>
+        <span class="line">Different thinking.</span>
+      </div>
+
+      <div class="part" data-start="98" data-jump="Verse 2">
+        <div class="part-header"><span class="part-label">Verse 2</span><span class="part-time">1:38</span></div>
+        <span class="line">A member's just a road and a ramp to get you on it,</span>
+        <span class="line">No gateway, no static route — you never really own it.</span>
+        <hr class="divider">
+        <span class="line">The health check is a thermometer, it reads but doesn't act,</span>
+        <span class="line">Five bad readings, half a second — now we trust the fact.</span>
+        <hr class="divider">
+        <span class="line line-strong">Failtime times interval, don't forget to multiply,</span>
+        <span class="line">Quick to call it broken, slow to say goodbye.</span>
+      </div>
+
+      <div class="part" data-start="126" data-jump="Pre-Chorus 2">
+        <div class="part-header"><span class="part-label">Pre-Chorus</span><span class="part-time">2:06</span></div>
+        <span class="line">Read the numbers, don't assume,</span>
+        <span class="line">Loss and jitter tell the truth.</span>
+        <span class="line">Latency can steal the day,</span>
+        <span class="line">While the route still says "okay."</span>
+      </div>
+
+      <div class="part chorus" data-start="136" data-jump="Chorus 2">
+        <div class="part-header"><span class="part-label">Chorus 🎵</span><span class="part-time">2:16</span></div>
+        <span class="line line-strong">Up, but not good — that's the lie in the middle,</span>
+        <span class="line">A road that still works but plays a different fiddle.</span>
+        <span class="line line-strong">Routing says "I can get there," SD-WAN says "should I though?"</span>
+        <span class="line">One road, two truths — now you know.</span>
+        <hr class="divider">
+        <span class="line">Measure it, match it, steer it while it's live,</span>
+        <span class="line line-strong">The table stays asleep — the rule's the one alive.</span>
+      </div>
+
+      <div class="part bridge" data-start="162" data-jump="Rap Bridge">
+        <div class="part-header"><span class="part-label">Rap Bridge</span><span class="part-time">2:42</span></div>
+        <span class="line">No crystal ball, no guessing game,</span>
+        <span class="line">Health checks measure, every frame.</span>
+        <hr class="divider">
+        <span class="line line-strong">Loss...</span>
+        <span class="line line-strong">Latency...</span>
+        <span class="line line-strong">Jitter too...</span>
+        <span class="line">Now the rule decides for you.</span>
+        <hr class="divider">
+        <span class="line">Not the route...</span>
+        <span class="line">Not the tree...</span>
+        <span class="line line-strong">Real-time policy.</span>
+      </div>
+
+      <div class="part" data-start="182" data-jump="Verse 3">
+        <div class="part-header"><span class="part-label">Verse 3</span><span class="part-time">3:02</span></div>
+        <span class="line">A zone's the seam between the wires and the gate,</span>
+        <span class="line">Add a port, move a member — no policy has to wait.</span>
+        <hr class="divider">
+        <span class="line">The rule's a dispatcher working from a shortlist every time,</span>
+        <span class="line">It's never locked to one road, it keeps on redefining —</span>
+        <hr class="divider">
+        <span class="line line-strong">Up, eligible, preferred — three gates and not one less,</span>
+        <span class="line">And out at the edge, count the badges — that's the test.</span>
+      </div>
+
+      <div class="part bridge" data-start="204" data-jump="Build">
+        <div class="part-header"><span class="part-label">Build</span><span class="part-time">3:24</span></div>
+        <span class="line">Can I reach it?</span>
+        <span class="line line-strong">Yeah.</span>
+        <span class="line">Should I use it?</span>
+        <span class="line line-strong">Wait.</span>
+        <hr class="divider">
+        <span class="line">Healthy isn't just alive...</span>
+        <span class="line line-strong">Healthy earns the right to drive.</span>
+      </div>
+
+      <div class="part chorus" data-start="214" data-jump="Final Chorus">
+        <div class="part-header"><span class="part-label">Final Chorus 🎵</span><span class="part-time">3:34</span></div>
+        <span class="line line-strong">Up, but not good — that's the lie in the middle,</span>
+        <span class="line">A road that still works but plays a different fiddle.</span>
+        <span class="line line-strong">Routing says "I can get there," SD-WAN says "should I though?"</span>
+        <span class="line">One road, two truths — now you know.</span>
+        <hr class="divider">
+        <span class="line">Measure it, match it, steer it while it's live,</span>
+        <span class="line line-strong">The table stays asleep — the rule's the one alive.</span>
+        <hr class="divider">
+        <span class="line">Measure...</span>
+        <span class="line">Match...</span>
+        <span class="line">Steer...</span>
+        <span class="line">Repeat...</span>
+        <hr class="divider">
+        <span class="line">One road...</span>
+        <span class="line">Two truths...</span>
+        <span class="line">One decision...</span>
+        <span class="line line-strong">Made for you.</span>
+      </div>
+
+      <div class="part outro" data-start="232" data-jump="Outro">
+        <div class="part-header"><span class="part-label">Outro</span><span class="part-time">3:52</span></div>
+        <span class="line">Green isn't fast.</span>
+        <span class="line">Up isn't best.</span>
+        <span class="line line-strong">Measure before you trust.</span>
+        <hr class="divider">
+        <span class="line">Up...</span>
+        <span class="line">But not good...</span>
+        <span class="line">Up...</span>
+        <span class="line">But not good...</span>
+        <hr class="divider">
+        <span class="line">S-D...</span>
+        <span class="line line-strong">W-A-N...</span>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<footer>NSE7 Enterprise Firewall 7.6 <span>·</span> LoFinance <span>·</span> Up, But Not Good</footer>
+
+<script>
+(function(){
+  const audio = document.getElementById('song');
+  const parts = Array.from(document.querySelectorAll('.part'));
+  const jumpBar = document.getElementById('jumpBar');
+
+  parts.forEach((p, i) => {
+    const label = p.dataset.jump;
+    if(!label) return;
+    const btn = document.createElement('button');
+    btn.className = 'jump-btn';
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.dataset.idx = i;
+    btn.addEventListener('click', () => seekTo(p, true));
+    jumpBar.appendChild(btn);
+  });
+  const jumpButtons = Array.from(jumpBar.querySelectorAll('.jump-btn'));
+
+  parts.forEach(p => {
+    p.addEventListener('click', () => {
+      if(window.getSelection().toString().length) return;
+      seekTo(p, false);
+    });
+  });
+
+  function seekTo(part, scroll){
+    const t = parseFloat(part.dataset.start || '0');
+    if(!isNaN(t)) audio.currentTime = t;
+    audio.play().catch(()=>{});
+    if(scroll) part.scrollIntoView({behavior:'smooth', block:'start'});
+    setActive(part);
+  }
+
+  function setActive(part){
+    parts.forEach(p => p.classList.toggle('playing', p === part));
+    const idx = parts.indexOf(part);
+    jumpButtons.forEach(b => b.classList.toggle('active', parseInt(b.dataset.idx,10) === idx));
+  }
+
+  audio.addEventListener('timeupdate', () => {
+    const t = audio.currentTime;
+    let current = parts[0];
+    for(const p of parts){
+      const start = parseFloat(p.dataset.start || '0');
+      if(t >= start) current = p; else break;
+    }
+    if(current && !current.classList.contains('playing')) setActive(current);
+  });
+
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('in-view'); });
+    }, {threshold: 0.12, rootMargin: '0px 0px -8% 0px'});
+    parts.forEach(p => io.observe(p));
+  } else {
+    parts.forEach(p => p.classList.add('in-view'));
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(e.code !== 'Space') return;
+    const tag = (document.activeElement?.tagName || '').toLowerCase();
+    if(tag === 'input' || tag === 'textarea' || tag === 'button') return;
+    e.preventDefault();
+    if(audio.paused) audio.play(); else audio.pause();
+  });
+})();
+</script>
+
+</body>
+</html>
