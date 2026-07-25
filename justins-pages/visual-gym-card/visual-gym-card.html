@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 65 — The Gym Card: may_dirty, dirty &amp; the SNAT Doorman</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.08);
+    --blue-border:rgba(30,64,175,0.35); --blue-light:rgba(30,64,175,0.07);
+    --amber:#b45309; --amber-border:rgba(180,83,9,0.4); --amber-light:rgba(180,83,9,0.07);
+    --green:#166534; --green-border:rgba(22,101,52,0.4); --green-light:rgba(22,101,52,0.07);
+    --red:#991b1b; --red-border:rgba(153,27,27,0.4); --red-light:rgba(153,27,27,0.07);
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  html,body{min-height:100vh;}
+  body{background:var(--bg);color:var(--text);font-family:'Cormorant Garamond',serif;display:flex;flex-direction:column;}
+  main{flex:1;max-width:1100px;width:100%;margin:0 auto;}
+  .main-content{padding:36px 60px 60px;}
+
+  header{padding:56px 60px 40px;background:var(--ink-dark);color:#fbf7ec;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);text-transform:uppercase;margin-bottom:14px;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{color:#fbf7ec;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);margin:0 2px;}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.12em;margin-bottom:16px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;letter-spacing:-0.01em;margin-bottom:10px;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;color:rgba(251,247,236,0.6);max-width:760px;line-height:1.55;}
+  @media(max-width:640px){
+    header{padding:36px 24px 28px;}
+    header h1{font-size:30px;}
+    .main-content{padding:28px 24px 44px;}
+  }
+  .section-block{margin-bottom:48px;}
+  .section-label{font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block ul{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-label{font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+  .code-block{background:var(--ink-dark);border-radius:10px;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;font-family:'Outfit',sans-serif;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;}
+  .prompt-content[hidden]{display:none;}
+  .ip-meta{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-top:10px;}
+  footer{padding:22px 60px;background:var(--ink-dark);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(155,184,230,0.7);display:flex;gap:10px;flex-wrap:wrap;}
+  footer span{color:rgba(155,184,230,0.45);}
+  @media(max-width:640px){footer{padding:18px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="breadcrumb">
+    <a href="../../index.html">Study Hub</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html">Justin's Pages</a><span class="breadcrumb-sep">›</span>
+    <span>The Gym Card</span>
+  </div>
+  <div class="eyebrow">Session 65 · Visual Companion · Memory Palace</div>
+  <h1>The Gym Card — <em>may_dirty, dirty</em> &amp; the SNAT Doorman</h1>
+  <p>One building, one card, two stamps. How a FortiGate decides which sessions get re-evaluated when the world changes.</p>
+</header>
+
+<main>
+<div class="main-content">
+
+<!-- ═══════════ 1. THE BUILDING ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Scene 1 · The Building</div>
+  <h2>The gym <em>is</em> the firewall</h2>
+  <p>Every session at LoFinance is a gym member. The building has exactly two ways in: the <strong>front desk</strong> (slow, thorough) and the <strong>turnstile</strong> (instant swipe). A packet only ever visits the front desk once — on the day its session is born.</p>
+  <ul>
+    <li><strong>Front desk</strong> = first packet: full route lookup (policy routes → SD-WAN rules → FIB) <em>and</em> full firewall policy lookup. The verdict is engraved into the card: <code>gwy</code>, <code>policy_id</code>, <code>sdwan_service_id</code>, <code>sdwan_mbr_seq</code>.</li>
+    <li><strong>Turnstile</strong> = every later packet: swipe the card, session table only, no thinking.</li>
+  </ul>
+
+  <div class="image-placeholder">
+  <img src="images/s65-visual-01-gym-building.png" alt="" style="width:100%;max-width:920px;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto;">
+</div>
+</div>
+
+<!-- ═══════════ 2. THE TWO STAMPS ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Scene 2 · The Card</div>
+  <h2>Two stamps, two <em>completely</em> different meanings</h2>
+
+  <table class="data-table">
+    <tr><th>Stamp</th><th>When it appears</th><th>What it means</th><th>What it does by itself</th></tr>
+    <tr>
+      <td>may_dirty</td>
+      <td>At <strong>birth</strong>, when the session is created by a firewall policy</td>
+      <td><strong>Permission.</strong> "This card <em>may</em> be revoked and sent back to the front desk — if the world ever changes."</td>
+      <td>Nothing. It sits dormant on almost every session, forever, unless an event fires.</td>
+    </tr>
+    <tr>
+      <td>dirty</td>
+      <td>At the <strong>event</strong> — routing table change or firewall policy change</td>
+      <td><strong>Revocation.</strong> "On your next swipe, the turnstile rejects you. Front desk. Full re-check."</td>
+      <td>Forces the next packet to re-run <strong>both</strong> lookups — route <em>and</em> policy. The session then moves to the new best path, or is denied.</td>
+    </tr>
+  </table>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div>
+      <div class="mental-note-block-label">The two-line law</div>
+      <div class="mental-note-block-text">may_dirty = permission, granted at birth.<br>dirty = the event: next packet re-runs BOTH lookups.</div>
+    </div>
+  </div>
+
+  <div class="callout callout-amber">
+    <strong>What does NOT stamp dirty:</strong> an SLA breach with routes intact, timers, probe intervals, a link browning out while still alive. <strong>SLA breach ≠ routing change.</strong> Sick links strand their existing sessions — that was the entire Session 64 incident.
+  </div>
+
+  <div class="image-placeholder">
+  <img src="images/s65-visual-02-two-stamps.png" alt="" style="width:100%;max-width:920px;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto;">
+</div>
+</div>
+
+<!-- ═══════════ 3. THE FIRING CHAIN ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Scene 3 · The Chain</div>
+  <h2>How the stamp actually <em>fires</em></h2>
+  <p>The chain the student built in Session 64, in one breath:</p>
+  <div class="callout">
+    Member dies → member route withdrawn → FIB blinks → firewall walks the session table → <strong>dirty</strong> stamped on every <strong>may_dirty</strong> session → each session's next packet is bounced to the front desk → re-runs route + policy lookup → moves to the new best path, or is denied.
+  </div>
+  <div class="code-block">
+    <div class="code-label">The evidence — diagnose sys session list</div>
+    <pre><code>session info: proto=6 proto_state=01 duration=1842
+state=may_dirty npu
+dev=port2->port1  gwy=203.0.113.1/0.0.0.0
+hook=post dir=org act=snat 10.10.1.50:51823->(198.51.100.7:51823)
+policy_id=12  sdwan_mbr_seq=2 sdwan_service_id=3</code></pre>
+  </div>
+  <p>Read the flags line like a card inspection: <code>may_dirty</code> present = eligible for revocation. If an event had fired, <code>dirty</code> would appear beside it — and the <code>npu</code> flag means the session must first be pulled off the ASIC back to the CPU for its re-check.</p>
+</div>
+
+<!-- ═══════════ 4. THE SNAT DOORMAN ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Scene 4 · The Exception</div>
+  <h2>The SNAT doorman &amp; <em>snat-route-change</em></h2>
+  <p>When the firewall walks the session table stamping <code>dirty</code>, there is one desk it hesitates at: <strong>SNAT sessions</strong>. These members are wearing a borrowed identity — a public IP the far end negotiated with. Move them to a new egress and that identity changes; the far end has never met the new address and drops them silently. <em>Escorting dead men to a new door.</em></p>
+
+  <table class="data-table">
+    <tr><th>Setting</th><th>Mechanism (what the firewall does)</th><th>Consequence (what the user feels)</th><th>Nickname</th></tr>
+    <tr>
+      <td>set snat-route-change disable <em>(default)</em></td>
+      <td>SNAT sessions are <strong>exempt from the dirty stamp</strong> on routing changes — they keep their cached route until the session expires naturally.</td>
+      <td>Long transfers and calls in flight are left to finish on the old path where possible.</td>
+      <td>"Let them finish"</td>
+    </tr>
+    <tr>
+      <td>set snat-route-change enable</td>
+      <td>SNAT sessions are <strong>stamped dirty like everyone else</strong> — next packet forces the full re-evaluation.</td>
+      <td>Immediate clean break; the session dies at the stranger's doorstep and the application rebuilds a fresh session on the new path.</td>
+      <td>"Rip the bandaid"</td>
+    </tr>
+  </table>
+
+  <div class="callout callout-red">
+    <strong>Critical nuance (exam trap):</strong> this setting only matters when a <strong>routing change</strong> occurs. It is completely irrelevant to brownouts — an SLA breach with routes intact stamps nothing, so there is nothing for this setting to exempt anyone from. It would not have saved Jam's 26-minute ocean call.
+  </div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🎯</div>
+    <div>
+      <div class="mental-note-block-label">The mechanism sentence — say it, don't feel it</div>
+      <div class="mental-note-block-text">"snat-route-change controls whether SNAT sessions receive the dirty stamp when the routing table changes." Everything about dropped calls and rebuilt sessions is consequence, not mechanism.</div>
+    </div>
+  </div>
+
+  <div class="image-placeholder">
+  <img src="images/s65-visual-03-snat-doorman.png" alt="" style="width:100%;max-width:920px;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto;">
+</div>
+</div>
+
+<!-- ═══════════ 5. ONE-GLANCE RECALL ═══════════ -->
+<div class="section-block">
+  <div class="section-label">Scene 5 · One-glance recall</div>
+  <h2>The whole gym in <em>four</em> lines</h2>
+  <div class="callout callout-green">
+    <strong>1.</strong> First packet → front desk (route + policy). Every packet after → turnstile (session table).<br>
+    <strong>2.</strong> may_dirty at birth = permission. dirty at the event = next swipe goes back to the desk, both lookups re-run.<br>
+    <strong>3.</strong> Only routing changes and policy changes stamp dirty. SLA breaches stamp nothing — sick links strand sessions.<br>
+    <strong>4.</strong> snat-route-change decides whether SNAT sessions get the stamp at all. Default disable = exempt, let them finish.
+  </div>
+</div>
+
+</div>
+</main>
+
+<footer>
+  <span>Session 65 · LoFinance — "The Branch Factory"</span>
+  <span>·</span>
+  <span>Visual companion — the rule answers where a NEW session would go; the session table answers where THIS session is going.</span>
+</footer>
+
+</body>
+</html>

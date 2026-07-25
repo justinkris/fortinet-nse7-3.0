@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cheatsheet — HA Status, Sync Exceptions &amp; Management Access</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:44px 60px 34px;background:var(--ink-dark);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;text-transform:uppercase;}
+  header h1{font-family:'Playfair Display',serif;font-size:42px;font-weight:700;line-height:1.05;color:#fbf7ec;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;max-width:720px;}
+
+  .rule-banner{padding:20px 60px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .rule-banner .big{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;}
+  .rule-banner .big em{color:var(--blue);font-style:italic;font-weight:500;}
+  .rule-banner .sub{font-size:14px;font-style:italic;color:var(--text-muted);margin-top:5px;}
+
+  main{max-width:1060px;margin:0 auto;padding:36px 40px 60px;}
+  section{margin-bottom:38px;}
+  .sec-label{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;}
+  h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin-bottom:14px;letter-spacing:-0.01em;}
+
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);}
+  th{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;text-align:left;padding:10px 14px;background:var(--surface-2);color:var(--text-soft);border-bottom:1px solid var(--border);}
+  td{padding:10px 14px;border-bottom:1px solid var(--border-dim);font-size:15.5px;vertical-align:top;line-height:1.5;}
+  tr:last-child td{border-bottom:none;}
+  code{font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12.5px;background:var(--blue-light);border:1px solid var(--blue-border);border-radius:4px;padding:2px 6px;color:var(--blue-deep);white-space:nowrap;}
+  td code{display:inline-block;margin:1px 0;}
+  .stage{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#fffdf5;background:var(--blue);border-radius:10px;padding:2px 9px;display:inline-block;white-space:nowrap;}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;}
+  .card h3{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:10px;}
+  .card.shared{border-top:3px solid var(--green);}
+  .card.personal{border-top:3px solid var(--amber);}
+  .card ul{list-style:none;}
+  .card li{font-size:15.5px;line-height:1.55;padding:5px 0 5px 20px;position:relative;border-bottom:1px dotted var(--border-dim);}
+  .card li:last-child{border-bottom:none;}
+  .card.shared li::before{content:"⇄";position:absolute;left:0;color:var(--green);font-family:'Outfit',sans-serif;}
+  .card.personal li::before{content:"✕";position:absolute;left:0;color:var(--amber);font-family:'Outfit',sans-serif;font-size:12px;top:9px;}
+  .why{font-size:13.5px;font-style:italic;color:var(--text-muted);}
+
+  .callout{border:1px solid var(--blue-border);background:var(--blue-light);border-left:4px solid var(--blue);border-radius:6px;padding:14px 18px;margin:16px 0;font-size:15.5px;line-height:1.6;}
+  .callout.trap{border-color:var(--amber-border);background:var(--amber-light);border-left-color:var(--amber);}
+  .callout.model{border-color:var(--green-border);background:var(--green-light);border-left-color:var(--green);}
+  .callout .tag{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;display:block;margin-bottom:4px;}
+  .callout .tag{color:var(--blue);}
+  .callout.trap .tag{color:var(--amber);}
+  .callout.model .tag{color:var(--green);}
+
+  .mgmt-table td:first-child{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--text-soft);}
+
+  .hooks{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .hook{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:15px;line-height:1.55;}
+  .hook b{font-family:'Playfair Display',serif;font-style:italic;font-weight:600;color:var(--blue);}
+
+  footer{border-top:1px solid var(--border);padding:18px 40px 30px;text-align:center;font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:var(--text-muted);}
+
+  @media (max-width:760px){
+    header{padding:32px 24px 26px;}
+    header h1{font-size:30px;}
+    .rule-banner{padding:16px 24px;}
+    main{padding:28px 18px 48px;}
+    .grid-2,.hooks{grid-template-columns:1fr;}
+    code{white-space:normal;word-break:break-word;}
+  }
+  @media print{
+    header{background:#fff;border-bottom:2px solid var(--ink-dark);}
+    header h1,header h1 em{color:var(--ink-dark);}
+    header p{color:var(--text-muted);}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="header-eyebrow">NSE7 EF 7.6 · Cheatsheet · FGCP High Availability</span>
+  <h1>HA Status, Sync Exceptions <em>&amp; Management Access</em></h1>
+  <p>The commands that tell you what the cluster is thinking, the settings it refuses to share, and how to reach the member the network can't see.</p>
+</header>
+
+<div class="rule-banner">
+  <div class="big">The one rule underneath everything on this page: <em>cluster identity is shared; member identity is private.</em></div>
+  <div class="sub">Config sync, vMAC assignment, and reserved management interfaces are all the same rule wearing different hats.</div>
+</div>
+
+<main>
+
+<!-- ══════════ 1. CLI VERIFICATION ══════════ -->
+<section>
+  <div class="sec-label">Section 1</div>
+  <h2>HA Verification — the diagnostic order</h2>
+  <p style="font-size:15.5px;margin-bottom:14px;">Status → Uptime → Checksum → Heartbeat → History. <em>Who is primary and why → election standings → are we identical → can we talk → what happened before I arrived.</em></p>
+  <table>
+    <tr><th style="width:120px;">Stage</th><th style="width:44%;">Command</th><th>What it tells you</th></tr>
+    <tr>
+      <td><span class="stage">Status</span></td>
+      <td><code>get system ha status</code></td>
+      <td>First command, every time. Mode, group name/ID, primary &amp; secondary roles, serials, election reason (&ldquo;Primary selected using&hellip;&rdquo;), monitored interfaces, sync state.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Status</span></td>
+      <td><code>diagnose sys ha status</code></td>
+      <td>Deeper diagnostic view including heartbeat packet statistics per hbdev.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Uptime</span></td>
+      <td><code>diagnose sys ha dump-by vcluster</code></td>
+      <td>The election scoreboard. <code>uptime/reset_cnt</code> per member — the member showing <b>0</b> has the <b>lowest</b> HA uptime; the other value is the gap in <b>seconds</b>. <code>reset_cnt</code> = number of uptime resets.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Uptime</span></td>
+      <td><code>diagnose sys ha reset-uptime</code></td>
+      <td>Run <b>on the primary</b> → zeroes its <b>HA</b> uptime (not system uptime) → graceful failover when override is disabled. No config change.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Checksum</span></td>
+      <td><code>diagnose sys ha checksum show</code></td>
+      <td>Config checksums on the local member.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Checksum</span></td>
+      <td><code>diagnose sys ha checksum cluster</code></td>
+      <td>All members' checksums in one output. Mismatch = out-of-sync cluster.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Checksum</span></td>
+      <td><code>diagnose sys ha checksum recalculate</code></td>
+      <td>Force recalculation when you suspect a stale checksum rather than a real mismatch.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Heartbeat</span></td>
+      <td><code>diagnose sniffer packet &lt;hbdev&gt; "ether proto 0x8890" 4</code></td>
+      <td>Watch FGCP heartbeat frames directly — &ldquo;the ballot paper plus pulse.&rdquo;</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Sessions</span></td>
+      <td><code>diagnose sys session sync</code></td>
+      <td>Session-synchronisation statistics between members (matters once session-pickup is on).</td>
+    </tr>
+    <tr>
+      <td><span class="stage">History</span></td>
+      <td><code>diagnose sys ha history read</code></td>
+      <td>HA event log: past failovers, role changes, and why they happened.</td>
+    </tr>
+    <tr>
+      <td><span class="stage">Access</span></td>
+      <td><code>execute ha manage &lt;index&gt; &lt;admin&gt;</code></td>
+      <td>Jump from primary CLI into the secondary. Checksums and heartbeat counters are per-member — verify on <b>both</b>.</td>
+    </tr>
+  </table>
+
+  <div class="callout model">
+    <span class="tag">Ethernet-type hook</span>
+    <b>0x8890</b> keeps you <em>alive</em> (heartbeat, election, failure detection) · <b>0x8893</b> keeps you <em>identical</em> (config sync). Neither is IP — sniff by ether proto, not by address.
+  </div>
+</section>
+
+<!-- ══════════ 2. WHAT DOESN'T SYNC ══════════ -->
+<section>
+  <div class="sec-label">Section 2</div>
+  <h2>Config Sync — what rides 0x8893 and what stays home</h2>
+  <div class="grid-2">
+    <div class="card shared">
+      <h3>Shared — synchronised</h3>
+      <ul>
+        <li>Firewall policies &amp; objects</li>
+        <li>Security profiles</li>
+        <li>Routing, interfaces, VDOMs</li>
+        <li>Users, certificates</li>
+        <li>Essentially <em>everything else</em> in the running config</li>
+      </ul>
+      <p class="why" style="margin-top:10px;">If it describes what the cluster does for the network, it must be identical on both boxes.</p>
+    </div>
+    <div class="card personal">
+      <h3>Personal — never synchronised</h3>
+      <ul>
+        <li><b><code>override</code></b> — per member, CLI only <span class="why">(SG p.88)</span></li>
+        <li><b>Device <code>priority</code></b> — <span class="why">if it synced, it could never break a tie; the feature would delete its own purpose</span></li>
+        <li><b>Hostname</b> — <span class="why">so you know which box you're SSH'd into</span></li>
+        <li><b>Reserved mgmt interface</b> config + its gateway — <span class="why">its whole job is reaching one specific member</span></li>
+        <li><b>Licenses / entitlements</b> — <span class="why">tied to each serial number</span></li>
+        <li><b>HA uptime / reset_cnt</b> — <span class="why">runtime state, each member's own</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout trap">
+    <span class="tag">Exam trap</span>
+    Licence mismatch does <b>not</b> block cluster formation — the cluster drops to the <b>lowest</b> licence level among members. &ldquo;The cluster runs at the level of its poorest member.&rdquo; What <em>does</em> block formation: different model, firmware, hard-drive config, or operating mode.
+  </div>
+</section>
+
+<!-- ══════════ 3. RESERVED MGMT INTERFACE ══════════ -->
+<section>
+  <div class="sec-label">Section 3</div>
+  <h2>Reserved Management Interface — reaching the invisible member</h2>
+  <p style="font-size:15.5px;margin-bottom:12px;">Every ordinary interface answers as the <em>cluster</em> — one IP, one vMAC, always the current primary. The secondary is invisible from the network. The reserved management interface punches a deliberate hole: excluded from cluster identity, keeps its <b>real MAC</b>, and each member gives it its <b>own IP and own gateway</b>.</p>
+
+  <table class="mgmt-table">
+    <tr><th></th><th>FGT-A</th><th>FGT-B</th><th>Rule</th></tr>
+    <tr><td>Reserved port</td><td>mgmt1</td><td>mgmt1</td><td><b>Same port</b> on both — convention &amp; hygiene, not enforced. Same model → same port names. Different ports = sabotage against the next engineer.</td></tr>
+    <tr><td>IP address</td><td>10.99.1.11/24</td><td>10.99.1.12/24</td><td><b>Different IP</b> per member — mandatory; this is the feature's entire purpose. Same subnet is fine.</td></tr>
+    <tr><td>Gateway</td><td>10.99.1.1</td><td>10.99.1.1</td><td>Set <b>per member</b> inside the ha-mgmt config, separate from the routing table — reachability survives being secondary.</td></tr>
+  </table>
+
+  <div class="callout">
+    <span class="tag">Why bother</span>
+    Without it, monitoring (SNMP, syslog source) only ever sees whoever is primary — a dead secondary looks identical to a healthy one. Your only other path to the secondary is <code>execute ha manage</code>: fine for a human, useless for an NMS.
+  </div>
+  <div class="callout model">
+    <span class="tag">Mental model</span>
+    Same <em>shape</em>, different <em>identity</em>. The port choice mirrors the cluster's symmetry; the unique IP is member identity — the personal-vs-shared rule again, same as vMAC assignment and the sync-exception list.
+  </div>
+</section>
+
+<!-- ══════════ 4. ELECTION QUICK REFERENCE ══════════ -->
+<section>
+  <div class="sec-label">Section 4</div>
+  <h2>Election Order — the context for every uptime command</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Override disabled (default)</h3>
+      <ul style="list-style:none;">
+        <li>1&nbsp; Connected <b>monitored interfaces</b> (most up wins)</li>
+        <li>2&nbsp; <b>HA uptime</b> (highest wins, gap must be ≥ 5 min)</li>
+        <li>3&nbsp; <b>Priority</b> (highest wins)</li>
+        <li>4&nbsp; <b>Serial number</b> (highest wins)</li>
+      </ul>
+      <p class="why" style="margin-top:8px;">Graceful failover lever: <code>diagnose sys ha reset-uptime</code> on the primary.</p>
+    </div>
+    <div class="card">
+      <h3>Override enabled (CLI only)</h3>
+      <ul style="list-style:none;">
+        <li>1&nbsp; Connected <b>monitored interfaces</b></li>
+        <li>2&nbsp; <b>Priority</b> ← jumps above uptime</li>
+        <li>3&nbsp; <b>HA uptime</b></li>
+        <li>4&nbsp; <b>Serial number</b></li>
+      </ul>
+      <p class="why" style="margin-top:8px;">Graceful failover lever: change a priority. Cost: a <b>second failover</b> (failback) when the preferred primary returns. &ldquo;Every guarantee has a bill.&rdquo;</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 5. MEMORY HOOKS ══════════ -->
+<section>
+  <div class="sec-label">Section 5</div>
+  <h2>Memory Hooks</h2>
+  <div class="hooks">
+    <div class="hook"><b>&ldquo;Facts about now beat preferences from Tuesday.&rdquo;</b><br>Monitored interfaces outrank priority in every election order — live health always wins first.</div>
+    <div class="hook"><b>&ldquo;88-90 keeps you alive, 88-93 keeps you identical.&rdquo;</b><br>Heartbeat vs config-sync Ethernet types.</div>
+    <div class="hook"><b>&ldquo;Serves the cluster → shared. Serves the member → private.&rdquo;</b><br>Predicts vMAC assignment <em>and</em> every sync exception without memorising a list.</div>
+    <div class="hook"><b>&ldquo;The cluster runs at the level of its poorest member.&rdquo;</b><br>Licensing resolves down, never up — and never blocks formation.</div>
+  </div>
+</section>
+
+</main>
+
+<footer>LOFINANCE · NSE7 ENTERPRISE FIREWALL 7.6 · HA CHEATSHEET · SOURCE: ENTERPRISE FIREWALL 7.6 STUDY GUIDE (HIGH AVAILABILITY, pp. 84–92)</footer>
+
+</body>
+</html>
