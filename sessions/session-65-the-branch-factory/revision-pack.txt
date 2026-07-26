@@ -1,0 +1,398 @@
+================================================================================
+LoFINANCE · SESSION 65 REVISION PACK — "THE BRANCH FACTORY"
+FortiManager for SD-WAN: features, planning, key deployment elements, core settings
+Source: SD-WAN 7.6 Enterprise Administrator Study Guide, Lesson 01, pp. 5–22
+================================================================================
+
+
+================================================================================
+PART 1 — QUICK SUMMARY (one page)
+================================================================================
+
+THE PROBLEM
+LoFinance grows from one site to eight, with one engineer, from Sydney, no travel
+budget. Managing eight FortiGates through eight GUIs does not fail because of
+effort — it fails because of DRIFT. Eight sources of truth is the same as no
+source of truth: you can no longer answer "what is different between Perth and
+Brisbane?", and nothing keeps a diary for the auditor.
+
+THE ANSWER
+FortiManager as the management plane. One source of truth pushed outward:
+  · TEMPLATES            → shared structure, kills drift
+  · METADATA VARIABLES   → per-device numbers inside a shared template
+  · INSTALLATION TARGETS → per-member "only these devices"
+  · REVISION CONTROL     → who changed what, when
+  · MONITORING + ZTP     → one dashboard; new sites join without travel
+
+THE ARCHITECTURE
+Global ADOM (global objects + header/footer policy packages) sits above
+ADOM (policy packages + ONE common object database) sits above
+Device Manager (per-device DB: name, model, IP, firmware, revisions, status).
+
+THE DESIGN CHOICE
+Per-device management for devices with genuinely different SD-WAN requirements.
+Central management (templates) for devices that share a configuration.
+Mature rule: stay central as long as the differences fit into installation
+targets or metadata variables.
+
+THE PLAN
+Four planning decisions before the overlay wizard: topology type, overlay network
+address space, loopback IP address space, BGP AS number for the overlay region.
+Prerequisites: hubs as managed devices with links/interfaces; devices
+preconfigured and imported; a branch DEVICE GROUP must exist.
+
+THE DISCIPLINE
+Six-step deployment; step 5 is REVIEW the generated templates. The wizard infers.
+Blast radius × remoteness — on a remote branch, the recovery path travels over
+the thing you just changed, and a template pushes to a group.
+
+THE OUTCOME
+Eight-site expansion approved on the strength of a management-plane design.
+"Can one person run eight sites?" — "No. One person plus one foreman."
+
+
+================================================================================
+PART 2 — CHEAT SHEET
+================================================================================
+
+--- FORTIMANAGER SD-WAN CAPABILITIES (guide list, memorise) ---
+ · Provision SD-WAN templates, CLI templates and firewall policies across devices
+ · Configure SD-WAN on a per-device basis
+ · Monitor SD-WAN status
+ · Central repository for configuration revision control and security audits
+ · Deploy and monitor complex IPsec VPN topologies (overlays)
+ · Guided SD-WAN overlay orchestration with BGP route deployment
+ · Zero-touch provisioning for new SD-WAN sites
+ · Scripts and JSON APIs for automated provisioning and policy change
+ · (FortiAI on FortiManager — licensed; up to 3 LOCAL administrators only)
+
+--- THE THREE LAYERS ---
+ GLOBAL ADOM     global object DB; header + footer policy packages enveloping
+                 each ADOM's policies (carrier: customer traffic crosses the
+                 network but never reaches carrier infrastructure)
+ ADOM            policy packages; ONE common object database per ADOM
+                 (addresses, services, security profiles); device grouping
+ DEVICE MANAGER  per-device DB: name, type, model, IP, firmware, revision
+                 history, real-time status. Install to one device or many.
+
+--- WHEN TO CREATE A SECOND ADOM ---
+ 1. Multi-tenancy / MSSP customer isolation
+ 2. Regulatory or regional separation
+ 3. Different FortiOS firmware versions (an ADOM binds to a version)
+ COST: object database is per-ADOM — splitting duplicates your objects.
+
+--- PER-DEVICE vs CENTRAL ---
+ PER-DEVICE  Device Manager > device > Network > SD-WAN
+             Use when devices have different SD-WAN requirements that must be
+             maintained separately.
+ CENTRAL     SD-WAN Manager > SD-WAN Templates → assign to device / group
+             Change the template once; install pushes to all targets.
+             Metadata variables available in Interface Member, Gateway,
+             Health-Check Server.
+ BOTH show the same three sections: SD-WAN Zones · Performance SLA · SD-WAN Rules
+
+--- INSTALLATION TARGETS (property of an SD-WAN MEMBER) ---
+ Empty      → member installed on EVERY device
+ Populated  → device group(s) or specific devices only
+ Non-target devices do not receive the member AT ALL (absent, not disabled)
+ Prefer GROUPS over named devices.
+
+--- FOUR PLANNING ELEMENTS (before the overlay template) ---
+ 1. Topology type (single hub / dual hub / multiregion)
+ 2. Overlay network address space
+ 3. Loopback IP address space
+ 4. BGP AS number for the SD-WAN overlay region
+
+--- PREREQUISITES ---
+ · Hubs defined as FortiManager-managed devices (model devices OR discovered),
+   with links and interfaces configured
+ · Devices preconfigured: admin settings, interface IP/subnet
+ · A DEVICE GROUP containing the branches MUST exist before proceeding
+ · Branch devices themselves may be defined now or later
+
+--- SIX-STEP DEPLOYMENT ---
+ 1 Define topology and subnets
+ 2 Preconfigure network and SD-WAN devices
+ 3 Import devices to FortiManager
+ 4 Run the SD-WAN overlay orchestration wizard
+ 5 Review the generated configuration templates and fine-tune
+ 6 Install configurations on devices
+ (More branches can be added to the branch device group later)
+
+--- OVERLAY TEMPLATE RESTRICTIONS ---
+ · All devices under one overlay template must be in the SAME ADOM
+ · Each FortiGate can receive config from ONE overlay template only
+ · Multiple overlay templates allowed per ADOM / per FortiManager
+ · VPN Manager and SD-WAN overlay template CANNOT be used for the same network
+   → for new deployments, use the overlay template
+
+--- GUI PATHS ---
+ Device Manager > <device> > Network > SD-WAN          per-device SD-WAN
+ Device Manager > Provisioning Templates               classic template path
+ SD-WAN Manager > SD-WAN Network                       devices + monitors
+ SD-WAN Manager > SD-WAN Templates                     members/zones/SLA/rules
+ SD-WAN Manager > SD-WAN Overlay Orchestration         the wizard
+ SD-WAN Manager > SD-WAN Rules                         rules across devices
+ Right-click managed device → Import Configuration | Re-install Policy
+ TRAP: SD-WAN management must be ENABLED PER DEVICE to appear in SD-WAN Manager
+
+--- FOUR DEVICE MANAGER WIZARDS ---
+ Add Device            bring under management + import config
+ Import Configuration  interface mappings, policy DB, objects → UP into a
+                       policy package (runs with Add Device by default)
+ Install Wizard        push changes DOWN, with preview + cancel
+ Re-install Policy     quick policy-package re-push, with preview
+ DIRECTION: import comes UP, install goes DOWN.
+
+--- CARRIED CLI (Session 64 debt) ---
+ config system global
+     set snat-route-change {enable | disable}      # disable = DEFAULT
+ Routing change → enable: existing SNAT sessions STAMPED dirty
+                → disable: existing SNAT sessions NOT STAMPED (route kept
+                  until expiry)
+ Fires ONLY on routing changes. Irrelevant to SLA brownouts.
+
+
+================================================================================
+PART 3 — FLASHCARDS
+================================================================================
+
+Q: Why is managing eight branches through eight GUIs dangerous — beyond effort?
+A: Configuration drift. Identical sites diverge one small correct change at a
+   time, until you cannot answer "what is different?" and no audit trail exists.
+
+Q: What does the ADOM layer contain?
+A: Policy packages, plus ONE common object database per ADOM (addresses,
+   services, security profiles). ADOMs also group devices for administrators.
+
+Q: What lives in the Global ADOM layer?
+A: The global object database and the header and footer policy packages that
+   envelop each ADOM's policies.
+
+Q: What are header and footer policy packages typically used for?
+A: Carrier environments — customer traffic passes through the carrier network
+   but the customer cannot reach the carrier's own infrastructure.
+
+Q: What does the Device Manager layer record?
+A: Per managed device: name, type, model, IP address, current firmware,
+   revision history and real-time status.
+
+Q: Name three reasons to create a separate ADOM.
+A: Multi-tenancy/MSSP isolation; regulatory or regional separation; different
+   FortiOS firmware versions.
+
+Q: When should you use per-device SD-WAN management?
+A: When devices have different SD-WAN configuration requirements and you must
+   maintain separate settings for each.
+
+Q: What is the advantage of central (template) management?
+A: Apply a change once to the shared template; install pushes it to all target
+   devices — reducing administrative overhead across similar devices.
+
+Q: Which three SD-WAN sections appear on the FortiManager pages, matching the
+   FortiGate GUI?
+A: SD-WAN Zones, Performance SLA, SD-WAN Rules.
+
+Q: In which SD-WAN template fields can you use metadata variables?
+A: Interface Member, Gateway, and Health-Check Server.
+
+Q: What is an installation target?
+A: A per-SD-WAN-member setting naming the device groups or devices that should
+   receive that member. Empty = install on every device.
+
+Q: A template defines port1, port2, port4(MPLS→"main" group). What does a
+   non-"main" branch receive?
+A: port1 and port2 only. port4 is not created on that device at all.
+
+Q: What four elements must be defined before using an SD-WAN overlay template?
+A: Topology type; overlay network address space; loopback IP address space;
+   BGP AS number for the SD-WAN overlay region.
+
+Q: What must exist in FortiManager before you proceed with an overlay template?
+A: The hubs as managed devices (model or discovered) with links/interfaces
+   configured, and a device group containing the branch devices.
+
+Q: List the six steps of overlay deployment.
+A: Define topology/subnets → preconfigure devices → import devices → run the
+   overlay orchestration wizard → review the generated templates → install.
+
+Q: Why is step 5 (review) non-negotiable on remote branches?
+A: Blast radius × remoteness — the recovery path travels over the thing you
+   changed, and a template pushes to a whole group at once. Review is also
+   where you read what the wizard inferred on your behalf.
+
+Q: Can one FortiGate receive configuration from two SD-WAN overlay templates?
+A: No. One overlay template per FortiGate.
+
+Q: Can devices under a single overlay template span ADOMs?
+A: No. All devices configured by one overlay template must be in the same ADOM.
+
+Q: Can VPN Manager and an SD-WAN overlay template be used on the same network?
+A: No. For a new deployment, use the SD-WAN overlay template.
+
+Q: Can branch devices be added after the overlay template is built?
+A: Yes — add them to the branch device group.
+
+Q: A managed branch does not appear under SD-WAN Manager > SD-WAN Network. Why?
+A: SD-WAN management has not been enabled for that device.
+
+Q: Which wizard imports interface mappings, policy databases and objects into a
+   policy package?
+A: Import Configuration. It runs with Add Device by default and can be re-run
+   any time by right-clicking the managed device.
+
+Q: What do Install Wizard and Re-install Policy have in common?
+A: Both let you preview the changes before they are applied, and cancel.
+
+Q: What does set snat-route-change enable actually do?
+A: On a routing change, existing SNAT sessions receive the dirty stamp
+   (default disable = they do not, and keep the old route until expiry).
+
+Q: Name four FortiManager capabilities relevant to SD-WAN deployment.
+A: Any four of: template/CLI-template/policy provisioning; per-device SD-WAN
+   configuration; SD-WAN monitoring; revision control and security audit
+   repository; IPsec overlay deployment and monitoring; guided overlay
+   orchestration with BGP; zero-touch provisioning; scripts and JSON APIs.
+
+
+================================================================================
+PART 4 — PODCAST PROMPT — "THE PACKET PATH", EPISODE 65
+================================================================================
+
+Paste the following into an AI audio generator.
+
+--------------------------------------------------------------------------------
+Produce a single-host technical narrative podcast episode, roughly 9–11 minutes,
+for a series called "The Packet Path". The tone is warm, dry, and confident —
+a senior network engineer telling a war story to a colleague over coffee, not a
+lecture. Use short sentences. Let silences do work. Never read a bullet list
+aloud as a bullet list; convert everything into narrative or dialogue.
+
+EPISODE TITLE: "The Branch Factory"
+
+COLD OPEN
+Open on a Thursday morning at LoFinance, a Sydney financial firm. Someone has
+taken the ops-room whiteboard down overnight and replaced it with a wall map of
+Australasia. Seven new pins: Melbourne, Brisbane, Perth, Adelaide, Auckland,
+a Singapore desk — and Hobart, which nobody can explain and nobody will discuss.
+The meeting invite says only one word: GROWTH.
+
+THE CHARACTERS
+ · Penny — the executive. Practical, already decided, needs an answer she can
+   defend to a board.
+ · Señor — the mentor. Wears a sombrero. Speaks in short, load-bearing sentences.
+ · Riley — the ops engineer. Tired. Says the sharpest thing in the room and does
+   not notice.
+ · Junior — the improving one. Confesses his mistakes before he is accused now.
+ · The Engineer — our protagonist, silent to the listener, doing the reasoning.
+
+THE BUSINESS PROBLEM
+Penny's question: eight sites, one engineer, no travel budget. Can one person
+run all of it from Sydney?
+Señor's answer, delivered with his eyes closed: "One firewall is a pet. You feed
+it, you know its noises. Eight firewalls is a factory. Factories do not survive
+on affection. Factories have foremen." Riley: "Please tell me the foreman is
+software."
+
+THE CORE TEACHING — deliver in this order, as discovery, not exposition:
+
+1. THE DANGER IS NOT TYPING, IT IS DRIFT. Eight identical branches on day one.
+   Month three someone fixes an SLA threshold in Brisbane at 11pm during an
+   incident. Month five a contractor adjusts a policy in Perth. Month seven
+   Adelaide gets a voice rule that never reaches Auckland. Every change small.
+   Every change probably correct — locally. Then Riley calls: voice is bad in
+   Perth and fine in Brisbane. You open both configs and find, in Riley's words,
+   "two configs that were twins at birth and are now cousins."
+   Land the line: EIGHT SOURCES OF TRUTH IS THE SAME AS NO SOURCE OF TRUTH.
+   You have lost the ability to answer the only question that matters at
+   scale — what is different? And eight browser tabs keep no diary.
+
+2. THE FOREMAN. FortiManager. Not convenience — one source of truth pushed
+   outward. Templates for structure. Revision history for the auditor.
+
+3. THE TENSION THAT PRODUCES METADATA VARIABLES. The whole value of a template
+   is that it is shared. But port1's gateway in Brisbane is not port1's gateway
+   in Perth. Resolve it: the template says "set gateway, variable"; each device
+   record supplies its own value. Shared structure, local numbers.
+
+4. THE LAYERS. Global ADOM on top — global objects, and header and footer policy
+   packages that wrap around each ADOM's policies, the way a carrier bolts rules
+   above and below a customer's own so the customer can cross the network but
+   never touch the carrier's infrastructure. The ADOM in the middle — policy
+   packages and ONE common object database. Device Manager at the bottom — every
+   box, its firmware, its revisions, its live status.
+   Then the design point: LoFinance uses ONE ADOM. Splitting would duplicate the
+   object database — which Señor calls "drift wearing a suit."
+
+5. INSTALLATION TARGETS. Melbourne and Brisbane get MPLS; the others don't.
+   The naive conclusion is "different links, therefore different management" —
+   and Riley kills it in one line: "That's just drift with extra steps." Explain
+   the real mechanism: each member in the template carries its own installation
+   target. Empty means everywhere. Name a group and only that group receives it.
+   Perth doesn't get a disabled MPLS member. Perth doesn't get one at all.
+   Senior habit: name groups, not devices, so next year's Auckland MPLS never
+   touches the template.
+
+6. THE FOUR PLANNING DECISIONS. Before the overlay orchestration wizard runs:
+   topology type; overlay network address space; loopback IP address space; and
+   the BGP AS number for the overlay region. Land the distinction hard:
+   "Configuration you can change on a Tuesday. Planning you change by starting
+   over." And the warning: the wizard has excellent taste and no judgement. It
+   will build precisely what you describe, beautifully, eight times.
+
+JUNIOR'S MISTAKE — this is the emotional centre of the episode.
+The deployment has six steps. Step five is: review the generated templates
+before installing. Asked which step people skip, Junior confesses before anyone
+accuses him: "I'd go from four straight to six." Señor: "Of course you would.
+Everyone does. The wizard says done, there's a green tick, and installing feels
+like finishing."
+Then the reason it matters here more than anywhere: on a local firewall a bad
+install is an inconvenience. On a remote branch, THE RECOVERY PATH TRAVELS OVER
+THE THING YOU JUST CHANGED — and a template pushes to a group, so it happens to
+seven sites simultaneously at the speed of software. Blast radius times
+remoteness.
+Give Junior his redemption line, because he earns it: "So step five is where you
+find out what you actually asked for."
+
+THE RESOLUTION
+Penny returns and asks for a verdict. Our engineer answers — not "yes", not "it
+depends" — but WHAT IT WOULD TAKE: one ADOM, Sydney as hub, seven branches in a
+device group, one overlay template built from four planned decisions, per-device
+values in metadata variables, MPLS restricted by installation target, everything
+previewed before install and recorded in revision history for the regulator.
+Penny types for eleven seconds and says to the room: "So the answer to 'can one
+person run eight sites' is 'no — one person plus one foreman.' I can defend that
+to the board."
+Close the teaching with Señor's quiet aside: that is how a senior engineer
+answers a budget question.
+
+CLOSING TEASER — deliver as a hard cut, twenty seconds, then end.
+Friday morning. Junior has already built the SD-WAN template. All of it.
+Overnight. He is glowing. It is, Señor observes, a very good template — for
+exactly one branch. Junior insists: "Every branch is identical, except for the
+twelve numbers that aren't." Señor puts on the sombrero, which he only does
+before long days. "Then today we learn how a factory stamps twelve different
+numbers into one identical mould. Templates. Template groups. And the metadata
+variables — this time doing real work. Bring the CSV."
+Riley, already leaving the room: "There's a CSV?"
+Final line, flat: "There is always a CSV."
+--------------------------------------------------------------------------------
+
+
+================================================================================
+PART 5 — EXAM TRAPS TO REREAD THE NIGHT BEFORE
+================================================================================
+1. "Device not showing in SD-WAN Manager" = SD-WAN management not enabled for
+   that device. NOT an ADOM problem. (Missed in the S65 exam.)
+2. Installation target empty = install EVERYWHERE, not install nowhere.
+3. The overlay planning list is FOUR items and the one people forget is the
+   BGP AS NUMBER. The protocol itself is not a choice — Fortinet overlay is BGP.
+4. One overlay template per FortiGate. Same ADOM for all its devices.
+5. VPN Manager and overlay templates are mutually exclusive on a network.
+6. Metadata variables are an ADOM-level construct — and in SD-WAN they belong to
+   the CENTRAL (template) path, in Interface Member / Gateway / Health-Check
+   Server fields.
+7. Import Configuration goes UP into a policy package. Install goes DOWN.
+8. FortiManager does NOT select SD-WAN members for live sessions and does NOT
+   replace per-member health-check probes — those remain FortiGate functions.
+   Distractors in this shape are always wrong.

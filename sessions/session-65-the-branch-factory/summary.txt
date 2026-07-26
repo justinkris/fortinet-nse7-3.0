@@ -1,0 +1,320 @@
+SESSION 65 SUMMARY — "The Branch Factory"
+Season 5 "The Expansion" · SNA Domain 2 · Central Management
+Source: SD-WAN 7.6 Enterprise Administrator Study Guide, Lesson 01 "Centralized Management",
+pp. 5–22 (IN project knowledge — taught directly from it, verified by search).
+Written for Claude, to continue the story in Session 66 ("Templates All the Way Down").
+Completed: Sunday 26 July 2026.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Thursday. The ops room has been rearranged overnight — the whiteboard REPLACED by a wall map
+of Australasia carrying SEVEN new pins: Melbourne trading annex, Brisbane, Perth, Adelaide,
+Auckland, Singapore desk, and HOBART (nobody can explain Hobart; Riley has asked three people;
+Señor refuses to elaborate — "Hobart forces many things"). Meeting invite titled only GROWTH.
+
+Penny, in the grey blazer that means the budget is already decided: "Eight sites by Q4. The
+regulator likes redundancy, the board likes expansion, and I like that we survived four
+incidents this quarter without appearing in the news. Eight sites. One engineer. No travel
+budget. Can one person run all of it from Sydney?"
+
+Señor, apparently asleep at the back, without opening his eyes: "One firewall is a pet. You
+feed it. You know its noises. Eight firewalls is a FACTORY. Factories do not survive on
+affection. Factories have FOREMEN." Riley: "Please tell me the foreman is software."
+Junior — sitting up straighter since the may_dirty question in S64 — answered it himself:
+"It is. Isn't it? That's what today is." (Junior's arc continues upward; he is now
+anticipating the lesson.)
+
+Debt collected at open: Señor demanded the snat-route-change MECHANISM sentence (touch 2/3).
+Whiteboard debt paid — see EXAM RESULTS below.
+
+Close: Penny appears mid-session with her tablet, asks "Verdict?", Señor gestures at the
+student, and the STUDENT delivers the design to Penny directly: one ADOM, Sydney hub, seven
+branches in a device group, one SD-WAN overlay template built from four planned decisions,
+per-device values via metadata variables, MPLS restricted by installation target, everything
+previewed before install and recorded in revision history for the auditor. Penny types for
+eleven seconds, then to the room: "So the answer to 'can one person run eight sites' is
+'no — one person plus one foreman.' I can defend that to the board."
+Señor, quietly: "You did not say 'yes' and you did not say 'it depends'. You said WHAT IT
+WOULD TAKE. That is how a senior engineer answers a budget question." — KEY CHARACTER BEAT,
+first time the student has presented to Penny unprompted and unassisted.
+
+Absent: Baz (link, not person), J.R., Cipher, Javier Lin, Marcus, Aditi, Tom, Jam.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+Scale from one managed firewall to eight, with one engineer, from Sydney, with no travel
+budget. The real risk is NOT effort — it is CONFIGURATION DRIFT: eight sources of truth = no
+source of truth, so the question "what is different?" becomes unanswerable, and no audit
+trail exists. Solution: FortiManager as the management plane.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (study guide pp. 5–22)
+==================================================================
+1. WHY FORTIMANAGER (derived by student, not given). Danger of eight pets is not typing —
+   it is DRIFT. Twins at birth become cousins (Riley's line). Templates kill drift by
+   creating ONE source of truth pushed outward. Revision history answers "who changed what".
+2. FORTIMANAGER SD-WAN CAPABILITIES (guide list): provision SD-WAN templates / CLI templates /
+   firewall policies across many devices; configure SD-WAN per-device; monitor SD-WAN status;
+   central repository for config revision control + security audits; deploy & monitor complex
+   IPsec overlay topologies; guided overlay orchestration with BGP; zero-touch provisioning;
+   scripts and JSON APIs for automation. (FortiAI on FortiManager mentioned in guide p.10 —
+   licensed, up to 3 LOCAL admins only — NOT taught this session, available for S66+.)
+3. THREE MANAGEMENT LAYERS (student built the middle, was given top/bottom):
+   GLOBAL ADOM  → global object DB + HEADER and FOOTER policy packages that ENVELOP each
+                  ADOM's policies. Carrier use case: customer traffic traverses the carrier
+                  network but cannot reach carrier infrastructure.
+   ADOM         → policy packages + ONE COMMON OBJECT DATABASE per ADOM (addresses, services,
+                  security profiles). ADOMs group devices for admins to monitor/manage.
+   DEVICE MGR   → per-device database: name, type, model, IP, firmware, revision history,
+                  real-time status.
+   Install can target a single FortiGate or many simultaneously.
+4. WHEN TO SPLIT ADOMS (student gave the principle "admin boundaries"; Señor made it concrete):
+   (a) MSSP / multi-tenant customer isolation, (b) regulatory or regional separation,
+   (c) FIRMWARE VERSION — ADOMs bind to a FortiOS version. LoFinance = ONE ADOM, because the
+   common object DB is per-ADOM and splitting duplicates objects = "drift wearing a suit."
+5. TWO SD-WAN CONFIG APPROACHES.
+   PER-DEVICE: Device Manager > click device > Network > SD-WAN. For devices with DIFFERENT
+   SD-WAN requirements that must be maintained separately.
+   CENTRAL: SD-WAN templates assigned to devices/groups; change the shared template once and
+   install pushes to all targets. Reduces administrative overhead for similar devices.
+   Pages look ALMOST IDENTICAL either way; same three sections as FortiGate GUI (SD-WAN Zones,
+   Performance SLA, SD-WAN Rules). Metadata variables usable in Interface Member, Gateway,
+   Health-Check Server — CENTRAL/template path only.
+   SENIOR RULE COINED THIS SESSION: "Stay in central management as long as the differences can
+   be expressed as TARGETS or VARIABLES. Fall back to per-device only when a site is
+   structurally its own animal."
+6. INSTALLATION TARGETS (per SD-WAN MEMBER inside a template). Empty = install on every
+   device. Populated (device group or individual devices) = install only there. Guide example
+   reproduced: port1(ISP1)/port2(ISP2) empty → all branches; port4(MPLS) → "main" group only.
+   Non-target devices get NO port4 at all — not disabled, not present.
+   SENIOR HABIT: name GROUPS, not devices, so future MPLS additions never touch the template.
+7. METADATA VARIABLES (introduced, deferred to S66). ADOM-level parameters, also at Global
+   ADOM for per-ADOM mapping; usable in CLI scripts, templates, model devices. Student
+   re-derived the need unprompted ("a variable for that port, changes depending on device").
+   Callback to Season 3 certificate work.
+8. TWO DOORS TO SD-WAN IN FORTIMANAGER.
+   Device Manager > Provisioning Templates — classic path, good for customers ALREADY running
+   SD-WAN and bringing it under management.
+   SD-WAN Manager — SD-WAN Network (devices + monitors) · SD-WAN Templates · SD-WAN Overlay
+   Orchestration (wizard) · SD-WAN Rules (one or more devices).
+   TRAP TAUGHT: SD-WAN management must be ENABLED PER DEVICE before it appears in SD-WAN
+   Manager. ("Riley will one day tell you a branch isn't showing up.")
+9. FOUR DEVICE MANAGER WIZARDS + DIRECTION OF TRAVEL (Señor's framing):
+   Add Device (bring under management + import config) · Import Configuration (interface
+   mappings, policy DB, objects UP into a policy package; runs with Add Device by default,
+   re-runnable by RIGHT-CLICK on the managed device) · Install Wizard (push DOWN with
+   preview + cancel) · Re-install Policy (quick policy-package re-push, with preview;
+   also right-click). "IMPORT COMES UP, INSTALL GOES DOWN."
+10. OVERLAY TEMPLATE PLANNING — FOUR ELEMENTS (exam-critical, guide p.17):
+    (1) Topology type  (2) Overlay network address space  (3) Loopback IP address space
+    (4) BGP AS number for the SD-WAN overlay region.
+    PLUS the prerequisites: hubs must exist as managed devices (real or MODEL devices) with
+    links/interfaces configured; branch devices may be defined now or later BUT the BRANCH
+    DEVICE GROUP MUST EXIST before proceeding.
+11. SIX-STEP OVERLAY DEPLOYMENT SEQUENCE: 1 define topology/subnets · 2 preconfigure network
+    and devices (admin settings, interface IP/subnet) · 3 import devices to FortiManager ·
+    4 run the overlay orchestration wizard · 5 REVIEW generated templates and fine-tune ·
+    6 install to devices. More branches can be added to the branch group later.
+12. WHY STEP 5 EXISTS (student derived half; Riley supplied "no travel budget"):
+    "BLAST RADIUS × REMOTENESS." On a local box a bad install is an inconvenience; on a remote
+    branch the RECOVERY PATH TRAVELS OVER THE THING YOU JUST CHANGED — and a template pushes
+    to a GROUP, so it happens to seven sites simultaneously at the speed of software.
+    Second reason: the wizard INFERS. It generates SD-WAN, IPsec, BGP and CLI templates
+    grouped by device with assignment done for you. Junior: "So step 5 is where you find out
+    what you actually asked for." (Junior's best line to date.)
+13. OVERLAY TEMPLATE RESTRICTIONS (given, memorisation): all devices under one overlay
+    template must be in the SAME ADOM; each FortiGate can receive config from ONE overlay
+    template only; multiple overlay templates per ADOM and per FortiManager are allowed for
+    multiple topologies. CANNOT use VPN Manager and an SD-WAN overlay template for the same
+    network — for new deployments use the overlay template.
+14. MENTIONED, NOT TAUGHT (banked): single-hub → dual/multi-hub conversion WITHOUT recreating
+    components; ZTP (S67-ish, guide Lesson 02); monitoring dashboards (bandwidth, latency,
+    jitter, packet loss); FortiAI on FortiManager.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT WORKED
+==================================================================
+- PET vs FACTORY (Señor's opener). "One firewall is a pet. Eight is a factory. Factories have
+  foremen." LOAD-BEARING for the whole of Season 5 — carry forward every FortiManager session.
+- TWINS AT BIRTH → COUSINS (Riley). Drift made visual and emotional in one line.
+- "EIGHT SOURCES OF TRUTH = NO SOURCE OF TRUTH." The one-sentence exam/interview carry.
+- "DRIFT WEARING A SUIT" (unnecessary second ADOM duplicating the object DB).
+- "DRIFT WITH A NAMING CONVENTION IS STILL DRIFT" (Riley, on maintaining 2–3 templates).
+- IMPORT COMES UP, INSTALL GOES DOWN (wizard direction of travel).
+- "THE WIZARD HAS EXCELLENT TASTE AND NO JUDGEMENT. It will build precisely what you describe,
+  beautifully, eight times." — why planning precedes the wizard.
+- BLAST RADIUS × REMOTENESS (why preview/step 5 is mandatory).
+- PLANNING vs CONFIGURATION: "Configuration you can change on a Tuesday. Planning you change
+  by starting over." Use this to separate the four planning elements from everything else.
+- "STEP 5 IS WHERE YOU FIND OUT WHAT YOU ACTUALLY ASKED FOR" (Junior).
+
+==================================================================
+KEY CLI / GUI PATHS DISCUSSED
+==================================================================
+Debt-collection CLI at open:
+  config system global
+      set snat-route-change {enable | disable}   # disable = DEFAULT
+  Law written on glass:
+     routing change → enable: existing SNAT sessions STAMPED dirty (rip the bandaid)
+                    → disable: existing SNAT sessions NOT STAMPED (keep old route till expiry)
+GUI paths (this session was deliberately GUI-heavy — FortiManager lesson):
+  Device Manager > <device> > Network > SD-WAN          (per-device management)
+  Device Manager > Provisioning Templates               (classic template path)
+  SD-WAN Manager > SD-WAN Network / SD-WAN Templates /
+                   SD-WAN Overlay Orchestration / SD-WAN Rules
+  SD-WAN template > member > Installation Target        (device group or devices; empty = all)
+  Right-click managed device → Import Configuration | Re-install Policy
+No FortiGate CLI was required; NOTE for S66 — student has had two consecutive light-CLI
+sessions on the FortiManager side. S66 should reintroduce real CLI via CLI templates / Jinja
+(DVMDB.name etc.) to keep the muscle warm.
+
+==================================================================
+TOPOLOGY CHANGE
+==================================================================
+LoFinance moves from single-site management to a MANAGED ESTATE. FortiManager (Sydney) added
+as the MANAGEMENT PLANE. Single ADOM. Sydney = hub. Seven planned branch sites held in a
+branch DEVICE GROUP (Melbourne annex, Brisbane, Perth, Adelaide, Auckland, Singapore, Hobart).
+Melbourne + Brisbane earmarked for MPLS via a "main-sites" group used as an installation
+target. NO DATA-PLANE CHANGE YET — the control of the network has moved before the network has.
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Eight-site expansion approved on the strength of a management-plane design. No travel budget
+required. Penny gets an audit trail (revision control) for the regulator; Riley gets one
+dashboard; the student gets a template instead of eight pets. Board line: "one person plus
+one foreman."
+
+==================================================================
+EXAM RESULTS & STUDENT PERFORMANCE (DETAIL FOR ADAPTIVE TEACHING)
+==================================================================
+EXAM: 9/10 first attempt, COLD, no ritual. Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q9 Q10 all clean — including
+ALL FOUR multi-selects (Q1 A/C, Q2 A/B/D/E, Q4 B/D, Q9 A/B/D) answered correctly.
+ONLY MISS: Q8 — chose A ("different ADOM") over B ("SD-WAN management not enabled per device"),
+despite the trap being taught verbatim 20 minutes earlier. Diagnosis: NOT a knowledge gap —
+a RECENCY/ATTENTION gap. He plausibly pattern-matched "not visible" → "wrong ADOM" from the
+layer discussion, which had been the bigger conceptual item. Spot-check S67 with a
+symptom-phrased question, not a definition-phrased one.
+
+RITUAL STATUS — CRITICAL ENTRY (7th session of the multi-select family):
+The S64 escalation was executed exactly as planned: he was told the ritual must run UNPROMPTED
+on the first multi-select. IT DID NOT RUN. He submitted ten bare lines of letters with NO
+count, NO reason column, NO T/F scoring — and scored 9/10 anyway, which is the DANGEROUS
+outcome, because success without process teaches the wrong lesson. Señor stopped the session
+AFTER marking and required him to NAME THE MISSING FIRST STEP himself ("state the count").
+HIS ANSWER WAS NOT RECEIVED BEFORE SESSION CLOSE — CARRY THIS OPEN. S66 MUST OPEN by
+collecting it. Framing to reuse: "They were nine-tenths right, which is exactly why this
+conversation is happening now instead of after you fail one."
+RECOMMENDATION FOR S66/S67: stop escalating verbal reminders — they have failed twice.
+Instead, WITHHOLD MARKING until the working is shown. Do not mark bare letters.
+
+PERSISTENT GAP — SNAT LAYER-SPLIT: CLOSED (touch 2 of 3, PASSED with assistance).
+Asked cold for the MECHANISM sentence, he produced "they get marked with the dirty stamp"
+— buried mid-paragraph inside three consequence sentences, and prefaced with an incorrect
+frame ("when a new session is created"), which Señor corrected: the setting is a law about
+OLD sessions; new sessions never needed help. He then completed the disable line ("NOT
+STAMPED dirty") instantly and correctly. VERDICT: mechanism now present but not yet FRONTED.
+Touch 3 owed ~S68 as a single-sentence cold demand: "First words out of your mouth."
+
+STANDOUT MOMENTS:
+- DERIVED THE ENTIRE BUSINESS CASE for FortiManager from a risk question, without being told
+  the product's feature list. He named human error as the ignition; Señor extended it to
+  drift, but the reasoning chain was his.
+- RE-DERIVED METADATA VARIABLES UNPROMPTED from the tension "shared template vs per-site
+  numbers" — three seasons after first meeting them, with no hint. Best retrieval of the term.
+- INSTALLATION TARGET question answered PERFECTLY and with the right consequence ("Perth only
+  gets the first two"), i.e. he understood absence-of-member, not disabled-member.
+- ADOM boundary principle produced in six words ("separate admin boundaries for your
+  firewalls") — correct abstraction, just needed concrete examples attached.
+- PRESENTED THE FULL DESIGN TO PENNY unassisted at session close. First time. This is the
+  Season-5 skill: translating engineering into a budget answer.
+
+WEAKNESSES / WATCH ITEMS:
+- Q8 recency miss (see above).
+- BGP AS number needed TWO nudges. He answered "routing protocol" for the fourth planning
+  element — right category, but the protocol is not a choice in Fortinet overlay design (it
+  is always BGP). Had to be walked to "AS number". NOTE: this is the second time BGP identity
+  concepts have needed polishing (S64 noted local-preference "wording wobbled"). BGP knowledge
+  is CORRECT but NOT FLUENT. Recommend a story-wrapped BGP retrieval in S66/S67.
+- Per-device vs central: his first answer ("sites don't have similar links — some internet,
+  some dual, some MPLS") was the study guide's own answer BUT was the incomplete engineering
+  answer. He treated LINK DIFFERENCE as sufficient grounds to abandon templates. The repair
+  (installation targets) landed immediately, but watch for the general pattern: HE ACCEPTS THE
+  FIRST SUFFICIENT ANSWER AND STOPS. Push him one step past "correct" more often.
+- Answers remain SHORT. Six sessions of one-line replies. He is right far more often than he
+  is expansive. This is efficient but hides reasoning; the ritual failure is the same trait.
+- Step-5 answer ("could break a whole network and the connections to the branches") was
+  correct but stopped short of the asymmetry; Riley had to supply "no travel budget."
+
+CARRY-FORWARD FROM S64, STATUS:
+(1) snat-route-change mechanism — COLLECTED, see above, touch 3 owed ~S68.
+(2) Unprompted multi-select ritual — FAILED, escalation now = withhold marking (see above).
+(3) Probe mechanism spot-check — STILL OWED, bank for S66/S67 ("how do probes defy the
+    routing table?").
+(4) S63-Q4 retest — retired, spot-check ~S67 as planned. Not touched this session.
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- Per-device mgmt = different SD-WAN requirements per device, edited on the device's SD-WAN
+  page. Central mgmt = templates → device/group, reduces admin overhead. Metadata variables
+  in Interface Member / Gateway / Health-Check Server are the CENTRAL-management tell.
+- Installation Target is a property of an SD-WAN MEMBER. Empty = every device.
+- FOUR planning elements before an overlay template: topology type · overlay network address
+  space · loopback IP address space · BGP AS number for the overlay region.
+- Prerequisites: hubs defined as managed devices (model or discovered) with links/interfaces;
+  BRANCH DEVICE GROUP must exist before proceeding.
+- Overlay template restrictions: same ADOM for all devices; ONE overlay template per FortiGate;
+  multiple templates per ADOM allowed; branches addable later; VPN Manager and overlay template
+  are MUTUALLY EXCLUSIVE for the same network.
+- Layers: Global ADOM (global object DB + header/footer policy packages) → ADOM (policy
+  packages + ONE common object DB) → Device Manager (per-device DB, revisions, status).
+- Four wizards: Add Device · Import Configuration (UP) · Install Wizard (DOWN, preview) ·
+  Re-install Policy (preview). Import Configuration and Re-install Policy open by RIGHT-CLICK.
+- SD-WAN Manager sections: SD-WAN Network · SD-WAN Templates · SD-WAN Overlay Orchestration ·
+  SD-WAN Rules. SD-WAN management must be ENABLED PER DEVICE to appear there.
+- Six-step deployment; step 5 (review generated templates) is non-optional.
+
+==================================================================
+JUNIOR'S / J.R.'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+Junior's confession this session was PREEMPTIVE and self-aware: asked which step juniors skip,
+he answered before being accused — "I'd go from four straight to six." Señor: "Of course you
+would. Everyone does. The wizard says 'done', there's a green tick, and installing FEELS like
+finishing." The lesson: A GREEN TICK IS NOT A REVIEW. Junior then produced the session's best
+formulation ("step 5 is where you find out what you actually asked for"), which Señor told him
+to write down. Junior's arc: S63 asked the pivotal question, S64 asked it unprompted, S65 he
+is now ANSWERING pivotal questions and coining phrases. He is approaching peer status; future
+sessions should let him be occasionally RIGHT AHEAD of the student to raise the stakes.
+
+==================================================================
+ARTEFACT NOTES
+==================================================================
+Generated at close, standard set: summary · knowledge register · bite (cheatsheet, includes
+Senior Engineering Lessons per instructions) · revision pack. No mid-session artefact request
+this time — first session in four without self-directed externalisation. Not a regression;
+the session was GUI/design-heavy with little to externalise. Watch whether it returns in S66
+(templates/CSV work is highly externalisable — he will probably want a bite).
+
+==================================================================
+TEASER DELIVERED FOR SESSION 66 — "TEMPLATES ALL THE WAY DOWN"
+==================================================================
+Friday. The student arrives to find JUNIOR HAS ALREADY BUILT THE SD-WAN TEMPLATE. All of it.
+Overnight. He is glowing. It is, Señor observes, a very good template — FOR EXACTLY ONE BRANCH.
+Junior, insistent: "Every branch is identical, except for the twelve numbers that aren't."
+Señor puts on the sombrero, which he only does before long days: "Then today we learn how a
+factory stamps twelve different numbers into one identical mould. Templates. Template groups.
+And your old friends from Season Three, the metadata variables — this time doing real work.
+Bring the CSV." Riley, already backing out of the room: "There's a CSV?"
+"THERE IS ALWAYS A CSV."
+S66 topics: SD-WAN configuration on FortiManager — templates, template groups, metadata
+variables in practice. Guide pp. 23–45. Material available: metadata variable CSV/JSON import
+and export, device database variables (DVMDB.name) in Jinja, importing a device's SD-WAN
+settings into a template, Template Groups pane, System templates and CLI templates.
+NOTE FOR S66 AT OPEN: (1) COLLECT the unanswered ritual question — which first step did he
+skip (answer: state the count) — before any teaching; (2) from this session on, DO NOT MARK
+bare-letter multi-select answers, return them unmarked; (3) probe-mechanism spot-check owed;
+(4) reintroduce real CLI (Jinja/CLI templates) after two GUI-heavy sessions; (5) push him one
+step past his first sufficient answer at least twice.
