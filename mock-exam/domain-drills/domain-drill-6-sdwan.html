@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE 7 — Secure Networking 7.6 | Domain Drill 6: SD-WAN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#b0322c; --red-light:#fbe4e2; --red-border:#eab0ab;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+code,pre{font-family:'JetBrains Mono',monospace;}
+
+header{padding:34px 48px 26px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+header h1{font-family:'Cormorant Garamond',serif;font-size:34px;color:#f5f0e0;font-weight:600;line-height:1.15;}
+header .sub{color:var(--ink-accent);font-size:13px;margin-top:6px;letter-spacing:0.04em;}
+
+.exam-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:2px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+.exam-bar .timer{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;}
+.exam-bar .timer.low{color:var(--red);background:var(--red-light);border-color:var(--red-border);animation:blink 1.2s infinite;}
+.exam-bar .progress-wrap{flex:1;min-width:180px;}
+.progress-track{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:var(--blue-vivid);border-radius:6px;transition:width .3s;}
+.exam-bar .meta{font-size:12px;color:var(--text-muted);letter-spacing:0.05em;}
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;padding:9px 20px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-light);color:var(--blue-deep);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--blue-vivid);color:#fff;}
+.btn.primary{background:var(--blue-vivid);color:#fff;border-color:var(--blue-deep);}
+.btn.primary:hover{background:var(--blue-deep);}
+.btn.ghost{background:transparent;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.layout{display:grid;grid-template-columns:1fr 220px;gap:28px;max-width:1180px;margin:0 auto;padding:32px 48px 90px;}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:24px 18px 90px;}.nav-panel{position:static !important;}}
+
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:22px;box-shadow:0 1px 3px rgba(13,26,58,0.05);}
+.q-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
+.q-num{font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;}
+.q-domain{font-size:10px;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;background:var(--border-dim);padding:3px 10px;border-radius:12px;}
+.flag-btn{font-size:11px;border:1px solid var(--border);background:none;border-radius:12px;padding:3px 12px;cursor:pointer;color:var(--text-muted);}
+.flag-btn.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);font-weight:600;}
+.q-text{font-size:16px;line-height:1.55;color:var(--text);margin-bottom:6px;font-weight:500;}
+.q-instr{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-bottom:14px;}
+.exhibit{background:var(--ink-dark);color:#dbe6f7;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.6;overflow-x:auto;margin:12px 0 16px;white-space:pre;}
+.exhibit .lbl{display:block;color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border-dim);border-radius:10px;padding:12px 16px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt:hover{border-color:var(--blue-border);background:var(--blue-light);}
+.opt input{margin-top:3px;accent-color:var(--blue-vivid);width:16px;height:16px;flex-shrink:0;}
+.opt .letter{font-weight:700;color:var(--blue-deep);font-size:13px;min-width:18px;margin-top:1px;}
+.opt .txt{font-size:14.5px;line-height:1.5;color:var(--text-soft);}
+.opt.selected{border-color:var(--blue-vivid);background:var(--blue-light);}
+.opt.correct-opt{border-color:var(--green-border);background:var(--green-light);}
+.opt.wrong-opt{border-color:var(--red-border);background:var(--red-light);}
+.opt.missed-opt{border-color:var(--green-border);background:#fff;outline:2px dashed var(--green-border);}
+
+.nav-panel{position:sticky;top:78px;align-self:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.nav-panel h3{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.nav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.nav-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--border-dim);border-radius:7px;cursor:pointer;background:#fff;color:var(--text-muted);}
+.nav-cell.answered{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue-deep);}
+.nav-cell.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+.nav-cell.rev-correct{background:var(--green-light);border-color:var(--green-border);color:var(--green);}
+.nav-cell.rev-wrong{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.legend{margin-top:14px;font-size:10.5px;color:var(--text-muted);line-height:1.9;}
+.legend span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border-dim);}
+
+/* results */
+#results{display:none;max-width:1180px;margin:0 auto;padding:36px 48px 40px;}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.score-head{padding:28px 34px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;border-bottom:1px solid var(--border-dim);}
+.verdict{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+.verdict.pass{color:var(--green);} .verdict.fail{color:var(--red);}
+.score-detail{font-size:13px;color:var(--text-muted);line-height:1.7;}
+.score-detail b{color:var(--text);}
+.big-pct{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;color:var(--blue-deep);margin-left:auto;}
+.section-perf{padding:24px 34px 30px;}
+.section-perf h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;}
+.section-perf .note{font-size:12px;color:var(--text-muted);margin-bottom:18px;}
+.perf-row{display:grid;grid-template-columns:250px 1fr 110px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border-dim);}
+.perf-row .name{font-size:13.5px;font-weight:500;color:var(--text-soft);}
+.perf-bar{height:14px;background:var(--border-dim);border-radius:8px;overflow:hidden;position:relative;}
+.perf-fill{height:100%;border-radius:8px;transition:width .8s ease;}
+.perf-score{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted);text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:16px;line-height:1.6;}
+.explain{margin-top:14px;border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;line-height:1.65;color:var(--text-soft);}
+.explain .verdict-line{font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+.explain.ok .verdict-line{color:var(--green);} .explain.bad .verdict-line{color:var(--red);}
+.explain code{background:rgba(13,26,58,0.08);padding:1px 6px;border-radius:4px;font-size:12px;}
+footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted);letter-spacing:0.05em;}
+
+/* intro modal */
+#intro{max-width:760px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 42px;box-shadow:0 3px 12px rgba(13,26,58,0.08);}
+#intro h2{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;}
+#intro p,#intro li{font-size:14.5px;line-height:1.7;color:var(--text-soft);}
+#intro ul{margin:12px 0 20px 20px;}
+.rule-table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;}
+.rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
+.rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
+#examArea,#barWrap{display:none;}
+
+/* socratic session */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> LoFinance Certification Lab</div>
+  <h1>NSE 7 — Secure Networking Architect 7.6</h1>
+  <div class="sub">Domain Drill 6 &nbsp;·&nbsp; SD-WAN &nbsp;·&nbsp; 40 questions &nbsp;·&nbsp; 70 minutes</div>
+</header>
+
+<div id="intro">
+  <h2>Before you begin</h2>
+  <p>This mock exam is a single-domain drill concentrating entirely on <b>SD-WAN</b>: members and zones, performance SLAs and health checks, rule strategies and traffic steering, session behaviour on failover, and FortiManager central management with the overlay orchestration workflow. Scenario-based questions, CLI exhibits, and multiple-select items. Answers are withheld until you submit the entire exam, exactly like the real thing.</p>
+  <table class="rule-table">
+    <tr><td>Questions</td><td>40 multiple-choice (some require two selections — read the instruction line)</td></tr>
+    <tr><td>Time allowed</td><td>70 minutes with a live countdown; the exam auto-submits at 0:00</td></tr>
+    <tr><td>Scoring</td><td>Pass / fail with per-section performance, in the style of the official Fortinet score report</td></tr>
+    <tr><td>Marking</td><td>Multi-select questions are scored all-or-nothing — both correct options must be chosen</td></tr>
+    <tr><td>Navigation</td><td>Flag questions for review and jump around using the question grid</td></tr>
+  </table>
+  <p><b>Focus:</b> all 40 questions target SD-WAN, drawn from Sessions 62 ("Two Roads, One Brain"), 63 ("Rules of the Road") and 65 ("The Branch Factory") plus fresh territory — so it doubles as spaced retrieval of the Season 5 material plus new ground.</p>
+  <button class="btn primary" style="font-size:15px;padding:12px 30px;" onclick="startExam()">Begin Exam →</button>
+</div>
+
+<div class="exam-bar" id="barWrap">
+  <div class="timer" id="timer">70:00</div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+  </div>
+  <div class="meta" id="progMeta">0 / 40 answered</div>
+  <button class="btn primary" onclick="confirmSubmit()">Submit Exam</button>
+</div>
+
+<div class="layout" id="examArea">
+  <div id="questions"></div>
+  <div class="nav-panel">
+    <h3>Questions</h3>
+    <div class="nav-grid" id="navGrid"></div>
+    <div class="legend" id="legendBox">
+      <div><span style="background:var(--blue-light);border-color:var(--blue-border)"></span>Answered</div>
+      <div><span style="background:var(--amber-light);border-color:var(--amber-border)"></span>Flagged</div>
+      <div><span style="background:#fff"></span>Unanswered</div>
+    </div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<footer>LoFinance Study Programme · Domain Drill 6 · Based on the NSE 7 Secure Networking 7.6 curriculum (FortiOS 7.6, FortiManager 7.6) · Not an official Fortinet product</footer>
+
+<script>
+
+const DOMAINS = {
+  MZ:"Members & Zones", SLA:"Performance SLA & Health Checks",
+  RU:"Rules & Traffic Steering", SS:"Sessions & Failover",
+  CM:"Central Management (FortiManager)"
+};
+
+const Q = [
+{d:"MZ",type:"multi",
+q:"Which two settings are required when configuring an SD-WAN member? (Choose two.)",
+o:["The underlying interface","A gateway address","An explicit SD-WAN zone assignment","A performance SLA binding"],
+a:[0,1],
+ex:"An SD-WAN member has exactly two required fields: the interface (WHERE the traffic leaves) and the gateway (HOW it leaves — the next hop for the static route FortiOS auto-generates for that member). Without a gateway there is no member route, and nothing — including health-check probes — can use the member. Zone assignment is optional (members fall into the default zone if none is named), and SLA bindings are configured separately under the health check."},
+
+{d:"MZ",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-BRANCH</span>FGT-BRANCH # diagnose sys sdwan health-check\nHealth Check(HC-DC):\nSeq(1 port1): state(alive), packet-loss(0.000%) latency(4.213), jitter(0.512)\nSeq(2 port2): state(alive), packet-loss(0.000%) latency(9.887), jitter(1.204)\nSeq(3 port3): state(dead), packet-loss(100.000%) latency(0.000), jitter(0.000)</div>A third circuit was added as SD-WAN member port3 yesterday. The carrier confirms the link is up and the interface shows link and carrier. What is the most likely cause of the port3 health-check state?",
+o:["The carrier is silently dropping the probe traffic upstream","The member was configured without a gateway, so probes never leave the FortiGate","The SLA thresholds are set too aggressively for the new link","The health-check server is rate-limiting ICMP from the new source address"],
+a:[1],
+ex:"Read the numbers, not just the state. 100% loss with latency and jitter both at exactly 0.000 means nothing was ever measured — no probe ever left the box. That is the signature of a configuration fault, almost always a member with no gateway: no gateway → no auto-built member route → the probe has no way out. A carrier problem produces real bad numbers (high latency, partial loss); all-zeroes means the thermometer is in another room. Config fault, not carrier fault."},
+
+{d:"MZ",type:"single",
+q:"LoFinance's firewall policies reference the SD-WAN zone \"underlay\" rather than individual member interfaces. What is the main operational benefit of this design?",
+o:["Zones allow asymmetric routing between members without RPF failures","Zone-based policies are processed faster than interface-based policies","Members can be added or removed without editing any firewall policy","Zones automatically apply the same SLA target to every member inside them"],
+a:[2],
+ex:"A zone has two jobs: it is a selection target for SD-WAN rules, and — the one this question targets — it is the seam between the network and security teams. Policies reference the zone, so membership can change underneath without a single policy edit. Zones do not change policy processing speed, do not bypass RPF, and do not impose SLA targets — health checks and SLAs are configured independently of zone membership."},
+
+{d:"MZ",type:"single",
+q:"An administrator adds a new member, port3, to the existing SD-WAN zone \"underlay\". Every internet-bound firewall policy already uses \"underlay\" as its outgoing interface. What must be changed in those policies so traffic can use port3?",
+o:["Each policy must be edited to add port3 explicitly","Nothing — that is precisely the point of referencing the zone","The policies must be deleted and re-created to refresh the zone binding","Only policies with NAT enabled need to be updated"],
+a:[1],
+ex:"Nothing needs to change — the zone abstraction exists exactly so that membership churn never touches the policy table. The moment port3 joins the zone, every policy referencing \"underlay\" covers it. This is also why the reverse mistake is so dangerous: if you steer traffic out an interface that is NOT covered by any policy referencing the zone, you have a WAN link carrying traffic outside your policy design."},
+
+{d:"MZ",type:"single",
+q:"A network team steers traffic out individual member interfaces and writes per-interface firewall policies instead of using SD-WAN zones. What is the real long-term risk of this design?",
+o:["The FortiGate will eventually exhaust its policy table capacity","A forgotten per-interface policy leaves a WAN link carrying uninspected traffic — and nothing alerts on it, because nothing is broken","Per-interface policies cannot perform NAT on SD-WAN members","Health checks cannot bind to members that are referenced directly in policies"],
+a:[1],
+ex:"The cost of skipping zones is not tedium — it is the policy somebody forgets. When each member needs its own policy, adding a link means remembering to replicate the full security stance onto it. The failure mode is silent: traffic flows, users are happy, and one WAN link is carrying uninspected traffic with nothing alerting, because from the network's point of view nothing is wrong. Zones close that gap structurally rather than procedurally."},
+
+{d:"MZ",type:"multi",
+q:"LoFinance is considering Direct Internet Access (DIA) at its branches instead of backhauling internet traffic to the data-centre hub. Which two are genuine benefits of DIA? (Choose two.)",
+o:["It removes the backhaul latency added by hairpinning internet traffic through the hub","It consolidates all internet logging at a single hub firewall","Branch internet traffic no longer consumes the hub firewall's inspection capacity","All branches share one public IP address, simplifying partner allowlists"],
+a:[0,2],
+ex:"DIA's three classic benefits: no backhaul latency, no branch internet load on the WAN link, and no branch internet consuming the hub firewall's inspection capacity. The two distractors are the opposite of what DIA does — DIA trades AWAY the single point of enforcement and logging (one chokepoint becomes eight that must agree forever), and each site breaks out with its OWN public IP, which is exactly what breaks partner allowlists rather than simplifying them."},
+
+{d:"MZ",type:"single",
+q:"After moving its branches to DIA, LoFinance's trading partner suddenly rejects connections from three branch offices. The partner's firewall only accepts traffic from LoFinance's \"registered address range\". What DIA consequence does this illustrate?",
+o:["DIA disables source NAT on branch FortiGates","NAT identity — each site now breaks out with its own public IP, breaking partner allowlists built around the old central range","DIA requires the partner to accept RFC 1918 source addresses","The branches are failing RPF checks at the partner's edge"],
+a:[1],
+ex:"This is the DIA consequence most people forget: NAT identity. Under backhaul, every site egressed through the hub and presented the hub's public range — the range every partner allowlist, geo-restriction and contract clause was built around. Under DIA each site NATs to its own local public IP, and every one of those agreements quietly breaks. It fails in production, never in design review, because nothing in the branch design itself is wrong."},
+
+{d:"SLA",type:"single",
+q:"For a month, LoFinance traders report daily slowdowns while the carrier's dashboard — and the FortiGate's routing table — show both WAN links green and every route valid. Why can this situation persist?",
+o:["The routing table only re-converges every 30 minutes by default","A routing table knows reachability, not quality — it has no field for latency, jitter or loss","The carrier dashboard and the FortiGate use incompatible SNMP MIBs","Static routes suppress interface-level error counters"],
+a:[1],
+ex:"A brownout is a working link performing badly — carrier is present, ARP resolves, the static route is valid, so every reachability-based view stays green. The routing table simply has no field for latency, jitter or loss; it answers 'can I get there?' and nothing else. This is the entire reason performance SLAs exist: they measure the question routing cannot ask. The carrier rep isn't lying when he says the links are up — he's answering a different question."},
+
+{d:"SLA",type:"single",
+q:"Which three metrics does an SD-WAN performance SLA measure against its thresholds?",
+o:["Bandwidth utilisation, session count, and CPU load","Latency, jitter, and packet loss","MTU, TTL, and round-trip time","Interface errors, collisions, and discards"],
+a:[1],
+ex:"The core trio is latency, jitter and packet loss (FortiOS 7.6 adds MOS and bandwidth-based options on top). Each maps to a distinct user complaint: loss on TCP feels like a freeze-then-catch-up stall (retransmission recovers, but recovery costs time); jitter and loss on UDP is permanent damage — 'calls sound like the ocean' — because nothing retransmits. Matching the metric to the symptom is a recurring exam pattern."},
+
+{d:"SLA",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — SLA target</span>config health-check\n    edit \"HC-DC\"\n        config sla\n            edit 1\n                set link-cost-factor latency jitter packet-loss\n                set latency-threshold 150\n                set jitter-threshold 30\n                set packetloss-threshold 2\n            next\n        end\n    next\nend</div>A member currently measures latency 42 ms, jitter 8 ms, packet loss 4%. Is the member in or out of SLA 1?",
+o:["In SLA — two of the three factors pass, which meets the majority requirement","In SLA — latency is the primary factor and it passes","Out of SLA — every listed link-cost-factor must pass; packet loss fails","Out of SLA — but only after the next full probe interval completes"],
+a:[2],
+ex:"SLA evaluation is AND logic: every factor listed in link-cost-factor must be inside its threshold for the member to satisfy that SLA. Latency (42 < 150) and jitter (8 < 30) pass, but loss (4% > 2%) fails — so the member is out of SLA. There is no majority voting and no primary factor. If you only want latency to matter, list only latency; every factor you add is another way to fail."},
+
+{d:"SLA",type:"single",
+q:"An SD-WAN member fails its performance SLA and goes out-of-SLA. What happens to the static route FortiOS generated for that member?",
+o:["It is withdrawn from the routing table until the member recovers","It remains installed and unchanged — what changes is the member's candidacy inside SD-WAN rules","Its administrative distance is raised so other routes are preferred","It is converted to a blackhole route to prevent session leakage"],
+a:[1],
+ex:"Nothing happens to the route — it stays installed and valid. 'The route is withdrawn' is the durable wrong answer produced by a two-state mental model (link is either good or gone). SD-WAN has three states: UP (a route exists) → ELIGIBLE (in the matched rule's member list) → PREFERRED (currently selected given SLA state and ordering). An SLA failure changes candidacy inside SD-WAN rule selection; the routing table, and anything that depends on it, is untouched."},
+
+{d:"SLA",type:"single",
+q:"A health check is configured with <code>set interval 1000</code> and <code>set failtime 10</code>. When a link degrades past its SLA thresholds, how long until the member is marked out-of-SLA?",
+o:["1 second","10 seconds","100 milliseconds","70 seconds"],
+a:[1],
+ex:"failtime × interval: 10 consecutive failed checks at 1000 ms apart = 10 seconds of sustained failure before the member is declared out-of-SLA. This is the detection side of the flap-damping pair. The recovery side (recoverytime) governs how many consecutive PASSING checks are needed before the member is trusted again — and the two deliberately do not have to match."},
+
+{d:"SLA",type:"single",
+q:"Why is it best practice to set <code>recoverytime</code> HIGHER than <code>failtime</code> on a performance SLA health check?",
+o:["FortiOS requires recoverytime to be at least double failtime","Because the costs are asymmetric: leaving a bad link late costs one bad window, but returning early to a still-degraded link causes a flap that moves every session twice","Because recovery probes are sent at half the configured interval","To give BGP time to re-converge before traffic returns"],
+a:[1],
+ex:"Quick to distrust, slow to forgive. Being slow to abandon a bad link costs you one extra window of degraded traffic; being fast to return to a link that is still sick costs a flap — and every session moves twice, which users feel both times. Since the penalties are asymmetric, the timers should be too: fail fast, recover cautiously. The same detection-versus-stability trade-off underlies BFD (twitchy on purpose) and graceful restart (patient on purpose)."},
+
+{d:"SLA",type:"single",
+q:"An administrator leaves an SD-WAN health check on its default probe protocol. Why can this produce SLA results that disagree with what users actually experience?",
+o:["The default is ping, and carriers commonly de-prioritise, rate-limit or slow-path ICMP — so the probe travels a different quality path than real traffic","The default is HTTP, which is cached by intermediate proxies","The default probe only runs when the link is idle","The default protocol measures latency but cannot measure packet loss"],
+a:[0],
+ex:"The default probe is ping (ICMP), and ICMP is the traffic class carriers treat most casually — de-prioritised, rate-limited, or punted to a router's slow path. The probe can therefore report problems real traffic never sees, or sail through a congested queue that is punishing TCP. When the health check and the users disagree, suspect the probe: is the protocol representative, and is the target far enough away to cross the part of the path where the problem lives?"},
+
+{d:"SLA",type:"single",
+q:"An administrator configures the performance SLA health-check server as the ISP's next-hop gateway address. What is the flaw in this choice?",
+o:["Probing the gateway consumes the ISP's SLA credits","The gateway will treat the probes as a SYN flood and blacklist the FortiGate","It only proves the carrier's edge router answers — it says nothing about the path beyond it, which is where brownouts live","Health-check servers must always be on the far side of an IPsec overlay"],
+a:[2],
+ex:"A health check is only as honest as its target. Probing the directly attached carrier gateway measures one hop — it proves the carrier's router responds and nothing more. Congestion, peering problems and brownouts live deeper in the path. The target should sit far enough away that probes traverse the same territory user traffic does (a data-centre loopback across the overlay, or a stable service beyond the carrier network)."},
+
+{d:"SLA",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — FGT-BRANCH</span>FGT-BRANCH # diagnose sys sdwan health-check\nHealth Check(HC-DC):\nSeq(1 port1): state(alive), packet-loss(11.000%) latency(212.113), jitter(44.871)\n  sla_map=0x0\nSeq(2 port2): state(alive), packet-loss(0.000%) latency(12.021), jitter(2.114)\n  sla_map=0x1</div>How should the port1 output be interpreted?",
+o:["The member is down and its route has been withdrawn","The member is up and answering probes, but satisfies no SLA — the exact signature of a brownout","sla_map=0x0 means SLA checking is disabled on this member","The member is healthy; 0x0 indicates zero failed SLA checks"],
+a:[1],
+ex:"sla_map is a bitmask, one bit per SLA entry under the health check: 0x1 means SLA 1 is satisfied, 0x0 means none are. state(alive) with sla_map=0x0 is the brownout signature — the link is up, probes complete, and the measured quality (11% loss, 212 ms) fails every threshold. This is precisely the state routing cannot see: the member's route remains valid while SD-WAN quietly removes it from SLA-gated candidacy."},
+
+{d:"RU",type:"single",
+q:"Which statement correctly describes the relationship between SD-WAN rules and the routing table?",
+o:["An SD-WAN rule creates a policy route that overrides and replaces the routing table","SD-WAN rules do not create reachability — they choose among members that already have a valid route to the destination","SD-WAN rules inject a /32 route for each active session","The routing table is bypassed entirely once SD-WAN is enabled"],
+a:[1],
+ex:"Rules never create reachability. A rule is a selection mechanism: given the members listed in it, it picks among those that already hold a valid route to the destination. This is why a member with no route (for example, no gateway) can never carry traffic no matter how the rule is written — and why deleting a suspicious rule is a legitimate diagnostic move: if the symptom survives the deletion, the rule was never the cause."},
+
+{d:"RU",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — SD-WAN rules</span>ID 1  \"CatchAll\"      src: all        dst: all        members: port1, port2\nID 2  \"Trading-SLA\"   src: traders    dst: exchange   members: port1 (sla)\nID 3  \"Voice-Quality\" src: all        dst: sip-trunk  members: best-quality</div>On Friday afternoon a junior administrator added rule 1 \"so nothing would be left out.\" On Monday, trading and voice traffic no longer follow their dedicated rules. Why?",
+o:["Rules 2 and 3 now fail validation because their members overlap rule 1","Rule lookup is top-down and first-match-wins — rule 1 matches everything, so rules 2 and 3 are never read","The catch-all rule disabled the implicit rule that rules 2 and 3 depend on","Named rules are only evaluated when no catch-all exists"],
+a:[1],
+ex:"SD-WAN rule lookup is strictly top-down by sequence, and the first match wins — nothing below the matching rule is ever read. A source-all/destination-all rule in seat one turns every rule beneath it into dead configuration. The rules still exist, still look valid, and never fire. When purpose-built rules mysteriously stop matching, read the rule table from the top as a packet would, and stop at the first line that matches."},
+
+{d:"RU",type:"single",
+q:"Traffic arrives that matches none of the configured SD-WAN rules. What handles it?",
+o:["It is dropped, because SD-WAN has an implicit deny like the policy table","The implicit rule — the global load-balance-mode — distributes it across members that have a valid route to the destination","It is always sent out the first member in the member list","It falls back to the interface with the lowest index number"],
+a:[1],
+ex:"The un-erasable last line of the rule table is the implicit rule: the global load-balance-mode (source-ip-based by default). It balances unmatched traffic across all members holding a valid route to the destination. Nothing is dropped — SD-WAN steering is about path choice, not permission; permission still belongs to the firewall policy table. Knowing exactly which traffic falls through to the implicit rule is the key to several troubleshooting scenarios."},
+
+{d:"RU",type:"single",
+q:"Which statement about the implicit SD-WAN rule is true?",
+o:["It consults the first performance SLA configured on the system","It never consults performance SLAs — no health check can bind to it","It only applies to UDP traffic","It always prefers the member with the lowest latency"],
+a:[1],
+ex:"The implicit rule never consults an SLA — there is no mechanism to bind a health check to it. It happily balances traffic onto a member that is deep in a brownout, because all it checks is 'does this member have a valid route?'. This is why relying on the implicit rule for anything you care about is a design smell: quality-aware steering only exists inside explicit rules with SLA-gated or quality-ranked strategies."},
+
+{d:"RU",type:"single",
+q:"An SD-WAN rule uses <code>mode sla</code> (Lowest Cost). During a major carrier incident, ALL members in the rule fall out of SLA. What happens to traffic matching this rule?",
+o:["The rule is skipped and lookup falls through to the next rule","Traffic is dropped until at least one member returns to SLA","The rule still matches — traffic is forwarded best-effort using the configured priority-members order","The rule automatically switches to best-quality mode"],
+a:[2],
+ex:"Sick is not dead. An all-out-of-SLA rule still matches; the FortiGate forwards best-effort following the configured member order. The rule is only SKIPPED when it has no usable members at all — all dead, or none with a route to the destination. Confusing 'out of SLA' with 'unusable' is the classic error here: SLA state affects preference among eligible members, not whether the rule owns the traffic."},
+
+{d:"RU",type:"single",
+q:"During rule lookup, under which condition is an SD-WAN rule skipped so that lookup continues to the rule below it?",
+o:["When any one of its members is out of SLA","When the rule has no usable members — all are dead, or none has a valid route to the destination","When its hold-down timer is running","When the rule's members belong to more than one zone"],
+a:[1],
+ex:"A rule is bypassed only when it cannot possibly forward: every member dead, or no member holding a valid route to the destination. Out-of-SLA members are still usable (best-effort), so SLA failures alone never skip a rule. This distinction drives the troubleshooting ladder — Match → Up → In-SLA → Eligible → Preferred — where you stop at the first rung that fails, and 'the rule was skipped' points you at member health and routing, not thresholds."},
+
+{d:"RU",type:"single",
+q:"How does the Best Quality strategy (<code>mode priority</code>) differ from the Lowest Cost (SLA) strategy?",
+o:["Best Quality ranks members by measured quality with no pass/fail threshold — it asks \"which is best?\", not \"is my preferred link still acceptable?\"","Best Quality is the only mode that can use packet loss as a criterion","Best Quality requires FortiManager; Lowest Cost can be configured locally","Best Quality steers per-packet while Lowest Cost steers per-session"],
+a:[0],
+ex:"Best Quality is a comparison: it continuously ranks members on the chosen link-cost-factor and follows the current winner — there is no concept of 'acceptable', so it can churn paths over a 1 ms improvement. Lowest Cost (mode sla) is a threshold: it keeps your preferred, cheapest-ordered member as long as that member still meets the SLA. The threshold is where a business requirement ('trading must be under 150 ms') enters the network as configuration — which is why mode sla is the stable default choice."},
+
+{d:"RU",type:"multi",
+q:"Which two SD-WAN rule strategies use a performance SLA target as an eligibility gate for members? (Choose two.)",
+o:["Lowest Cost (mode sla)","Best Quality (mode priority)","Maximize Bandwidth (mode load-balance)","Manual (mode manual)"],
+a:[0,2],
+ex:"Lowest Cost and Maximize Bandwidth both gate on the SLA: members must satisfy the referenced SLA target to be eligible (Lowest Cost then follows configured order among passers; Maximize Bandwidth balances across all passers). Best Quality uses measured values to RANK members but has no pass/fail gate, and Manual ignores measurements entirely — it simply follows the administrator's member order based on link state."},
+
+{d:"RU",type:"single",
+q:"With the implicit rule in source-ip-based load balancing, the same four users are slow every single day while everyone else is fine. What explains this pattern?",
+o:["Those users' applications are marked with a low-priority ToS value","Deterministic hashing — their stable IP addresses hash to the degraded member, so they land on the bad link every time","Their switch ports negotiate half duplex each morning","The DHCP server assigns them addresses outside the SD-WAN policy range"],
+a:[1],
+ex:"Source-ip-based balancing computes hash(source IP) mod member-count. Stable DHCP leases mean stable hashes, which means the same hosts map to the same member every day — and if that member is browning out, the same people suffer while their neighbours are fine. The symptom SHAPE is the evidence: everyone-slow-sometimes suggests round-robin across a bad link; the-same-four-always suggests deterministic source hashing. You are Jam, or you are not Jam."},
+
+{d:"RU",type:"single",
+q:"A third member is added to an SD-WAN setup that load-balances with source-ip-based hashing across two members. What happens to existing hash assignments?",
+o:["Nothing — existing source IPs keep their current member; only new hosts use the third member","The divisor changes from mod 2 to mod 3, so every host is rehashed and may land on a different member","Only the hosts on the worst-performing member are rebalanced","Hash assignments persist until the next reboot"],
+a:[1],
+ex:"The hash is hash(source IP) mod member-count. Changing the member count changes the divisor, and mod 2 versus mod 3 produces different answers for most inputs — so effectively every host rehashes at once. Users who were happy on a good link can suddenly land on a worse one, which is why 'we added capacity and things got worse for some people' is a real and explainable complaint after growing a balanced member set."},
+
+{d:"RU",type:"single",
+q:"A FortiGate's own syslog traffic to a remote collector ignores the SD-WAN rules and always leaves via the routing table. Why, and what is the fix?",
+o:["Local-out traffic never ingressed the FortiGate — there is nothing for a rule to match — and the fix is <code>set interface-select-method sdwan</code> under <code>config log syslogd setting</code>","Syslog is UDP and SD-WAN rules only steer TCP; switch the collector to TCP 6514","Self-originated traffic requires a policy route with a matching service object","The syslog daemon binds to the management VDOM, which is excluded from SD-WAN"],
+a:[0],
+ex:"SD-WAN rules match on ingress attributes — incoming interface, client source address. Traffic the FortiGate originates itself (syslog, SNMP traps, FortiGuard queries) never ingressed, so rules have nothing to grip and local-out follows the plain routing table. The remedy is per-feature, not global: each local-out service has an interface-select-method setting (auto | sdwan | specify), and setting it to sdwan opts that service into SD-WAN steering. The cobbler's children have no shoes until you buy them explicitly."},
+
+{d:"RU",type:"single",
+q:"An SD-WAN rule steers a video-conferencing application. Users notice the FIRST call to a new destination after lunch takes the wrong link, but every later call behaves. The rule matches the application via application control. Why does the first session escape?",
+o:["The hold-down timer forces the first session onto the previous member","Application control needs to inspect traffic before it can identify the app — the first session is steered before identification completes, then the learned destinations are cached for subsequent sessions","The video platform rotates IP addresses hourly, invalidating the ISDB","The first session is always used as an SLA probe"],
+a:[1],
+ex:"App-ctrl-based steering has a first-packet problem: the application is only identified after inspection sees enough of the session (Client Hello, SNI, certificate), which is too late to steer the packets already sent. Once identified, the destination is cached, and subsequent sessions match on packet one. ISDB-based rules do not share this weakness — ISDB is a destination lookup that matches from the very first packet. The first video call pays the toll for everyone else."},
+
+{d:"RU",type:"single",
+q:"An application-control-based SD-WAN rule is configured correctly but never matches any traffic. What should be checked first?",
+o:["Whether the ISDB database has finished downloading","Whether application control is actually running in the firewall policy that the traffic hits","Whether the rule's hold-down timer has expired","Whether the members are in the same zone as the rule"],
+a:[1],
+ex:"Application-based steering depends on something producing application identifications — and that something is application control running in the firewall policy handling the traffic. No app-ctrl on the policy, no identifications, and the SD-WAN rule waits forever for a match that can never be made. The rule itself can be flawless. This dependency between the policy table and the rule table is easy to miss because the two are configured in different places."},
+
+{d:"RU",type:"multi",
+q:"Which two matching criteria can an SD-WAN rule use that a static route cannot? (Choose two.)",
+o:["Source address, user, or user group","Destination prefix","Application, identified via ISDB or application control","Administrative distance"],
+a:[0,2],
+ex:"A static route matches exactly one thing: destination. SD-WAN rules widen the match surface enormously — source address/user/group, application or internet service, protocol and port, ToS bits, input device. That width is the entire point: 'the traders' packets to the exchange behave differently from the guest Wi-Fi's' is inexpressible in destination-only routing. Destination prefix is available to both; administrative distance is a route-selection tiebreaker, not a match criterion."},
+
+{d:"RU",type:"single",
+q:"What does the <code>hold-down-time</code> setting on an SD-WAN service rule control?",
+o:["How long a new member must be configured before it becomes eligible","How long the rule waits before steering traffic back to a member that has just recovered — damping flap","The maximum lifetime of sessions on an out-of-SLA member","The interval between SLA re-evaluations for the rule"],
+a:[1],
+ex:"hold-down-time delays the RETURN of traffic to a freshly recovered member. A link that just came back from an SLA failure is statistically likely to fail again; moving everything back instantly risks a flap where every session moves twice. Holding down the return — quick to distrust, slow to forgive — trades a short stay on the secondary path for stability. It pairs with recoverytime on the health check: one governs when the member is trusted, the other when traffic actually returns."},
+
+{d:"SS",type:"single",
+q:"What is the effect of <code>set snat-route-change enable</code> under <code>config system global</code>?",
+o:["SNAT sessions are torn down immediately whenever any route changes","On a routing change, existing SNAT sessions receive the dirty flag and are re-evaluated — instead of keeping their old route until they expire","Source NAT is recalculated on every packet","It forces new sessions to prefer the member with the fewest existing SNAT sessions"],
+a:[1],
+ex:"By default (disable), established SNAT sessions do NOT get the dirty flag on a routing change — they keep forwarding along their original path until they naturally expire. Enabling snat-route-change extends the dirty-flag treatment to SNAT sessions, so they are re-evaluated against the new routing/SD-WAN decision like everything else. The default exists because re-routing an SNAT session can change its egress — and therefore its NAT identity — mid-conversation."},
+
+{d:"SS",type:"single",
+q:"Wednesday 09:15: a member browns out and the SD-WAN SLA fails traffic over to the healthy member flawlessly. Riley reports: \"New calls are fine. Old calls sound like the ocean.\" What explains the difference?",
+o:["The codec renegotiates only on new calls","Existing sessions were established on the degraded member and continue to follow it — the LINK failed over, but nobody asked the sessions if they agreed","The healthy member's MTU is smaller, fragmenting old calls","Old calls are pinned by the hold-down timer to the recovered member"],
+a:[1],
+ex:"Failover changes which member NEW sessions select. Sessions that already exist carry their forwarding decision in the session table, and — unless they are flagged dirty and re-evaluated — they keep riding the path they were born on, ocean sounds and all. New calls land on the healthy member and are perfect; old calls stay loyal to the brownout. Sessions have memory: whenever failover 'works but doesn't help', look at the session table, not the rule table."},
+
+{d:"SS",type:"single",
+q:"With default settings, a routing change alters the best path for traffic currently flowing through a FortiGate. Which sessions are re-evaluated against the new routing decision?",
+o:["All sessions, unconditionally","No sessions — the FortiGate never revisits a forwarding decision","Sessions without SNAT are flagged dirty and re-evaluated; SNAT sessions keep their existing route until they expire","Only sessions using UDP"],
+a:[2],
+ex:"The default split: on a routing change, non-SNAT sessions receive the dirty flag and get a fresh route (and policy) evaluation on their next packet, while SNAT sessions are deliberately left alone and ride their original route until expiry. That asymmetry is the reason snat-route-change exists as a knob, and the reason post-failover symptoms so often affect exactly the NATted traffic — usually everything internet-bound — while other flows recover instantly."},
+
+{d:"CM",type:"single",
+q:"When managing SD-WAN across many FortiGates from FortiManager, in which situation is per-device SD-WAN management the appropriate choice over central (template-based) management?",
+o:["When there are more than 20 managed devices","When devices have genuinely different SD-WAN configuration requirements and must keep separate settings","When the devices run in transparent mode","When zero-touch provisioning is planned"],
+a:[1],
+ex:"The trade-off is uniformity versus divergence. Central management shines when devices are similar: change the shared template once, install, and every target converges — no drift. Per-device management exists for the fleet whose members genuinely need different SD-WAN configurations that must be maintained independently. Choosing per-device for a uniform fleet recreates the eight-GUIs problem (drift, one small correct change at a time) inside FortiManager itself."},
+
+{d:"CM",type:"single",
+q:"In a FortiManager SD-WAN template, which three fields support metadata variables (per-device values resolved at install time)?",
+o:["Interface Member, Gateway, and Health-Check Server","Zone name, SLA threshold, and rule sequence","ADOM name, device group, and firmware version","Rule name, mode, and hold-down timer"],
+a:[0],
+ex:"Metadata variables solve the 'same design, different numbers' problem: one shared template where Interface Member, Gateway, and Health-Check Server resolve per device at install. Branch A's wan1/203.0.113.1 and Branch B's wan1/198.51.100.1 come from the same template line. The structural design stays centralised and drift-free while device-specific addressing stays per-device — the exact split a branch factory needs."},
+
+{d:"CM",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit — SD-WAN template members</span>Member  Interface  Installation Targets\n1       port1      (empty)\n2       port2      (empty)\n3       port4      device group \"main\"</div>This SD-WAN template is installed to all branches. Branch FGT-B7 is not a member of the \"main\" device group. What SD-WAN member configuration does FGT-B7 receive?",
+o:["port1, port2 and port4 — installation targets are advisory","port1 and port2 only — the port4 member is not created on FGT-B7 at all","port4 only — explicit targets are processed first","Nothing — a template with mixed targets fails validation"],
+a:[1],
+ex:"Installation targets are per-member filters inside a shared template: an empty target means 'every device receiving this template', while a named device group restricts that member to its members. FGT-B7 is outside \"main\", so member 3 is simply never created there — not created-and-disabled, not created without a gateway; absent. This is how one template serves both MPLS-equipped main sites and internet-only branches without splitting into two templates."},
+
+{d:"CM",type:"single",
+q:"Which four elements must be defined BEFORE configuring an SD-WAN overlay template in FortiManager?",
+o:["Topology type, overlay network address space, loopback IP address space, and the BGP AS number for the overlay region","Hub serial numbers, branch hostnames, NTP servers, and admin credentials","FortiAnalyzer address, log retention, ADOM mode, and firmware target","Zone names, SLA thresholds, rule order, and hold-down timers"],
+a:[0],
+ex:"The overlay template automates the hub-and-spoke build (IPsec overlays plus BGP), and it needs the architectural decisions made first: the topology type (e.g. single hub, dual hub), the overlay network address space, the loopback address space, and the BGP AS number for the SD-WAN region. Alongside these, the hubs must already exist as managed devices with interfaces configured, and a device group must contain the branch devices. The wizard automates construction, not architecture."},
+
+{d:"CM",type:"multi",
+q:"Which two statements about the FortiManager SD-WAN overlay template are true? (Choose two.)",
+o:["A single FortiGate can receive configuration from only one overlay template","Tunnels generated by the overlay template must afterwards be managed through VPN Manager","All devices configured by one overlay template must be in the same ADOM","Branch devices cannot be added after the overlay template has been deployed"],
+a:[0,2],
+ex:"The constraints: one overlay template per FortiGate, and all of a template's devices must live in the same ADOM. The distractors are both false — VPN Manager and the overlay template are mutually exclusive approaches (for a new deployment, use the overlay template), and branches CAN be added later by simply joining them to the branch device group. The review step before install remains non-negotiable: a template pushes to a whole group at once, and the recovery path travels over the thing you changed."},
+
+{d:"CM",type:"single",
+q:"A newly managed branch FortiGate does not appear under SD-WAN Manager &gt; SD-WAN Network in FortiManager, although it shows as a healthy managed device. What is the most likely reason?",
+o:["The device is running a different firmware version from the ADOM","SD-WAN management has not been enabled for that device","The device has no performance SLAs configured locally","The branch is missing from the Global ADOM"],
+a:[1],
+ex:"Being a healthy managed device and being SD-WAN-managed are separate states: a device only appears under SD-WAN Manager's monitoring and template scope once SD-WAN management is enabled for it. Firmware mismatches and Global-ADOM membership produce different, louder symptoms; local SLA config is irrelevant to whether FortiManager lists the device. When something is missing from a FortiManager view, first ask whether the FEATURE was switched on for that device, not whether the device is broken."}
+];
+
+/* ---------------- ENGINE ---------------- */
+const state = { answers: Q.map(()=>new Set()), flags: Q.map(()=>false), submitted:false, timeLeft:70*60, timerId:null };
+const LETTERS = ["A","B","C","D","E"];
+
+function startExam(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('barWrap').style.display='flex';
+  document.getElementById('examArea').style.display='grid';
+  renderQuestions(); renderNav();
+  state.timerId = setInterval(tick,1000);
+  window.scrollTo(0,0);
+}
+function tick(){
+  state.timeLeft--;
+  const t=document.getElementById('timer');
+  const m=Math.floor(state.timeLeft/60), s=state.timeLeft%60;
+  t.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  if(state.timeLeft<=300) t.classList.add('low');
+  if(state.timeLeft<=0){ clearInterval(state.timerId); alert('Time is up — the exam will now be submitted.'); submitExam(); }
+}
+function renderQuestions(){
+  const wrap=document.getElementById('questions'); wrap.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const card=document.createElement('div'); card.className='q-card'; card.id='q'+i;
+    const inputType = qu.type==='multi'?'checkbox':'radio';
+    const instr = qu.type==='multi'?'(Choose two.)':'(Choose one.)';
+    let opts='';
+    qu.o.forEach((opt,j)=>{
+      opts+=`<label class="opt" id="opt-${i}-${j}">
+        <input type="${inputType}" name="q${i}" onchange="pick(${i},${j},this)">
+        <span class="letter">${LETTERS[j]}.</span><span class="txt">${opt}</span></label>`;
+    });
+    card.innerHTML=`
+      <div class="q-top">
+        <div><div class="q-num">Question ${i+1} of ${Q.length}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="q-domain">${DOMAINS[qu.d]}</span>
+          <button class="flag-btn" id="flag-${i}" onclick="toggleFlag(${i})">⚑ Flag</button>
+        </div>
+      </div>
+      <div class="q-text">${qu.q}</div>
+      <div class="q-instr">${instr}</div>
+      <div>${opts}</div>
+      <div id="fb-${i}"></div>`;
+    wrap.appendChild(card);
+  });
+}
+function pick(i,j,input){
+  const qu=Q[i];
+  if(qu.type==='single'){ state.answers[i]=new Set([j]); }
+  else{
+    if(input.checked){
+      if(state.answers[i].size>=2){ input.checked=false; return; }
+      state.answers[i].add(j);
+    } else state.answers[i].delete(j);
+  }
+  qu.o.forEach((_,k)=>{
+    document.getElementById(`opt-${i}-${k}`).classList.toggle('selected', state.answers[i].has(k));
+  });
+  updateProgress(); renderNav();
+}
+function toggleFlag(i){
+  state.flags[i]=!state.flags[i];
+  const b=document.getElementById('flag-'+i);
+  b.classList.toggle('flagged',state.flags[i]);
+  b.textContent = state.flags[i]?'⚑ Flagged':'⚑ Flag';
+  renderNav();
+}
+function updateProgress(){
+  const done=state.answers.filter(s=>s.size>0).length;
+  document.getElementById('progFill').style.width=(done/Q.length*100)+'%';
+  document.getElementById('progMeta').textContent=`${done} / ${Q.length} answered`;
+}
+function renderNav(){
+  const g=document.getElementById('navGrid'); g.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const c=document.createElement('div'); c.className='nav-cell'; c.textContent=i+1;
+    if(state.submitted){
+      c.classList.add(isCorrect(i)?'rev-correct':'rev-wrong');
+    } else {
+      if(state.flags[i]) c.classList.add('flagged');
+      else if(state.answers[i].size>0) c.classList.add('answered');
+    }
+    c.onclick=()=>document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});
+    g.appendChild(c);
+  });
+  if(state.submitted){
+    document.getElementById('legendBox').innerHTML=
+      `<div><span style="background:var(--green-light);border-color:var(--green-border)"></span>Correct</div>
+       <div><span style="background:var(--red-light);border-color:var(--red-border)"></span>Incorrect</div>`;
+  }
+}
+function isCorrect(i){
+  const a=state.answers[i], key=Q[i].a;
+  return a.size===key.length && key.every(k=>a.has(k));
+}
+function confirmSubmit(){
+  const un=state.answers.filter(s=>s.size===0).length;
+  const msg = un>0 ? `You have ${un} unanswered question${un>1?'s':''}. Unanswered questions are marked incorrect.\n\nSubmit the exam?`
+                   : 'Submit the exam? You will not be able to change your answers.';
+  if(confirm(msg)) submitExam();
+}
+function submitExam(){
+  if(state.submitted) return;
+  state.submitted=true; clearInterval(state.timerId);
+  // score
+  let correct=0; const dom={};
+  Object.keys(DOMAINS).forEach(k=>dom[k]={ok:0,tot:0});
+  Q.forEach((qu,i)=>{ dom[qu.d].tot++; if(isCorrect(i)){correct++; dom[qu.d].ok++;} });
+  const pct=Math.round(correct/Q.length*100);
+  const pass=pct>=70;
+  const used=70*60-state.timeLeft, um=Math.floor(used/60), us=used%60;
+
+  // results panel
+  let rows='';
+  Object.keys(DOMAINS).filter(k=>dom[k].tot>0).forEach(k=>{
+    const p=Math.round(dom[k].ok/dom[k].tot*100);
+    const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+    rows+=`<div class="perf-row">
+      <div class="name">${DOMAINS[k]}</div>
+      <div class="perf-bar"><div class="perf-fill" style="width:${p}%;background:${col}"></div></div>
+      <div class="perf-score">${dom[k].ok}/${dom[k].tot} &nbsp;(${p}%)</div></div>`;
+  });
+  const dk=Object.keys(DOMAINS).filter(k=>dom[k].tot>0);
+  const weakest = dk.reduce((w,k)=> (dom[k].ok/dom[k].tot < dom[w].ok/dom[w].tot ? k : w), dk[0]);
+  document.getElementById('results').innerHTML=`
+    <div class="score-card">
+      <div class="score-head">
+        <div>
+          <div class="verdict ${pass?'pass':'fail'}">${pass?'PASS':'FAIL'}</div>
+          <div class="score-detail" style="margin-top:6px;">
+            <b>NSE 7 — Secure Networking Architect 7.6 (Drill 6 · SD-WAN)</b><br>
+            Candidate: LoFinance Intermediate Engineer &nbsp;·&nbsp; Delivery: LoFinance Certification Lab<br>
+            Questions answered correctly: <b>${correct} of ${Q.length}</b> &nbsp;·&nbsp; Time used: <b>${um}m ${us}s of 70m</b>
+          </div>
+        </div>
+        <div class="big-pct">${pct}%</div>
+      </div>
+      <div class="section-perf">
+        <h3>Examination Score Report — Section Performance</h3>
+        <div class="note">Performance by exam section, relative to the number of items delivered in each section.</div>
+        ${rows}
+        <div class="disclaimer">The real Fortinet exam reports pass/fail only and does not publish its cut score; this mock uses a 70% provisional pass line as a study benchmark. Section bars mirror the style of the official Pearson VUE score report. ${pass?'':'Focus your next revision block on <b>'+DOMAINS[weakest]+'</b> — it was your lowest section.'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn primary" onclick="document.getElementById('q0').scrollIntoView({behavior:'smooth'})">Review Questions ↓</button>
+      <button class="btn ghost" onclick="location.reload()">Retake Exam</button>
+    </div>`;
+  document.getElementById('results').style.display='block';
+
+  // review mode on questions
+  Q.forEach((qu,i)=>{
+    qu.o.forEach((_,k)=>{
+      const el=document.getElementById(`opt-${i}-${k}`);
+      el.querySelector('input').disabled=true;
+      el.classList.remove('selected');
+      const chosen=state.answers[i].has(k), key=qu.a.includes(k);
+      if(chosen&&key) el.classList.add('correct-opt');
+      else if(chosen&&!key) el.classList.add('wrong-opt');
+      else if(!chosen&&key) el.classList.add('missed-opt');
+    });
+    const ok=isCorrect(i);
+    const yourAns = state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]).join(', ') : '— (unanswered)';
+    const keyAns = qu.a.map(x=>LETTERS[x]).join(', ');
+    document.getElementById('fb-'+i).innerHTML=
+      `<div class="explain ${ok?'ok':'bad'}">
+        <div class="verdict-line">${ok?'✓ Correct':'✗ Incorrect'} &nbsp;·&nbsp; Your answer: ${yourAns} &nbsp;·&nbsp; Correct answer: ${keyAns}</div>
+        ${qu.ex}</div>`;
+    const fb=document.getElementById('flag-'+i); fb.style.display='none';
+  });
+  document.getElementById('barWrap').style.display='none';
+  renderSocratic(correct,pct,dom);
+  renderNav();
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildSocraticPrompt(correct,pct,dom){
+  const examName=document.title.replace(/.*\|\s*/,'').trim();
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  let secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let p=`I've just completed the NSE 7 Secure Networking 7.6 ${examName} in my LoFinance study project.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
+  p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
+  p+=`- Take ONE question at a time, in the order below, and wait for my response before continuing.\n`;
+  p+=`- Do NOT reveal the correct answer straight away. Ask me a guiding question so I can reason my way to it.\n`;
+  p+=`- If I head in the wrong direction, use partial insights ("You're looking in the right area...", "What would happen if...") rather than saying no.\n`;
+  p+=`- When I reason correctly, acknowledge WHY the reasoning was good, not just the answer.\n`;
+  p+=`- Rebuild the mental model behind each concept before moving on, and connect it to the LoFinance topology and previous sessions where it helps.\n`;
+  p+=`- Watch for a pattern across my mistakes. At the end, summarise the weak areas you observed and suggest knowledge-register updates.\n\n`;
+  p+=`Each item below includes the correct answer and a reference explanation for YOUR use as the coach — do not show them to me until I've reasoned it through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]}]  (exam Q${i+1}${qu.type==='multi'?', choose two':''})\n\n`;
+    p+=stripHtml(qu.q)+`\n\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex)}\n`;
+  });
+  p+=`\nStart with Question 1. Set the scene briefly if you like, then ask me your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom){
+  const prompt=buildSocraticPrompt(correct,pct,dom);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — there is nothing here to coach. Se&ntilde;or would quietly adjust his sombrero and say: <i>"Do it again in a week. Memory is only proven twice."</i></div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste it into a <b>new chat in this project</b> — Claude will take you through your mistakes one at a time, Socratically, without giving the answers away.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copySocratic()">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste it into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copySocratic(){
+  const ta=document.getElementById('socraticPrompt');
+  const done=()=>{const ok=document.getElementById('copyOk');ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+</script>
+</body>
+</html>

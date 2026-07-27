@@ -1,0 +1,382 @@
+SESSION 66 SUMMARY — "Templates All the Way Down"
+Season 5 "The Expansion" · SNA Domain 2 · Central Management
+Source: SD-WAN 7.6 Enterprise Administrator Study Guide, Lesson 01 "Centralized Management",
+pp. 23-45 (IN project knowledge — taught directly from it, verified by search before teaching).
+Written for Claude, to continue the story in Session 67 ("One Push, Many Branches").
+Completed: Sunday 26 July 2026.
+
+==================================================================
+STORY EVENTS
+==================================================================
+Friday, 7:52 a.m., the kitchen-adjacent meeting room. JUNIOR HAS BUILT THE SD-WAN TEMPLATE
+OVERNIGHT and it is genuinely good — zones named properly, sensible SLA, clean member order,
+COMMENTS — and it is correct for EXACTLY ONE BRANCH (Melbourne). Señor arrives with the hat on
+his KNEE, not his head (worse). Riley: "So Perth gets Melbourne's default gateway. That'll go
+well. That'll go quietly." Junior, defensive and accidentally profound: "Every branch IS
+identical, except for the twelve numbers that aren't." Señor: "That is not a complaint. That is
+a SPECIFICATION." Puts the sombrero ON (long-day signal). Penny's invite lands mid-scene:
+"Onboarding — Hobart. Monday." Riley: "MONDAY?" Señor: "Hobart forces many things."
+Riley supplies the season's running gag payoff: "THERE'S A CSV." (There is.)
+
+DEBT: the S65 ritual question (which first step did he skip — answer: state the count) was
+PUT TO HIM AT OPEN AND HE REPLIED "Skip the debt." Señor: "Skipped. Not forgiven — DEFERRED.
+A debt does not expire because you walked past it." NOT COLLECTED. CARRY TO S67.
+
+CLOSE: Session ended early-ish at the student's request ("SKIP") after the exam. No Penny
+briefing this session (S65's stakeholder-briefing device was not repeated — consider
+reinstating in S67, it produced his best output of Season 5).
+
+Absent: Penny (calendar only), J.R., Cipher, George, Baz.
+
+==================================================================
+BUSINESS PROBLEM
+==================================================================
+One mould, seven castings. Seven branches share one SD-WAN design but differ in ~12 values
+(interfaces, gateways, probe targets, branch identity). Junior's answer was one perfect
+template for one site; the estate needs one template plus a value table. Hobart onboards
+Monday and nobody has filled its values in — deliberately, as it turns out.
+
+==================================================================
+TECHNICAL CONCEPTS COVERED (study guide pp. 23-45)
+==================================================================
+1. THE THREE METADATA-CAPABLE SD-WAN MEMBER FIELDS (exam-critical, p.24):
+   INTERFACE MEMBER · GATEWAY · HEALTH-CHECK SERVER. Nothing else in the member.
+   NOTE: SLA THRESHOLDS ARE **NOT** ON THE LIST — student proposed varying thresholds
+   per site (good engineering instinct); the product gives you the lever on the SERVER,
+   not the number. Senior framing coined: "When the product gives you one lever and your
+   design wants another, that is information about the design the vendor expects."
+2. METADATA VARIABLES — MECHANICS (pp.25-28). ADOM-level parameters, also available at
+   Global ADOM for per-ADOM mapping. Usable in CLI scripts, templates, model devices.
+   Path: Policy & Objects > Advanced > Metadata Variables. NAME MAY CONTAIN ONLY LETTERS,
+   NUMBERS AND UNDERSCORES. Type $ in a field to invoke the picker; "+" creates a new
+   variable inline; pen icon edits. MAGNIFYING-GLASS-WITH-$ ICON marks metadata-capable
+   fields. Default value + Per-Device Mapping table; specific beats default.
+   IP/NETMASK RULE (p.27, exam bait): subnet and mask MUST be specified SEPARATELY.
+   Valid: $(LAN_Subnet)/$(LAN_Mask) · $(LAN_Subnet)/255.255.255.0 · 10.10.10.0/255.255.255.0
+   INVALID: one combined CIDR variable.
+3. UNRESOLVED VARIABLE AT INSTALL (p.28) — reprise of the Season 3 law, re-derived:
+   No default AND no per-device mapping = FortiManager CANNOT install that configuration.
+   Six branches install, Hobart alone fails, and the failure is detected BEFORE TRANSMISSION.
+   Law restated on glass: "INSTALL IS A VALIDATION GATE, NOT A DELIVERY VAN."
+   Mechanism sentence: substitution happens INSIDE FortiManager at install time; a complete
+   candidate config is built per device; unresolvable reference aborts THAT DEVICE'S JOB with
+   nothing transmitted. "The FortiGate receives answers, never questions."
+4. DEFAULT vs TRIPWIRE — the Season 3 "when NOT to abstract" lesson approached from a new
+   angle and DERIVED BY THE STUDENT THIS TIME. Guide says "good practice to set a default";
+   Season 3 said an empty default can be a deliberate tripwire. Sorting rule coined this
+   session (student's reasoning, Señor's wording):
+   "DEFAULT IT WHEN A WRONG VALUE FAILS LOUDLY AND LOCALLY. LEAVE IT EMPTY WHEN A WRONG
+   VALUE WOULD BE PLAUSIBLE, SILENT AND SITE-SPECIFIC."
+   Worked example: $(inet1) default port1 (wrong = obviously broken link, six of seven right);
+   $(local_probe) NO default (a Sydney default is plausible, installs fine, and lies for
+   eleven months — Riley: "Singapore silently measures wet string").
+5. HEALTH-CHECK DESIGN — the student's best moment (see PERFORMANCE). A health check may
+   carry MULTIPLE SERVERS: one static corporate target plus one metadata variable resolving
+   per site. Guide's own example does exactly this (Corp_HC = one fixed IP + one variable).
+   PRINCIPLE COINED BY THE STUDENT: "PROBE WHAT THE TRAFFIC ACTUALLY USES." He argued the
+   Sydney probe should STAY because the trading feeds come from Sydney — a better argument
+   than the one being fished for (which was local probe targets).
+6. IMPORT / EXPORT OF METADATA VARIABLES (p.29). CSV AND JSON, both directions. Export =
+   grid of every variable × every device. Import sets values in bulk AND CAN DEFINE NEW
+   VARIABLES. Second, senior reason for export taught this session:
+   THE EXPORT GRID IS A DRIFT REPORT. It is the fastest answer in the whole product to
+   "what is actually different between these sites?" — Thursday's unanswerable question.
+   Every column is a promise; every off-pattern cell is either a known exception (port8 at
+   Perth) or a bug. Señor: "Junior's template is the mould. THIS FILE IS THE ESTATE."
+   Recommendation given: keep the export in version control → you learn WHEN and WHO.
+7. DEVICE DATABASE VARIABLES (p.30). Natively available per managed device; Jinja templates
+   and scripts have DIRECT access; no need to define metadata variables that duplicate them.
+   Example {{DVMDB.name}} for hostname. TRAP: typing {{ in the FortiManager editor shows
+   METADATA VARIABLES ONLY — device DB variables must be typed from memory.
+8. CLI TEMPLATES AND THE TWO SYNTAXES (pp.34-36). CLI templates push advanced settings and
+   anything variable-heavy; FortiManager ENFORCES the content when pushing.
+   CLI SCRIPT syntax: $(variable). JINJA syntax: {{variable}}. Jinja gives Python-like logic;
+   ipmath('10.200.99.0', branch_id) builds a loopback from a prefix + the branch's number.
+   A TEMPLATE GROUP MAY MIX CLI AND JINJA SCRIPTS AND APPLIES THEM TOP-DOWN.
+9. DERIVE vs STORE — new senior lesson, built this session:
+   "DERIVE WHEN THE VALUE IS A PURE FUNCTION OF AN IDENTITY YOU ALREADY STORE AND THE
+   FUNCTION IS STABLE. STORE WHEN THE VALUE IS ARBITRARY."
+   loopback_ip and router_id are pure functions of branch_id → derive.
+   inet2_gw is whatever the carrier decided in an email → store.
+   COST OF DERIVATION = LEGIBILITY. Way A (stored) answers "why this address?" from a cell in
+   a spreadsheet; Way B (derived) requires knowing a CLI template exists, finding it, reading
+   Jinja, and knowing ipmath. Mitigation: COMMENT THE JINJA and KEEP branch_id IN THE SHEET —
+   "the spreadsheet keeps the INPUTS, the templates keep the RULES" (Junior).
+10. TEMPLATE GROUPS (p.32) + SYSTEM TEMPLATES (p.33). Template Groups pane: add templates to
+    a group, assign the GROUP to devices, VDOMs or a device group instead of assigning
+    templates individually. Three template types tabulated this session:
+    SD-WAN template (zones, members, performance SLAs, rules) · SYSTEM template (DNS, alert
+    email, admin settings, log settings, SNMP; importable from a device, clonable, has
+    Assign to Device/Group and PREVIEW CLI CONFIGURATION) · CLI template (raw CLI or Jinja).
+    TOP-DOWN ORDER CONSEQUENCE (student derived): later overrides earlier, so the LAST item
+    in a group silently gets the final word. Troubleshooting rule: "when a setting won't
+    stick, READ TO THE BOTTOM OF THE GROUP — the template you are staring at may have
+    already lost." Filed as the THIRD COSTUME of specific-beats-general.
+11. POLICY PACKAGES, ZONES AND NORMALIZED INTERFACES (pp.37-39).
+    FIREWALL POLICIES FOR SD-WAN TRAFFIC MUST REFERENCE SD-WAN ZONES, NEVER INDIVIDUAL
+    MEMBERS. Other interfaces in the policy are normally NORMALIZED INTERFACES with per-device
+    (or per-platform) mapping rules resolved at install — guide example LAN → port5 on
+    branch1_fgt, port1 on branch2_fgt.
+    SD-WAN MEMBERS DO NOT USE NORMALIZED INTERFACES. Therefore an IPsec interface used AS an
+    SD-WAN member need not be normalized; an IPsec interface NOT used as a member MUST be
+    normalized so policies can reference it (policies are required for the tunnel to come up).
+    Creating a zone in a FortiManager SD-WAN template AUTO-CREATES the matching normalized
+    interface.
+12. TWO DISTINCT FAILURES OF "port instead of zone" (taught as a pair, worth reusing):
+    PORT instead of ZONE → wrong at sites cabled differently (a PORTABILITY bug).
+    MEMBER instead of ZONE → wrong at EVERY site the moment steering happens (a DESIGN bug):
+    the policy stops matching after failover and traffic is DENIED, not degraded. "You built
+    a multi-link WAN and then wrote a policy forbidding six-sevenths of it."
+13. MENTIONED, NOT TAUGHT / AVAILABLE FOR LATER: SD-WAN zone service-sla-tie-break options
+    (cfg-order default · fib-best-match · input-device for overlay stickiness, with
+    set input-zone and set tie-break input-device); Performance SLA page anatomy in FMG
+    (Header · SLA Target · Link Status · Action When Inactive); importing an existing
+    device's SD-WAN settings into a template (p.31); FMG SD-WAN monitor map/table/template
+    views. All are legitimate S67+ material.
+
+==================================================================
+MENTAL MODELS / ANALOGIES THAT WORKED
+==================================================================
+- THE MOULD AND THE STAMPED NUMBER (Señor's opener, extends S65's PET vs FACTORY).
+  "A factory does not make eight moulds because the serial number changes."
+- "EVERY BRANCH IS IDENTICAL EXCEPT FOR THE TWELVE NUMBERS THAT AREN'T" (Junior) —
+  reframed by Señor from complaint to SPECIFICATION. Load-bearing for the whole session.
+- PROBE WHAT THE TRAFFIC ACTUALLY USES (student's own, best line of the session).
+- SINGAPORE MEASURING WET STRING (Riley) — the silent-wrong-value failure made visceral.
+- LOUD-AND-LOCAL vs PLAUSIBLE-AND-SILENT (the default/tripwire sorting rule).
+- THE EXPORT GRID IS A DRIFT REPORT / "the template is the mould, the file is the estate."
+- "THE SPREADSHEET KEEPS THE INPUTS, THE TEMPLATES KEEP THE RULES" (Junior).
+- "THE FORTIGATE RECEIVES ANSWERS, NEVER QUESTIONS" (carried from S32, reused verbatim).
+- READ TO THE BOTTOM OF THE GROUP (top-down override).
+- Carried and still load-bearing: INSTALL IS A VALIDATION GATE NOT A DELIVERY VAN ·
+  EIGHT SOURCES OF TRUTH = NO SOURCE OF TRUTH · SPECIFIC BEATS GENERAL (third costume).
+
+==================================================================
+KEY CLI / GUI PATHS DISCUSSED
+==================================================================
+Melbourne's real SD-WAN block was used as the working artefact all session:
+  config system sdwan
+      set status enable
+      config zone
+          edit "underlay"
+      end
+      config members
+          edit 1
+              set interface "port1"      <- becomes $(inet1)
+              set zone "underlay"
+              set gateway 10.10.5.254    <- becomes $(inet1_gw)
+          next
+          edit 2
+              set interface "port2"      <- becomes $(inet2)   [Perth = port8]
+              set gateway 172.20.8.1     <- becomes $(inet2_gw)
+          next
+      end
+      config health-check
+          edit "Corp_HC"
+              set server "10.100.1.10" "$(local_probe)"   <- static + variable
+              set members 1 2
+              config sla
+                  edit 1
+                      set latency-threshold 100
+                      set jitter-threshold 30
+                      set packetloss-threshold 2
+              end
+      end
+  end
+
+CLI SCRIPT (metadata variables with $):
+  config system global
+      set hostname $(hostname)
+  end
+  config system interface
+      edit "loopback0"
+          set ip $(loopback_ip) 255.255.255.255
+      next
+  end
+
+JINJA SCRIPT (metadata variables with {{ }}, device DB variables typed manually):
+  config system global
+      set hostname {{DVMDB.name}}
+  end
+  config system interface
+      edit "loopback0"
+          set ip {{ipmath('10.200.99.0', branch_id)}} 255.255.255.255
+      next
+  end
+
+GUI paths:
+  Policy & Objects > Advanced > Metadata Variables      (create/edit/default/per-device map)
+  Policy & Objects > Advanced > Metadata Variables > export/import (CSV | JSON)
+  Device Manager > Provisioning Templates > Template Groups
+  Device Manager > Provisioning Templates > System Templates ( > Preview CLI Configuration )
+  Device Manager > Provisioning Templates > CLI Templates
+  SD-WAN Manager > SD-WAN Templates
+Metadata-capable fields are marked by a MAGNIFYING GLASS WITH $; type $ to open the picker.
+
+==================================================================
+TOPOLOGY CHANGE
+==================================================================
+No data-plane change. The management plane gains substance. LoFinance estate now: ONE SD-WAN
+template (zones, members, SLA) with INSTALLATION TARGETS limiting MPLS to the "main-sites"
+group; TWELVE METADATA VARIABLES with per-device mappings, maintained as an exported CSV under
+version control; ONE TEMPLATE GROUP binding SD-WAN + system + CLI templates, applied top-down;
+ONE POLICY PACKAGE whose SD-WAN policies reference the "underlay" ZONE and whose LAN side uses
+NORMALIZED INTERFACES. Six branches install-ready. HOBART HOLDS A DELIBERATE EMPTY VARIABLE —
+a tripwire, not an oversight. Known data bug found by the student in the export grid:
+Auckland and Singapore both carry branch_id 5 (loopback/router-ID collision waiting to happen).
+
+==================================================================
+BUSINESS OUTCOME
+==================================================================
+Adding a branch becomes filling in a row. If someone forgets, the install REFUSES — it does not
+guess. Riley gets one loud failure instead of seven quiet ones. Junior's overnight work survives
+intact: it was never wrong, it was only missing its variables — a deliberate morale beat, since
+Junior is now close to peer status.
+
+==================================================================
+EXAM RESULTS & STUDENT PERFORMANCE (DETAIL FOR ADAPTIVE TEACHING)
+==================================================================
+EXAM: 6/7 MARKED. Q2 B ✔ · Q3 C ✔ · Q5 B ✔ · Q6 B ✔ · Q7 B ✔ · Q9 D ✔ · Q10 ✘ (see below).
+THREE MULTI-SELECTS RETURNED UNMARKED under the new policy: Q1, Q4, Q8 submitted as bare
+letters (ACE / AC / AD) with no count and no reasoning. THE POLICY WAS ENFORCED FOR THE FIRST
+TIME — answers handed back face-down, with the single hint "one of those three is wrong."
+STUDENT DECLINED TO RESUBMIT ("SKIP").
+FOR THE RECORD, SO FUTURE SESSIONS KNOW: Q1 ACE was CORRECT. Q4 AC was CORRECT.
+**Q8 WAS THE WRONG ONE — he chose A+D; correct is A+C.** D asserts SD-WAN members must be
+normalized; the guide states the opposite (SD-WAN members do NOT use normalized interfaces).
+This is a REAL content gap, not a process artefact, and it is now UNTESTED AND UNCORRECTED
+BECAUSE OF THE UNMARKED POLICY. RETEST IT COLD IN S67 as a standalone question.
+
+Q10 (capstone scenario — traffic denied immediately after failover): MISSED TWICE.
+First answer blamed a miscalibrated SLA threshold inherited from another site — i.e. he
+pattern-matched to the material we had spent twenty minutes on that morning, despite the
+question explicitly stating "the SLA is accurate" and "port2 is healthy". Given a second,
+narrowed attempt with the mechanism spelled out ("something decides based on which interface
+traffic leaves by"), he replied SKIP. The answer (policy references a MEMBER, not the ZONE)
+was supplied. THIS IS THE SECOND CONSECUTIVE SESSION WITH A RECENCY MISS: S65-Q8 was taught
+20 minutes before it was missed; S66-Q10 was answered with the freshest topic rather than the
+stated facts. THE PATTERN IS NOW CONFIRMED AND SHOULD BE TREATED AS A REAL EXAM RISK:
+under scenario framing he reaches for the most recent concept instead of reading constraints.
+COUNTERMEASURE FOR S67: give him a scenario whose stated constraints EXCLUDE the day's topic,
+and require him to quote the constraint that rules it out before answering.
+
+STANDOUT MOMENTS (genuine, not consolation):
+- "TRADING FEEDS COME FROM SYDNEY, SO KEEP MEASURING SYDNEY." Asked to choose between changing
+  the threshold or the server, he refused the bait and argued from PURPOSE — measure the path
+  the revenue actually takes. This was better than the answer being fished for and produced
+  the session's best principle. Credit was given loudly and should be referenced again.
+- DEFAULT/TRIPWIRE SORTING DERIVED, NOT GIVEN. In S32 the when-not-to-abstract lesson had to
+  be HANDED to him (he defended a variable where a static object belonged). This session he
+  built the neighbouring rule himself from "set it once with the 7th site as an exception."
+  Real, measurable improvement on a previously failed concept — CELEBRATE THIS IN S67.
+- FOUND THE DUPLICATE branch_id in the export grid, and separately flagged the mixed
+  private/public gateway column as worth questioning — an observation not planted by the
+  teacher. He reads data like an engineer, not a clerk.
+- Q3 (unresolved variable) answered from instinct — "my gut feels like Hobart wouldn't push."
+  Gut is now trained; said so and he should be told to trust it more.
+- TOP-DOWN OVERRIDE DERIVED in one line ("below it are more granular config which overrides
+  the config above"), correctly generalised to specific-beats-general without prompting.
+
+WEAKNESSES / WATCH ITEMS:
+- FIRST-SUFFICIENT-ANSWER STOPPING: occurred TWICE as predicted (Q5 gave one of three parts;
+  Q7 gave a use rather than the artefact). Both recovered on one push. The push works —
+  keep doing it, it is not resistance, it is a habit of economy.
+- COMPOUND QUESTIONS FAIL. He said "I don't quite get what they're asking" TWICE, both times
+  on a question with two clauses joined by "and then". Both times, splitting the question into
+  a single concrete clause produced an immediate, correct answer. **THIS IS THE BIGGEST
+  TEACHING FINDING OF THE SESSION** — see the register. Ask one clause. Always.
+- ENGAGEMENT FADED IN THE LAST THIRD: skipped the opening debt, skipped the Q10 retry, skipped
+  the multi-select rework. The session ran LONG (10 Socratic questions plus a 10-question exam
+  plus two re-asks). Treat the skips as a LENGTH signal first and a motivation signal second.
+  RECOMMENDATION: S67 should be SHORTER — 6-7 Socratic questions, exam of 8.
+- SLA THRESHOLDS: he wanted per-site thresholds and invented an adaptive-baseline feature.
+  Good architecture instinct, but he should not carry it into the exam — FortiOS SLA targets
+  are ABSOLUTE thresholds. Corrected once; verify it stuck.
+
+CARRY-FORWARD LEDGER, STATUS AFTER S66:
+(1) S65 ritual first-step question — STILL UNCOLLECTED (declined at open). Now 2 sessions old.
+(2) Unprompted multi-select ritual — POLICY ENFORCED FOR THE FIRST TIME, answers withheld.
+    Student did not rework. HOLD THE LINE IN S67; do not soften, do not re-explain.
+(3) Probe mechanism spot-check ("how do probes defy the routing table?") — STILL OWED,
+    banked since S64, not used in S65 or S66. Use it in S67, it is cheap and overdue.
+(4) BGP story-wrapped retrieval — NOT DONE (session had no BGP surface). S67 has BGP in the
+    overlay wizard; use it there.
+(5) Four overlay planning elements, cold retest — OWED S67 (unchanged).
+(6) snat-route-change mechanism, touch 3, FIRST WORDS — owed ~S68 (unchanged).
+(7) NEW: Q8 content gap — "SD-WAN members do not use normalized interfaces." Retest cold.
+(8) NEW: recency-miss countermeasure (see Q10 above).
+
+==================================================================
+EXAM-RELEVANT NOTES
+==================================================================
+- Metadata variables in an SD-WAN member: INTERFACE MEMBER · GATEWAY · HEALTH-CHECK SERVER.
+- Path: Policy & Objects > Advanced > Metadata Variables. Names: letters, numbers, underscores.
+- Magnifying-glass-$ marks capable fields; type $ to invoke; + creates inline.
+- IP/Netmask must be given as SEPARATE subnet and mask; a single combined variable is invalid.
+- No default AND no per-device mapping = install fails FOR THAT DEVICE ONLY; others proceed;
+  nothing is transmitted to the failed device.
+- Import/export of metadata variables: CSV AND JSON, both directions; import can DEFINE NEW
+  VARIABLES; export lists every variable and its value per device.
+- Device database variables (e.g. DVMDB.name) are native, need no definition, are directly
+  accessible to Jinja, and are NOT offered by the {{ autocomplete.
+- CLI script syntax = $(var). Jinja syntax = {{var}}. Jinja adds logic (ipmath).
+- Template groups can MIX CLI and Jinja scripts and apply them TOP-DOWN (later wins).
+- Template groups may be assigned to devices, VDOMs, or a device group.
+- System template covers DNS, alert email, admin settings, log settings, SNMP; importable from
+  a managed device; clonable; has Assign to Device/Group and Preview CLI Configuration.
+- SD-WAN firewall policies MUST reference SD-WAN ZONES, not members.
+- SD-WAN members do NOT use normalized interfaces; other policy interfaces usually DO.
+- An IPsec interface used as an SD-WAN member need not be normalized; if not used as a member,
+  it MUST be normalized to be referenced in policies (policies required for tunnel to come up).
+- Creating a zone in an FMG SD-WAN template auto-creates the matching normalized interface.
+- SD-WAN zone settings: Name · Interface Members (>=1 to steer) · optional service-sla-tie-break
+  (cfg-order default | fib-best-match | input-device for overlay stickiness).
+
+==================================================================
+JUNIOR'S / J.R.'S MISTAKES AND WHAT THEY TAUGHT
+==================================================================
+Junior's mistake was the session's whole premise: a beautiful template that is correct for one
+site and silently wrong for six. THE LESSON: a template is not wrong for being specific — it is
+INCOMPLETE until its variable points are identified. Señor deliberately preserved Junior's work
+rather than discarding it.
+JUNIOR'S ARC CONTINUES SHARPLY UPWARD AND HE BEAT THE STUDENT TO A CONCLUSION FOR THE FIRST
+TIME — when per-site SLA thresholds were proposed, Junior stood up and said "then you need seven
+templates again; you've just moved the problem from the members into the SLA." The register's
+instruction to let Junior be right ahead of the student was EXECUTED. Señor, quietly, to the
+student: "He is going to be a problem in about a year." Junior also coined "the spreadsheet
+keeps the inputs, the templates keep the rules." S67 should keep him at near-peer level.
+RILEY did heavy scaffolding again: the port8 revelation, "Singapore silently measures wet
+string", spotting the duplicate branch_id first, and "loud is fine, loud I can work with."
+
+==================================================================
+ARTEFACT NOTES
+==================================================================
+Standard set generated at close: summary · knowledge register · bite (cheatsheet incl. Senior
+Engineering Lessons) · revision pack. NO mid-session artefact request for the second session
+running — the S65 prediction that CSV/template work would trigger one did NOT come true.
+Revise the hypothesis: self-directed artefact requests correlate with CONFIDENCE AND ENERGY,
+not with content type. Their absence across S65-S66 tracks the fatigue signal above.
+
+==================================================================
+TEASER DELIVERED FOR SESSION 67 — "ONE PUSH, MANY BRANCHES"
+==================================================================
+Monday. Hobart onboards without incident, which nobody trusts. Then Penny asks the question
+that ends the quiet: "Melbourne needs a second hub. How long?" Señor opens the SD-WAN OVERLAY
+TEMPLATE WIZARD — SD-WAN, IPsec, BGP and ADVPN, hubs and spokes, generated as one consistent
+set of templates from a single guided flow — and says nothing for a full minute. Then:
+"In my day, this was four hundred lines of CLI and a divorce." Junior reaches for the mouse.
+Señor catches his wrist without looking: "STEP FIVE, MUCHACHO. STEP FIVE."
+S67 topics: the FortiManager SD-WAN overlay template — orchestrating hubs, spokes and IPsec in
+one wizard. Guide pp. 46-54. Material available: single/dual/multi-hub topology choice,
+primary-secondary vs primary-primary redundancy, the Advanced section (loopback IP, overlay
+network, BGP-AS, ADVPN default disabled), the generated template set (BGP + IPsec + CLI for
+hubs and branches, members and zones added to the SD-WAN template, device assignment done for
+you), and the restrictions (same ADOM; one overlay template per FortiGate; VPN Manager
+mutually exclusive).
+NOTE FOR S67 AT OPEN: (1) SHORTEN THE SESSION — 6-7 Socratic questions, 8 exam questions;
+(2) ASK ONE CLAUSE PER QUESTION, never two joined by "and then"; (3) hold the unmarked-
+multi-select line without re-litigating it; (4) retest Q8 cold (normalized interfaces and
+SD-WAN members); (5) run the overdue probe-mechanism spot-check; (6) cold retest the four
+overlay planning elements; (7) reinstate the closing STAKEHOLDER BRIEFING to Penny — it
+produced his best output of the season; (8) open by CELEBRATING the default/tripwire
+derivation, which is a concept he failed in S32 and built himself in S66.

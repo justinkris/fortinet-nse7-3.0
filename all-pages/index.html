@@ -39,6 +39,15 @@
   .filter-heading-2{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border-dim);}
   .filter-buttons{display:flex;flex-wrap:wrap;gap:8px;}
   .filter-actions{margin-top:14px;display:flex;justify-content:flex-end;}
+  .search-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .search-wrap{position:relative;flex:1;}
+  .search-input{width:100%;padding:11px 44px 11px 40px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text);transition:border-color .16s ease, background .16s ease;}
+  .search-input:focus{outline:none;border-color:var(--blue);background:#fff;}
+  .search-input::placeholder{color:var(--text-muted);font-style:italic;}
+  .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:'Outfit',sans-serif;font-size:16px;color:var(--text-muted);pointer-events:none;}
+  .search-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:0;font-family:'Outfit',sans-serif;font-size:18px;line-height:1;color:var(--text-muted);cursor:pointer;padding:4px 8px;border-radius:6px;display:none;}
+  .search-clear.is-visible{display:block;}
+  .search-clear:hover{color:var(--blue);background:var(--blue-light);}
   .reset-btn{padding:6px 14px;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:color .16s ease, border-color .16s ease, background .16s ease;}
   .reset-btn:hover{color:var(--blue);border-color:var(--blue);background:var(--blue-light);}
   .fb{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 14px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .16s ease, border-color .16s ease, color .16s ease, transform .12s ease;}
@@ -99,6 +108,13 @@
 </header>
 <main>
   <div class="filter-bar">
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-input" class="search-input" placeholder="Search titles &amp; descriptions… (e.g. SD-WAN, heartbeat, FGCP)" autocomplete="off">
+        <button type="button" class="search-clear" id="search-clear" title="Clear search">×</button>
+      </div>
+    </div>
     <div class="filter-heading"><span>Filter by <strong>topic</strong> <em id="visible-count"></em></span><span id="active-label">Showing all</span></div>
     <div class="filter-buttons">
     <button class="fb is-active" data-filter="__all"><span class="fb-title">All Topics</span><span class="fb-note">No topic filter</span></button>
@@ -597,11 +613,22 @@
   const activeLabel = document.getElementById('active-label');
   const visibleCount = document.getElementById('visible-count');
   const resetBtn = document.getElementById('reset-filters');
+  const searchInput = document.getElementById('search-input');
+  const searchClear = document.getElementById('search-clear');
+
+  // Pre-compute searchable text (lowercased title + desc) for each tile
+  const tileText = new WeakMap();
+  tiles.forEach(t => {
+    const title = t.querySelector('.tile-title')?.textContent || '';
+    const desc = t.querySelector('.tile-desc')?.textContent || '';
+    tileText.set(t, (title + ' ' + desc).toLowerCase());
+  });
 
   let activeTopic = '__all';
   let activeTopicLabel = 'All Topics';
   let activeType = '__all';
   let activeTypeLabel = 'All Types';
+  let searchQuery = '';
 
   function apply() {
     let shown = 0;
@@ -610,7 +637,8 @@
       const type = t.getAttribute('data-type') || '';
       const topicOk = activeTopic === '__all' || topics.includes(activeTopic);
       const typeOk = activeType === '__all' || type === activeType;
-      const match = topicOk && typeOk;
+      const searchOk = !searchQuery || tileText.get(t).includes(searchQuery);
+      const match = topicOk && typeOk && searchOk;
       t.classList.toggle('is-hidden', !match);
       if (match) shown++;
     });
@@ -621,10 +649,12 @@
     empty.classList.toggle('is-visible', shown === 0);
 
     const parts = [];
+    if (searchQuery) parts.push('search: "' + searchQuery + '"');
     if (activeTopic !== '__all') parts.push('topic: ' + activeTopicLabel);
     if (activeType !== '__all') parts.push('type: ' + activeTypeLabel);
     activeLabel.textContent = parts.length ? 'Filtered — ' + parts.join(' · ') : 'Showing all';
     visibleCount.textContent = '(' + shown + ' pages)';
+    searchClear.classList.toggle('is-visible', !!searchQuery);
   }
 
   function labelOf(btn) {
@@ -652,6 +682,28 @@
     });
   });
 
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value.trim().toLowerCase();
+    apply();
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchQuery = '';
+    searchInput.focus();
+    apply();
+  });
+
+  // Keyboard shortcut: '/' focuses search (ignore if user is typing in another input)
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/') return;
+    const tag = (document.activeElement?.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    e.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+  });
+
   resetBtn.addEventListener('click', () => {
     topicButtons.forEach(b => b.classList.toggle('is-active', b.getAttribute('data-filter') === '__all'));
     typeButtons.forEach(b => b.classList.toggle('is-active', b.getAttribute('data-type-filter') === '__all'));
@@ -659,6 +711,8 @@
     activeTopicLabel = 'All Topics';
     activeType = '__all';
     activeTypeLabel = 'All Types';
+    searchInput.value = '';
+    searchQuery = '';
     apply();
   });
 

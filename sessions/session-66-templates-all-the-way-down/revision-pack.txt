@@ -1,0 +1,345 @@
+==================================================================
+SESSION 66 REVISION PACK — "Templates All the Way Down"
+FortiManager SD-WAN: templates, template groups, metadata variables
+Source: SD-WAN 7.6 Enterprise Administrator Study Guide, Lesson 01, pp. 23-45
+Season 5 · SNA Domain 2 · Completed Sunday 26 July 2026
+==================================================================
+
+
+==================================================================
+PART 1 — QUICK SUMMARY (one page)
+==================================================================
+Junior built one beautiful SD-WAN template — correct for exactly one branch. The estate has
+seven. His complaint ("every branch is identical except for the twelve numbers that aren't")
+is actually the specification: ONE MOULD, SEVEN CASTINGS, TWELVE STAMPED NUMBERS.
+
+The mould is the SD-WAN TEMPLATE. The stamped numbers are METADATA VARIABLES. Inside an
+SD-WAN member, exactly three fields accept them: INTERFACE MEMBER, GATEWAY, HEALTH-CHECK
+SERVER. SLA thresholds do not — FortiOS SLA targets are absolute numbers, so per-site health
+judgement is achieved by choosing WHERE you probe, not by moving the threshold. A health check
+can carry several servers: one static corporate target plus one variable that resolves per site.
+
+Variables live at Policy & Objects > Advanced > Metadata Variables. Each has a DEFAULT and a
+PER-DEVICE MAPPING table; specific beats default. Type $ in any field marked with the
+magnifying-glass-$ icon to invoke the picker. Populate them in bulk by IMPORT/EXPORT in CSV or
+JSON — and read the export as a DRIFT REPORT, because a grid of every variable against every
+device is the fastest answer to "what is actually different between these sites?"
+
+If a variable has neither a default nor a per-device value, FortiManager CANNOT install that
+configuration. The failure is isolated to that device and detected BEFORE TRANSMISSION:
+substitution happens inside FortiManager, so an unresolvable reference aborts one job while the
+others proceed. The FortiGate only ever receives resolved answers.
+
+Anything the GUI can't express goes in a CLI TEMPLATE, in one of two syntaxes: CLI scripts use
+$(var); Jinja uses {{var}} and adds logic such as ipmath, which builds a loopback from a prefix
+plus branch_id. Device database variables like DVMDB.name are native and need no definition —
+but the {{ autocomplete won't offer them. Derive values that are pure functions of a stored
+identity; store values that are arbitrary, because derivation costs legibility.
+
+TEMPLATE GROUPS bundle SD-WAN, system and CLI templates and are assigned to devices, VDOMs or
+a device group. They may mix CLI and Jinja and apply TOP-DOWN — later overrides earlier, so the
+bottom of the list quietly wins.
+
+On the policy side: SD-WAN firewall policies MUST reference SD-WAN ZONES, never members. Other
+policy interfaces use NORMALIZED INTERFACES, resolved per device at install. SD-WAN members do
+not use normalized interfaces. Bind a policy to a member and it stops matching the moment SD-WAN
+fails over — traffic is denied, not degraded.
+
+
+==================================================================
+PART 2 — CHEAT SHEET
+==================================================================
+
+METADATA VARIABLES
+  GUI path .............. Policy & Objects > Advanced > Metadata Variables
+  Scope ................. ADOM-level; also Global ADOM for per-ADOM mapping
+  Usable in ............. CLI scripts, templates, model devices
+  Name charset .......... letters, numbers, underscores ONLY
+  Field marker .......... magnifying glass with a $
+  Invoke ................ type $ ; "+" creates inline ; pen icon edits
+  Values ................ one DEFAULT + PER-DEVICE MAPPING table (per-device wins)
+  Bulk .................. import/export, CSV and JSON, both directions
+  Import extra .......... import can DEFINE NEW VARIABLES, not just set values
+  Missing value ......... no default AND no mapping = install fails for THAT DEVICE
+
+  SD-WAN MEMBER FIELDS THAT ACCEPT VARIABLES (memorise — only three):
+      1. Interface Member
+      2. Gateway
+      3. Health-Check Server
+
+  IP/NETMASK — subnet and mask MUST be separate:
+      VALID    $(LAN_Subnet)/$(LAN_Mask)
+      VALID    $(LAN_Subnet)/255.255.255.0
+      VALID    10.10.10.0/255.255.255.0
+      INVALID  one combined CIDR variable
+
+SCRIPT SYNTAX
+  CLI script ............ $(variable)          simple, no logic
+  Jinja ................. {{variable}}         Python-like, ipmath, conditionals
+  Device DB variable .... {{DVMDB.name}}       native, no definition required
+  TRAP .................. typing {{ autocompletes METADATA variables only;
+                          device database variables must be typed by hand
+
+  CLI script example:
+      config system global
+          set hostname $(hostname)
+      end
+      config system interface
+          edit "loopback0"
+              set ip $(loopback_ip) 255.255.255.255
+          next
+      end
+
+  Jinja equivalent:
+      config system global
+          set hostname {{DVMDB.name}}
+      end
+      config system interface
+          edit "loopback0"
+              set ip {{ipmath('10.200.99.0', branch_id)}} 255.255.255.255
+          next
+      end
+
+TEMPLATE TYPES
+  SD-WAN template ....... zones, members, performance SLAs, SD-WAN rules
+  System template ....... DNS, alert email, admin settings, log settings, SNMP;
+                          import from a device · clone · Assign to Device/Group ·
+                          Preview CLI Configuration
+  CLI template .......... raw CLI or Jinja; FMG ENFORCES content when pushing;
+                          the home of advanced settings and variable-heavy config
+
+TEMPLATE GROUPS
+  Purpose ............... assign a GROUP to devices / VDOMs / a device group
+  Contents .............. may MIX CLI and Jinja scripts
+  Order ................. TOP-DOWN; later overrides earlier; the bottom wins
+  Troubleshooting ....... setting won't stick? read to the BOTTOM of the group
+
+POLICY SIDE
+  SD-WAN policies ....... MUST reference SD-WAN ZONES, never individual members
+  Other interfaces ...... normalized interfaces + per-device / per-platform mapping,
+                          resolved by FMG at install
+  SD-WAN members ........ do NOT use normalized interfaces
+  IPsec as a member ..... no normalization required
+  IPsec NOT a member .... MUST be normalized so policies can reference it
+                          (policies are required for the tunnel to come up)
+  Zone in FMG template .. auto-creates the matching normalized interface
+
+SD-WAN ZONE SETTINGS (Device Manager)
+  Name .................. required
+  Interface Members ..... at least one, or the zone cannot steer
+  service-sla-tie-break . cfg-order (DEFAULT) — member configuration order
+                          fib-best-match      — longest prefix match wins
+                          input-device        — overlay stickiness; reply leaves via
+                                                the overlay that received the flow
+                          CLI: set input-zone / set tie-break input-device
+
+PERFORMANCE SLA PAGE ANATOMY (FortiManager)
+  Header ................ how the health check runs, which members it applies to
+  SLA Target ............ performance requirements for eligibility (lowest cost strategy)
+  Link Status ........... alive/dead criteria, probe interface, acceptable failure rate
+  Action When Inactive .. update static routes matching the member's gateway
+
+DEFAULTS & BEHAVIOURS WORTH MEMORISING
+  Per-device value beats default ................ always
+  Later template beats earlier in a group ....... always
+  Install failure scope ......................... per device, not per job
+  Bytes sent to a device with an unresolved var .. zero
+  Metadata variable formats for import/export .... CSV and JSON
+
+
+==================================================================
+PART 3 — FLASHCARDS
+==================================================================
+
+Q: Which three SD-WAN member settings accept metadata variables?
+A: Interface Member, Gateway, Health-Check Server.
+
+Q: Where are metadata variables created and edited?
+A: Policy & Objects > Advanced > Metadata Variables.
+
+Q: What characters may a metadata variable name contain?
+A: Letters, numbers and underscores only.
+
+Q: How do you invoke the metadata variable picker in a field?
+A: Type $. Fields that accept them show a magnifying glass with a $.
+
+Q: What happens if a variable has no default and no per-device mapping for one device?
+A: That device's install fails; the other devices install normally; nothing is sent to
+   the failed device.
+
+Q: Where does variable substitution actually happen?
+A: Inside FortiManager, at install time, before transmission. The FortiGate stores only the
+   resolved value.
+
+Q: Which formats support metadata variable import and export?
+A: CSV and JSON, both directions.
+
+Q: What can the import feature do beyond setting values?
+A: Define new metadata variables.
+
+Q: Why run the export before touching an inherited estate?
+A: It is a drift report — one grid showing every variable against every device, so exceptions
+   and bugs are visible at a glance.
+
+Q: Metadata variable syntax in a CLI script versus a Jinja script?
+A: $(variable) in CLI scripts; {{variable}} in Jinja.
+
+Q: What is DVMDB.name?
+A: A device database variable — natively available per managed device, directly accessible to
+   Jinja, requiring no definition.
+
+Q: What is the autocomplete trap with Jinja variables?
+A: Typing {{ lists metadata variables only; device database variables must be typed manually.
+
+Q: What does ipmath do in the study guide's example?
+A: Builds an IP address by adding a device value (branch_id) to a supplied network prefix
+   (10.200.99.0) — used for loopbacks and router IDs.
+
+Q: Can a template group contain both CLI and Jinja scripts?
+A: Yes, and they are applied top-down.
+
+Q: In a template group, which entry wins when two templates set the same thing?
+A: The later one — read to the bottom of the group.
+
+Q: What can a template group be assigned to?
+A: One or more devices, VDOMs, or a device group.
+
+Q: What does a system template cover?
+A: Common system-level settings: DNS, alert email, admin settings, log settings, SNMP and
+   similar. It can be imported from a device, cloned, assigned to devices/groups, and its
+   Preview CLI Configuration shows the resulting commands.
+
+Q: What must firewall policies for SD-WAN traffic reference?
+A: SD-WAN zones — never individual members.
+
+Q: Do SD-WAN members use normalized interfaces?
+A: No. That is why an IPsec interface used as an SD-WAN member need not be normalized.
+
+Q: When must an IPsec interface be normalized?
+A: When it is NOT used as an SD-WAN member, so that firewall policies can reference it —
+   and policies are required for the tunnel to come up.
+
+Q: What happens automatically when you create a zone in a FortiManager SD-WAN template?
+A: FortiManager creates the matching normalized interface.
+
+Q: Which IP/Netmask construction is invalid with metadata variables?
+A: A single combined variable for both. Subnet and mask must be given separately.
+
+Q: Can SLA latency/jitter/loss thresholds be set per device with a metadata variable?
+A: No. They are absolute values in the template. Vary the health-check server instead.
+
+Q: What are the SD-WAN zone service-sla-tie-break options?
+A: cfg-order (default, configuration order), fib-best-match (longest prefix match),
+   input-device (overlay stickiness).
+
+Q: What does a policy bound to a member do when SD-WAN fails over to another member?
+A: It stops matching, so traffic is denied — not degraded. Bind to the zone instead.
+
+
+==================================================================
+PART 4 — PODCAST PROMPT ("The Packet Path")
+==================================================================
+Paste directly into an AI audio generator.
+
+---
+Generate a single episode of the technical storytelling podcast "THE PACKET PATH".
+Episode title: "Templates All the Way Down."
+Runtime target: 12-15 minutes. Two hosts: a warm, curious narrator who asks the questions a
+smart listener would ask, and a dry, experienced network engineer who answers in plain language
+and occasional dark humour. Conversational, never a lecture. No sound effects.
+
+THE STORY
+Open on a Friday morning at LoFinance, an Australian financial firm expanding from one managed
+firewall to eight sites across Australia, New Zealand and Singapore. A junior engineer has
+stayed up all night building an SD-WAN template in FortiManager. It is genuinely excellent —
+well-named zones, sensible performance SLA, tidy members, even comments. His mentor, a veteran
+called Señor who wears a sombrero only before long days, studies it and says: "It is very good.
+For exactly one branch."
+
+The junior protests with the line that turns out to be the whole episode: "Every branch IS
+identical — except for the twelve numbers that aren't." The mentor stops and reframes it: that
+is not a complaint, that is a specification. A factory does not build eight moulds because the
+serial number changes. It builds one mould and stamps a different number into each casting.
+
+Meanwhile the service desk engineer, Riley, drops the detail that makes it real: Perth's second
+internet link didn't land on port2 like everywhere else. It landed on port8. The install was
+"improvised."
+
+THE TECHNICAL CONTENT (explain, don't list)
+1. Metadata variables as the stamped numbers. Inside an SD-WAN member exactly three fields
+   accept them — the interface, the gateway, and the health-check server. Explain WHY those
+   three and not others: they are the fields that describe where a site physically touches the
+   world.
+2. The health-check argument, and make it the emotional centre. A performance SLA measures a
+   link by probing a server. If every branch probes one box in Sydney, two things go wrong:
+   that box becomes a shared failure domain, and Singapore's probe crosses a submarine cable
+   before it measures anything, so a 100 ms threshold judges the ocean rather than the link.
+   Then deliver the twist the student in this story got right: you may still WANT to measure
+   Sydney, because the trading feeds come from Sydney. Land the principle: PROBE WHAT THE
+   TRAFFIC ACTUALLY USES. Resolve it — a health check can carry both a static corporate target
+   and a per-site variable.
+3. Defaults versus tripwires. Some variables should have a sensible default; some should
+   deliberately be left empty so that forgetting them stops the install. The sorting rule:
+   default it when a wrong value fails loudly and locally; leave it empty when a wrong value
+   would be plausible, silent and site-specific. Use Riley's line — "Singapore silently
+   measures wet string for eleven months."
+4. The install-day law. A site called Hobart is added late on a Friday by a man who then goes
+   to Tasmania, and nobody fills in its values. Monday's install: six branches succeed, Hobart
+   alone fails, and — the important part — nothing is transmitted to Hobart at all, because the
+   substitution happens inside FortiManager before anything reaches the wire. "Install is a
+   validation gate, not a delivery van." "The firewall receives answers, never questions."
+5. The spreadsheet. Metadata variables import and export in CSV and JSON. The obvious use is
+   filling eighty-four cells without dying. The senior use is reading the export as a DRIFT
+   REPORT — a grid of every variable against every device, where an odd cell is either a known
+   exception or a bug. In this episode Riley finds two branches accidentally sharing the same
+   branch ID, in about four seconds, on a page. "The template is the mould. The file is the
+   estate. Guard the file."
+6. Derive versus store. Loopback addresses can be calculated from a branch number with Jinja's
+   ipmath rather than typed into a column. Explain the trade honestly: derivation removes
+   typos and touch points, but costs legibility — in three years, someone asks "why is Hobart
+   10.200.99.7?" and the answer is no longer written down. Mitigation: comment the code, keep
+   the seed value in the sheet. The junior's line: "the spreadsheet keeps the inputs, the
+   templates keep the rules."
+7. Template groups apply top-down, so the last item quietly wins — and an old script called
+   "legacy_fixups" sitting at the bottom of the list can overrule everything above it.
+8. Finish with the sting: firewall policies for SD-WAN must reference zones, never members.
+   Explain the consequence vividly — bind the policy to port1, let SD-WAN fail over to port2,
+   and the policy stops matching. Traffic isn't slow. It's denied. You built a multi-link WAN
+   and then wrote a rule forbidding six-sevenths of it.
+
+JUNIOR'S MISTAKE
+Be fair to him: his template was never wrong, it was INCOMPLETE. He had not yet identified
+which values were structure and which were local truth. The mentor deliberately keeps the
+junior's work instead of throwing it away — and later in the episode the junior beats everyone
+to a conclusion, spotting that per-site SLA thresholds would just recreate seven templates in
+a different place. Note that he's getting good, and that the mentor has noticed.
+
+CLOSING TEASER
+End on Monday morning. Hobart onboards without incident, which nobody trusts. Then the CFO asks
+the question that ends the quiet: "Melbourne needs a second hub. How long?" The mentor opens
+the SD-WAN overlay template wizard — a single guided flow that generates SD-WAN, IPsec, BGP and
+ADVPN configuration for hubs and spokes together — and says nothing for a full minute. Then:
+"In my day, this was four hundred lines of CLI and a divorce."
+The junior reaches for the mouse. The mentor catches his wrist without looking.
+"Step five, muchacho. Step five."
+Next episode: One Push, Many Branches.
+---
+
+
+==================================================================
+PART 5 — EXAM TRAPS SPOTTED THIS SESSION
+==================================================================
+1. "Which fields accept metadata variables" — distractors offer SLA thresholds or zone name.
+   Only interface member, gateway, health-check server.
+2. IP/Netmask — a single combined CIDR variable looks tidy and is invalid.
+3. Unresolved variable — the tempting wrong answers are "whole job aborts" and "installs with
+   an empty value". It is one device failing, with nothing transmitted.
+4. $ versus {{ — CLI script versus Jinja. Easy mark, easy loss.
+5. DVMDB.name is NOT a metadata variable and needs no definition.
+6. Template group order is TOP-DOWN, not alphabetical, not simultaneous.
+7. "SD-WAN members must be normalized" is FALSE — members do not use normalized interfaces.
+   This is the reverse of the intuitive answer and it is stated twice in the guide.
+8. Policies reference ZONES. A distractor will offer "reference members for precise steering",
+   which sounds like better engineering and is the trap.
+9. Scenario framing: when a question states "the SLA is accurate" and "the link is healthy",
+   those constraints are there to eliminate the obvious answer. Read them before answering.

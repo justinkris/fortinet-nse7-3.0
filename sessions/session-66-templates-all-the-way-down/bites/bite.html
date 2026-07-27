@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 66 Bite — Templates All the Way Down</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:rgba(251,247,236,0.6);letter-spacing:0.08em;margin-bottom:12px;text-transform:uppercase;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);margin:0 6px;}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;}
+
+  .section-block{margin-bottom:44px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;font-size:16px;color:#5c3d09;}
+  .analogy-text li::before{content:'\2022';position:absolute;left:0;font-weight:700;color:var(--amber);}
+
+  .lesson-item{border-left:3px solid var(--blue);background:var(--surface);border:1px solid var(--border);border-left-width:3px;border-radius:0 10px 10px 0;padding:12px 18px;margin:12px 0;}
+  .lesson-num{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;}
+  .lesson-rule{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:5px;}
+  .lesson-why{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.65;}
+
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="#">Season 5 — The Expansion</a><span class="breadcrumb-sep">&rsaquo;</span>
+      <span>Session 66 Bite</span>
+    </div>
+    <div class="header-eyebrow">SESSION 66 · BITE · FORTIMANAGER SD-WAN TEMPLATES</div>
+    <h1>Templates All <em>the Way Down</em></h1>
+    <p>One mould, seven castings, twelve stamped numbers — and one file that tells you what your estate really looks like.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">&ldquo;Every branch is identical <em>except for the twelve numbers that aren&rsquo;t.</em>&rdquo;</div>
+  <div class="motivation-sub">Junior meant it as a complaint. Se&ntilde;or heard it as a specification. Five minutes to refresh the whole session.</div>
+</div>
+
+<main>
+<div class="main-content">
+
+  <div class="section-block">
+    <div class="section-label">The one thing to remember</div>
+    <h2>Three fields, <em>and only three</em></h2>
+    <p>Inside an SD-WAN <strong>member</strong>, metadata variables are allowed in exactly three settings. If you remember nothing else from this session, remember the list — and remember what is <em>not</em> on it.</p>
+
+    <table class="data-table">
+      <thead><tr><th>Setting</th><th>Why it varies per site</th></tr></thead>
+      <tbody>
+        <tr><td>Interface Member</td><td>Perth&rsquo;s ISP2 landed on port8, not port2</td></tr>
+        <tr><td>Gateway</td><td>every carrier handoff is a different next hop</td></tr>
+        <tr><td>Health-Check Server</td><td>the probe target should suit the site</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-amber"><strong>Not on the list:</strong> SLA thresholds. Latency, jitter and packet-loss targets are <em>absolute numbers</em> in FortiOS and are not metadata-capable. If sites need different health judgements, you change <strong>where you probe</strong>, not the number.</div>
+
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">&#129504;</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">Mental note</div>
+        <div class="mental-note-block-text">Interface, gateway, server. The mould is shared; only the stamped numbers differ.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Mechanics</div>
+    <h2>Where the numbers <em>live</em></h2>
+    <ul>
+      <li><strong>Path:</strong> Policy &amp; Objects &gt; Advanced &gt; Metadata Variables</li>
+      <li><strong>Scope:</strong> ADOM-level parameters; also available at the Global ADOM for per-ADOM mapping</li>
+      <li><strong>Names:</strong> letters, numbers and underscores only</li>
+      <li><strong>Invoke:</strong> type <code>$</code> in a field to open the picker; <code>+</code> creates one inline; the pen icon edits</li>
+      <li><strong>Icon:</strong> a magnifying glass with a <code>$</code> marks every metadata-capable field</li>
+      <li><strong>Values:</strong> one default plus a Per-Device Mapping table &mdash; the per-device value always wins</li>
+      <li><strong>Bulk:</strong> import and export in <strong>CSV and JSON</strong>; import can also <em>define new variables</em></li>
+    </ul>
+
+    <div class="callout"><strong>IP/Netmask rule (exam bait):</strong> subnet and mask must be specified <em>separately</em>. Valid: <code>$(LAN_Subnet)/$(LAN_Mask)</code>, <code>$(LAN_Subnet)/255.255.255.0</code>, <code>10.10.10.0/255.255.255.0</code>. Invalid: a single combined CIDR variable.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">The install-day law</div>
+    <h2>A gate, <em>not a delivery van</em></h2>
+    <p>Hobart has a variable with no default and no per-device mapping. You install to all seven branches.</p>
+    <ul>
+      <li><strong>Six install.</strong> Hobart alone fails.</li>
+      <li><strong>Nothing is transmitted</strong> to Hobart &mdash; not a partial config, not a rollback.</li>
+      <li><strong>Why:</strong> substitution happens <em>inside FortiManager</em>. It builds a complete candidate config per device; an unresolvable reference aborts that device&rsquo;s job before the wire.</li>
+    </ul>
+    <div class="callout callout-green"><strong>The FortiGate receives answers, never questions.</strong> There is no <code>$(inet2)</code> on Perth&rsquo;s flash. There is <code>port8</code>. All the intelligence stays upstairs.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Design judgement</div>
+    <h2>Default it, or <em>leave it empty?</em></h2>
+    <p>The guide says set a default for every variable. Season 3 said an empty default can be a deliberate tripwire. Both are right &mdash; the skill is sorting them.</p>
+
+    <div class="analogy-box">
+      <div class="analogy-label">The sorting rule</div>
+      <div class="analogy-text">
+        <p class="analogy-summary">Default it when a wrong value fails loudly and locally. Leave it empty when a wrong value would be plausible, silent and site-specific.</p>
+        <ul>
+          <li><strong>$(inet1) &rarr; default port1.</strong> Wrong means the link is obviously dead on day one. Right six times out of seven; the seventh maps itself.</li>
+          <li><strong>$(local_probe) &rarr; no default.</strong> A Sydney address is <em>plausible</em>, installs cleanly, and lets Singapore measure two thousand kilometres of wet string for eleven months.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">&#129504;</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">Mental note</div>
+        <div class="mental-note-block-text">A silent wrong answer is more expensive than a loud missing one.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Two syntaxes</div>
+    <h2>CLI script and <em>Jinja</em></h2>
+
+    <div class="code-block">
+      <div class="code-label">CLI script &mdash; variables prefixed with $</div>
+      <pre><code>config system global
+    set hostname $(hostname)
+end
+config system interface
+    edit "loopback0"
+        set ip $(loopback_ip) 255.255.255.255
+    next
+end</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">Jinja script &mdash; variables framed with double braces</div>
+      <pre><code>config system global
+    set hostname {{DVMDB.name}}
+end
+config system interface
+    edit "loopback0"
+        set ip {{ipmath('10.200.99.0', branch_id)}} 255.255.255.255
+    next
+end</code></pre>
+    </div>
+
+    <ul>
+      <li><code>$(var)</code> for CLI scripts &middot; <code>{{var}}</code> for Jinja. Jinja adds Python-like logic such as <code>ipmath</code>.</li>
+      <li><code>DVMDB.name</code> is a <strong>device database variable</strong> &mdash; native to every managed device, no definition needed.</li>
+      <li><strong>Trap:</strong> typing <code>{{</code> in the editor autocompletes <em>metadata variables only</em>. Device database variables must be typed from memory.</li>
+    </ul>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Assembly</div>
+    <h2>Template groups and <em>top-down order</em></h2>
+    <table class="data-table">
+      <thead><tr><th>Template type</th><th>What it carries</th></tr></thead>
+      <tbody>
+        <tr><td>SD-WAN template</td><td>zones, members, performance SLAs, SD-WAN rules</td></tr>
+        <tr><td>System template</td><td>DNS, admin settings, log settings, SNMP, alert email (importable, clonable, Preview CLI Configuration)</td></tr>
+        <tr><td>CLI template</td><td>raw CLI or Jinja &mdash; anything the GUI can&rsquo;t express or that is variable-heavy</td></tr>
+      </tbody>
+    </table>
+    <p>A <strong>template group</strong> bundles them and is assigned to devices, VDOMs or a device group &mdash; one assignment instead of many. Groups may <strong>mix CLI and Jinja</strong> scripts, applied <strong>top-down</strong>.</p>
+    <div class="callout"><strong>Troubleshooting consequence:</strong> later overrides earlier, so the last item in the group silently gets the final word. When a setting won&rsquo;t stick, <em>read to the bottom of the group</em> &mdash; the template you&rsquo;re staring at may have already lost.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Policy side</div>
+    <h2>Zones, <em>never members</em></h2>
+    <ul>
+      <li>Firewall policies for SD-WAN traffic <strong>must reference SD-WAN zones</strong>, not individual members.</li>
+      <li>Other interfaces in the policy are usually <strong>normalized interfaces</strong>, mapped per device and resolved at install (LAN &rarr; port5 here, port1 there).</li>
+      <li><strong>SD-WAN members do not use normalized interfaces.</strong> An IPsec interface used <em>as a member</em> needn&rsquo;t be normalized; one that isn&rsquo;t a member <em>must</em> be, so policies can reference it.</li>
+      <li>Creating a zone in an FMG SD-WAN template <strong>auto-creates</strong> the matching normalized interface.</li>
+    </ul>
+    <div class="callout callout-amber"><strong>Two different bugs, don&rsquo;t merge them.</strong> Hard-coding a <em>port</em> breaks at sites cabled differently &mdash; a portability bug. Referencing a <em>member</em> breaks at every site the moment SD-WAN fails over: the policy stops matching and traffic is <strong>denied, not degraded</strong> &mdash; a design bug.</div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">The senior habit</div>
+    <h2>Export before <em>you touch anything</em></h2>
+    <p>Exporting metadata variables gives you a grid: every variable across the top, every device down the side. Filling it in is the obvious use. Reading it is the valuable one.</p>
+    <div class="callout callout-green"><strong>The export grid is a drift report.</strong> It is the fastest answer in the product to &ldquo;what is actually different between these sites?&rdquo; Every column is a promise the estate makes; every off-pattern cell is either a known exception (port8 at Perth) or a bug (two branches sharing branch_id 5). Put it in version control and you also learn <em>when</em> and <em>who</em>.</div>
+    <div class="mental-note-block">
+      <div class="mental-note-block-icon">&#129504;</div>
+      <div class="mental-note-block-inner">
+        <div class="mental-note-block-label">Mental note</div>
+        <div class="mental-note-block-text">The template is the mould. The file is the estate. Guard the file.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Senior engineering lessons</div>
+    <h2>Seven rules from <em>Session 66</em></h2>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 01</div>
+      <div class="lesson-rule">Probe what the traffic actually uses.</div>
+      <div class="lesson-why">A health check measuring a path your revenue never takes is a dashboard that lies. Choose the probe target from purpose, not from convenience.</div>
+    </div>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 02</div>
+      <div class="lesson-rule">Default it when wrong fails loudly; leave it empty when wrong would be silent.</div>
+      <div class="lesson-why">Emptiness is a legitimate design choice. A missing value stops an install; a plausible wrong value survives for a year.</div>
+    </div>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 03</div>
+      <div class="lesson-rule">Install is a validation gate, not a delivery van.</div>
+      <div class="lesson-why">Resolution happens upstairs, before transmission. One device fails; the rest proceed. Fail loudly beats succeed wrongly.</div>
+    </div>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 04</div>
+      <div class="lesson-rule">Derive when the value is a pure function of a stored identity; store when it&rsquo;s arbitrary.</div>
+      <div class="lesson-why">A loopback is <code>branch_id</code> plus a prefix &mdash; derive it. A carrier gateway came from an email &mdash; store it. Derivation buys correctness and costs legibility, so comment the Jinja and keep the seed in the sheet.</div>
+    </div>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 05</div>
+      <div class="lesson-rule">The export grid is a drift report.</div>
+      <div class="lesson-why">One page that answers the question eight sources of truth make unanswerable: what is actually different between these sites?</div>
+    </div>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 06</div>
+      <div class="lesson-rule">Specific beats general &mdash; in its third costume.</div>
+      <div class="lesson-why">Per-device value beats default. Later template beats earlier. Same law, new clothes. When two things could set a value, ask which one is more specific.</div>
+    </div>
+
+    <div class="lesson-item">
+      <div class="lesson-num">Lesson 07</div>
+      <div class="lesson-rule">Zones, not members.</div>
+      <div class="lesson-why">Referencing a member doesn&rsquo;t merely hard-code a port &mdash; it revokes SD-WAN&rsquo;s licence to steer. You built a multi-link WAN, then forbade six-sevenths of it.</div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-label">Sixty-second recall</div>
+    <h2>If you only re-read <em>one box</em></h2>
+    <div class="callout">
+      <strong>Interface &middot; Gateway &middot; Health-check server</strong> &mdash; the only metadata-capable member fields.<br>
+      <strong>Policy &amp; Objects &gt; Advanced &gt; Metadata Variables</strong> &mdash; where they live; <code>$</code> invokes; CSV and JSON both ways.<br>
+      <strong>No default and no mapping</strong> &mdash; that device&rsquo;s install fails, alone, before anything is sent.<br>
+      <strong>$( ) is CLI, {{ }} is Jinja</strong> &mdash; and <code>{{</code> autocomplete hides the device database variables.<br>
+      <strong>Template groups apply top-down</strong> &mdash; the bottom wins.<br>
+      <strong>SD-WAN policies reference zones</strong> &mdash; members break on failover; members don&rsquo;t use normalized interfaces.
+    </div>
+  </div>
+
+</div>
+</main>
+
+<footer>LoFinance &middot; Season 5 &middot; Session 66 &mdash; <span>Templates All the Way Down</span> &middot; SD-WAN 7.6 Study Guide, Lesson 01, pp. 23&ndash;45</footer>
+
+</body>
+</html>
