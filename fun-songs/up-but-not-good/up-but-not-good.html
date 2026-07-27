@@ -61,7 +61,7 @@
   .jump-btn:hover{color:var(--blue);border-color:var(--blue-border);background:var(--blue-light);}
   .jump-btn.active{color:#fff;background:var(--blue);border-color:var(--blue);box-shadow:0 2px 8px -2px rgba(30,64,175,0.4);}
 
-  main{flex:1;padding:36px 60px 72px;max-width:960px;margin:0 auto;width:100%;}
+  main{flex:1;padding:36px 60px 72px;max-width:1360px;margin:0 auto;width:100%;}
 
   /* Cheatsheet */
   .cheatsheet{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:32px;overflow:hidden;}
@@ -80,7 +80,16 @@
   .cheat-table tr:last-child td{border-bottom:none;}
   .cheat-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:var(--surface-2);color:var(--muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border);margin-left:4px;white-space:nowrap;}
 
-  .lyrics-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 40px;}
+  /* Two-column shell: lyrics on the left, hook-note rail on the right */
+  .lyrics-shell{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;align-items:start;}
+  .lyrics-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 40px;min-width:0;}
+  .hook-rail{position:relative;min-height:100%;}
+  .hook-rail-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-left:4px;}
+  .hook-note{position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--gold-border);border-left:3px solid var(--gold);border-radius:10px;padding:10px 14px;font-family:'Cormorant Garamond',serif;font-size:14.5px;line-height:1.5;color:var(--ink);box-shadow:0 4px 12px -8px rgba(10,24,56,0.15);transition:opacity .3s ease, transform .3s ease;opacity:0;transform:translateY(6px);}
+  .hook-note.ready{opacity:1;transform:none;}
+  .hook-note-title{display:block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin-bottom:4px;}
+  .hook-note-chip{display:inline-block;margin-top:6px;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:var(--surface-2);color:var(--muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border);}
+  .line.hook-target{background:linear-gradient(90deg, rgba(166,131,33,0.10) 0%, rgba(166,131,33,0.02) 100%);border-radius:4px;padding:0 6px;margin:0 -6px;box-shadow:inset 3px 0 0 var(--gold);}
   .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
   h2.lyrics-heading{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1.15;margin-bottom:8px;padding-left:14px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
   h2.lyrics-heading em{font-style:italic;font-weight:500;color:var(--blue);}
@@ -111,6 +120,12 @@
 
   footer{padding:18px 60px;border-top:1px solid var(--border);background:var(--surface);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--muted);text-transform:uppercase;text-align:center;}
   footer span{color:var(--blue);}
+
+  /* Collapse the hook rail on narrower viewports — the cheatsheet at the top covers this on mobile */
+  @media(max-width:1180px){
+    .lyrics-shell{grid-template-columns:minmax(0,1fr);}
+    .hook-rail{display:none;}
+  }
 
   @media(max-width:760px){
     html{scroll-padding-top:220px;}
@@ -226,6 +241,7 @@
     </div>
   </details>
 
+  <div class="lyrics-shell">
   <div class="lyrics-wrap">
     <div class="section-label">Lyrics</div>
     <h2 class="lyrics-heading">The Anthem — <em>Line by Line</em></h2>
@@ -397,6 +413,10 @@
 
     </div>
   </div>
+  <aside class="hook-rail" id="hookRail">
+    <div class="hook-rail-label">Hook line ↔ Concept</div>
+  </aside>
+  </div>
 
 </main>
 
@@ -468,6 +488,66 @@
     e.preventDefault();
     if(audio.paused) audio.play(); else audio.pause();
   });
+
+  // Hook-line ↔ concept side rail: pair each hook to its first-matching lyric line and
+  // position the note absolutely so it lines up vertically with that line.
+  const hookRail = document.getElementById('hookRail');
+  const lyricsShell = document.querySelector('.lyrics-shell');
+  const HOOKS = [
+    {match: 'Up, but not good',                                          title: 'SLA — the sensor',        body: 'Reachability ≠ health. UP means the link is alive. It says nothing about latency, jitter, or loss.'},
+    {match: 'Routing says "I can get there," SD-WAN says "should I though?"', title: 'The two brains',          body: 'CAN vs SHOULD. Routing answers reachability; SD-WAN answers fitness — and keeps re-answering.'},
+    {match: "The table stays asleep",                                    title: 'Rules vs routes',         body: 'Out-of-SLA never removes the route. It removes the member’s eligibility for the rule.'},
+    {match: "A member's just a road and a ramp",                         title: 'S63 nibble',              body: 'Member = interface + gateway. The gateway is what FortiGate uses to auto-generate the static route.'},
+    {match: 'The health check is a thermometer',                         title: 'S62 flagged',             body: 'Sensor vs actuator. SLA measures. Rule acts. They must never be confused.'},
+    {match: 'Failtime times interval',                                   title: 'Timer math',              body: 'Time to declare out-of-SLA. 5 × 500ms = 2.5s of consistent evidence. Recoverytime is longer on purpose.'},
+    {match: 'Quick to call it broken',                                   title: 'Asymmetric hysteresis',   body: 'Failtime is fast, recoverytime is slow. One good reading proves nothing.'},
+    {match: "A zone's the seam",                                         title: 'Zone as seam',            body: 'Zones are the organisational boundary between network and security teams. Add a member, no policy edit.'},
+    {match: "The rule's a dispatcher",                                   title: 'Dispatcher',              body: 'Decision at config time; answer at packet time. Every packet re-tests the shortlist.'},
+    {match: 'Up, eligible, preferred',                                   title: 'Member gates',            body: 'Three states, in order: UP (link alive) → ELIGIBLE (in rule’s list AND in-SLA) → PREFERRED (wins strategy right now).'},
+    {match: 'out at the edge, count the badges',                         title: 'S62 flagged',             body: 'DIA gives every site its own public identity. Partner allowlists shatter. Eight badges instead of one.'},
+  ];
+
+  const noteRefs = []; // {noteEl, targetEl}
+
+  function normalize(s){ return s.replace(/\s+/g,' ').trim().toLowerCase(); }
+
+  HOOKS.forEach(h => {
+    const needle = normalize(h.match);
+    let target = null;
+    for(const line of document.querySelectorAll('.line')){
+      if(normalize(line.textContent).includes(needle)){ target = line; break; }
+    }
+    if(!target) return;
+    target.classList.add('hook-target');
+    const note = document.createElement('div');
+    note.className = 'hook-note';
+    note.innerHTML = `<span class="hook-note-title">${h.title}</span>${h.body}`;
+    hookRail.appendChild(note);
+    noteRefs.push({noteEl: note, targetEl: target});
+  });
+
+  function layoutHookNotes(){
+    if(!hookRail || getComputedStyle(hookRail).display === 'none') return;
+    const railTop = hookRail.getBoundingClientRect().top;
+    const railLabelHeight = 30; // rough offset for the "Hook line ↔ Concept" label above the first note
+    const minGap = 8;
+    let lastBottom = railLabelHeight;
+    noteRefs.forEach(({noteEl, targetEl}) => {
+      const rect = targetEl.getBoundingClientRect();
+      const desired = rect.top - railTop;
+      const top = Math.max(desired, lastBottom + minGap);
+      noteEl.style.top = top + 'px';
+      noteEl.classList.add('ready');
+      lastBottom = top + noteEl.offsetHeight;
+    });
+  }
+
+  // Layout after fonts load + on resize + when stanzas animate in.
+  window.addEventListener('load', layoutHookNotes);
+  window.addEventListener('resize', layoutHookNotes);
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(layoutHookNotes); }
+  setTimeout(layoutHookNotes, 100);
+  setTimeout(layoutHookNotes, 800);
 })();
 </script>
 
