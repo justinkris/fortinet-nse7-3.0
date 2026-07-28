@@ -65,13 +65,18 @@
 
   /* Cheatsheet */
   .cheatsheet{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:32px;overflow:hidden;}
-  .cheatsheet summary{list-style:none;cursor:pointer;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--ink);}
+  .cheatsheet summary{list-style:none;cursor:pointer;padding:28px 32px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
   .cheatsheet summary::-webkit-details-marker{display:none;}
-  .cheatsheet summary::after{content:'▼';font-family:'Outfit',sans-serif;font-size:10px;color:var(--muted);transition:transform .2s;}
-  .cheatsheet[open] summary::after{transform:rotate(180deg);}
-  .cheatsheet summary em{font-style:italic;font-weight:500;color:var(--blue);}
+  .cheat-summary-inner{flex:1;min-width:0;}
+  .cheat-heading{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1.15;padding-left:14px;border-left:3px solid var(--blue);letter-spacing:-0.01em;color:var(--ink);}
+  .cheat-heading em{font-style:italic;font-weight:500;color:var(--blue);}
+  .cheat-toggle{flex:0 0 auto;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);display:inline-flex;align-items:center;gap:8px;margin-top:6px;}
+  .cheat-toggle::after{content:'▼';font-size:10px;color:var(--muted);transition:transform .2s;}
+  .cheatsheet[open] .cheat-toggle::after{transform:rotate(180deg);}
+  .cheatsheet[open] .cheat-toggle .cheat-toggle-label::before{content:'Tap to close';}
+  .cheat-toggle .cheat-toggle-label::before{content:'Tap to open';}
   .cheat-sub{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
-  .cheat-body{padding:8px 22px 22px;}
+  .cheat-body{padding:8px 32px 26px;}
   table.cheat-table{width:100%;border-collapse:collapse;font-size:14.5px;}
   .cheat-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 12px;text-align:left;border-right:1px solid rgba(155,184,230,0.15);}
   .cheat-table th:last-child{border-right:none;}
@@ -83,7 +88,7 @@
   /* Two-column shell: lyrics on the left, hook-note rail on the right */
   .lyrics-shell{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;align-items:start;}
   .lyrics-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 40px;min-width:0;}
-  .hook-rail{position:relative;min-height:100%;}
+  .hook-rail{position:relative;min-height:100%;background:#ecebe4;border:1px solid #d4d1c4;border-radius:14px;padding:20px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);}
   .hook-rail-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-left:4px;}
   .hook-note{position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--gold-border);border-left:3px solid var(--gold);border-radius:10px;padding:10px 14px;font-family:'Cormorant Garamond',serif;font-size:14.5px;line-height:1.5;color:var(--ink);box-shadow:0 4px 12px -8px rgba(10,24,56,0.15);transition:opacity .3s ease, transform .3s ease;opacity:0;transform:translateY(6px);}
   .hook-note.ready{opacity:1;transform:none;}
@@ -172,8 +177,11 @@
 
   <details class="cheatsheet">
     <summary>
-      <span>Cheatsheet — <em>Hook Line ↔ Concept</em></span>
-      <span class="cheat-sub">Tap to open</span>
+      <div class="cheat-summary-inner">
+        <div class="section-label" style="margin-bottom:8px;">Cheatsheet</div>
+        <h2 class="cheat-heading">Hook Line — <em>↔ Concept</em></h2>
+      </div>
+      <span class="cheat-toggle"><span class="cheat-toggle-label"></span></span>
     </summary>
     <div class="cheat-body">
       <table class="cheat-table">
@@ -528,13 +536,17 @@
 
   function layoutHookNotes(){
     if(!hookRail || getComputedStyle(hookRail).display === 'none') return;
-    const railTop = hookRail.getBoundingClientRect().top;
+    const railRect = hookRail.getBoundingClientRect();
+    // Absolute-positioned children are offset from the padding box, so subtract
+    // the rail's top border + padding-top from any border-box coordinate we compute.
+    const railStyle = getComputedStyle(hookRail);
+    const paddingOffset = parseFloat(railStyle.borderTopWidth) + parseFloat(railStyle.paddingTop);
     const railLabelHeight = 30; // rough offset for the "Hook line ↔ Concept" label above the first note
     const minGap = 8;
     let lastBottom = railLabelHeight;
     noteRefs.forEach(({noteEl, targetEl}) => {
       const rect = targetEl.getBoundingClientRect();
-      const desired = rect.top - railTop;
+      const desired = (rect.top - railRect.top) - paddingOffset;
       const top = Math.max(desired, lastBottom + minGap);
       noteEl.style.top = top + 'px';
       noteEl.classList.add('ready');
