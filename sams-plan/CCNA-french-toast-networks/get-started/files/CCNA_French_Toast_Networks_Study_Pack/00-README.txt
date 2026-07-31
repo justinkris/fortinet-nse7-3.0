@@ -20,8 +20,8 @@ Design principles
 
 Core outputs after each session
 -------------------------------
-- session-summary-ep-XX.txt
-- knowledge-register-ep-XX.txt
+- session-summary-ep-XX.txt (generate as artefact)
+- knowledge-register-ep-XX.txt (generate as artefact)
 - updated master mind map
 
 Recommended usage
