@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Episode 03 — The First Packet Chooses</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:rgba(251,247,236,0.6);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;text-transform:uppercase;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:6px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .si-placeholder{display:flex;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:22px 24px;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:6px;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+  .si-desc{font-size:15px;font-style:italic;color:var(--text-soft);line-height:1.6;}
+  .prompt-toggle{background:var(--surface);color:var(--blue);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{background:var(--blue-glow);}
+  .prompt-content{font-family:'Cormorant Garamond',serif;font-size:14.5px;color:var(--text-soft);line-height:1.6;background:var(--surface);border:1px solid var(--border-dim);border-radius:8px;padding:12px 14px;}
+
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .btn-see-answer{background:var(--surface);color:var(--blue);border:1px solid var(--blue-border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:hover{background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:none;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  .mental-note-block{display:flex;gap:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-top:18px;align-items:flex-start;}
+  .mental-note-block-icon{font-size:22px;flex-shrink:0;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);line-height:1.6;font-weight:600;}
+
+  .reinforce-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--amber);background:var(--amber-light);border:1px solid var(--amber-border);border-radius:12px;padding:3px 10px;margin-bottom:10px;}
+
+  .page-nav{display:flex;justify-content:space-between;gap:16px;padding:24px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;max-width:340px;display:flex;flex-direction:column;gap:4px;padding:14px 18px;border:1px solid var(--border);border-radius:10px;text-decoration:none;background:var(--surface-2);transition:border-color .15s;}
+  .page-nav-btn:hover{border-color:var(--blue-border);}
+  .page-nav-next{margin-left:auto;text-align:right;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--text);}
+
+  footer{padding:22px 60px;text-align:center;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.06em;border-top:1px solid var(--border);}
+  footer span{margin:0 4px;}
+
+  @media (max-width:768px){
+    header,.motivation-banner,.main-content,.page-nav,footer{padding-left:20px;padding-right:20px;}
+    header h1{font-size:32px;}
+    .page-nav{flex-direction:column;}
+    .page-nav-next{margin-left:0;text-align:left;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <span>Department of Fish</span>
+      <span class="breadcrumb-sep">›</span>
+      <span>Season 1 — The First Current</span>
+      <span class="breadcrumb-sep">›</span>
+      <span>Episode 03</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> NSE 7 SECURE NETWORKING ARCHITECT · SD-WAN</div>
+    <h1>The First Packet <em>Chooses</em></h1>
+    <p>A rule only ever gets asked once. Everything after that is memory, not measurement.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Priya's incident closed itself out — not because anything was fixed, but because <em>every affected session eventually ended</em>. That's the clue.</div>
+  <p class="motivation-sub">EP-02 proved the SD-WAN rule was steering new sessions correctly the whole time. EP-03 explains why a correct rule and a lingering symptom can coexist — and what actually has to change for an existing session to move.</p>
+</div>
+
+<nav class="section-nav">
+  <a class="nav-tab active" href="#section-planes">Two Planes</a>
+  <a class="nav-tab" href="#section-triggers">Re-eval Triggers</a>
+  <a class="nav-tab" href="#section-proof">Refresh vs Rebuild</a>
+  <a class="nav-tab" href="#section-strategy">Strategy Contrast</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- SECTION 1 -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · TWO PLANES</span>
+      </div>
+      <p class="socratic-insight">Before reading the model — a Teams call has been running for twenty minutes on port1. Somewhere in that time, port1's SLA measurements go bad, but the interface never actually goes down.</p>
+      <ul class="socratic-questions">
+        <li>How many times does FortiGate consult the SD-WAN rule table over that call's entire lifetime?</li>
+        <li>Does a changing SLA verdict, on its own, ever reach into an already-established session?</li>
+      </ul>
+      <div class="answer-area">
+        <button class="btn-see-answer" onclick="const m=this.nextElementSibling;m.style.display=(m.style.display==='block')?'none':'block';this.textContent=(m.style.display==='block')?'▲ Hide Model Answer':'💡 See Model Answer';">💡 See Model Answer</button>
+        <div class="model-answers">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Once — at the moment the very first packet of the session arrives. The rule table is never consulted again for that session's lifetime.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">No. The SLA verdict lives entirely on the inspection plane. An established session's forwarding is governed by the forwarding plane only, and nothing notifies it when sla_map changes.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-planes">
+      <div class="section-label">SECTION 01</div>
+      <h2>Front Desk, <em>Access Card</em></h2>
+
+      <div class="si-placeholder">
+        <span class="si-filename">images/ep03-front-desk-access-card.png</span>
+        <span class="si-desc">Suggested illustration: a stylised "front desk" (labelled Inspection Plane / SD-WAN Rule Engine, showing health-check dials for port1 and port2) issuing a single access card to a packet, which then walks down a hallway (labelled Forwarding Plane / FIB) reusing the same card for every later packet — with a "closed window" showing the desk is never revisited.</span>
+        <button class="prompt-toggle" onclick="const c=this.nextElementSibling;const h=c.hasAttribute('hidden');if(h){c.removeAttribute('hidden');this.textContent='▴ Hide prompt';}else{c.setAttribute('hidden','');this.textContent='▾ Show image prompt';}">▾ Show image prompt</button>
+        <div class="prompt-content" hidden>Flat, minimal editorial-style illustration, warm cream and navy-blue palette. Left side: a reception "front desk" sign reading "INSPECTION PLANE — SD-WAN Rule Engine" with two small gauge dials labelled "port1" and "port2" showing health-check readings. A single paper packet icon approaches the desk and receives a punched access card. Right side: a long hallway labelled "FORWARDING PLANE — FIB / Session Table" where identical packet icons walk past, each holding the same access card, never stopping at any desk. Include a small "CLOSED — one visit only" sign hanging on the front desk facing the hallway side. No text other than the labels described.</div>
+      </div>
+      <p class="img-caption">The front desk is consulted once; the hallway runs on memory alone.</p>
+
+      <p>Every new session's first packet triggers exactly one SD-WAN rule lookup. That lookup reads the <strong>inspection plane</strong> — the live health-check measurements (latency, jitter, packet loss, sla_map) — and picks a member. The result of that single decision gets written into the session as its <strong>forwarding plane</strong> entry: a cached interface and next-hop.</p>
+      <p>Every packet after the first uses that cached entry directly. There is no polling loop walking the session table asking "is your member still SLA-compliant?" The two planes are structurally separate, and only one of them ever touches a session that already exists.</p>
+
+      <div class="callout callout-green"><strong>Remember:</strong> Inspection plane = measured continuously, but only <em>read</em> at session birth. Forwarding plane = written once at session birth, then <em>reused</em> for every subsequent packet with zero re-lookup.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">First packet visits the front desk and gets an access card. Every later packet just shows the card — the desk is never revisited.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2 -->
+    <div class="section-block" id="section-triggers">
+      <div class="section-label">SECTION 02</div>
+      <h2>What Actually <em>Tears Up the Card</em></h2>
+
+      <p>Only two events force an established session's next packet back through the rule engine — and an SLA verdict, however severe, is not one of them.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Event</th><th>Plane</th><th>Forces re-evaluation?</th></tr></thead>
+        <tbody>
+          <tr><td>Health check fails one or more SLA targets (sla_map worsens)</td><td>Inspection</td><td>No — new sessions only</td></tr>
+          <tr><td>Member goes physically/fully down (FIB withdraws the route)</td><td>Forwarding</td><td>Yes</td></tr>
+          <tr><td>Routing protocol neighbour lost (e.g. BGP down), route withdrawn</td><td>Forwarding</td><td>Yes</td></tr>
+          <tr><td>Administrator or script manually clears the session</td><td>Session table (direct)</td><td>Yes</td></tr>
+          <tr><td>SD-WAN rule cost value edited in the GUI</td><td>Inspection / config</td><td>No — new sessions only</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>Exam trap:</strong> Both "sla_map degrades" and "rule cost is edited" sound like they should matter to a live session — they don't. Neither touches the cached FIB entry an established session is forwarding against.</div>
+
+      <p>This is exactly why EP-02's incident resolved itself with time rather than configuration: port1 never left the FIB. It stayed the correct, reachable next-hop the entire time — only its SLA compliance changed. Existing Teams sessions had no trigger to act on.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Rule correctness ≠ session correctness. A rule can be steering new sessions perfectly while old sessions ride out a degraded path indefinitely — until the FIB itself changes.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3 -->
+    <div class="section-block" id="section-proof">
+      <div class="section-label">SECTION 03</div>
+      <h2>Proving <em>Refresh vs Rebuild</em></h2>
+
+      <p>When a genuine FIB/route change does occur, the existing session's cached forwarding info is typically <strong>refreshed in place</strong> — same 5-tuple, same session identity, only the interface and next-hop fields get updated. It is not, in the simple case, torn down and recreated from scratch.</p>
+
+      <div class="callout"><strong>Deferred, not forgotten:</strong> SNAT-translated sessions can behave differently — sometimes killed and rebuilt rather than refreshed. That distinction is covered properly in a later episode on SNAT and route changes. Park it for now.</div>
+
+      <p>The trap is picking the wrong evidence to prove which one happened. The SD-WAN member/interface field in the session entry will show the new interface either way — refreshed or rebuilt — so it can never prove which occurred.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI</div>
+        <pre><code>diagnose sys sdwan health-check status &lt;health-check-name&gt;
+  → per-member latency / jitter / packet-loss and sla_map (inspection plane)
+
+diagnose sys session list
+  → filter to the flow's 5-tuple; check the session's duration/age counter</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Evidence</th><th>Valid proof of refresh vs rebuild?</th></tr></thead>
+        <tbody>
+          <tr><td>SD-WAN member/interface field changed</td><td>No — changes under both scenarios</td></tr>
+          <tr><td>sla_map value changed</td><td>No — inspection-plane only, unrelated to session identity</td></tr>
+          <tr><td>Session duration/age counter is continuous (not reset)</td><td>Yes — proves the same session survived</td></tr>
+          <tr><td>New session entry appears, age near zero, old entry gone</td><td>Yes — proves the session was torn down and rebuilt</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The session's own clock is the proof. Fields that describe <em>where</em> traffic goes now can't tell you whether it's the same session — only the age counter can.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4 -->
+    <div class="section-block" id="section-strategy">
+      <div class="section-label">SECTION 04</div>
+      <h2>Manual vs Lowest Cost SLA — <em>Same Member, Different Outcome</em></h2>
+
+      <p>Same physical scenario: the top-priority member is degraded but still Alive. Two different strategies, two different outcomes for a brand-new session — because the strategies read different data.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Strategy</th><th>Reads sla_map?</th><th>New session assigned to degraded-but-Alive top member?</th></tr></thead>
+        <tbody>
+          <tr><td>Manual</td><td>No — SLA-blind by design</td><td>Yes — walks preference order, picks first Alive member</td></tr>
+          <tr><td>Lowest Cost (SLA)</td><td>Yes — SLA-gated by design</td><td>No — demoted below any passing member</td></tr>
+        </tbody>
+      </table>
+
+      <div class="reinforce-tag">Needs Reinforcement</div>
+      <p><strong>Refinement to the EP-02 model:</strong> Lowest Cost SLA does not remove an out-of-SLA member from candidacy — it <strong>demotes it to the bottom of the same cost-ordered outgoing interface list</strong>. Cost remains the primary discriminator throughout; configuration order only breaks a tie when costs are equal — even among the demoted, failing members.</p>
+      <p>This is indistinguishable from "hard exclusion" whenever at least one member is passing SLA. It only diverges in the edge case where <strong>every</strong> member fails SLA: the rule does not refuse to assign an interface. It still selects the <strong>cheapest-cost member among the failing set</strong>.</p>
+
+      <div class="callout callout-amber"><strong>Common mistake:</strong> Assuming the all-fail case switches to a totally different selection method (e.g. configuration order first). It doesn't — cost stays primary; the list simply ran out of passing candidates before you reached the bottom.</div>
+
+      <div class="reinforce-tag">Needs Reinforcement</div>
+      <p><strong>Retention under pressure:</strong> in a direct exam-style question, "FortiGate periodically re-checks active sessions against SLA compliance" was briefly marked True before self-correcting to False on request. The model itself is solid — this is a flag to retest the same idea cold, in a fresh scenario, before the real exam.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Lowest Cost SLA is a re-ordering of a cost list, not a removal from one. When nothing passes, the cheapest failure still wins.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">EXAM DISTINCTIONS</div>
+      <h2>Key <em>Takeaways</em></h2>
+      <ul>
+        <li><strong>Rule lookup happens once,</strong> at session birth — never again for that session's life.</li>
+        <li><strong>Only two real triggers</strong> re-evaluate an existing session: a manual/admin clear, or a genuine FIB/route change. An SLA verdict alone is never one of them.</li>
+        <li><strong>The session's duration counter</strong> is the only valid evidence for "refreshed in place" vs "torn down and rebuilt" — the SD-WAN member field changes either way and proves nothing.</li>
+        <li><strong>Manual strategy is SLA-blind;</strong> Lowest Cost SLA is SLA-gated — identical member health can produce different new-session outcomes purely based on strategy choice.</li>
+        <li><strong>Lowest Cost SLA demotes, it doesn't delete</strong> — when every member fails SLA, the rule still picks the cheapest-cost failure rather than refusing to route.</li>
+      </ul>
+
+      <div class="callout"><strong>Topology this episode:</strong> No configuration or physical changes. Tuggers HA cluster, wan1-zone (port1 500Mb / port2 200Mb), one explicit Teams/ISDB rule on Lowest Cost SLA — unchanged from EP-01/EP-02. This was a pure mental-model and diagnostic-evidence episode.</div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="session-summary-ep-02.txt">
+    <span class="page-nav-label">← PREVIOUS</span>
+    <span class="page-nav-title">EP-02 — Up Is Not Good</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="#">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">EP-04 — The Implicit Rule</span>
+  </a>
+</div>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> Season 1 — The First Current
+</footer>
+
+  <!-- si-image-swap:v1 -->
+  <style>
+    .si-placeholder.si-loaded{border:none;padding:0;background:transparent;display:block;}
+    .si-placeholder.si-loaded > *:not(.si-image){display:none;}
+    .si-image{display:none;width:100%;height:auto;border-radius:12px;border:1px solid var(--border, #d4c89a);cursor:zoom-in;}
+    .si-placeholder.si-loaded .si-image{display:block;}
+  </style>
+  <script>
+    (function(){
+      document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('.si-placeholder').forEach(function(ph){
+          var name = ph.querySelector('.si-filename');
+          if (!name) return;
+          var src = name.textContent.trim();
+          if (!src) return;
+          var img = document.createElement('img');
+          img.className = 'si-image';
+          img.alt = '';
+          img.onload = function(){ ph.classList.add('si-loaded'); };
+          img.onerror = function(){ img.remove(); };
+          img.src = src;
+          ph.insertBefore(img, ph.firstChild);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

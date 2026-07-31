@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 05 — Who Wins?</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;line-height:1.05;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:6px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  .si-placeholder{width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:20px 22px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-bottom:20px;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+  .prompt-toggle{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--blue);cursor:pointer;}
+  .prompt-content{font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-soft);line-height:1.6;font-style:italic;margin-top:4px;}
+
+  .mental-note-block{display:flex;gap:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-top:18px;}
+  .mental-note-block-icon{font-size:22px;flex-shrink:0;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+
+  .needs-reinforce{display:inline-flex;align-items:center;gap:6px;background:var(--amber-light);border:1px solid var(--amber-border);color:var(--amber);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin:8px 0;}
+
+  .ladder{display:flex;flex-direction:column;gap:0;margin:16px 0;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .ladder-step{display:flex;gap:14px;padding:12px 18px;border-bottom:1px solid var(--border-dim);background:var(--surface);align-items:flex-start;}
+  .ladder-step:last-child{border-bottom:none;}
+  .ladder-num{font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--blue);min-width:22px;}
+  .ladder-text{font-family:'Cormorant Garamond',serif;font-size:15.5px;line-height:1.6;color:var(--text-soft);}
+  .ladder-text strong{color:var(--text);}
+
+  .topo-block{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:20px 24px;margin:16px 0;}
+  .topo-row{display:flex;align-items:center;gap:10px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--text-soft);margin-bottom:8px;flex-wrap:wrap;}
+  .topo-tag{background:var(--blue-light);border:1px solid var(--blue-border);color:var(--blue);padding:4px 10px;border-radius:8px;font-weight:600;}
+  .topo-tag.dim{background:var(--surface-2);border-color:var(--border);color:var(--text-muted);}
+  .topo-arrow{color:var(--text-muted);}
+
+  footer{padding:28px 60px;background:var(--ink-dark);color:rgba(251,247,236,0.5);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.06em;text-align:center;}
+  footer span{color:rgba(251,247,236,0.35);}
+
+  @media (max-width:760px){
+    header{padding:32px 22px 24px;flex-direction:column;align-items:flex-start;}
+    header h1{font-size:32px;}
+    .motivation-banner{padding:18px 22px;}
+    .section-nav{padding:0 12px;}
+    .main-content{padding:24px 20px 40px;}
+    .section-block h2{font-size:23px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="#">Season 1 — The First Current</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Episode 05</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> EPISODE CHEATSHEET · NSE7 SNA</div>
+    <h1>Who Wins? <em>SLA Strategy &amp; Session Truth</em></h1>
+    <p>sla_map is a photograph of one member, not a scoreboard of all of them — and neither SLA strategy decides the way its name suggests.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Before Tuggers goes dark on Saturday, the team needed to <em>prove</em> the model — not just recite it.</div>
+  <p class="motivation-sub">Department of Fish, Season 1, Episode 05 — Telstra Tower, Canberra. Racks has booked a real 40-minute Tuggers outage to test whether Gunners is a genuine DR site.</p>
+</div>
+
+<nav class="section-nav">
+  <a class="nav-tab active" href="#section-slamap">sla_map</a>
+  <a class="nav-tab" href="#section-triggers">Re-Eval Triggers</a>
+  <a class="nav-tab" href="#section-strategies">SLA Strategies</a>
+  <a class="nav-tab" href="#section-troubleshoot">Troubleshooting</a>
+  <a class="nav-tab" href="#section-exam">Exam Traps</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- SECTION 1 — sla_map -->
+    <div class="section-block" id="section-slamap">
+      <div class="section-label">SECTION 01</div>
+      <h2>sla_map <em>— Snapshot, Not Scoreboard</em></h2>
+
+      <div class="si-placeholder">
+        <span class="si-filename">images/s1-slamap-scope.png</span>
+        <button class="prompt-toggle" onclick="togglePrompt(this)">▾ Show image prompt</button>
+        <div class="prompt-content" hidden>A clean technical diagram contrasting two views side by side: on the left, a single magnifying glass over one FortiGate SD-WAN member icon labelled "sla_map — one session, one member, frozen at birth"; on the right, a live dashboard-style panel showing multiple member icons simultaneously labelled "diagnose sys sdwan health-check — all members, live, always." Muted navy and warm cream palette, minimal, no text other than the two labels, flat vector style, no logos.</div>
+      </div>
+
+      <p>The single biggest gap closed this episode: <strong>sla_map is scoped to exactly one session and exactly one member</strong> — the member that session is currently pinned to. It is not a comparison table across every member in the zone.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Question</th><th>sla_map</th><th>diagnose sys sdwan health-check</th></tr></thead>
+        <tbody>
+          <tr><td>Scope</td><td>One session, one member</td><td>All members, all the time</td></tr>
+          <tr><td>Timing</td><td>Frozen at last rule evaluation</td><td>Live, continuously updated</td></tr>
+          <tr><td>Where seen</td><td>diagnose sys session list</td><td>diagnose sys sdwan health-check</td></tr>
+          <tr><td>Visible on</td><td>Explicit-rule sessions only (SLA strategy)</td><td>Any member with a health-check attached</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Reading the bitmask:</strong> bit position = SLA target index. Rightmost bit (LSB) = target 1, next bit = target 2, and so on. <strong>1 = SLA target met, 0 = unmet.</strong> Example: <code>sla_map=0x2</code> → binary <code>10</code> → target 1 unmet, target 2 met.</p>
+
+      <div class="callout"><strong>Exam tip:</strong> if a question asks "does sla_map tell you how the other member is doing," the answer is always no — that's what health-check is for.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">sla_map = one session's memory of one member's compliance at birth. health-check = the live truth about every member, right now. Never confuse a memory for a live feed.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2 — Re-evaluation triggers -->
+    <div class="section-block" id="section-triggers">
+      <div class="section-label">SECTION 02</div>
+      <h2>Re-Evaluation Triggers <em>— Disappear vs Return</em></h2>
+
+      <p>EP-03's two triggers apply identically to a full outage, not just a degraded SLA target: <strong>manual clear</strong>, and <strong>FIB/route change</strong>. Tuggers going fully offline withdraws its routes from the FIB — that's the second trigger firing, at outage scale.</p>
+
+      <div class="callout callout-amber"><strong>The asymmetry that trips people up:</strong> a route <em>disappearing</em> triggers re-evaluation. A route <em>reappearing</em> does not. There is no "something better just showed up" trigger — only "what I'm using just vanished."</div>
+
+      <table class="data-table">
+        <thead><tr><th>Event</th><th>Existing session affected?</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Tuggers goes offline</td><td>Yes — torn down, new session births on next packet</td><td>FIB/route-change trigger fires</td></tr>
+          <tr><td>Tuggers comes back online</td><td>No — session stays on Gunners</td><td>No trigger exists for a route reappearing</td></tr>
+          <tr><td>Existing TCP session ends (RST/FIN)</td><td>N/A — session naturally ends</td><td>Normal session lifecycle, not a re-evaluation event</td></tr>
+          <tr><td>New session after Tuggers returns</td><td>Fresh SD-WAN decision made</td><td>Rule always re-evaluates at session birth</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Business translation:</strong> traffic does not snap back all at once when Tuggers returns. It trickles back gradually, one session at a time, as each existing session naturally ends (TCP RST/FIN, or an admin clear) and its replacement is born fresh against whichever members are eligible at that moment.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Only disappearance forces re-evaluation. Return just adds an option for the next session born — it never reaches back and grabs an existing one.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3 — SLA Strategies -->
+    <div class="section-block" id="section-strategies">
+      <div class="section-label">SECTION 03</div>
+      <h2>Best Quality &amp; Lowest Cost <em>— The Two-Stage Model</em></h2>
+
+      <div class="needs-reinforce">⚠ Needs Reinforcement</div>
+      <p>Both strategies share the same two-stage shape, and this is the part that wobbled twice in this episode's exam set — once on each strategy. Treat it as the priority item to retest.</p>
+
+      <div class="ladder">
+        <div class="ladder-step">
+          <div class="ladder-num">1</div>
+          <div class="ladder-text"><strong>SLA compliance filters the eligible pool.</strong> A member failing its configured SLA target(s) is excluded from consideration — full stop — regardless of strategy.</div>
+        </div>
+        <div class="ladder-step">
+          <div class="ladder-num">2</div>
+          <div class="ladder-text"><strong>The configured tiebreaker decides among survivors.</strong> Best Quality: exactly one configured <code>link-cost-factor</code> metric — never a blended score. Lowest Cost: each member's static, admin-assigned <code>cost</code> value.</div>
+        </div>
+        <div class="ladder-step">
+          <div class="ladder-num">⚠</div>
+          <div class="ladder-text"><strong>The one exception:</strong> if every eligible member fails every configured SLA target simultaneously, Lowest Cost skips stage 1 entirely and cost alone decides — compliance disregarded completely, only in this specific total-failure case.</div>
+        </div>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Strategy</th><th>Tiebreaker</th><th>Where configured</th><th>SLA still checked?</th></tr></thead>
+        <tbody>
+          <tr><td>Best Quality SLA</td><td>Single link-cost-factor metric (latency / jitter / packet-loss / one composite option)</td><td>Rule itself (config system sdwan → service)</td><td>Always filters first</td></tr>
+          <tr><td>Lowest Cost SLA</td><td>Static per-member cost value</td><td>Member object (config system sdwan → members)</td><td>Filters first, EXCEPT total-failure case</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Exam trap #1:</strong> "Lowest Cost always picks the cheapest member" — False. Cost only decides among SLA-compliant survivors, unless literally every member is failing every target.</div>
+      <div class="callout"><strong>Exam trap #2:</strong> "link-cost-factor can combine jitter + packet-loss for a holistic score" — False. Exactly one metric (or one named composite option) is chosen; there is no live blending of several metrics.</div>
+
+      <div class="code-block">
+        <div class="code-label">Configuration split — three separate places</div>
+        <pre><code>config system sdwan
+    config health-check
+        edit "teams-hc"
+            set server "worldaz.tr.teams.microsoft.com"
+            set sla-fail-log-period 10
+            config sla
+                edit 1
+                    set jitter-threshold 30
+                    set packetloss-threshold 1
+                next
+            end
+            set members 1 2
+        next
+    end
+    config members
+        edit 1
+            set cost 5      <- static, used by Lowest Cost only
+        next
+        edit 2
+            set cost 20
+        next
+    end
+    config service
+        edit 1
+            set mode sla
+            set strategy best-quality
+            set link-cost-factor jitter   <- single metric, Best Quality only
+            set health-check "teams-hc"
+        next
+    end
+end</code></pre>
+      </div>
+
+      <p><strong>Why jitter for Teams:</strong> real-time voice/video is far more sensitive to variable delay between packets (jitter) than to a flat, consistent latency — jitter causes talk-over and choppy audio, which is the specific symptom that matters for this traffic type.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Filter first, then decide. Neither strategy is "holistic" — Best Quality picks one metric, Lowest Cost picks one static number. Compliance always gates the pool, except Lowest Cost's total-failure escape hatch.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4 — Troubleshooting workflow -->
+    <div class="section-block" id="section-troubleshoot">
+      <div class="section-label">SECTION 04</div>
+      <h2>Troubleshooting Workflow <em>— Proving the Model</em></h2>
+
+      <ol>
+        <li><strong>Confirm the session is explicit-rule matched.</strong> <code>diagnose sys session list</code> — presence of sdwan_mbr_seq / sdwan_service_id / sla_map confirms explicit-rule handling (EP-04).</li>
+        <li><strong>Read sla_map for that one member's history.</strong> Bit position = target index, 1 = met. Remember: this tells you nothing about any other member.</li>
+        <li><strong>Cross-check against the live view.</strong> <code>diagnose sys sdwan health-check</code> — confirms current, all-member compliance right now, independent of any session.</li>
+        <li><strong>If a member vanished, confirm the FIB.</strong> <code>diagnose firewall proute list</code> — vwl_service/vwl_mbr fields, route ID &gt; 65535 for SD-WAN-derived routes (EP-04).</li>
+        <li><strong>Predict, don't assume, on recovery.</strong> A returning member does not reclaim existing sessions — only future session births see it as an option.</li>
+      </ol>
+
+      <div class="callout callout-green"><strong>Remember:</strong> config-state commands (get system interface) are not live throughput or compliance evidence — always reach for the diagnose-family command for real-time truth.</div>
+    </div>
+
+    <!-- SECTION 5 — Exam distinctions summary -->
+    <div class="section-block" id="section-exam">
+      <div class="section-label">SECTION 05</div>
+      <h2>Exam Distinctions <em>— Quick Reference</em></h2>
+
+      <table class="data-table">
+        <thead><tr><th>Contrast</th><th>Key distinction</th></tr></thead>
+        <tbody>
+          <tr><td>sla_map vs health-check</td><td>Frozen/one-member vs live/all-members</td></tr>
+          <tr><td>Route disappearing vs returning</td><td>Only disappearing is a re-evaluation trigger</td></tr>
+          <tr><td>Best Quality vs Lowest Cost</td><td>Live single metric vs static single cost value</td></tr>
+          <tr><td>Normal case vs total-failure case (Lowest Cost)</td><td>SLA filters first, vs SLA ignored entirely</td></tr>
+          <tr><td>Rule reordering vs FIB change</td><td>Only FIB change re-evaluates existing sessions (EP-04)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="topo-block">
+        <div class="section-label" style="margin-bottom:12px;">TOPOLOGY / STATE — NO CHANGE THIS EPISODE</div>
+        <div class="topo-row">
+          <span class="topo-tag">Telstra Tower (HQ)</span>
+          <span class="topo-arrow">↔</span>
+          <span class="topo-tag">Tuggers (primary DC)</span>
+          <span class="topo-arrow">↔ fibre ↔</span>
+          <span class="topo-tag">Gunners (secondary DC)</span>
+        </div>
+        <div class="topo-row">
+          <span class="topo-tag dim">wan1-zone: port1 (500Mb) + port2 (200Mb)</span>
+          <span class="topo-tag dim">Implicit rule: source-ip-based (weight-based pending, unapplied)</span>
+          <span class="topo-tag dim">Teams rule: Lowest Cost SLA</span>
+        </div>
+        <p style="font-family:'Cormorant Garamond',serif;font-size:14.5px;color:var(--text-muted);margin-top:10px;font-style:italic;">Saturday's live Tuggers outage DR test is now approved to proceed — EP-06's natural hook.</p>
+      </div>
+
+      <div class="callout callout-amber"><strong>Key takeaway:</strong> Two-stage filter-then-tiebreak structure is the reinforcement priority for EP-06 — it failed identically on both Best Quality and Lowest Cost in this session's exam set before self-correction.</div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> Season 1, Episode 05 — Who Wins?
+</footer>
+
+<script>
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+</script>
+  <!-- si-image-swap:v1 -->
+  <style>
+    .si-placeholder.si-loaded{border:none;padding:0;background:transparent;display:block;}
+    .si-placeholder.si-loaded > *:not(.si-image){display:none;}
+    .si-image{display:none;width:100%;height:auto;border-radius:12px;border:1px solid var(--border, #d4c89a);cursor:zoom-in;}
+    .si-placeholder.si-loaded .si-image{display:block;}
+  </style>
+  <script>
+    (function(){
+      document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('.si-placeholder').forEach(function(ph){
+          var name = ph.querySelector('.si-filename');
+          if (!name) return;
+          var src = name.textContent.trim();
+          if (!src) return;
+          var img = document.createElement('img');
+          img.className = 'si-image';
+          img.alt = '';
+          img.onload = function(){ ph.classList.add('si-loaded'); };
+          img.onerror = function(){ img.remove(); };
+          img.src = src;
+          ph.insertBefore(img, ph.firstChild);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
