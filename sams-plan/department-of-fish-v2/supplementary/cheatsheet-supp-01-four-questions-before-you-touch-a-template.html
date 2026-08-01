@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Page-transition preloader — required for nibble/complete, optional for bite.
+     Without a matching cleanup script at the bottom of <body>, this will leave
+     the body permanently invisible when the page loads from a link-click.
+     build.py normalize_page_transitions() will auto-inject the cleanup if
+     you forget the bottom half — but keep both halves in this template. -->
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUPP-01 — Four Questions Before You Touch a Template</title>
+<!-- Title prefix hints (extract_html_title() strips these on hub cards):
+       Session NN — <title>                     · session-linked
+       Session NN Bite — <title>                · bite
+       Session NN Nibble — <title>              · nibble
+       Session NN Complete — <title>            · completed guide
+     Bare titles (no prefix) are fine too. -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* HERO IMAGE PLACEHOLDER */
+  .hero-image{padding:24px 60px 8px;background:var(--bg);}
+  .hero-image-wrap{position:relative;width:100%;max-width:1100px;margin:0 auto;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:var(--surface-2);border:1px solid var(--border);cursor:zoom-in;}
+  .hero-image-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .hero-image-placeholder{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;background:repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 12px,var(--surface) 12px,var(--surface) 24px);border:2px dashed var(--border);border-radius:12px;}
+  .hero-image-placeholder.ip-show{display:flex;}
+  .hip-icon{font-size:34px;line-height:1;opacity:0.7;}
+  .hip-title{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);}
+  .hip-file{font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;color:var(--blue);font-weight:600;word-break:break-all;}
+  .hip-hint{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);max-width:420px;line-height:1.5;}
+  .hip-hint code{font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:var(--surface);border:1px solid var(--border-dim);padding:1px 5px;border-radius:3px;color:var(--text);}
+  @media(max-width:720px){.hero-image{padding:16px 24px 4px;}}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head><body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);margin-bottom:12px;text-transform:uppercase;">
+      <a href="../../index.html" style="color:#9bb8e6;text-decoration:none;">Sam's Plan</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">›</span>
+      <a href="../index.html" style="color:#9bb8e6;text-decoration:none;">Department of Fish · v2</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">›</span>
+      <a href="index.html" style="color:#9bb8e6;text-decoration:none;">Supplementary</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">›</span>
+      <span>SUPP-01 · FortiManager Frame</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> SUPP-01 · Consolidation · FortiManager</div>
+    <h1>Four Questions Before You <em>Touch a Template</em></h1>
+    <p>FortiManager isn't a pile of features. It's four dimensions — layer, scope, value, install — and every feature is a point in that space.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Templates aren't places. They're <em>authors</em>. The device database is the page.</div>
+  <p class="motivation-sub">Once that lands, CLI templates, SD-WAN templates, device groups, installation targets, metadata variables, Jinja and blueprints all stop competing for the same shelf.</p>
+</div>
+
+<div class="hero-image">
+  <div class="hero-image-wrap">
+    <img src="images/supp-01-fortimanager-frame.png"
+         alt="SUPP-01 — Four Questions Before You Touch a Template — illustration"
+         onerror="this.style.display='none';this.nextElementSibling.classList.add('ip-show');">
+    <div class="hero-image-placeholder">
+      <div class="hip-icon">&#127912;</div>
+      <div class="hip-title">Illustration not yet generated</div>
+      <div class="hip-file">images/supp-01-fortimanager-frame.png</div>
+      <div class="hip-hint">See <code>images/prompts.txt</code> for the AI prompt. Drop the PNG into this folder to replace this placeholder.</div>
+    </div>
+  </div>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-frame">The Frame</a>
+  <a class="nav-tab" href="#section-layer">1 · Layer</a>
+  <a class="nav-tab" href="#section-scope">2 · Scope</a>
+  <a class="nav-tab" href="#section-value">3 · Value</a>
+  <a class="nav-tab" href="#section-install">4 · Install</a>
+  <a class="nav-tab" href="#section-blueprint">Blueprints</a>
+  <a class="nav-tab" href="#section-traps">Traps &amp; Recall</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ═══════════ SECTION 1 — THE FRAME ═══════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · THE FRAME</span>
+      </div>
+      <p class="socratic-insight">Junior can define every FortiManager noun and relate none of them. That's not a knowledge gap — it's a missing dimension. Before reading on, try to answer his actual question.</p>
+      <ul class="socratic-questions">
+        <li>Once FortiManager manages the Perth branch, how many distinct copies of that device's configuration exist, and where does each one live?</li>
+        <li>Why does FortiManager give you two separate install operations whose status indicators can disagree with each other?</li>
+      </ul>
+      <div class="answer-area" data-section="frame">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Three. The FortiGate's own running configuration (the only copy carrying traffic); Perth's device database in the device layer (one per managed device); and, in the ADOM policy layer, the policy packages plus one common object database shared across the ADOM.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Cardinality. Device databases are one-to-one with devices; policy packages and objects are one-to-many. Those cannot share a container — you could not edit the shared thing without touching every device referencing it. Two places to make a change means two installs and two statuses.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-frame">
+      <div class="section-label">SECTION 01 · THE ORGANISING IDEA</div>
+      <h2>Four questions, and <em>every feature is an answer</em></h2>
+
+      <p>The reason FortiManager feels like an unrelated pile of nouns is that the documentation teaches features, not dimensions. There are only four dimensions. Sort any feature — known or unknown — into them and it stops floating.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Question</th><th>What it decides</th><th>Mechanisms that answer it</th></tr></thead>
+        <tbody>
+          <tr><td>1 · Which layer?</td><td>Where the change is staged, and which install pushes it</td><td>Device layer (device DB) · Policy layer (packages + common object DB)</td></tr>
+          <tr><td>2 · What scope?</td><td>Which devices receive it</td><td>Template assignment to device/group · Installation targets · Jinja</td></tr>
+          <tr><td>3 · What value?</td><td>What goes in the field for this device</td><td>Metadata variables · template default · per-device override</td></tr>
+          <tr><td>4 · What installs?</td><td>What the box actually receives, and whether it works</td><td>Install Preview, per device</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-green"><strong>The central model:</strong> a provisioning template is <em>not a storage location</em>. It is an <strong>author</strong>. It writes into one or more per-device device databases, producing a separate, complete configuration in each. One-to-many at authoring time; one-per-device at storage time.</div>
+
+      <div class="analogy-box">
+        <div class="analogy-label">Analogy</div>
+        <div class="analogy-text">
+          <p class="analogy-summary">A template is a person writing in notebooks — not a notebook itself.</p>
+          <ul>
+            <li>Each managed FortiGate has its own notebook (device database). Nobody shares one.</li>
+            <li>The template is an author who writes the same passage into thirty notebooks at once.</li>
+            <li>If you also write in a notebook by hand, and the author writes over that page — the author wins. Every install. That's why provisioning templates <em>overwrite</em> the device database and take precedence over Device Manager edits.</li>
+            <li>Nothing leaves the notebook until someone posts it. That posting is the install.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Templates aren't places, they're authors. The device database is the page. Two authors on one page means the template wins.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-frame" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-frame','The Frame')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-frame" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-frame')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 2 — LAYER ═══════════ -->
+    <div class="section-block" id="section-layer">
+      <div class="section-label">SECTION 02 · QUESTION ONE</div>
+      <h2>Which layer am I <em>writing into?</em></h2>
+
+      <p>Two layers exist because two kinds of content exist. Per-device content cannot live in a shared container, and shared content cannot live in a per-device container. Everything else follows from that.</p>
+
+      <div class="layer-split" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:18px 0;">
+        <div style="padding:16px 18px;background:var(--surface);border-right:1px solid var(--border);">
+          <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--blue);margin-bottom:4px;">Device Layer</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);margin-bottom:12px;">One device database per FortiGate</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);line-height:1.7;">
+            Interfaces · routing · system settings<br>
+            <strong>All provisioning templates</strong><br>
+            Pre-run CLI templates<br>
+            Revision history
+          </div>
+          <div style="margin-top:12px;padding:8px 12px;background:var(--blue-light);border-radius:8px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;color:var(--blue);">Install Device Settings</div>
+        </div>
+        <div style="padding:16px 18px;background:var(--surface);">
+          <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--green);margin-bottom:4px;">Policy Layer</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);margin-bottom:12px;">Packages + ONE common object DB per ADOM</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text-soft);line-height:1.7;">
+            Firewall policies (policy packages)<br>
+            Addresses · services · security profiles<br>
+            Normalized interfaces<br>
+            VPN / AP / FortiSwitch Manager
+          </div>
+          <div style="margin-top:12px;padding:8px 12px;background:var(--green-light);border-radius:8px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;color:var(--green);">Install Policy Package</div>
+        </div>
+      </div>
+
+      <p>All provisioning templates are device-layer. The type only changes <em>what</em> they author, never <em>where</em>:</p>
+
+      <table class="data-table">
+        <thead><tr><th>Template</th><th>Authors</th><th>Style</th></tr></thead>
+        <tbody>
+          <tr><td>System</td><td>DNS, NTP, admin, SNMP, logging, FortiGuard</td><td>Structured</td></tr>
+          <tr><td>SD-WAN</td><td>Members, zones, health checks, rules</td><td>Structured</td></tr>
+          <tr><td>Static Route</td><td>Static routes</td><td>Structured</td></tr>
+          <tr><td>BGP</td><td>Neighbours, AS, route maps</td><td>Structured</td></tr>
+          <tr><td>IPsec Tunnel</td><td>Phase 1 / Phase 2, tunnel interfaces</td><td>Structured</td></tr>
+          <tr><td>Certificate</td><td>Certificate enrolment</td><td>Structured</td></tr>
+          <tr><td>CLI</td><td><em>Anything</em>, as raw FortiGate CLI</td><td>Raw text</td></tr>
+          <tr><td>Template Group</td><td>A bundle of the above, assigned as one unit</td><td>Container</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Exam distinction:</strong> a CLI template is <em>a kind of</em> provisioning template, not a peer of the SD-WAN template. The real split is <strong>structured vs raw</strong>. Structured types carry FortiManager's object model — validation, per-model rendering, no syntax risk. CLI templates are shipped largely as text, so correctness is entirely yours.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Does it configure the box, or configure traffic decisions? Box → device layer, Install Device Settings. Traffic decisions → policy layer, Install Policy Package.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-layer" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-layer','1 · Layer')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-layer" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-layer')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 3 — SCOPE ═══════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · SCOPE</span>
+      </div>
+      <p class="socratic-insight">Perth is a 60F with two WAN links. Sydney is a 100F with two WAN links plus a third interface for local breakout. Both should share the same SD-WAN template — identical health checks, identical rules, identical zone structure.</p>
+      <ul class="socratic-questions">
+        <li>What has to be attached to the template for it to write three members into Sydney's device DB and only two into Perth's?</li>
+        <li>Two ways exist to control who gets configuration — assign the template to a device group, or set installation targets inside it. What is the <em>unit</em> being included or excluded in each case?</li>
+      </ul>
+      <div class="answer-area" data-section="scope">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">An installation target, set on the individual member. Not on the device, not on the template — on the member. port5's installation target is Sydney; the other two members leave it empty.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Group assignment switches the <strong>whole template</strong> on or off for a device — all-or-nothing. An installation target switches <strong>one setting inside</strong> the template on or off for a device. Coarse filter, then fine filter.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-scope">
+      <div class="section-label">SECTION 03 · QUESTION TWO</div>
+      <h2>Who is this <em>actually going to reach?</em></h2>
+
+      <p>Scope has two nested filters, and they operate at different granularity. Confusing them is the main reason template design feels ambiguous.</p>
+
+      <div class="code-block">
+        <div class="code-label">Scope granularity</div>
+        <pre><code>Device group assignment  →  WHICH DEVICES get this TEMPLATE     (coarse · template-level)
+Installation target      →  WHICH DEVICES get this ONE MEMBER   (fine   · setting-level)
+
+     The group decides who is in the room.
+     The installation target decides who is handed which sheet of paper.</code></pre>
+      </div>
+
+      <div class="callout callout-green"><strong>Default worth memorising:</strong> an <strong>empty</strong> installation target means the member installs on <em>every</em> device using that template.</div>
+
+      <p>But installation targets only exist in structured templates. CLI templates are assigned per device or group, not per line — so they need a different mechanism for structural variation, and that mechanism is Jinja.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Mechanism</th><th>Structured templates</th><th>CLI templates</th></tr></thead>
+        <tbody>
+          <tr><td>Metadata variable <code>$(x)</code> / <code>{{x}}</code></td><td>Yes — in value fields</td><td>Yes</td></tr>
+          <tr><td>Jinja logic <code>{% if %}</code>, loops</td><td><strong>No</strong> — no logic layer exists</td><td>Yes</td></tr>
+          <tr><td>Installation target</td><td>Yes</td><td><strong>No</strong> — assignment is per device</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Read that table sideways:</strong> each template type has <em>exactly one</em> way to vary structure. Structured templates vary structure with installation targets; CLI templates vary structure with Jinja. Same problem, solved the only way each type can. Identify the template type first and the mechanism chooses itself.</div>
+
+      <h3 style="font-family:'Playfair Display',serif;font-size:21px;font-weight:600;color:var(--text);margin:26px 0 10px;">Worked example — Sydney's local breakout</h3>
+
+      <p>The SD-WAN template configures SD-WAN only. It does <em>not</em> give port5 an IP address, an alias or a role. That's a two-template job.</p>
+
+      <div class="code-block">
+        <div class="code-label">CLI Template — assigned to the whole branch group, Jinja-gated</div>
+        <pre><code>{% if has_local_breakout == "yes" %}
+config system interface
+    edit "port5"
+        set alias "LOCAL-BREAKOUT"
+        set role wan
+        set mode static
+        set ip {{breakout_ip}} {{breakout_mask}}
+        set allowaccess ping
+    next
+end
+{% endif %}</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Device</th><th>has_local_breakout</th><th>breakout_ip</th><th>breakout_mask</th></tr></thead>
+        <tbody>
+          <tr><td>Sydney</td><td>yes</td><td>203.0.113.10</td><td>255.255.255.0</td></tr>
+          <tr><td>Perth</td><td>no</td><td><em>unset</em></td><td><em>unset</em></td></tr>
+          <tr><td>Adelaide</td><td>no</td><td><em>unset</em></td><td><em>unset</em></td></tr>
+        </tbody>
+      </table>
+
+      <p>Perth's install renders the <code>{% if %}</code> block to nothing. Note the second job Jinja is doing there: it also stops Perth and Adelaide from needing values for variables they have no use for.</p>
+
+      <p>The <strong>SD-WAN template</strong> then consumes the interface — member <code>port5</code>, gateway <code>{{breakout_gw}}</code>, <strong>installation target: Sydney</strong>. Jinja gates whether the interface is <em>built</em>; the installation target gates whether the member is <em>built</em>.</p>
+
+      <div class="callout callout-amber"><strong>Ordering risk — verify, don't assume:</strong> FortiManager assembles one install script per device. An SD-WAN member referencing port5 is meaningless if the CLI template hasn't created port5 yet. Read the assembled order in <strong>Install Preview</strong> before the first branch ships, and adjust template group ordering if the member lands above the interface.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Structured template → vary structure with installation targets. CLI template → vary structure with Jinja. Never the other way round; the other way round doesn't exist.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-scope" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-scope','2 · Scope')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-scope" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-scope')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 4 — VALUE ═══════════ -->
+    <div class="section-block" id="section-value">
+      <div class="section-label">SECTION 04 · QUESTION THREE</div>
+      <h2>Where does the <em>value</em> come from?</h2>
+
+      <p>Same template, same member, both devices need it — but the content of the field differs. That's a metadata variable, and it resolves at <em>write</em> time, not at run time.</p>
+
+      <div class="code-block">
+        <div class="code-label">Resolution pipeline</div>
+        <pre><code>Template  ── holds the variable reference:  set gateway {{gateway}}
+    │
+    │   resolve, in strict order:
+    │       1. device-level override   (per-device variable mapping table)
+    │       2. template default
+    │       3. BLOCK — Install Preview stops THIS DEVICE only
+    ▼
+Device DB ── holds the literal:          set gateway 203.0.113.1
+    │
+    │   Install Device Settings
+    ▼
+FortiGate ── holds the literal. Has no concept of variables at all.</code></pre>
+      </div>
+
+      <div class="callout callout-green"><strong>Syntax, not two features:</strong> <code>$(gateway)</code> is the original metadata-variable syntax; <code>{{gateway}}</code> is the Jinja form added when CLI templates gained Jinja support. <strong>Same variable store, same lookup.</strong> Use the Jinja form in Jinja-mode templates; either works in a plain CLI template.</div>
+
+      <div class="callout callout-amber" id="needs-reinforcement-lifecycle"><strong>⚠ NEEDS REINFORCEMENT — two passes, same error.</strong> Deleting a <em>device override</em> and deleting a <em>template reference</em> are not the same operation, and only one of them causes default fallback.</div>
+
+      <table class="data-table">
+        <thead><tr><th>Operation</th><th>Effect on device data</th><th>Effect on resolution</th></tr></thead>
+        <tbody>
+          <tr><td>Delete the device's <strong>override</strong></td><td>Destroys the value permanently</td><td>Falls back to template default; blocks if none exists</td></tr>
+          <tr><td>Delete the template's <strong>reference</strong></td><td>Nothing — the value survives, inert</td><td><strong>No lookup occurs at all.</strong> Not the default. Nothing.</td></tr>
+        </tbody>
+      </table>
+
+      <p>The sting on row two: reinstate a reference to that variable name in any template six months later and the old, stale value resolves again <strong>silently</strong>, with no warning that it was ever orphaned.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Default fallback only happens while a reference still exists. No reference, no lookup — and the device's value is still sitting there waiting to resurrect.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-value" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-value','3 · Value')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-value" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-value')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 5 — INSTALL ═══════════ -->
+    <div class="section-block" id="section-install">
+      <div class="section-label">SECTION 05 · QUESTION FOUR</div>
+      <h2>What will <em>Install Preview</em> actually show?</h2>
+
+      <p>Nothing in FortiManager reaches a FortiGate until an install runs. Editing only ever changes a staged copy — which is exactly what <em>Modified</em> status is reporting.</p>
+
+      <div class="code-block">
+        <div class="code-label">Assign is not install</div>
+        <pre><code>Assign    →  link created between template and device/group
+             device status goes MODIFIED
+             NOTHING is written to the FortiGate
+
+Install   →  template renders into the device DB
+             device DB is pushed to the FortiGate
+
+Unassign  →  link removed
+             device DB KEEPS whatever was already written</code></pre>
+      </div>
+
+      <div class="callout"><strong>Exception:</strong> a <strong>pre-run CLI template</strong> is assigned, quick-installed, and <em>auto-detached</em> — all handled for you. That's the difference from an ordinary CLI template, which stays assigned and reapplies on every subsequent install.</div>
+
+      <h3 style="font-family:'Playfair Display',serif;font-size:21px;font-weight:600;color:var(--text);margin:26px 0 10px;">Failure is per device, not per run</h3>
+
+      <p>A CLI template containing <code>set interface port5</code>, assigned to a group holding Perth (60F, no port5) and Sydney (100F, has port5):</p>
+
+      <table class="data-table">
+        <thead><tr><th>Device</th><th>Outcome</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Sydney</td><td>Installs normally</td><td>port5 exists on a 100F</td></tr>
+          <tr><td>Perth</td><td>Fails — this device only</td><td>The command is rejected; nothing rolls back for anyone else</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>The structured/CLI difference under failure:</strong> with a <em>structured</em> template FortiManager understands the object model — it knows a member points at an interface and can tell that interface isn't in Perth's device DB. With a <em>CLI</em> template it is largely shipping text; there is <strong>no validator watching your CLI for you</strong>. Install Preview is where you see it.</div>
+
+      <div class="callout callout-green"><strong>Same principle, three triggers:</strong> unresolved variable · nonexistent interface reference · invalid CLI for the platform. All three block the affected device only, all three are visible in Install Preview before anything is pushed.</div>
+
+      <p>One more install fact worth carrying: installation is <strong>reference-driven, not inventory-driven</strong>. A policy package install carries the policy <em>and</em> the objects that policy references. Objects sitting in the ADOM common object database that nothing in the package references are <strong>not pushed at all</strong> — they stay in the ADOM.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Install Preview is the only place you see what a specific box is about to receive — assembled, in order, with every variable already resolved.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-install" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-install','4 · Install')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-install" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-install')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 6 — BLUEPRINTS ═══════════ -->
+    <div class="section-block" id="section-blueprint">
+      <div class="section-label">SECTION 06 · ONBOARDING</div>
+      <h2>Device blueprints — the <em>one-off recipe</em></h2>
+
+      <p>A device blueprint is a recipe applied automatically when a new FortiGate first calls home. Instead of receiving an unauthorised device and configuring it, FortiManager matches the incoming device to a blueprint and authorises plus builds it unattended.</p>
+
+      <p style="font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);">Device Manager &gt; Device &amp; Groups &gt; Device Blueprint</p>
+
+      <table class="data-table">
+        <thead><tr><th>Setting</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>Automatically Link to Real Device</td><td>Binds the model device to the real one on arrival — required for ZTP/LTP</td></tr>
+          <tr><td>Enforce Firmware Version</td><td>Upgrades or downgrades <em>before</em> any config is applied</td></tr>
+          <tr><td>Enforce Device Configuration</td><td>Lets FMG reconfigure the interface the FortiGate uses to reach it — misconfiguration breaks the FGFM connection and fails the whole ZTP process</td></tr>
+          <tr><td>Pre-Run CLI Template</td><td>Runs before other provisioning templates; auto-detaches afterwards</td></tr>
+          <tr><td>Assign Policy Package</td><td>Which package the device receives</td></tr>
+          <tr><td>Provisioning Templates</td><td>Templates or template groups assigned directly</td></tr>
+          <tr><td>Device Group</td><td>Group membership — device inherits the group's templates</td></tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">Blueprint order of operations</div>
+        <pre><code>1.  Enforce Firmware Version        firmware first, before any config
+2.  Pre-Run CLI Template            one-shot, then auto-detaches
+3.  Provisioning templates          direct OR group-inherited
+4.  Policy package install
+
+    NOT guaranteed: ordering BETWEEN provisioning templates at step 3.
+    → that's what template group ordering and Install Preview are for.</code></pre>
+      </div>
+
+      <div class="callout callout-amber"><strong>Documented trap:</strong> on the same blueprint, assign provisioning templates <em>OR</em> add the device to a group — <strong>not both</strong>. Directly-assigned and group-inherited templates write into the <em>same device database</em> with <strong>no defined precedence</strong>. Whichever writes last wins, and you cannot predict it from the GUI. Two authors, one page, no referee.</div>
+
+      <div class="callout"><strong>Blueprints are one-off.</strong> They fire on first contact and then play no further part. Group membership, template assignments and the policy package persist; the blueprint does not re-run. Editing a blueprint later does <em>not</em> affect devices already onboarded.</div>
+
+      <p>Paired with a CSV of serial numbers, blueprints are how thirty branches get built without thirty build sessions — each row carries the serial number, the blueprint, the device name, and the metadata variable values for that site.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Blueprint = onboarding recipe, fires once. Firmware, then pre-run CLI, then templates, then policy. Templates OR group — never both.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-blueprint" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-blueprint','Blueprints')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-blueprint" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-blueprint')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 7 — TRAPS ═══════════ -->
+    <div class="section-block" id="section-traps">
+      <div class="section-label">SECTION 07 · REVISION</div>
+      <h2>Traps, distinctions, and <em>the four questions again</em></h2>
+
+      <table class="data-table">
+        <thead><tr><th>Trap</th><th>The correction</th></tr></thead>
+        <tbody>
+          <tr><td>"The policy package lives in the device database"</td><td>Policy layer, one shared object DB per ADOM. Per-device and shared content cannot share a container.</td></tr>
+          <tr><td>"A template is where the config lives"</td><td>A template is an author. Config lives in the per-device device database.</td></tr>
+          <tr><td>"CLI template and SD-WAN template are different things"</td><td>Both are provisioning templates. The split is structured vs raw.</td></tr>
+          <tr><td>"Jinja gives me conditional logic in any template"</td><td>CLI templates only. Structured templates have no logic layer — they use installation targets.</td></tr>
+          <tr><td>"<code>$(var)</code> and <code>{{var}}</code> are two features"</td><td>Two syntaxes, one variable store, one lookup.</td></tr>
+          <tr><td>"Deleting the template reference falls back to the default"</td><td>No reference means no lookup at all. The device's override survives, inert, and resurrects silently later.</td></tr>
+          <tr><td>"Assigning a template pushes it"</td><td>Assign creates a link and marks Modified. Install writes.</td></tr>
+          <tr><td>"One device's bad config fails the install run"</td><td>Install validation and failure are per device.</td></tr>
+          <tr><td>"Install Device Settings will deliver my new policy"</td><td>Wrong layer. A policy package install alone carries the policy and its referenced objects.</td></tr>
+          <tr><td>"Empty installation target means nobody"</td><td>Empty means <strong>everybody</strong> using that template.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-family:'Playfair Display',serif;font-size:21px;font-weight:600;color:var(--text);margin:26px 0 10px;">Before you touch a template</h3>
+
+      <div class="code-block">
+        <div class="code-label">The four questions</div>
+        <pre><code>1.  Which layer am I writing into?
+        → determines which install pushes it
+
+2.  Who is this going to reach?
+        → group assignment (template-level)
+        → installation target (setting-level, structured only)
+        → Jinja (CLI only)
+
+3.  Where does each value come from?
+        → override, then default, then block
+
+4.  What will Install Preview show for the WORST device in the group?
+        → the one with the least hardware, the fewest variables set</code></pre>
+      </div>
+
+      <div class="callout callout-green"><strong>Senior engineering lesson:</strong> when a product feels like a pile of unrelated features, the thing you're missing is usually not a definition — it's a <em>dimension</em>. Find the dimensions and the fifteenth feature becomes trivial to learn.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Layer decides what install pushes it. Scope decides who receives it. Variables decide what's in it. Install Preview shows the result.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-traps" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-traps','Traps &amp; Recall')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-traps" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-traps')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="cheatsheet-episode-09-one-template-many-values.html">
+    <span class="page-nav-label">← PREVIOUS</span>
+    <span class="page-nav-title">EP-09 · One Template, Many Values</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="cheatsheet-episode-10-template-groups.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">EP-10 · Template Groups</span>
+  </a>
+</div>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> SUPP-01 · Consolidation
+</footer>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCRIPT  ·  REQUIRED for complete (drives qpanel/notes/socratic answers).
+     Safe to keep for bite/nibble too — inert if the matching DOM isn't there.
+     ONLY thing you edit here: PAGE_KEY and the SECTIONS object.
+     ══════════════════════════════════════════════════════════ -->
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-supp01-fortimanager-frame';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-frame': 'The Frame',
+  'section-layer': '1 · Layer',
+  'section-scope': '2 · Scope',
+  'section-value': '3 · Value',
+  'section-install': '4 · Install',
+  'section-blueprint': 'Blueprints',
+  'section-traps': 'Traps & Recall',
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+</body>
+</html>
