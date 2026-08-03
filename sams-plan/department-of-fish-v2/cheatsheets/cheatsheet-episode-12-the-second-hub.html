@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Episode 12 &mdash; The Second Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Department of Fish</a>
+      <span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="#">NSE 7 Secure Networking Architect</a>
+      <span class="breadcrumb-sep">&rsaquo;</span>
+      <span>Season 2 &middot; Episode 12</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Episode Cheatsheet &middot; Season 2 Finale</div>
+    <h1>The Second <em>Hub</em></h1>
+    <p>A carrier fault proved the links were fine. Nothing had proved the site was.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Two hubs are not two options until <em>both next hops are in the forwarding table</em>.</div>
+  <p class="motivation-sub">Dual-hub conversion, recursive next-hop resolution, and the Friday morning a device nobody touched lost its internet breakout.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">&mdash; click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">&#9662;</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">&mdash; click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">&#9662;</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav"><a class="nav-tab active" href="#section-story">Story</a><a class="nav-tab" href="#section-lookups">Three Lookups</a><a class="nav-tab" href="#section-dualhub">Second Hub</a><a class="nav-tab" href="#section-preference">Hub Preference</a><a class="nav-tab" href="#section-incident">Sydney Incident</a><a class="nav-tab" href="#section-exam">Exam &amp; Traps</a></nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">&#128173;</span>
+        <span class="socratic-label">THINK FIRST &middot; STORY &amp; PROBLEM</span>
+      </div>
+      <p class="socratic-insight">A carrier fault at Tuggers lasted eleven minutes and nothing broke. That is a good outcome and a bad piece of evidence &mdash; it proves the estate survives a <em>link</em>, and says nothing about surviving a <em>site</em>.</p>
+      <ul class="socratic-questions">
+        <li>One of Perth's two overlays to Tuggers dropped. Why did the IBGP session not drop with it?</li>
+        <li>The session is built between loopbacks (10.200.1.21 &harr; 10.200.1.1). A loopback is not attached to any physical or tunnel interface, so it does not go down when a link does. Both TCP endpoints stayed up, so the session had no reason to reset &mdash; and no route event was generated.</li>
+      </ul>
+      <div class="answer-area" data-section="story">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>&#128274; See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">Everything kept working. What exactly had the design bought, and what had it not bought?</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">It bought transport redundancy to a single hub. Every path Perth had still terminated at the same building. A site failure would have left four healthy tunnels pointing at nothing.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-story">
+      <div class="section-label">SECTION 01</div>
+      <h2>Monday 02:14 &mdash; <em>the failure that proved nothing</em></h2>
+
+      <p>ISP1 into Tuggers suffered a carrier fault at 02:14 and recovered on its own at 02:25. Perth's <strong>overlay1</strong> tunnel went with it. The compliance feed never stopped, the IBGP session never flapped, and nobody was paged.</p>
+
+      <p>Dr Finch's point was that this is the wrong reassurance. The Department has evidence that it survives a <em>transport</em>. It has no evidence at all about a <em>site</em> &mdash; and that is the sentence going into the quarterly risk paper.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Event</th><th>Scope</th><th>Impact</th><th>What it proves</th></tr></thead>
+        <tbody>
+          <tr><td>02:14 carrier fault</td><td>One transport, hub end</td><td>None</td><td>Transport redundancy works</td></tr>
+          <tr><td>Hub loss (hypothetical)</td><td>Whole site, both transports</td><td>Total, for internal apps</td><td>Untested &mdash; no second hub exists</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Business problem:</strong> a single hub means every branch's redundancy stops at one building. Commissioning Gunners as hub two is the only change that alters the risk statement.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">An outage that causes no impact is not proof of resilience. It is proof of resilience <em>at the layer that failed</em>. Always ask which layer was tested.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-story" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-story','Story &amp; Problem')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-story" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-story')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">&#128173;</span>
+        <span class="socratic-label">THINK FIRST &middot; THREE LOOKUPS</span>
+      </div>
+      <p class="socratic-insight">A FortiGate cannot transmit toward an address &mdash; only out of an interface. That single constraint generates the whole forwarding model for an overlay, including why the design survives failures without moving the routing table.</p>
+      <ul class="socratic-questions">
+        <li>Perth learns 10.10.0.0/16 with next hop 10.200.1.1, which is on none of its interfaces. What happens next?</li>
+        <li>A second route lookup &mdash; recursion. 10.200.1.1 matches the loopback-pool static route pointing at the overlay zone, which resolves to a set of tunnel members. Resolution completes only when a lookup lands on something with an interface.</li>
+      </ul>
+      <div class="answer-area" data-section="lookups">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>&#128274; See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">How many route lookups occur for one encapsulated packet, and which one involves the underlay?</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">Three. (1) inner destination &rarr; next hop; (2) recursive next hop &rarr; overlay zone; (3) outer destination after encapsulation &rarr; physical port. Only the third involves the underlay, and SD-WAN sits between (2) and (3).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-lookups">
+      <div class="section-label">SECTION 02</div>
+      <h2>Three lookups, <em>three different destinations</em></h2>
+
+      <p>The routing table entry for a hub-learned prefix names an <strong>address</strong>, not a door. That entry is unfinished, and the FortiGate finishes it by looking the address up again. That second lookup is <em>recursion</em> &mdash; not a feature, just another route lookup against a different destination.</p>
+
+      <div class="section-img-wrap">
+        <img src="images/ep12-three-layers.png" class="section-img" alt="Three layers: underlay public addressing, overlay tunnel addressing, and node loopback addressing"
+             onerror="this.style.display='none';this.nextElementSibling.nextElementSibling.classList.add('si-show');">
+        <p class="img-caption">The three address layers between Perth and Tuggers. Only the loopback layer is used as a BGP next hop.</p>
+        <div class="si-placeholder">
+          <span class="si-filename">images/ep12-three-layers.png</span>
+          <button class="prompt-toggle" onclick="togglePrompt(this)">&#9662; Show image prompt</button>
+          <div class="prompt-content" hidden>A clean technical network diagram in a muted cream and navy palette, split into three clearly labelled horizontal bands. TOP BAND labelled "UNDERLAY": two firewall icons, Perth on the left with port1 203.0.113.20 and port2 198.18.44.7, Tuggers on the right with port1 198.51.100.1 and port2 198.51.100.2, joined by two lines labelled ISP1 and ISP2. MIDDLE BAND labelled "OVERLAY": the same two firewalls joined by two thick dashed tunnel lines, the upper labelled overlay1 10.201.1.0/24 riding ISP1, the lower labelled overlay2 10.202.1.0/24 riding ISP2. BOTTOM BAND labelled "NODE ADDRESSES": each firewall shown with a small detached circle labelled loopback, Perth 10.200.1.21 and Tuggers 10.200.1.1, with a single line between the two circles labelled "IBGP session". Add a caption arrow pointing at the loopbacks reading "attached to no interface". Flat vector style, thin strokes, serif labels, no photographic elements.</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Perth &mdash; forwarding a packet to 10.10.5.50</div>
+        <pre><code>STEP 1  Ingress on LAN. New session, slow path.
+
+STEP 2  ROUTE LOOKUP #1   dst 10.10.5.50
+        best match  10.10.0.0/16   (IBGP)
+        next hop    10.200.1.1     (Tuggers loopback)
+        interface   none           -> INCOMPLETE
+
+STEP 3  ROUTE LOOKUP #2   dst 10.200.1.1        [RECURSION]
+        best match  10.200.0.0/24  (static, wizard-generated)
+        via         overlay zone
+        resolves to overlay1, overlay2            -> COMPLETE
+
+STEP 4  POLICY LOOKUP     LAN -> overlay zone, accept, no NAT
+
+STEP 5  SD-WAN MEMBER SELECTION
+        candidates  overlay1, overlay2     (tunnels, NOT ports)
+        selected    overlay1
+
+STEP 6  IPsec ENCAPSULATION
+        outer src   port1 address       (from tunnel definition)
+        outer dst   198.51.100.1        (from set remote-gw)
+
+STEP 7  ROUTE LOOKUP #3   dst 198.51.100.1
+        best match  0.0.0.0/0 via ISP1 gateway, port1
+        SD-WAN plays no part -- the tunnel was bound to port1
+        at build time, so choosing overlay1 already chose port1.
+
+STEP 8  Session installed. All later packets take the fast path.</code></pre>
+      </div>
+
+      <p>Steps 2 through 5 change <strong>nothing in the packet</strong>. The address that the whole recursion turns on &mdash; <code>10.200.1.1</code> &mdash; never appears on the wire at any point. It is a pointer inside the routing table.</p>
+
+      <div class="callout callout-green"><strong>Where the outer destination comes from:</strong> <code>set remote-gw</code> on the tunnel. It is static configuration, not something learned. Perth can hardcode it because the hub's public address is known in advance &mdash; the same asymmetry that makes the spoke the initiator and the hub the dial-up server.</div>
+
+      <h2 style="font-size:22px;margin-top:26px;">What changes when a transport fails</h2>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>ISP1 up</th><th>ISP1 down</th></tr></thead>
+        <tbody>
+          <tr><td>Lookup #1</td><td>10.10.0.0/16 &rarr; 10.200.1.1</td><td>Unchanged</td></tr>
+          <tr><td>Lookup #2</td><td>10.200.1.1 &rarr; zone {overlay1, overlay2}</td><td>10.200.1.1 &rarr; zone {overlay2}</td></tr>
+          <tr><td>SD-WAN</td><td>selects overlay1</td><td>selects overlay2</td></tr>
+          <tr><td>BGP</td><td>&mdash;</td><td>No event. Endpoints unchanged.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>Common mistake:</strong> writing the recursive lookup as the far-end <em>tunnel</em> address (10.202.1.1). The recursion target is always the <em>loopback</em> (10.200.1.1). A tunnel address is the far end of a point-to-point interface; nothing ever looks it up as a next hop.</div>
+
+      <h2 style="font-size:22px;margin-top:26px;">When recursion fails entirely</h2>
+
+      <p>If Tuggers is gone and the recursion cannot resolve, the prefix is marked <strong>unresolvable</strong>: it stays in the BGP RIB and is removed from the FIB. Lookup #1 then re-runs against what is left and finds the <strong>default route</strong>. Internal traffic is handed to the internet with an RFC1918 destination and dies at the policy lookup or is NAT'd into nothing.</p>
+
+      <div class="callout callout-amber"><strong>Exam trap:</strong> an unresolvable recursive route does <em>not</em> blackhole cleanly. It falls through to the next-best match. No error, no alarm &mdash; traffic silently going somewhere useless.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">The routing table does not move when a transport fails. Lookup #1 is unchanged and lookup #2 resolves to a smaller member set. That invariance <em>is</em> the product you buy with BGP on loopback.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-lookups" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-lookups','Three Lookups')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-lookups" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-lookups')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">&#128173;</span>
+        <span class="socratic-label">THINK FIRST &middot; SECOND HUB</span>
+      </div>
+      <p class="socratic-insight">Adding a hub is arithmetic before it is configuration. Get the address plan wrong and the failure arrives years later, at the exact moment nobody wants to renumber thirty spokes.</p>
+      <ul class="socratic-questions">
+        <li>Tuggers has two overlays. Gunners joins as hub two. How many overlay subnets does the estate need, and why?</li>
+        <li>Four. An overlay is a hub-transport PAIR, and a tunnel to Gunners terminates on Gunners' own dial-up interface, so it cannot share a subnet with Tuggers'. 10.201/10.202 for Tuggers, 10.203/10.204 for Gunners &mdash; all inside the reserved 10.200.0.0/14.</li>
+      </ul>
+      <div class="answer-area" data-section="dualhub">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>&#128274; See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">Does Gunners need its own loopback pool?</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">No. There is ONE pool estate-wide and Gunners takes one address from it (10.200.1.2). The pool identifies nodes, not hubs, and has nothing to do with transports &mdash; which is why it does not multiply when the overlays do.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-dualhub">
+      <div class="section-label">SECTION 03</div>
+      <h2>Gunners joins &mdash; <em>two overlays become four</em></h2>
+
+      <p>An overlay is a <strong>hub-transport pair</strong>. A second hub does not join the existing overlays; it creates its own set. Perth goes from two tunnels to four, on the same two physical ports, and from one IBGP session to two.</p>
+
+      <div class="code-block">
+        <div class="code-label">Department overlay address plan &mdash; reserved 10.200.0.0/14</div>
+        <pre><code>OVERLAY SUBNETS          scale with  hubs x transports
+  10.201.1.0/24   overlay1   Tuggers - ISP1
+  10.202.1.0/24   overlay2   Tuggers - ISP2
+  10.203.1.0/24   overlay3   Gunners - ISP1     <- new
+  10.204.1.0/24   overlay4   Gunners - ISP2     <- new
+
+LOOPBACK POOL 10.200.1.0/24    scales with  node count
+  10.200.1.1    Tuggers
+  10.200.1.2    Gunners                        <- new
+  10.200.1.21   Perth
+  10.200.1.22   Adelaide
+  10.200.1.23   Darwin
+  ...           one per SD-WAN node, must be unique</code></pre>
+      </div>
+
+      <p>Two overlays became four. Five nodes became six. The two pools scale on <em>different axes</em> and sizing each one for the wrong axis is the commonest planning error.</p>
+
+      <h2 style="font-size:22px;margin-top:26px;">Where the formula breaks</h2>
+
+      <p><code>hubs &times; transports</code> is a shortcut, valid only when <strong>every hub carries every transport</strong>. An overlay exists only where <em>both ends</em> have the transport.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Region</th><th>Transport</th><th>Hubs carrying it</th><th>Overlays</th></tr></thead>
+        <tbody>
+          <tr><td>Worked example</td><td>ISP1</td><td>3</td><td>3</td></tr>
+          <tr><td>&nbsp;</td><td>ISP2</td><td>3</td><td>3</td></tr>
+          <tr><td>&nbsp;</td><td>MPLS</td><td>2</td><td>2</td></tr>
+          <tr><td>&nbsp;</td><td colspan="2"><strong>Total per branch</strong></td><td><strong>8</strong> (not 9)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout"><strong>Live example:</strong> Brisbane's port4 MPLS member is an <em>orphan</em> &mdash; a transport with no hub at the far end. It produces zero overlays, not one. Unresolved until either Tuggers gains MPLS or ADVPN overlay placeholders arrive.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Overlay subnets scale with hubs &times; transports. The loopback pool scales with node count. Adding a hub adds <em>one</em> loopback address and a <em>full set</em> of overlay subnets.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-dualhub" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-dualhub','Second Hub')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-dualhub" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-dualhub')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">&#128173;</span>
+        <span class="socratic-label">THINK FIRST &middot; HUB PREFERENCE</span>
+      </div>
+      <p class="socratic-insight">Two hubs are not automatically two options. Which hub carries traffic is decided in two places, and a design that assumes one layer can do the other's job installs cleanly and fails silently.</p>
+      <ul class="socratic-questions">
+        <li>Tuggers should be primary and Gunners the fallback. Enforce it at the BGP layer or the SD-WAN layer &mdash; and what breaks if you pick the other?</li>
+        <li>SD-WAN, because it selects on measured SLA and can differentiate per application &mdash; it sees brownouts, not just blackouts, and BGP is blind to loss and latency. But choosing SD-WAN means configuring BGP to expose both hubs (ibgp-multipath) or the rule has no Gunners member to choose.</li>
+      </ul>
+      <div class="answer-area" data-section="preference">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>&#128274; See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">ibgp-multipath is missing. All four tunnels are up and both BGP sessions are established. Tuggers dies. What happens?</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">Traffic stops. The FIB holds only 10.200.1.1, so overlay3/overlay4 are never candidates for that prefix. The route becomes unresolvable and falls to the default route. Recovery waits on the IBGP hold timer expiring (default 180s) before the Gunners path is even considered.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-preference">
+      <div class="section-label">SECTION 04</div>
+      <h2>Which hub carries the traffic &mdash; <em>and which layer decides</em></h2>
+
+      <div class="callout callout-green"><strong>The rule:</strong> BGP decides which <em>hubs</em> are reachable. SD-WAN decides which <em>tunnel</em> is used. Neither can do the other's job.</div>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>BGP layer</th><th>SD-WAN layer</th></tr></thead>
+        <tbody>
+          <tr><td>Failover trigger</td><td>Session or route loss</td><td>SLA breach</td></tr>
+          <tr><td>Sees</td><td>Blackouts only</td><td>Brownouts &mdash; latency, jitter, loss</td></tr>
+          <tr><td>Granularity</td><td>All traffic, one preference</td><td>Per rule, per application</td></tr>
+          <tr><td>Speed</td><td>Hold timer / BFD</td><td>Sub-second member reselection</td></tr>
+          <tr><td>Role in this design</td><td>Make both hubs reachable</td><td>Express the preference</td></tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">The dependency that makes it work</div>
+        <pre><code># Default FortiGate behaviour installs ONE best path.
+# Without this, the Gunners next hop never enters the FIB.
+
+config router bgp
+    set ibgp-multipath enable
+end
+
+  FIB WITHOUT multipath          FIB WITH multipath
+  ----------------------         ---------------------
+  10.10.0.0/16                   10.10.0.0/16
+    -> 10.200.1.1                  -> 10.200.1.1
+                                   -> 10.200.1.2
+
+  recursion -> ov1, ov2          recursion -> ov1, ov2, ov3, ov4
+  SD-WAN picks a TRANSPORT       SD-WAN picks a TRANSPORT and a HUB</code></pre>
+      </div>
+
+      <p>Department design as installed: <strong>overlay1 / overlay2 as priority members, overlay3 / overlay4 as fallback</strong>, with <code>ibgp-multipath enable</code> underneath so the rule has four real candidates.</p>
+
+      <div class="callout callout-amber"><strong>Most dangerous misconception of the episode &mdash; Needs Reinforcement:</strong> that SD-WAN can fail over to a second hub whose next hop is not in the FIB. It cannot. Four tunnels up, two sessions established, SLA green on every member, and the site is single-homed for forwarding until a hold timer expires. It survives design review, survives Install Preview, and only appears during the outage it was built to prevent.</div>
+
+      <div class="callout callout-amber"><strong>Tiebreak trap:</strong> if two paths are genuinely identical (same AS, local pref, MED, origin), FortiGate falls to the final tiebreaker &mdash; typically lowest router-ID. That is a silent hub preference nobody designed.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Failover happens at the layer that has candidates. SD-WAN can only choose among members the FIB has already resolved.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-preference" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-preference','Hub Preference')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-preference" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-preference')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">&#128173;</span>
+        <span class="socratic-label">THINK FIRST &middot; SYDNEY INCIDENT</span>
+      </div>
+      <p class="socratic-insight">Sydney's internet breakout disappeared on a Friday morning. Department traffic was fine, four tunnels were up, BGP was healthy, and nobody had touched the device since October. The season's whole argument is contained in that sentence.</p>
+      <ul class="socratic-questions">
+        <li>The device did not change but its behaviour did. What class of cause does that leave, and what actually removed port5?</li>
+        <li>Authorship changed. Thursday's install wrote system.sdwan in full from SD-WAN_Branch-Standard. Port5 was absent from the template, and inside an authored block absence <em>is</em> deletion. There was no delete instruction and no error &mdash; the install reported success.</li>
+      </ul>
+      <div class="answer-area" data-section="incident">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>&#128274; See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">Sydney survived nine months and two previous installs. What changed on the Thursday?</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">Re-running the overlay orchestrator for dual hub regrouped and reassigned its own output across the device group, and Sydney picked up the SD-WAN template <em>for the first time</em>. Nobody assigned it deliberately. Hand-edit safety is a property of the device's current assignment set, and that set changed without anyone touching the device.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-incident">
+      <div class="section-label">SECTION 05</div>
+      <h2>Friday 09:12 &mdash; <em>the countdown that started in October</em></h2>
+
+      <div class="code-block">
+        <div class="code-label">Sydney &mdash; revision history</div>
+        <pre><code>Rev 41  2026-07-30 16:44  Install Device Settings   (mel)
+        Modified: system.sdwan                    <- the trigger
+Rev 40  2026-07-02 11:52  Install Device Settings   (mel)
+Rev 39  2025-10-14 09:03  Manual device change      (samwise)
+        Modified: system.sdwan                    <- the latent cause</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Rev 41 diff &mdash; system.sdwan</div>
+        <pre><code>+ member 3   interface overlay3   zone overlay
++ member 4   interface overlay4   zone overlay
+- member 5   interface port5      zone internet-local
+- service 1  name "Sydney-Breakout"</code></pre>
+      </div>
+
+      <p>Mel added two members. Mel did not remove port5. Nothing removed port5 &mdash; it was simply <strong>not mentioned</strong> by the template that now owned the block.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Stage</th><th>What happened</th><th>Visible?</th></tr></thead>
+        <tbody>
+          <tr><td>October (Rev 39)</td><td>CLI change to system.sdwan. Safe &mdash; no SD-WAN template assigned to Sydney.</td><td>Out-of-Sync, unread</td></tr>
+          <tr><td>Thursday 16:44 (assign)</td><td>Wizard re-run reassigns its output; Sydney acquires SD-WAN_Branch-Standard for the first time.</td><td>No warning</td></tr>
+          <tr><td>Thursday 16:44 (install)</td><td>system.sdwan written in full. Port5 absent from template &rarr; removed.</td><td>Install: success</td></tr>
+          <tr><td>Friday 09:12</td><td>Sixty users, no internet. Department apps unaffected.</td><td>Priya's phone call</td></tr>
+        </tbody>
+      </table>
+
+      <h2 style="font-size:22px;margin-top:26px;">Why Install Preview did not catch it</h2>
+
+      <ul>
+        <li><strong>Preview is per-device.</strong> A 29-device group install is 29 diffs. Nobody reads 29 diffs, so people sample &mdash; and sampling assumes the devices are alike.</li>
+        <li><strong>The sample was on the wrong axis.</strong> Mel previewed the three devices the change affected most. The device at risk was the one the change did <em>not</em> affect; it was at risk because of what was already on it.</li>
+        <li><strong>The diff shows absence, not deletion.</strong> There is no line reading &ldquo;removing port5&rdquo;. You have to notice what is not there.</li>
+      </ul>
+
+      <h2 style="font-size:22px;margin-top:26px;">The three copies, and where the install gap actually is</h2>
+
+      <div class="code-block">
+        <div class="code-label">Assign / evaluate / install</div>
+        <pre><code>TEMPLATE            the authored intent, shared
+      |
+      |  ASSIGN + EVALUATE   <- writes the device DB IMMEDIATELY,
+      |                         no install, no warning
+      v
+DEVICE DB           per-device resolved config, held on FortiManager
+      |
+      |  INSTALL DEVICE SETTINGS   <- the only step that leaves FMG
+      v
+RUNNING CONFIG      the actual FortiGate
+
+Install Preview = diff( device DB , running config )
+                  NOT diff( template , device )</code></pre>
+      </div>
+
+      <div class="callout callout-amber"><strong>Exam trap:</strong> editing an assigned template changes the device DB for every assigned device &mdash; silently, immediately, with no install. The gap is always device DB &rarr; firewall, never template &rarr; device DB.</div>
+
+      <h2 style="font-size:22px;margin-top:26px;">Finding the next one before it finds you</h2>
+
+      <table class="data-table">
+        <thead><tr><th>Config Status</th><th>Meaning</th><th>Direction</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>Synchronized</td><td>Device DB matches running config</td><td>&mdash;</td><td>Safe to install</td></tr>
+          <tr><td>Modified</td><td>FortiManager changed; firewall not yet told</td><td>FMG &rarr; FGT pending</td><td>Preview, then install</td></tr>
+          <tr><td>Out-of-Sync</td><td>Firewall changed outside FortiManager</td><td>Someone used the CLI</td><td><strong>Investigate before installing</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p>Sydney would have read <strong>Out-of-Sync</strong> from October onward &mdash; nine months of warning in a column nobody was reading. <code>Retrieve Config</code> pulls the drift into the device DB and the revision diff shows what changed outside FortiManager.</p>
+
+      <div class="callout"><strong>Limit of Retrieve:</strong> it makes drift visible and diffable. It does <em>not</em> reconcile the drift with the template &mdash; the next evaluation will overwrite it again. Retrieve tells you what to decide about; it does not decide.</div>
+
+      <div class="callout callout-green"><strong>Fix as installed:</strong> port5 and the Sydney-Breakout service moved into SD-WAN_Branch-Standard with an <strong>installation target of Sydney</strong> &mdash; template ownership plus scope, the same mechanism protecting Brisbane's MPLS member. Standing rule adopted: no install runs while any target device reads Out-of-Sync.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Hand-edit safety is a property of the device's <em>current assignment set</em>, and that set can change without anyone touching the device. A CLI change to any block a template could author is not a change &mdash; it is a countdown.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-incident" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-incident','Sydney Incident')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-incident" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-incident')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">&#128173;</span>
+        <span class="socratic-label">THINK FIRST &middot; EXAM &amp; TRAPS</span>
+      </div>
+      <p class="socratic-insight">Three items from this episode were not answered independently and are the ones most likely to be tested. They are marked below.</p>
+      <ul class="socratic-questions">
+        <li>A BGP route is present, the session is established and both tunnels are up &mdash; but it is not forwarding. Why?</li>
+        <li>It has been beaten into the FIB by a route with a lower administrative distance &mdash; almost always a leftover static. SD-WAN cannot prevent a route entering the FIB; it selects a member afterwards. Verify with <code>get router info routing-table details</code> (winner shows <em>best</em>) and <code>get router info bgp network</code>.</li>
+      </ul>
+      <div class="answer-area" data-section="exam">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>&#128274; See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">State the general rule for what an install can and cannot overwrite.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 &mdash; MODEL ANSWER</div>
+            <div class="model-answer-text">An install overwrites every config block that an assigned template <em>authors</em> &mdash; completely. Anything outside those blocks survives untouched. The unit of overwrite is the block, not the setting, so absence inside an authored block is deletion.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-exam">
+      <div class="section-label">SECTION 06</div>
+      <h2>Exam distinctions, <em>traps and commands</em></h2>
+
+      <table class="data-table">
+        <thead><tr><th>Distinction</th><th>Get this right</th></tr></thead>
+        <tbody>
+          <tr><td>Three lookups</td><td>Inner destination &rarr; recursive next hop &rarr; outer header. SD-WAN sits between the second and third and plays no part in the outer lookup.</td></tr>
+          <tr><td>Recursion target</td><td>Always the loopback next hop, never the far-end tunnel address.</td></tr>
+          <tr><td>Unresolvable route</td><td>Leaves the FIB and falls through to the default route. It does not blackhole cleanly.</td></tr>
+          <tr><td>Route present, not forwarding</td><td>Either unresolvable, or beaten by lower administrative distance. Not an SD-WAN problem.</td></tr>
+          <tr><td>ibgp-multipath</td><td>Default installs a single best path. Required before SD-WAN can select between hubs.</td></tr>
+          <tr><td>Failover layer</td><td>BGP triggers on route loss and is blind to brownouts. SD-WAN triggers on SLA breach.</td></tr>
+          <tr><td>Overlay existence</td><td>Both ends must carry the transport. hubs &times; transports only holds under symmetry.</td></tr>
+          <tr><td>Address pools</td><td>Overlay subnets scale with hubs &times; transports; loopback pool scales with node count.</td></tr>
+          <tr><td>Modified vs Out-of-Sync</td><td>Modified = FMG-side pending. Out-of-Sync = device changed outside FMG.</td></tr>
+          <tr><td>Assign vs install</td><td>Assign + evaluate writes the device DB immediately. Install is device DB &rarr; firewall only.</td></tr>
+          <tr><td>Overwrite scope</td><td>Authorship of blocks, not modification of settings. Absence inside an authored block is deletion.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 style="font-size:22px;margin-top:26px;">Commands and GUI locations</h2>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS &mdash; evidence</div>
+        <pre><code>get router info routing-table details 10.10.5.50   # winner marked 'best'
+get router info bgp network                        # present but not selected?
+diagnose sniffer packet any 'host 8.8.8.8' 4       # is it leaving at all?
+
+config vpn ipsec phase1-interface
+    edit "overlay1"
+        set interface "port1"          # outer SOURCE
+        set remote-gw 198.51.100.1     # outer DESTINATION (static)
+        set type static                # spoke initiates; hub is dynamic
+    next
+end
+
+config router bgp
+    set ibgp-multipath enable          # both hubs into the FIB
+end</code></pre>
+      </div>
+
+      <ul>
+        <li><strong>Device Manager &gt; Device &amp; Groups</strong> &mdash; Config Status column (Synchronized / Modified / Out-of-Sync)</li>
+        <li><strong>Retrieve Config</strong> &mdash; pull drift into the device DB; <strong>Revision History</strong> &mdash; per-revision diff</li>
+        <li><strong>Install Preview</strong> (per device) &rarr; <strong>Install Device Settings</strong></li>
+        <li><strong>SD-WAN template</strong> &mdash; member list with per-member Installation Target</li>
+        <li><strong>SD-WAN rule strategies</strong> &mdash; Manual, Best Quality, Lowest Cost, Maximise Bandwidth</li>
+      </ul>
+
+      <h2 style="font-size:22px;margin-top:26px;">Needs reinforcement</h2>
+
+      <div class="callout callout-amber"><strong>Route selection into the FIB.</strong> Administrative distance, competing routes, and the RIB/FIB boundary were not reasoned about at all this session &mdash; both attempts landed in the wrong layer. This is the floor under Season 3 and is being taught explicitly in EP-13.</div>
+
+      <div class="callout callout-amber"><strong>The failover timeline without ibgp-multipath.</strong> The setting was recited correctly and its absence was then described as harmless minutes later. The consequence &mdash; a hold-timer-length outage with every dashboard green &mdash; is the part to hold.</div>
+
+      <div class="callout callout-amber"><strong>Recursion under variation.</strong> The single-overlay-drop case is now solid. A next hop reachable two ways, or a prefix learned from both hubs, has not been attempted.</div>
+
+      <h2 style="font-size:22px;margin-top:26px;">Topology changes recorded</h2>
+
+      <ul>
+        <li><strong>Gunners</strong> commissioned as overlay hub 2; loopback 10.200.1.2.</li>
+        <li><strong>Four overlays</strong> live: 10.201.1.0/24, 10.202.1.0/24 (Tuggers), 10.203.1.0/24, 10.204.1.0/24 (Gunners).</li>
+        <li><strong>ibgp-multipath enable</strong> across the branch estate.</li>
+        <li><strong>SD-WAN rule</strong> for Department traffic: overlay1/2 priority, overlay3/4 fallback.</li>
+        <li><strong>Sydney port5</strong> breakout and its service rule moved into SD-WAN_Branch-Standard, targeted at Sydney.</li>
+        <li><strong>Standing rule:</strong> no install while a target device reads Out-of-Sync.</li>
+      </ul>
+
+      <div class="callout"><strong>Open threads into Season 3:</strong> Brisbane still blocked on mpls_gateway and carrying an orphaned MPLS member. A suspected leftover static on the Darwin-to-Sydney path, unverified. Loopback pool sizing at 200 nodes &mdash; noted, deliberately not fixed. Contractor site-isolation formally deferred to Season 5.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Key takeaway of the episode: <em>every silent failure this week came from a layer that looked healthy.</em> A green tunnel with no FIB entry, a successful install that deleted a member, a route in the table that never forwards. Ask what each layer is actually asserting.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-exam" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-exam','Exam &amp; Traps')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-exam" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-exam')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="#">
+    <span class="page-nav-label">&larr; Previous</span>
+    <span class="page-nav-title">EP-11 &mdash; The Overlay Wizard</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="#">
+    <span class="page-nav-label">NEXT &rarr;</span>
+    <span class="page-nav-title">Season 2 Study Guide</span>
+  </a>
+</div>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> Season 2 &middot; Control Before Scale &middot; EP-12
+</footer>
+
+<script>
+const PAGE_KEY = 'dof-ep12-second-hub';
+
+const SECTIONS = {
+  'section-story': 'Story &amp; Problem',
+  'section-lookups': 'Three Lookups',
+  'section-dualhub': 'Second Hub',
+  'section-preference': 'Hub Preference',
+  'section-incident': 'Sydney Incident',
+  'section-exam': 'Exam &amp; Traps'
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+
+</script>
+</body>
+</html>

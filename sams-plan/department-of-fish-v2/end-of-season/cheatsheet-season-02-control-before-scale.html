@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Season 2 Cheatsheet &mdash; Control Before Scale</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Department of Fish</a>
+      <span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="#">NSE 7 Secure Networking Architect</a>
+      <span class="breadcrumb-sep">&rsaquo;</span>
+      <span>Season 2 &middot; Cheatsheet</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Rapid Revision &middot; Season 2</div>
+    <h1>Control Before Scale &mdash; <em>Condensed</em></h1>
+    <p>Models, orders, defaults and traps. Everything else is in the study guide.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Read this <em>before</em> the practice questions.</div>
+  <p class="motivation-sub">Season 2 in seven screens &mdash; the facts that decide answers, not the explanations that produce them.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">&mdash; click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">&#9662;</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">&mdash; click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">&#9662;</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav"><a class="nav-tab active" href="#section-models">Mental Models</a><a class="nav-tab" href="#section-orders">Decision Orders</a><a class="nav-tab" href="#section-defaults">Defaults</a><a class="nav-tab" href="#section-commands">Commands</a><a class="nav-tab" href="#section-tables">Comparisons</a><a class="nav-tab" href="#section-traps">Traps</a><a class="nav-tab" href="#section-topology">Topology</a></nav>
+
+<main>
+  <div class="main-content">
+
+    <div class="section-block" id="section-models">
+      <div class="section-label">01</div>
+      <h2>Core <em>mental models</em></h2>
+
+      <ul>
+        <li><strong>A template is an author, not a place.</strong> One-to-many at authoring time; one-per-device at storage time. Two authors, one page &mdash; the template wins.</li>
+        <li><strong>Blast radius is authorship, not device.</strong> An install overwrites the config <em>blocks</em> an assigned template writes, in full. Absence inside an authored block is deletion.</li>
+        <li><strong>Hand-edit safety is a property of the current assignment set</strong> &mdash; and that set can change without anyone touching the device.</li>
+        <li><strong>A blueprint is a one-shot recipe.</strong> No ongoing link. Fixing it never repairs a deployed device.</li>
+        <li><strong>The FortiGate is a parser, not a compiler.</strong> Install scripts are consumed line by line; a reference is validated against what exists at that instant.</li>
+        <li><strong>An overlay is a hub-transport pair</strong>, and exists only where both ends carry the transport.</li>
+        <li><strong>The asymmetry comes from who knows whose address.</strong> Hub static and knowable &rarr; spoke is the static-type initiator; hub is the dynamic dial-up server.</li>
+        <li><strong>Three lookups per encapsulated flow:</strong> inner destination, recursive next hop, outer header.</li>
+        <li><strong>The routing table does not move when a transport fails.</strong> Only the resolved member set shrinks.</li>
+        <li><strong>BGP decides which hubs; SD-WAN decides which tunnel.</strong> Neither can do the other's job.</li>
+        <li><strong>Failover happens at the layer that has candidates.</strong></li>
+      </ul>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">If you remember one sentence: <em>anything the template writes is borrowed, not owned.</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-orders">
+      <div class="section-label">02</div>
+      <h2>Decision <em>orders</em></h2>
+
+      <div class="code-block">
+        <div class="code-label">Forwarding chain</div>
+        <pre><code>  lookup #1  inner dst      -> next hop (hub loopback), no interface
+  lookup #2  the loopback   -> overlay zone {members}     [RECURSION]
+  policy     LAN -> overlay zone
+  SD-WAN     member selection -> ONE tunnel
+  encap      outer src = tunnel's bound port
+             outer dst = set remote-gw
+  lookup #3  outer dst      -> default route, physical port</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Template pipeline</div>
+        <pre><code>  TEMPLATE --assign + evaluate--> DEVICE DB --install--> FORTIGATE
+              writes immediately              the only step
+              (device reads Modified)         that leaves FMG
+
+  Install Preview = diff( device DB , running config )</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Blueprint order (ZTP)</div>
+        <pre><code>  1 enforce firmware
+  2 pre-run CLI template   (one-shot, auto-detaches)
+  3 provisioning templates (direct OR group -- never both)
+  4 policy package install</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Variable resolution</div>
+        <pre><code>  device override  ->  template default  ->  Install Preview BLOCKS</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Before any install</div>
+        <pre><code>  any target device Out-of-Sync?  -> Retrieve, decide, THEN install</code></pre>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Scope before value, every time. Decide which template owns a setting before deciding what the setting should be.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-defaults">
+      <div class="section-label">03</div>
+      <h2>Critical defaults <em>and behaviours</em></h2>
+
+      <table class="data-table">
+        <thead><tr><th>Thing</th><th>Default / behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>Empty Installation Target</td><td>No filter &mdash; installs on <strong>every</strong> device using the template</td></tr>
+          <tr><td>IBGP next-hop installation</td><td><strong>One</strong> best path. <code>ibgp-multipath enable</code> required for two</td></tr>
+          <tr><td>Unresolvable recursive route</td><td>Leaves the FIB; traffic falls to the <strong>default route</strong>, not a clean drop</td></tr>
+          <tr><td>BGP hold timer</td><td>Default 180s &mdash; gates hub failover when multipath is absent</td></tr>
+          <tr><td>Identical BGP paths</td><td>Final tiebreak, typically lowest router-ID &mdash; an undesigned preference</td></tr>
+          <tr><td>Install of an authored block</td><td>Written in full. Not a merge. Absence = deletion</td></tr>
+          <tr><td>Orphaned variable mapping</td><td>Inert, not deleted &mdash; resolves again if the reference returns</td></tr>
+          <tr><td>Unresolved variable</td><td>Blocks <strong>that device only</strong>, before push. Loud</td></tr>
+          <tr><td>Reference to uncreated object</td><td>Rejected mid-push. Device partially configured. Quiet</td></tr>
+          <tr><td>Pre-run CLI template</td><td>Auto-detaches after quick install; ordinary CLI templates reapply every install</td></tr>
+          <tr><td>net-device</td><td>Hub <code>disable</code>, branch <code>enable</code></td></tr>
+          <tr><td>network-id</td><td>Prevents cross-overlay traffic at runtime &mdash; not an addressing control</td></tr>
+          <tr><td>Retrieve Config</td><td>Pulls drift into the device DB; does <strong>not</strong> reconcile it with the template</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Empty target means <em>everyone</em>. It is the single most reversed fact in this material.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-commands">
+      <div class="section-label">04</div>
+      <h2>High-value <em>commands and locations</em></h2>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS</div>
+        <pre><code>get router info routing-table details &lt;ip&gt;   # winner marked 'best'
+get router info bgp network                  # present but not selected
+diagnose sniffer packet any '&lt;filter&gt;' 4     # is it leaving at all
+
+config router bgp
+    set ibgp-multipath enable
+end
+
+config vpn ipsec phase1-interface
+    edit "overlay1"
+        set interface "port1"        # outer source
+        set remote-gw &lt;hub public&gt;   # outer destination
+        set type static              # spoke; hub is dynamic
+        set net-device enable        # branch; hub disables
+    next
+end
+
+config system sdwan
+    set load-balance-mode volume     # weights do nothing without this
+end</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>FortiManager location</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td>Device Manager &gt; Device &amp; Groups</td><td><strong>Config Status</strong> column &mdash; the estate-wide drift screen</td></tr>
+          <tr><td>Revision History</td><td>Per-revision diff; find the install the device was not the subject of</td></tr>
+          <tr><td>Retrieve Config</td><td>Pull out-of-band drift into the device DB</td></tr>
+          <tr><td>Install Preview</td><td>Per device. Assembled, variable-resolved script vs running config</td></tr>
+          <tr><td>Provisioning Templates &gt; Template Groups</td><td>Declare sequence; assign as a unit</td></tr>
+          <tr><td>SD-WAN template &gt; member &gt; Installation Target</td><td>Scope a single member to devices or a device group</td></tr>
+          <tr><td>SD-WAN Manager &gt; Overlay Orchestration</td><td>The wizard &mdash; generates, groups, assigns; never touches a firewall</td></tr>
+          <tr><td>Device object &gt; Variable Mapping</td><td>Per-device metadata overrides</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Two screens carry most of the diagnostic load: <em>Config Status</em> and <em>Revision History</em>. Reach for them before packet captures.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-tables">
+      <div class="section-label">05</div>
+      <h2>Comparisons <em>worth memorising</em></h2>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>Blueprint</th><th>Provisioning template</th></tr></thead>
+        <tbody>
+          <tr><td>When</td><td>Once, at ZTP</td><td>Every install</td></tr>
+          <tr><td>Link</td><td>None afterwards</td><td>Live and shared</td></tr>
+          <tr><td>Fixing it later</td><td>Does not repair deployed devices</td><td>Propagates on reinstall</td></tr>
+        </tbody>
+      </table>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>Structured template</th><th>CLI template</th></tr></thead>
+        <tbody>
+          <tr><td>Vary structure by</td><td>Installation targets</td><td>Jinja conditionals</td></tr>
+          <tr><td>Logic layer</td><td>None</td><td>Jinja</td></tr>
+          <tr><td>Metadata variables</td><td>Yes</td><td>Yes</td></tr>
+          <tr><td>Validation</td><td>Against FMG object model</td><td>Shipped as text &mdash; your responsibility</td></tr>
+        </tbody>
+      </table>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>Dependency</th><th>Conflict</th></tr></thead>
+        <tbody>
+          <tr><td>Shape</td><td>One author needs another's output</td><td>Two authors, same setting, no precedence</td></tr>
+          <tr><td>Fix</td><td>Declare sequence (template group)</td><td>Remove one author</td></tr>
+        </tbody>
+      </table>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>BGP per overlay</th><th>BGP on loopback</th></tr></thead>
+        <tbody>
+          <tr><td>Sessions</td><td>One per overlay</td><td>One per hub</td></tr>
+          <tr><td>Routes per LAN prefix</td><td>One per overlay &rarr; needs add-path</td><td>One</td></tr>
+          <tr><td>Tunnels</td><td colspan="2">Identical &mdash; the routing design removes none</td></tr>
+          <tr><td>Transport failure</td><td>Session may drop</td><td>No routing event at all</td></tr>
+        </tbody>
+      </table>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>Modified</th><th>Out-of-Sync</th></tr></thead>
+        <tbody>
+          <tr><td>Who changed</td><td>FortiManager</td><td>The firewall, outside FMG</td></tr>
+          <tr><td>Direction</td><td>FMG &rarr; FGT pending</td><td>Drift</td></tr>
+          <tr><td>Action</td><td>Preview, then install</td><td><strong>Stop</strong> &mdash; retrieve and decide</td></tr>
+        </tbody>
+      </table>
+
+      <table class="data-table">
+        <thead><tr><th>&nbsp;</th><th>BGP failover</th><th>SD-WAN failover</th></tr></thead>
+        <tbody>
+          <tr><td>Trigger</td><td>Route loss</td><td>SLA breach</td></tr>
+          <tr><td>Sees brownouts</td><td>No</td><td>Yes</td></tr>
+          <tr><td>Speed</td><td>Hold timer / BFD</td><td>Sub-second</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Overlay subnets scale with hubs &times; transports. The loopback pool scales with node count. Different axes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-traps">
+      <div class="section-label">06</div>
+      <h2>Exam <em>traps</em></h2>
+
+      <div class="callout callout-amber"><strong>Empty Installation Target = all devices</strong>, not none.</div>
+      <div class="callout callout-amber"><strong>A second hub does not join existing overlays.</strong> Dual hub, two transports = <em>four</em> tunnel subnets.</div>
+      <div class="callout callout-amber"><strong>hubs &times; transports fails under asymmetry.</strong> An overlay exists only where both ends carry the transport &mdash; count per transport.</div>
+      <div class="callout callout-amber"><strong>The BGP-on-loopback saving is in sessions and routes, not tunnels.</strong> Tunnel count is set by the IPsec topology.</div>
+      <div class="callout callout-amber"><strong>Assignment writes the device DB.</strong> The install gap is device DB &rarr; firewall, never template &rarr; device DB.</div>
+      <div class="callout callout-amber"><strong>Overwrite scope is authorship of blocks</strong>, not modification of settings.</div>
+      <div class="callout callout-amber"><strong>A route present but not forwarding</strong> is unresolvable or beaten on administrative distance. SD-WAN cannot stop a route entering the FIB. <em>&mdash; Needs Reinforcement</em></div>
+      <div class="callout callout-amber"><strong>Without ibgp-multipath</strong>, a fully tunnelled second hub is not a failover candidate, and recovery waits on the hold timer. <em>&mdash; Needs Reinforcement</em></div>
+      <div class="callout callout-amber"><strong>An unresolvable route leaks to the default route.</strong> It does not drop cleanly. <em>&mdash; Needs Reinforcement</em></div>
+      <div class="callout callout-amber"><strong>network-id</strong> prevents cross-overlay traffic at runtime; it is not an addressing control.</div>
+      <div class="callout callout-amber"><strong>Weights do nothing</strong> unless the zone is in volume load-balance-mode. Installs clean, reports success, changes nothing.</div>
+      <div class="callout callout-amber"><strong>Removing a variable reference does not delete mappings.</strong> Deleting an override does destroy data.</div>
+      <div class="callout callout-amber"><strong>Existence prerequisites vs planning inputs</strong> are two different questions. Existence: hubs managed with links configured; branches in a device group; one ADOM; one overlay template per FortiGate. Planning: topology type, overlay space, loopback space, AS number.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Most traps in this material are inversions: the right fact pointed the wrong way. Check direction before you check content.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-topology">
+      <div class="section-label">07</div>
+      <h2>Compact <em>topology</em></h2>
+
+      <div class="code-block">
+        <div class="code-label">Department of Fish at end of Season 2</div>
+        <pre><code>  TELSTRA TOWER (HQ)   central between both DCs
+                       FortiManager / FortiAnalyzer / SOC
+
+  TUGGERS  hub 1  lo 10.200.1.1   ISP1+ISP2   PRIMARY
+  GUNNERS  hub 2  lo 10.200.1.2   ISP1+ISP2   FALLBACK
+
+  overlay1  10.201.1.0/24   Tuggers-ISP1   |  priority
+  overlay2  10.202.1.0/24   Tuggers-ISP2   |  members
+  overlay3  10.203.1.0/24   Gunners-ISP1   |  fallback
+  overlay4  10.204.1.0/24   Gunners-ISP2   |  members
+  loopbacks 10.200.1.0/24   one per node
+  reserved  10.200.0.0/14
+
+  SPOKES  Perth  Adelaide  Darwin  Sydney(+port5 breakout, targeted)
+          Brisbane BLOCKED (mpls_gateway; orphan MPLS member)
+          25 branches pending
+
+  ROUTING  IBGP on loopback, one private AS, ibgp-multipath enable
+           recursion via wizard static for the loopback pool
+           NO route policy anywhere -- Season 3
+  ADVPN    disabled -- Season 6</code></pre>
+      </div>
+
+      <h2 style="font-size:22px;margin-top:26px;">The five facts most worth remembering</h2>
+
+      <ol>
+        <li>Anything the template writes is borrowed, not owned &mdash; and absence inside an authored block is deletion.</li>
+        <li>Hand-edit safety is a property of the current assignment set, which can change without touching the device.</li>
+        <li>Empty Installation Target means every device.</li>
+        <li>An overlay is a hub-transport pair; both ends must carry the transport.</li>
+        <li>BGP decides which hubs; SD-WAN decides which tunnel &mdash; and SD-WAN can only choose what the FIB has resolved.</li>
+      </ol>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">&#129504;</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Read this page before practice questions. Read the study guide when a question exposes a gap this page cannot close.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="#">
+    <span class="page-nav-label">&larr; Previous</span>
+    <span class="page-nav-title">Season 2 Study Guide</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="#">
+    <span class="page-nav-label">NEXT &rarr;</span>
+    <span class="page-nav-title">Season 3 &mdash; Routes That Explain Themselves</span>
+  </a>
+</div>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> Season 2 &middot; Rapid Revision
+</footer>
+
+<script>
+const PAGE_KEY = 'dof-season02-cheatsheet';
+
+const SECTIONS = {
+  'section-models': 'Mental Models',
+  'section-orders': 'Decision Orders',
+  'section-defaults': 'Defaults',
+  'section-commands': 'Commands',
+  'section-tables': 'Comparisons',
+  'section-traps': 'Traps',
+  'section-topology': 'Topology'
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+
+</script>
+</body>
+</html>
