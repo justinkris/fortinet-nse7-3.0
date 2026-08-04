@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Page-transition preloader — required for nibble/complete, optional for bite.
+     Without a matching cleanup script at the bottom of <body>, this will leave
+     the body permanently invisible when the page loads from a link-click.
+     build.py normalize_page_transitions() will auto-inject the cleanup if
+     you forget the bottom half — but keep both halves in this template. -->
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Episode 14 — OSPF Over IPsec</title>
+<!-- Title prefix hints (extract_html_title() strips these on hub cards):
+       Session NN — <title>                     · session-linked
+       Session NN Bite — <title>                · bite
+       Session NN Nibble — <title>              · nibble
+       Session NN Complete — <title>            · completed guide
+     Bare titles (no prefix) are fine too. -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="#">Season 3 — Routes That Explain Themselves</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>Episode 14</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Episode 14 · Department of Fish · NSE 7 SNA</div>
+    <h1>OSPF Over <em>IPsec</em></h1>
+    <p>A tunnel that answers hellos is not a tunnel that works. Routing proves reachability; only SD-WAN judges quality.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">Fisheries arrives with its own OSPF domain — and two paths to us that <em>nothing can measure</em>.</div>
+  <p class="motivation-sub">Equal cost puts two hubs in the FIB. A hash picks between them. Neither OSPF nor BFD can tell you one of them is quietly rotting.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-story">Story &amp; Problem</a>
+  <a class="nav-tab" href="#section-adjacency">Adjacency</a>
+  <a class="nav-tab" href="#section-ecmp">ECMP</a>
+  <a class="nav-tab" href="#section-failure">Failure</a>
+  <a class="nav-tab" href="#section-boundary">Boundary</a>
+  <a class="nav-tab" href="#section-exam">Exam &amp; Traps</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+<!-- ══════════ SECTION 1 ══════════ -->
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · STORY &amp; PROBLEM</span>
+  </div>
+  <p class="socratic-insight">A machinery-of-government transfer hands the Department eleven Fisheries sites running their own OSPF area 0. They must reach Department resources. The temptation is to join the two networks everywhere they touch. The cost of that decision is paid during incidents, not during the build.</p>
+  <ul class="socratic-questions">
+    <li>Why terminate the Fisheries OSPF domain at two hubs rather than at every branch that could reach it?</li>
+    <li>Darwin's static was correct the day it was typed. Which part of the Fisheries design has the same property?</li>
+  </ul>
+  <div class="answer-area" data-section="story">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;">
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+        <div class="model-answer-text">Every redistribution point is a place routing policy is authored. Two borders means two places to look during an incident and two places policy can drift; eleven means eleven. Branches stay iBGP-only, never hold a prefix two ways, and therefore have no AD contest at all.</div>
+      </div>
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+        <div class="model-answer-text">The prefix-list. It enumerates a state — actual subnets on a given day — rather than expressing a rule. When Fisheries adds a site, it is silently wrong and the symptom is an absence, not an alarm. Prefer policy that expresses a rule; where you must enumerate, give it an owner and a review trigger.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-story">
+  <div class="section-label">SECTION 01</div>
+  <h2>The Situation <em>and the Business Problem</em></h2>
+
+  <p><strong>Cold open — Darwin closed out.</strong> The Rev 27 static to 10.60.20.0/24 via the ISP1 gateway was removed by CLI template. It was hand-typed in April, before Darwin had tunnels, and at AD 10 it had beaten the iBGP overlay route (AD 200) ever since. Compliance traffic left port1 in the clear, addressed to RFC1918 space, and was discarded at the ISP.</p>
+
+  <div class="callout callout-amber"><strong>Why it survived four months:</strong> a static route stays in the FIB while its <em>next hop</em> is reachable. It is never validated against the destination. The ISP gateway was directly connected and perfectly healthy, so FortiOS was content. Link monitors and SLA checks exist to supply the missing test; this static had neither.</div>
+
+  <p><strong>The new problem.</strong> The Fisheries Compliance Division transfers on 1 September: eleven sites, its own routers, an existing OSPF area 0. Dr Finch must sign that compliance data goes where the Department says it goes. The design decision from EP-13 stands — Fisheries meets the Department overlay at Tuggers and Gunners only.</p>
+
+  <div class="code-block">
+    <div class="code-label">Topology after EP-14</div>
+<pre><code>   FISHERIES OSPF DOMAIN                    DEPARTMENT iBGP OVERLAY
+   ---------------------                    -----------------------
+   11 sites --OSPF area 0--+
+                           |
+                  +--------v--------+   IPsec + OSPF   +-----------+
+                  | FISHERIES CORE  |==================&gt;  TUGGERS  |
+                  |  Canberra       |==================&gt;  GUNNERS  |
+                  |  SD-WAN members |                  +-----+-----+
+                  |  BFD enabled    |                        | iBGP
+                  +-----------------+       Perth . Adelaide . Darwin
+                                             Sydney . Brisbane (blocked)</code></pre>
+  </div>
+
+  <p>Fisheries is <strong>not</strong> a Department branch. It is a separate network that already exists, joined at two controlled borders. Department branches never form an OSPF adjacency and never learn that OSPF exists — they receive Fisheries prefixes over the iBGP they already run.</p>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">MENTAL NOTE</div>
+      <div class="mental-note-block-text">Count borders, not links. The number of redistribution points is the number of places an incident investigation has to visit.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-story" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-story','Story &amp; Problem')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-story" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-story')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 2 ══════════ -->
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · ADJACENCY</span>
+  </div>
+  <p class="socratic-insight">Two FortiGates, a tunnel between them, OSPF enabled on both. That is not yet enough. Our iBGP overlays have never needed the thing OSPF now requires — and the reason is in how each protocol finds its peer.</p>
+  <ul class="socratic-questions">
+    <li>What must exist on the tunnel interfaces before an OSPF adjacency can form, and why does BGP not need it?</li>
+    <li>Twelve dial-up spokes, all tunnels up, no adjacency reaches Full. What single setting explains it?</li>
+  </ul>
+  <div class="answer-area" data-section="adjacency">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;">
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+        <div class="model-answer-text">IP addresses on both tunnel interfaces, in the same subnet with the same mask. OSPF hellos are multicast to 224.0.0.5 and are link-local — they are never routed. BGP dials a unicast TCP session to an address you configure and only needs a route to reach it.</div>
+      </div>
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+        <div class="model-answer-text">Network type. With <code>net-device disable</code> every dial-up tunnel lands on one IPsec virtual interface, so the point-to-point default is false. Set the hub to point-to-multipoint. Type must match at both ends, and the timers differ (30/120 vs 10/40), so a mismatch never reaches Full.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-adjacency">
+  <div class="section-label">SECTION 02</div>
+  <h2>Forming an Adjacency <em>Across a Tunnel</em></h2>
+
+  <p><strong>OSPF needs a room; BGP dials a number.</strong> That single distinction explains the addressing requirement.</p>
+
+  <table class="data-table">
+    <thead><tr><th></th><th>iBGP</th><th>OSPF</th></tr></thead>
+    <tbody>
+      <tr><td>Transport</td><td>TCP 179, unicast</td><td>IP protocol 89, multicast 224.0.0.5</td></tr>
+      <tr><td>Peer identity</td><td>An address you type — can be a loopback several hops away</td><td>Whoever answers on <em>this link</em></td></tr>
+      <tr><td>Needs link addressing?</td><td>No — needs a <em>route</em> to the peer</td><td>Yes — hellos are link-local, never routed</td></tr>
+    </tbody>
+  </table>
+
+  <p>Three things must all be true, and none of them is automatic:</p>
+  <ul>
+    <li><strong>Tunnel interfaces addressed</strong> at both ends, same subnet, same mask. A <code>/32</code> with a mismatched <code>remote-ip</code> prefix will pass traffic happily and silently never peer.</li>
+    <li><strong>OSPF enabled on the tunnel interface</strong> under <code>config ospf-interface</code>.</li>
+    <li><strong>The tunnel subnet covered by the OSPF network statement.</strong></li>
+  </ul>
+
+  <div class="callout"><strong>Adjacency requirements (all must match):</strong> primary IPs in the same subnet with the same mask · same interface type and same area · matching hello and dead intervals · unique router IDs · matching OSPF IP MTU · successful authentication if enabled.</div>
+
+  <h2 style="font-size:22px;margin-top:26px;">Network Types <em>— the mechanics</em></h2>
+
+  <table class="data-table">
+    <thead><tr><th></th><th>Point-to-point</th><th>Broadcast</th><th>Point-to-multipoint</th></tr></thead>
+    <tbody>
+      <tr><td>Neighbours on interface</td><td>Exactly 1</td><td>Many</td><td>Many</td></tr>
+      <tr><td>Medium supports multicast?</td><td>n/a</td><td>Yes</td><td><strong>No</strong></td></tr>
+      <tr><td>DR / BDR elected?</td><td>No</td><td><strong>Yes</strong></td><td>No</td></tr>
+      <tr><td>Hello / Dead</td><td>10 / 40</td><td>10 / 40</td><td><strong>30 / 120</strong></td></tr>
+      <tr><td>Link advertised as</td><td>Subnet</td><td>Subnet</td><td><strong>/32 host route per neighbour</strong></td></tr>
+      <tr><td>Typical use</td><td>Single site-to-site tunnel</td><td>Ethernet LAN</td><td>Dial-up hub, NBMA</td></tr>
+    </tbody>
+  </table>
+
+  <ul>
+    <li><strong>Point-to-point</strong> — two routers, one wire. No election, no ambiguity, adjacency forms immediately. FortiOS default on tunnel interfaces.</li>
+    <li><strong>Broadcast</strong> — many routers on a medium that <em>can</em> multicast. DR/BDR exist purely for <em>adjacency reduction</em>: ten routers would otherwise form 45 adjacencies.</li>
+    <li><strong>Point-to-multipoint</strong> — many routers on one interface that <em>cannot</em> multicast to each other. Treated as a bundle of separate point-to-point relationships. No DR, because there is no medium to elect one on.</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-label">FortiOS CLI — dial-up hub</div>
+<pre><code>config router ospf
+    config ospf-interface
+        edit "Hub-Fisheries"
+            set interface "VPN1"
+            set network-type point-to-multipoint
+        next
+    end
+end</code></pre>
+  </div>
+
+  <div class="callout callout-amber"><strong>Exam trap:</strong> point-to-multipoint's default timers are <strong>30 / 120</strong>, not 10 / 40. Setting the network type on the hub changes your convergence budget without you touching a timer.</div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">MENTAL NOTE</div>
+      <div class="mental-note-block-text"><code>net-device disable</code> collapses many tunnels onto one interface — so point-to-point becomes a lie, and the hub must be point-to-multipoint.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-adjacency" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-adjacency','Adjacency')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-adjacency" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-adjacency')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 3 ══════════ -->
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · ECMP</span>
+  </div>
+  <p class="socratic-insight">Fisheries has an adjacency to each hub and has expressed no preference. For both hubs to end up in the FIB, several things must be equal — and "the cost is the same" is not the whole list, because Department prefixes arrive in OSPF as externals.</p>
+  <ul class="socratic-questions">
+    <li>What has to be equal before two hubs install as separate next hops?</li>
+    <li>Two next hops are installed. Which one carries a given session, and what decides?</li>
+  </ul>
+  <div class="answer-area" data-section="ecmp">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;">
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+        <div class="model-answer-text">AD is equal by definition (110 vs 110), so the contest drops to metric: equal total path cost, with <code>auto-cost reference-bandwidth</code> consistent across the domain. Because these are Type-5 externals from two ASBRs, also the same metric type from both — and <code>rfc1583-compatible enable</code>, since by default FortiGate does not load balance external routes.</div>
+      </div>
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+        <div class="model-answer-text">A deterministic hash, computed once at session birth and cached in the session table. Default <code>v4-ecmp-mode</code> is <code>source-ip-based</code> — source IP only. Equal cost spreads load only if the sources are spread.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-ecmp">
+  <div class="section-label">SECTION 03</div>
+  <h2>Equal Cost <em>Is Not Load Balancing</em></h2>
+
+  <p>Both paths are OSPF, so there is no administrative-distance contest — 110 against 110. The comparison drops straight to metric, which in OSPF is the <strong>cumulative cost of the whole path</strong>, not one link. <code>auto-cost reference-bandwidth</code> derives each interface cost and must be identical on every router in the domain, or two engineers compute different costs for the same topology and neither knows.</p>
+
+  <div class="callout callout-amber"><strong>The part the question hides:</strong> Department prefixes do not originate in OSPF. They are redistributed into OSPF at both hubs, so Fisheries sees them as <strong>Type-5 externals from two different ASBRs</strong> — and <em>by default FortiGate does not load balance external OSPF routes</em>.</div>
+
+  <table class="data-table">
+    <thead><tr><th>Metric type</th><th>Cost seen by receiver</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>E2 <em>(default)</em></td><td>Seed metric only — internal cost to the ASBR is <strong>not</strong> added</td><td>Both hubs advertise the same cost however far away they are. Ties are broken by forwarding cost to the ASBR / RFC 2328 preference rules.</td></tr>
+      <tr><td>E1</td><td>Seed metric <strong>+</strong> accumulated internal cost</td><td>Tunnel cost genuinely influences the choice. Destroys the equal-cost tie.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="code-block">
+    <div class="code-label">FortiOS CLI</div>
+<pre><code>config router ospf
+    set rfc1583-compatible enable          &lt;-- selection based solely on cost
+    config redistribute "bgp"
+        set status enable
+        set metric 20
+        set metric-type 2                  &lt;-- default; 1 = E1
+    end
+end
+
+config system settings
+    set v4-ecmp-mode source-ip-based       &lt;-- default
+end</code></pre>
+  </div>
+
+  <table class="data-table">
+    <thead><tr><th>v4-ecmp-mode</th><th>Hashes on</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>source-ip-based <em>(default)</em></td><td>Source IP only</td><td>One host always takes the same next hop, for every session, to every destination</td></tr>
+      <tr><td>source-dest-ip-based</td><td>Source + destination</td><td>A host's sessions spread by destination</td></tr>
+      <tr><td>weight-based</td><td>Configured interface weight</td><td>Deliberate ratio rather than a hash</td></tr>
+      <tr><td>usage-based</td><td>Current interface bandwidth</td><td>Adaptive</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><strong>Same shape, different layer:</strong> <code>v4-ecmp-mode</code> is a system-wide routing setting for equal-cost FIB entries. SD-WAN's <code>load-balance-mode</code> is an SD-WAN setting for members under the implicit rule. Both hash at session birth; neither is SLA-aware.</div>
+
+  <div class="callout callout-amber"><strong>No mode splits a single session.</strong> A 300 GB nightly backup from one source will pin to one path under every mode — splitting a TCP flow would reorder packets. A hash problem is not solved by changing the hash; it is solved by removing the flow from the hash (schedule it, shape it, or steer it with an SD-WAN rule). <strong>Do not</strong> fix it by making the tunnel costs unequal — that destroys the second FIB next hop and with it SD-WAN's second eligible member.</div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">MENTAL NOTE</div>
+      <div class="mental-note-block-text">Two equal-cost routes installed does not mean traffic is shared. It means traffic is <em>hashed</em>. ECMP is load spreading, and only if the sources are spread.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-ecmp" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-ecmp','ECMP')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-ecmp" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-ecmp')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 4 ══════════ -->
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · FAILURE</span>
+  </div>
+  <p class="socratic-insight">Two failures arrive in the same week. One takes a hub away entirely. The other leaves everything up, Full, and unchanged — and degrades exactly half the user population. Only one of them is a routing problem.</p>
+  <ul class="socratic-questions">
+    <li>A hub is lost. How long is the outage, and what event ends it?</li>
+    <li>Nothing is down and half the users are suffering. What does "exactly half" tell you?</li>
+  </ul>
+  <div class="answer-area" data-section="failure">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;">
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+        <div class="model-answer-text">It depends how the loss is detected. Tunnel interface down is an immediate topology event — neighbour dropped, SPF reruns, route withdrawn, seconds. Tunnel up but hellos stopped means waiting the <strong>40-second dead interval</strong>. BFD reduces that to sub-second. Sessions on the failed next hop are torn down and rebuilt on the survivor; a FIB change is one of only two things that re-evaluates a session.</div>
+      </div>
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+        <div class="model-answer-text">The population splits along the ECMP hash boundary, so the fault is per-path, not per-user or per-application. One path is Alive but not Good. OSPF's only liveness test is whether a neighbour answers hellos — a tunnel with 400 ms latency and 8% loss answers them perfectly.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-failure">
+  <div class="section-label">SECTION 04</div>
+  <h2>Two Failures — <em>Loud and Silent</em></h2>
+
+  <table class="data-table">
+    <thead><tr><th>Detection path</th><th>Timer</th><th>Duration</th></tr></thead>
+    <tbody>
+      <tr><td>IPsec tunnel goes down (DPD fails / interface drops)</td><td>DPD retry, interface state</td><td>Seconds — immediate topology event</td></tr>
+      <tr><td>Tunnel stays up, OSPF stops answering</td><td><strong>Dead interval</strong></td><td><strong>40 s</strong> (hello 10 s × 4)</td></tr>
+      <tr><td>Either of the above, with BFD enabled</td><td>BFD</td><td><strong>Sub-second</strong></td></tr>
+      <tr><td>Tunnel up, adjacency Full, path degraded</td><td>— none —</td><td><strong>Never detected by routing</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="code-block">
+    <div class="code-label">FortiOS CLI — BFD</div>
+<pre><code>config router bfd
+    config neighbor
+        edit 10.99.1.1
+            set interface "Fisheries-Tuggers"
+        next
+    end
+end
+
+config router ospf
+    set bfd enable                    &lt;-- process-wide
+    config ospf-interface
+        edit "Fisheries-Tuggers"
+            set bfd enable            &lt;-- or per-interface
+        next
+    end
+end</code></pre>
+  </div>
+
+  <ul>
+    <li><strong>BFD is a detection mechanism, not a routing protocol.</strong> It does not choose paths; it tells the protocol sooner that one is gone. OSPF, BGP and static routes can all subscribe.</li>
+    <li><strong>BFD is the scalable alternative to shortening hello/dead timers</strong>, which costs CPU and multiplies badly on a hub with many spokes.</li>
+    <li><strong>40 s beats 180 s.</strong> OSPF's dead interval is far more aggressive than BGP's default hold timer (keepalive 60 / hold 180) — which is why a silent hub loss on the overlay was a three-minute problem and this is a forty-second one.</li>
+  </ul>
+
+  <div class="callout callout-amber"><strong>The failure routing cannot see.</strong> A tunnel with 400 ms latency and 8% loss answers hellos perfectly. Adjacency stays Full, cost stays unchanged, SPF never reruns, the route never withdraws. <strong>BFD does not help</strong> — BFD detects <em>dead</em>, not <em>degraded</em>. Detection speed and quality measurement are different problems and exam questions blur them deliberately.</div>
+
+  <p><strong>The fix is a different layer.</strong> The Fisheries tunnels become SD-WAN members with health checks, so the two paths can be measured and judged. Note the dependency: this only works because OSPF already put <em>both</em> hubs in the FIB.</p>
+
+  <div class="code-block">
+    <div class="code-label">The two layers, in order</div>
+<pre><code>OSPF equal-cost  -->  two FIB next hops  -->  two eligible SD-WAN members
+                                                        |
+                                        SLA health check measures both
+                                                        |
+                                 rule selects one that is Alive AND Good</code></pre>
+  </div>
+
+  <div class="callout"><strong>Where the fix goes:</strong> the Fisheries core is the spoke side — static tunnels, <code>net-device enable</code> — so its tunnels <em>can</em> be SD-WAN members. On the hubs, dial-up tunnels with <code>net-device disable</code> cannot. That asymmetry is why SD-WAN goes on the Fisheries box, not on Tuggers.</div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">MENTAL NOTE</div>
+      <div class="mental-note-block-text">Full ≠ good. Liveness is not quality. Routing fills the room; SD-WAN picks from it. ECMP is the prerequisite for member eligibility, not an alternative to it.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-failure" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-failure','Failure')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-failure" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-failure')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 5 ══════════ -->
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · BOUNDARY</span>
+  </div>
+  <p class="socratic-insight">Both hubs redistribute in both directions. Tuggers pushes Perth's LAN into OSPF as an external; Fisheries floods area 0; Gunners is in area 0 too. Nobody has configured a preference anywhere — and that is precisely the danger.</p>
+  <ul class="socratic-questions">
+    <li>What does Gunners do with the prefix it just heard in OSPF, and why is that worse than a routing loop?</li>
+    <li>Tagging stops the leak. What stops the leak when the tagging is wrong?</li>
+  </ul>
+  <div class="answer-area" data-section="boundary">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;">
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+        <div class="model-answer-text">Gunners already holds Perth's LAN via iBGP at AD 200. The OSPF copy arrives at AD 110 and wins. Gunners installs the path <em>through Fisheries</em> and abandons the overlay. Department traffic for a Department site now transits a third party, outside our IPsec, outside SLA measurement, outside the SD-WAN rules and outside FortiAnalyzer's picture.</div>
+      </div>
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+        <div class="model-answer-text">Distance. Raise the distance of OSPF externals at the hubs above iBGP's 200, so that even an untagged leak cannot beat the overlay. Filter for correctness; distance for survivability.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-boundary">
+  <div class="section-label">SECTION 05</div>
+  <h2>The Redistribution Boundary <em>and Its Contract</em></h2>
+
+  <p>A safe boundary has three properties: a <strong>known set</strong> (prefix-list on import), a <strong>marked origin</strong> (tag on export, deny on re-import), and <strong>deliberate preference</strong> where there is a reason for one.</p>
+
+  <table class="data-table">
+    <thead><tr><th></th><th>Tuggers</th><th>Gunners</th></tr></thead>
+    <tbody>
+      <tr><td>BGP → OSPF</td><td><code>set tag 10</code></td><td><code>set tag 20</code></td></tr>
+      <tr><td>OSPF → BGP</td><td><code>match tag 20</code> → deny<br>(else permit)</td><td><code>match tag 10</code> → deny<br>(else permit)</td></tr>
+      <tr><td>Safety net</td><td colspan="2">OSPF external distance raised above 200 at both hubs</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Per-hub tags rather than a single "crossed the boundary" tag</strong> buys diagnostic value: during an incident you can tell <em>which</em> border a prefix crossed, not merely that it crossed one.</p>
+
+  <div class="callout callout-green"><strong>Filter for correctness, distance for survivability.</strong> Tagging is the intended mechanism. Raised distance is what saves you when a tag is lost, misconfigured, or a third border appears that nobody told you about.</div>
+
+  <div class="callout callout-amber"><strong>The failure class that has no alarm.</strong> Fisheries adds a twelfth site. OSPF is Full, the prefix is in their area 0 database, and Department branches cannot reach it. Nothing failed — the prefix-list is denying it, which is the prefix-list working correctly. The symptom is an <em>absence</em>, and it is found by a user, not by a system. Exactly the shape of Darwin's Rev 27.</div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">MENTAL NOTE</div>
+      <div class="mental-note-block-text">Prefer policy that expresses a rule over policy that enumerates a state. Where you must enumerate, write down who reviews it and when — or it becomes the next Rev 27.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-boundary" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-boundary','Boundary')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-boundary" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-boundary')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 6 ══════════ -->
+<div class="socratic-block">
+  <div class="socratic-header">
+    <span class="socratic-icon">💭</span>
+    <span class="socratic-label">THINK FIRST · EXAM &amp; TRAPS</span>
+  </div>
+  <p class="socratic-insight">Most of this episode's exam value is in distinctions rather than commands: which layer owns which decision, and which default silently prevents the behaviour you assumed.</p>
+  <ul class="socratic-questions">
+    <li>When is E1 the right answer and when is E2? What decides?</li>
+    <li>Before installing a routing change through FortiManager, what has to be true of the target device?</li>
+  </ul>
+  <div class="answer-area" data-section="exam">
+    <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+    <div class="answer-buttons">
+      <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+      <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+    </div>
+    <div class="model-answers" style="display:none;">
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+        <div class="model-answer-text">Which layer owns the decision. If SD-WAN is to judge quality, you want E2 at equal cost so both hubs stay eligible. If routing itself must prefer the nearer hub, E1 — one next hop, no ECMP. Set the same type on both ASBRs: E1 always beats E2 regardless of metric.</div>
+      </div>
+      <div class="model-answer-item">
+        <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+        <div class="model-answer-text">Config Status must read In Sync. Install Preview diffs FortiManager's device database against what the device will run — it is only truthful if that stored copy still matches the box. Out-of-Sync means the preview is fiction and the install overwrites out-of-band changes; retrieve and reconcile first.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-block" id="section-exam">
+  <div class="section-label">SECTION 06</div>
+  <h2>Exam Distinctions, <em>Traps and Commands</em></h2>
+
+  <table class="data-table">
+    <thead><tr><th>Distinction</th><th>The point</th></tr></thead>
+    <tbody>
+      <tr><td>OSPF vs BGP peering</td><td>OSPF multicasts to link-local neighbours (shared subnet mandatory). BGP unicasts to a configured address (needs only a route).</td></tr>
+      <tr><td>Network type default</td><td>Point-to-point on tunnel interfaces. The dial-up hub with <code>net-device disable</code> is the exception → point-to-multipoint.</td></tr>
+      <tr><td>Timers by network type</td><td>P2P and broadcast 10/40. <strong>Point-to-multipoint 30/120.</strong></td></tr>
+      <tr><td>DR/BDR</td><td>Broadcast only. Exists for adjacency reduction. Not elected on P2P or P2MP.</td></tr>
+      <tr><td>External load balancing</td><td>Off by default. <code>set rfc1583-compatible enable</code> selects on cost alone and is what enables external ECMP.</td></tr>
+      <tr><td>E1 vs E2</td><td>E2 (default) carries the seed metric unchanged. E1 adds internal cost. <strong>E1 always beats E2 regardless of metric.</strong></td></tr>
+      <tr><td>ECMP behaviour</td><td>Per-session hash, cached at session birth. Default <code>source-ip-based</code>. No mode splits one session.</td></tr>
+      <tr><td>Dead interval vs BGP hold</td><td>OSPF 40 s. BGP keepalive 60 / hold 180. OSPF converges faster on silent failures.</td></tr>
+      <tr><td>BFD</td><td>Detection only, sub-second, subscribable by OSPF/BGP/static. Detects <em>dead</em>, never <em>degraded</em>.</td></tr>
+      <tr><td>AD at the boundary</td><td>OSPF 110 beats iBGP 200. Redistributed Department prefixes coming back in will win unless tagged out or out-distanced.</td></tr>
+      <tr><td>SD-WAN membership</td><td>Spoke static tunnels (<code>net-device enable</code>) can be members. Hub dial-up tunnels (<code>net-device disable</code>) cannot.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-size:22px;margin-top:26px;">Common <em>Mistakes</em></h2>
+  <ul>
+    <li><strong>Assuming two arrows means half each.</strong> ECMP hashes; it does not share. One busy source pins one path.</li>
+    <li><strong>Fixing a utilisation complaint with OSPF cost.</strong> Unequal cost removes the second FIB next hop and silently destroys SD-WAN eligibility and failover.</li>
+    <li><strong>Reaching for BFD to solve a degradation.</strong> Wrong layer. BFD fixes 40 seconds; it does not fix 8% loss.</li>
+    <li><strong>Setting metric-type on one ASBR only.</strong> Looks like a working preference until you check.</li>
+    <li><strong>Treating "Full adjacency" as proof the path is usable.</strong> It proves only that hellos are answered.</li>
+    <li><strong>Installing over an Out-of-Sync device.</strong> The preview is truthful only about FortiManager's copy of the box.</li>
+  </ul>
+
+  <h2 style="font-size:22px;margin-top:26px;">Commands and <em>GUI Locations</em></h2>
+  <table class="data-table">
+    <thead><tr><th>Purpose</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Hub network type</td><td><code>config router ospf</code> → <code>config ospf-interface</code> → <code>set network-type point-to-multipoint</code></td></tr>
+      <tr><td>External ECMP</td><td><code>config router ospf</code> → <code>set rfc1583-compatible enable</code></td></tr>
+      <tr><td>External metric type</td><td><code>config redistribute "bgp"</code> → <code>set metric-type 1|2</code></td></tr>
+      <tr><td>ECMP hash mode</td><td><code>config system settings</code> → <code>set v4-ecmp-mode</code></td></tr>
+      <tr><td>Fast detection</td><td><code>config router bfd</code> + <code>set bfd enable</code> under OSPF (process or interface)</td></tr>
+      <tr><td>Verify installed paths</td><td><code>get router info routing-table details &lt;prefix&gt;</code></td></tr>
+      <tr><td>Verify adjacency</td><td><code>get router info ospf neighbor</code> · <code>get router info ospf interface</code></td></tr>
+      <tr><td>Pre-change check</td><td>FortiManager → Device Manager → device list → <strong>Config Status = In Sync</strong></td></tr>
+      <tr><td>Change preview</td><td>FortiManager → Install Preview (device DB vs running config diff)</td></tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-size:22px;margin-top:26px;">Needs <em>Reinforcement</em></h2>
+  <div class="callout callout-amber">
+    <strong>Needs Reinforcement — route-policy configuration.</strong> Prefix-lists, access-lists, route maps, match/set clauses, tags and the <code>redistribute</code> commands themselves have now been reasoned about correctly across two episodes and never written. The boundary design above is understood at architecture level and untested at configuration level. This is EP-16.
+  </div>
+  <div class="callout callout-amber">
+    <strong>Needs Reinforcement — durations under pressure.</strong> Failure questions were answered with the correct mechanism but without the timing until restated. When asked "how long", the answer is a number and an event.
+  </div>
+
+  <div class="mental-note-block">
+    <div class="mental-note-block-icon">🧠</div>
+    <div class="mental-note-block-inner">
+      <div class="mental-note-block-label">MENTAL NOTE</div>
+      <div class="mental-note-block-text">Layers answer different questions. Routing: <em>is there a path?</em> SD-WAN: <em>is it any good?</em> BFD: <em>how fast do we notice it died?</em> Reaching for the wrong layer produces a fix that tests clean and fails in production.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lesson-tools">
+  <div class="lesson-tools-grid">
+    <div>
+      <div class="tool-label">ASK A QUESTION</div>
+      <textarea class="tool-textarea" id="q-section-exam" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-exam','Exam &amp; Traps')">Add Question</button></div>
+    </div>
+    <div>
+      <div class="tool-label">ADD A NOTE</div>
+      <textarea class="tool-textarea" id="note-section-exam" placeholder="Write a note about this section..." rows="3"></textarea>
+      <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-exam')">+ Add Note</button></div>
+    </div>
+  </div>
+</div>
+
+  </div><!-- /main-content -->
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="cheatsheet-episode-13-ospf-across-the-estate.html">
+    <span class="page-nav-label">← PREVIOUS EPISODE</span>
+    <span class="page-nav-title">EP-13 · OSPF Across the Estate</span>
+  </a>
+  <a class="page-nav-btn page-nav-next page-nav-disabled" href="#">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">EP-15 · BGP Belief</span>
+  </a>
+</div>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> Season 3 · Episode 14 · OSPF Over IPsec
+</footer>
+
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-sna-ep14-ospf-over-ipsec';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-story': 'Story & Problem',
+  'section-adjacency': 'Adjacency',
+  'section-ecmp': 'ECMP',
+  'section-failure': 'Failure',
+  'section-boundary': 'Boundary',
+  'section-exam': 'Exam & Traps',
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.nav-tab'));
+  var secs = tabs.map(function(t){ return document.querySelector(t.getAttribute('href')); });
+  function onScroll(){
+    var best = 0;
+    secs.forEach(function(s,i){ if (s && s.getBoundingClientRect().top <= 120) best = i; });
+    tabs.forEach(function(t,i){ t.classList.toggle('active', i === best); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+});
+</script>
+
+</body>
+</html>

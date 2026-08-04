@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Episode 15 — BGP Belief</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER — shared by all three formats */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  .dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* TOP PANELS — qpanel + notes-panel  (COMPLETE only) */
+  .top-panels{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .top-panels .qpanel{border-bottom:none;border-right:1px solid var(--border);}
+  .top-panels .qpanel-header{padding-left:32px;padding-right:32px;}
+  .top-panels .qpanel-body{padding-left:32px;padding-right:32px;}
+  .qpanel{background:var(--surface);}
+  .qpanel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .qpanel-header:hover,.qpanel-header.open{background:var(--surface-2);}
+  .qpanel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .qpanel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .qpanel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .qpanel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .qpanel-body{display:none;padding:0 20px 22px;}
+  .qpanel-body.open{display:block;}
+  .notes-panel{background:var(--surface);}
+  .notes-panel-header{width:100%;display:flex;align-items:center;gap:12px;padding:13px 32px;cursor:pointer;background:var(--surface);border:none;font-family:'Outfit',sans-serif;text-align:left;}
+  .notes-panel-header:hover,.notes-panel-header.open{background:var(--surface-2);}
+  .notes-panel-title{font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--text);text-transform:uppercase;}
+  .notes-panel-count{background:var(--blue);color:#fffdf5;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:none;}
+  .notes-panel-hint{font-size:11px;color:var(--text-muted);margin-left:4px;}
+  .notes-panel-chevron{margin-left:auto;font-size:13px;color:var(--text-muted);}
+  .notes-panel-body{display:none;padding:0 32px 22px;}
+  .notes-panel-body.open{display:block;}
+  .q-group{margin-bottom:16px;}
+  .q-group-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .q-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-dim);}
+  .q-item:last-child{border-bottom:none;}
+  .q-num{font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:var(--blue);min-width:16px;margin-top:2px;}
+  .q-text{font-size:14px;color:var(--text-soft);line-height:1.5;flex:1;}
+  .q-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;margin-top:1px;}
+  .q-del:hover{color:var(--blue);}
+  .no-questions{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);padding:8px 0;}
+  .btn-add-q{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-q:hover{opacity:0.85;}
+
+  /* STICKY SECTION NAV */
+  .section-nav{position:sticky;top:0;z-index:90;display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;overflow-x:auto;}
+  .nav-tab{font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;padding:12px 18px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+  /* MAIN */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{padding:36px 60px 60px 60px;}
+  /* Narrower main for bite — swap in when using the BITE variant:
+       .main-content{max-width:920px;margin:0 auto;padding:36px 60px 60px;} */
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+
+  /* DATA TABLE */
+  .data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* CODE BLOCK */
+  .code-block{background:var(--ink-dark);border-radius:10px;padding:0;margin:16px 0;overflow:hidden;border:1px solid var(--border);}
+  .code-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-accent);padding:8px 16px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);}
+  .code-block pre{padding:16px;overflow-x:auto;}
+  .code-block code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e8efff;}
+
+  /* SECTION IMAGE (compact→expand pattern from complete/nibble) */
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:6px;line-height:1.4;font-style:italic;}
+  .section-img-wrap{margin:0 0 20px;display:flex;flex-direction:column;align-items:center;}
+  .section-img{width:100%;max-width:100%;border-radius:16px;cursor:zoom-out;transition:width 0.3s ease;border:1px solid var(--border);display:block;}
+  .section-img.si-expanded{width:100%;cursor:zoom-out;border-radius:16px;}
+  .si-placeholder{display:none;width:100%;max-width:100%;border:2px dashed var(--border);border-radius:16px;background:var(--surface-2);padding:14px 16px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .si-placeholder.si-show{display:flex;}
+  .si-filename{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace;}
+
+  /* BITE IMAGE PLACEHOLDER (simpler, wider) — used by bite-style pages
+     with an inline "prompt-toggle" + prompt-content pair.  Prefer moving
+     the prompt text to images/prompts.txt and replacing this whole block
+     with a full-width <img> + graceful fallback (see project rules). */
+  .image-placeholder{border:2px dashed var(--border);border-radius:14px;background:var(--surface-2);padding:26px 28px;margin:18px 0;}
+  .ip-filename{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;}
+  .ip-caption{font-size:16px;font-style:italic;color:var(--text-soft);margin-bottom:12px;}
+
+  /* SOCRATIC BLOCK — Think First */
+  .socratic-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px;border-top:3px solid var(--blue);}
+  .socratic-header{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;}
+  .socratic-header::after{content:'▸ Expand';margin-left:auto;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-block.soc-open .socratic-header{margin-bottom:10px;}
+  .socratic-block.soc-open .socratic-header::after{content:'▾ Collapse';}
+  .socratic-block:not(.soc-open) .socratic-insight,
+  .socratic-block:not(.soc-open) .socratic-questions,
+  .socratic-block:not(.soc-open) .answer-area{display:none;}
+  .socratic-icon{font-size:17px;flex-shrink:0;}
+  .socratic-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;}
+  .socratic-insight{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;margin-bottom:12px;border-left:3px solid var(--border);padding-left:14px;font-style:italic;}
+  .socratic-questions{list-style:none;padding:0;margin:0;}
+  .socratic-questions li{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);padding:8px 0 8px 22px;position:relative;border-bottom:1px solid var(--border-dim);line-height:1.6;}
+  .socratic-questions li:last-child{border-bottom:none;}
+  .socratic-questions li::before{content:'?';position:absolute;left:0;font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:16px;top:7px;color:var(--blue);}
+  .answer-area{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .answer-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .answer-textarea:focus{border-color:var(--blue);}
+  .answer-textarea:disabled{opacity:0.75;background:var(--surface-2);cursor:default;}
+  .answer-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .btn-add-answer{background:var(--ink-dark);color:var(--ink-accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-add-answer:hover:not(:disabled){opacity:0.85;}
+  .btn-add-answer:disabled{opacity:0.5;cursor:default;}
+  .btn-see-answer{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;}
+  .btn-see-answer:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-see-answer:not(:disabled){color:var(--blue);border-color:var(--blue);}
+  .btn-see-answer:hover:not(:disabled){background:var(--blue-glow);}
+  .model-answers{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .model-answer-item{padding:10px 0;border-bottom:1px solid var(--border-dim);}
+  .model-answer-item:first-child{padding-top:0;}
+  .model-answer-item:last-child{border-bottom:none;padding-bottom:0;}
+  .model-answer-q{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;}
+  .model-answer-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-soft);line-height:1.7;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal illustration';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-label:hover::after{opacity:1;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide illustration';}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+  .analogy-summary{font-style:normal;font-weight:600;color:#7a4f0c;margin-bottom:10px;font-size:17px;}
+  .analogy-text ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  .analogy-text li{padding-left:18px;position:relative;}
+  .analogy-text li::before{content:'•';position:absolute;left:0;font-weight:700;color:var(--amber);}
+  .analogy-box>.analogy-img{display:none;}
+  .analogy-box.expanded>.analogy-img{display:block;}
+  .analogy-img img{max-width:100%;width:100%;cursor:zoom-out;transition:max-width 0.25s ease;border-radius:8px;margin-top:10px;}
+  .analogy-img img.zoomed{max-width:100%;cursor:zoom-out;}
+  .analogy-img .img-missing-msg{display:none!important;}
+  .prompt-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;}
+  .prompt-toggle:hover{color:var(--text);border-color:var(--text);}
+  .prompt-content{margin-top:10px;padding:10px 14px;background:rgba(0,0,0,0.04);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);font-style:italic;line-height:1.65;text-align:left;}
+  .prompt-content[hidden]{display:none;}
+
+  /* APPROACH TAG (bite convention — visual companion pages) */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* LESSON TOOLS — COMPLETE ONLY, one after each section-block */
+  .lesson-tools{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px;}
+  .lesson-tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tool-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .tool-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);background:var(--surface);resize:vertical;min-height:60px;outline:none;line-height:1.6;}
+  .tool-textarea:focus{border-color:var(--blue);}
+  .tool-row{margin-top:8px;display:flex;gap:8px;}
+
+  /* PAGE NAV — REQUIRED for complete */
+  .page-nav{display:flex;border-top:2px solid var(--border);background:var(--surface);}
+  .page-nav-btn{flex:1;display:flex;flex-direction:column;gap:4px;padding:16px 28px;text-decoration:none;transition:background 0.15s;cursor:pointer;}
+  .page-nav-btn:hover:not(.page-nav-disabled){background:var(--surface-2);}
+  .page-nav-prev{border-right:1px solid var(--border);}
+  .page-nav-next{text-align:right;}
+  .page-nav-disabled{opacity:0.3;pointer-events:none;}
+  .page-nav-label{font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;color:var(--text-muted);display:block;text-transform:uppercase;}
+  .page-nav-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;font-style:italic;color:var(--blue);display:block;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}.section-nav{padding:0 16px;}.top-panels{grid-template-columns:1fr;}.top-panels .qpanel{border-right:none;border-bottom:1px solid var(--border);}.lesson-tools-grid{grid-template-columns:1fr;}footer{padding:16px 24px;}}
+</style>
+<style>
+  code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.86em;background:rgba(30,64,175,0.07);border:1px solid var(--border-dim);border-radius:4px;padding:1px 5px;color:var(--blue-deep);}
+  .code-block code{background:none;border:none;padding:0;color:#e8efff;font-size:12.5px;}
+  .data-table code{font-size:0.82em;}
+  .section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block ol li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  @media(max-width:720px){
+    .data-table{display:block;overflow-x:auto;white-space:nowrap;}
+    .code-block pre{font-size:11px;}
+    header h1{font-size:30px;}
+    .section-block h2{font-size:24px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb" style="font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.08em;color:rgba(251,247,236,0.6);margin-bottom:12px;text-transform:uppercase;">
+      <a href="#" style="color:#9bb8e6;text-decoration:none;">Department of Fish</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">&rsaquo;</span>
+      <a href="#" style="color:#9bb8e6;text-decoration:none;">Season 3 — Routes That Explain Themselves</a>
+      <span class="breadcrumb-sep" style="color:rgba(155,184,230,0.4);margin:0 6px;">&rsaquo;</span>
+      <span>Episode 15</span>
+    </div>
+    <div class="header-eyebrow"><span class="dot-live"></span> Episode Cheatsheet · NSE 7 Secure Networking Architect</div>
+    <h1>BGP <em>Belief</em></h1>
+    <p>Received is not accepted. Accepted is not selected. Selected is not always installed.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A prefix missing from a routing table is not a mystery. It is a <em>bisection</em>.</div>
+  <p class="motivation-sub">Brisbane came up clean, peered with both hubs, reached every Department prefix — and never saw the Fisheries range at all. Four stages, four instruments, one answer.</p>
+</div>
+
+<div class="top-panels">
+  <div class="qpanel" id="qpanel">
+    <button class="qpanel-header" onclick="toggleQPanel()" id="qpanel-header">
+      <span class="qpanel-title">MY QUESTIONS</span>
+      <span class="qpanel-count" id="qpanel-count">0</span>
+      <span class="qpanel-hint">— click to expand</span>
+      <span class="qpanel-chevron" id="qpanel-chevron">▾</span>
+    </button>
+    <div class="qpanel-body" id="qpanel-body"></div>
+  </div>
+  <div class="notes-panel" id="notes-panel">
+    <button class="notes-panel-header" onclick="toggleNotesPanel()" id="notes-panel-header">
+      <span class="notes-panel-title">MY NOTES</span>
+      <span class="notes-panel-count" id="notes-panel-count">0</span>
+      <span class="notes-panel-hint">— click to expand</span>
+      <span class="notes-panel-chevron" id="notes-panel-chevron">▾</span>
+    </button>
+    <div class="notes-panel-body" id="notes-panel-body"></div>
+  </div>
+</div>
+
+<nav class="section-nav" id="section-nav">
+  <a class="nav-tab active" href="#section-story">Story</a>
+  <a class="nav-tab" href="#section-stages">Four Stages</a>
+  <a class="nav-tab" href="#section-nexthop">Next Hop</a>
+  <a class="nav-tab" href="#section-install">AD &amp; Install</a>
+  <a class="nav-tab" href="#section-timing">Failure Timing</a>
+  <a class="nav-tab" href="#section-eligibility">Eligibility</a>
+  <a class="nav-tab" href="#section-traps">Traps &amp; Topology</a>
+</nav>
+
+<main>
+  <div class="main-content">
+
+    <!-- ═══════════ SECTION 1 — STORY ═══════════ -->
+    <div class="section-block" id="section-story">
+      <div class="section-label">SECTION 01 · CONTEXT</div>
+      <h2>The Business Problem <em>Behind the Packet</em></h2>
+
+      <p>Brisbane had been blocked since Season 2 on a missing <code>mpls_gateway</code> metadata mapping, carrying an orphaned MPLS member pointing at nothing. The carrier finally supplied the handoff details. Priya Nair needed Brisbane reaching the <strong>Fisheries compliance portal</strong> before external auditors started on the fourth.</p>
+
+      <p>Brisbane installed cleanly. Four overlays up. iBGP established to both hubs. Every Department prefix reachable — payroll, intranet, file services at Gunners. And <strong>10.90.0.0/16 was not in the routing table at all.</strong> Not wrong. Absent.</p>
+
+      <div class="callout"><strong>Aisha's framing, which set the whole episode:</strong> before anyone changes anything, a prefix missing from a routing table has failed at one specific point on its journey. Find the point. Do not guess the cause.</div>
+
+      <table class="data-table">
+        <thead><tr><th>Technology</th><th>Why it appeared</th></tr></thead>
+        <tbody>
+          <tr><td>BGP route progression</td><td>The prefix was absent — which stage did it die at?</td></tr>
+          <tr><td>Next-hop resolution</td><td>Both paths present, both disqualified</td></tr>
+          <tr><td>Redistribution into BGP</td><td>Where the bad next hop came from</td></tr>
+          <tr><td>Administrative distance</td><td>A second prefix best in BGP but installed from OSPF</td></tr>
+          <tr><td>Convergence timing</td><td>Withdraw vs hold timer on a hub-side tunnel failure</td></tr>
+          <tr><td>SD-WAN eligibility</td><td>Two equal paths as the prerequisite for a decision</td></tr>
+          <tr><td>FortiManager change discipline</td><td>Installing to a device untouched for three seasons</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Missing is a stronger clue than wrong. Wrong means something chose badly; missing means something never became a candidate.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-story" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-story','Story')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-story" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-story')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 2 — FOUR STAGES ═══════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · FOUR STAGES</span>
+      </div>
+      <p class="socratic-insight">A BGP update crosses four separate gates before it can carry traffic, and each gate has its own failure mode and its own instrument. Most engineers check the routing table, find nothing, and start guessing. The discipline is to check the gates in order.</p>
+      <ul class="socratic-questions">
+        <li>Name the four stages a prefix passes through, and the one command that proves each.</li>
+        <li>You run <code>received-routes</code> and get nothing back. What have you proved?</li>
+      </ul>
+      <div class="answer-area" data-section="stages">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text">Received (<code>… received-routes</code>), accepted (<code>… routes</code>), selected (<code>get router info bgp network &lt;prefix&gt;</code>), installed (<code>get router info routing-table &lt;prefix&gt;</code>).</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Nothing — unless <code>soft-reconfiguration</code> is enabled inbound on that neighbour. Without it the device never retained a pre-policy copy, so an empty output is evidence of a missing prerequisite, not a missing advertisement.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-stages">
+      <div class="section-label">SECTION 02 · THE CORE MODEL</div>
+      <h2>Four Stages, <em>Four Instruments</em></h2>
+
+      <table class="data-table">
+        <thead><tr><th>Stage</th><th>Question it answers</th><th>Command</th><th>Typical cause of failure</th></tr></thead>
+        <tbody>
+          <tr><td>Received</td><td>Did the update arrive on the wire?</td><td><code>get router info bgp neighbors &lt;ip&gt; received-routes</code></td><td>Peer never advertised it; outbound filter at the sender</td></tr>
+          <tr><td>Accepted</td><td>Did inbound policy let it into the BGP table?</td><td><code>get router info bgp neighbors &lt;ip&gt; routes</code></td><td>Inbound route-map / prefix-list deny; max-prefix; AS-path loop</td></tr>
+          <tr><td>Selected</td><td>Did it win best-path <em>within</em> BGP?</td><td><code>get router info bgp network &lt;prefix&gt;</code></td><td><strong>Next hop inaccessible</strong>; lost on local-pref / AS path / MED</td></tr>
+          <tr><td>Installed</td><td>Did it beat other protocols into the RIB?</td><td><code>get router info routing-table &lt;prefix&gt;</code></td><td>Another protocol holds a lower administrative distance</td></tr>
+          <tr><td>Forwarded</td><td>Is traffic actually using it?</td><td><code>diagnose sys session list</code></td><td>Existing sessions pinned to the old path</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>The vantage-point trap.</strong> "Did it leave?" and "did it arrive?" are different questions asked in different places. <code>received-routes</code> is run at the <em>receiver</em> and needs <code>set soft-reconfiguration enable</code> inbound. <code>advertised-routes</code> is run at the <em>sender</em> and needs no prerequisite at all. When you cannot enable soft-reconfiguration on a production box, go to the sender.</div>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI · the four instruments</div>
+<pre><code>#  Stage 1 — received (pre-policy)  [prerequisite below]
+get router info bgp neighbors 10.255.0.1 received-routes
+
+config router bgp
+    config neighbor
+        edit "10.255.0.1"
+            set soft-reconfiguration enable
+        next
+    end
+end
+
+#  Stage 1 alternative — ask the SENDER what it sent
+get router info bgp neighbors &lt;spoke-loopback&gt; advertised-routes
+
+#  Stage 2 — accepted (post-policy, in the BGP table)
+get router info bgp neighbors 10.255.0.1 routes
+
+#  Stage 3 — selected (best-path within BGP)
+get router info bgp network 10.90.0.0/16
+
+#  Stage 4 — installed (in the RIB)
+get router info routing-table 10.90.0.0/16
+get router info kernel                      # the FIB view</code></pre>
+      </div>
+
+      <div class="callout callout-green"><strong>Reading stage 3 output.</strong> A selected path shows the <code>&gt;</code> marker. <code>no best path</code> alongside entries that look healthy is the signature of disqualification — almost always <code>(inaccessible)</code>.</div>
+
+      <div class="analogy-box">
+        <div class="analogy-label">Analogy</div>
+        <div class="analogy-text">
+          <p class="analogy-summary">A job application, not a race.</p>
+          <ul>
+            <li><strong>Received</strong> — the application reached the building.</li>
+            <li><strong>Accepted</strong> — HR did not bin it at the door.</li>
+            <li><strong>Selected</strong> — it beat the other applicants for the same role.</li>
+            <li><strong>Installed</strong> — it beat the internal candidate the other department already had lined up.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Received is not accepted; accepted is not selected; selected is not installed. Four stages, four failure modes, four commands. Never search when you can bisect.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-stages" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-stages','Four Stages')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-stages" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-stages')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 3 — NEXT HOP ═══════════ -->
+    <div class="socratic-block">
+      <div class="socratic-header">
+        <span class="socratic-icon">💭</span>
+        <span class="socratic-label">THINK FIRST · NEXT HOP</span>
+      </div>
+      <p class="socratic-insight">Brisbane's BGP table held two paths for the Fisheries range. Both were marked <code>valid, internal</code>. Neither won. Nothing about the attributes was wrong — the contest never happened.</p>
+      <ul class="socratic-questions">
+        <li>How can a path be <code>valid</code> and still be unusable?</li>
+        <li>Where did a next hop that only the hub can reach come from, and which device should fix it?</li>
+      </ul>
+      <div class="answer-area" data-section="nexthop">
+        <textarea class="answer-textarea" placeholder="Write your own thoughts before revealing the model answer..." rows="3"></textarea>
+        <div class="answer-buttons">
+          <button class="btn-add-answer" onclick="saveSocAnswer(this)">+ Add My Answer</button>
+          <button class="btn-see-answer" onclick="revealSocAnswer(this)" disabled>🔒 See Model Answer</button>
+        </div>
+        <div class="model-answers" style="display:none;">
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q1 — MODEL ANSWER</div>
+            <div class="model-answer-text"><code>valid</code> describes policy acceptability, not reachability. If the recursive lookup for the next hop fails, the path is disqualified before best-path selection runs and its attributes are never compared.</div>
+          </div>
+          <div class="model-answer-item">
+            <div class="model-answer-q">Q2 — MODEL ANSWER</div>
+            <div class="model-answer-text">Redistribution carried the OSPF next hop into BGP, and iBGP does not rewrite NEXT_HOP in transit. Fix it at the advertiser with <code>set next-hop-self enable</code> — the layer that authored the fault.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-nexthop">
+      <div class="section-label">SECTION 03 · ROOT CAUSE</div>
+      <h2>BGP Does Not Forward to a Next Hop — <em>It Resolves One</em></h2>
+
+      <div class="code-block">
+        <div class="code-label">Brisbane · the evidence</div>
+<pre><code>Brisbane # get router info bgp network 10.90.0.0/16
+
+BGP routing table entry for 10.90.0.0/16
+Paths: (2 available, no best path)
+  Local
+    172.31.250.2 (inaccessible) from 10.255.0.1 (10.255.0.1)
+      Origin incomplete, metric 0, localpref 100, valid, internal
+
+  Local
+    172.31.251.2 (inaccessible) from 10.255.0.2 (10.255.0.2)
+      Origin incomplete, metric 0, localpref 100, valid, internal</code></pre>
+      </div>
+
+      <p><strong>Origin incomplete</strong> was the tell. It means the prefix entered BGP by <em>redistribution</em>, not by a <code>network</code> statement. Something at the hub authored these attributes.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Origin code</th><th>Shown as</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>IGP</td><td><code>i</code></td><td><code>network</code> statement — typed into BGP deliberately</td></tr>
+          <tr><td>EGP</td><td><code>e</code></td><td>Legacy EGP. Historical, effectively extinct</td></tr>
+          <tr><td>Incomplete</td><td><code>?</code></td><td><strong>Redistribution</strong> — arrived from another protocol</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">Origin sits low in the best-path order — well below weight, local preference and AS path — so it rarely decides anything. Its real value is <strong>forensic</strong>: it tells you a redistribution point authored the route.</div>
+
+      <p><strong>The causal chain.</strong> The hubs learn the Fisheries prefixes via OSPF, where the next hop is legitimately the Fisheries core across the tunnel. Redistribution into BGP carries that IGP next hop unchanged. iBGP does not rewrite NEXT_HOP as updates propagate between internal peers. So every spoke inherited <code>172.31.250.2</code> — a transit address that exists only at the hub.</p>
+
+      <p><strong>Why every other prefix worked.</strong> All iBGP peerings are sourced from loopbacks in one contiguous pool, and every spoke carries a summary route for that pool pointing at the overlay zone. One route resolves every present and future peer. The Fisheries transit addresses are not loopbacks and not in the pool — nothing covered them.</p>
+
+      <div class="code-block">
+        <div class="code-label">FortiOS CLI · the fix, at both hubs</div>
+<pre><code>config router bgp
+    config neighbor
+        edit "10.255.1.20"
+            set next-hop-self enable
+        next
+    end
+end
+
+#  On a hub acting as route reflector, for reflected routes:
+#      set next-hop-self-rr enable
+
+#  Verify from the spoke afterwards:
+get router info bgp network 10.90.0.0/16
+get router info routing-table 10.90.0.0/16</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Remedy</th><th>Where applied</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>next-hop-self at the hubs</td><td>2 devices</td><td><strong>Chosen.</strong> Scales to every undelivered branch. Expresses a rule</td></tr>
+          <tr><td>Transit routes on every spoke</td><td>60+ devices, forever</td><td>Rejected. Enumerates a state, rots silently, exports DC link addressing to branches</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Fix a fault at the layer that authored it. Two lines on two hubs, not sixty static routes on sixty spokes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-nexthop" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-nexthop','Next Hop')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-nexthop" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-nexthop')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 4 — AD ═══════════ -->
+    <div class="section-block" id="section-install">
+      <div class="section-label">SECTION 04 · STAGE FOUR</div>
+      <h2>Selected in BGP, <em>Installed From Somewhere Else</em></h2>
+
+      <div class="code-block">
+        <div class="code-label">Tuggers · 10.90.20.0/24 — best in BGP, absent from BGP in the RIB</div>
+<pre><code>Tuggers # get router info routing-table 10.90.20.0/24
+
+O E2  10.90.20.0/24 [110/20] via 172.31.250.2, Fisheries-OSPF, 00:41:12</code></pre>
+      </div>
+
+      <p>This is <strong>not a fault</strong>. When two protocols offer the same prefix, the RIB compares administrative distance and nothing else. OSPF external 110 beats iBGP 200; OSPF installs, and BGP's route sits in the BGP table marked best but uninstalled.</p>
+
+      <div class="callout callout-amber"><strong>The exclusion that gets examined.</strong> The losing protocol's metric is <em>never consulted</em>. There is no comparison between an OSPF cost of 20 and a BGP path with better local preference. AD is not a tiebreaker between metrics — it is a filter applied <em>before</em> metrics are relevant at all.</div>
+
+      <table class="data-table">
+        <thead><tr><th>Source</th><th>Default AD</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>Connected</td><td>0</td><td>—</td></tr>
+          <tr><td>Static</td><td>10</td><td>Validated against next hop, never destination (EP-13/14)</td></tr>
+          <tr><td>eBGP</td><td>20</td><td>Beats OSPF — counter-intuitive and examinable</td></tr>
+          <tr><td>OSPF (incl. external)</td><td>110</td><td>Raised above 200 at the Department hubs as a redistribution safety net</td></tr>
+          <tr><td>iBGP</td><td>200</td><td>The overlay's distance</td></tr>
+        </tbody>
+      </table>
+
+      <p>At Tuggers the outcome is also <em>optimal</em>: Tuggers is the ASBR and genuinely reaches Fisheries directly across the tunnel. Preferring an iBGP path that sends traffic to Gunners and back would be the actual fault.</p>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Administrative distance filters before metrics matter. "Best in BGP but installed from OSPF" is normal behaviour, and escalating it is the mistake being tested.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-install" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-install','AD &amp; Install')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-install" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-install')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 5 — TIMING ═══════════ -->
+    <div class="section-block" id="section-timing">
+      <div class="section-label">SECTION 05 · NEEDS REINFORCEMENT</div>
+      <h2>A Hold Timer Is Not <em>a Withdraw</em></h2>
+
+      <div class="callout callout-amber"><strong>Needs Reinforcement.</strong> This was answered with the right number attached to the wrong event during the session. A recalled default that is bound to the wrong trigger produces a confident answer wrong by nearly three minutes.</div>
+
+      <p><strong>The scenario.</strong> The Tuggers–Fisheries tunnel fails. Brisbane has a path via Gunners. What removes Brisbane's Tuggers path, and how long does it take?</p>
+
+      <table class="data-table">
+        <thead><tr><th></th><th>Withdraw</th><th>Hold timer expiry</th></tr></thead>
+        <tbody>
+          <tr><td>Triggered by</td><td>A <strong>route</strong> ceasing to exist</td><td>A <strong>peer</strong> ceasing to respond</td></tr>
+          <tr><td>Session state</td><td>Session stays Established throughout</td><td>Session tears down</td></tr>
+          <tr><td>Duration</td><td>Seconds — propagation only</td><td>180 s (3 × 60 s keepalive)</td></tr>
+          <tr><td>This scenario</td><td>✔ The tunnel died, not the peer</td><td>✘ Tuggers never stopped sending keepalives</td></tr>
+          <tr><td>When it <em>does</em> apply</td><td>Any prefix loss upstream of the peer</td><td>Brisbane–Tuggers overlay drops with the interface still up</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>The actual sequence:</strong></p>
+      <ol>
+        <li>Tunnel interface goes down → OSPF removes the Fisheries routes <strong>immediately</strong> (interface-down is a topology event, not a timer).</li>
+        <li>Redistribution has nothing left to redistribute → Tuggers withdraws the prefix.</li>
+        <li>Tuggers sends a BGP UPDATE carrying a <strong>withdrawn route</strong> to all iBGP peers.</li>
+        <li>Brisbane deletes the path, is left with Gunners, installs it.</li>
+      </ol>
+
+      <div class="callout callout-green"><strong>Why this argues for BFD (EP-18).</strong> The 180-second case is the one where the overlay itself drops while the tunnel interface stays up. That is exactly the failure BFD collapses to sub-second — and it is why BFD gets subscribed to by OSPF, BGP and static routes alike. BFD detects <em>dead</em>, never <em>degraded</em>.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">A hold timer expires when a peer stops talking. A withdraw arrives when a route stops existing. Trace what actually failed before reaching for a timer.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-timing" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-timing','Failure Timing')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-timing" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-timing')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 6 — ELIGIBILITY ═══════════ -->
+    <div class="section-block" id="section-eligibility">
+      <div class="section-label">SECTION 06 · CROSS-LAYER</div>
+      <h2>Routing Fills the Room; <em>SD-WAN Picks From It</em></h2>
+
+      <p>With <code>next-hop-self</code> in place, Brisbane holds two paths to the Fisheries range with identical local preference and identical AS paths. That equality is <strong>deliberate</strong> — it is what gives the SD-WAN rule a decision to make.</p>
+
+      <table class="data-table">
+        <thead><tr><th>Requirement</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><code>set ibgp-multipath enable</code></td><td>Without it, only one next hop is installed regardless of equality</td></tr>
+          <tr><td>Equal local preference</td><td>Highest local-pref wins outright — one candidate, no decision</td></tr>
+          <tr><td>Equal AS path length</td><td>Next tiebreaker in the best-path order</td></tr>
+          <tr><td>Equal origin and MED</td><td>Lower tiebreakers, still decisive if they differ</td></tr>
+          <tr><td>Both members in the SD-WAN zone with health checks</td><td>SLA is the only thing that can judge <em>quality</em></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-amber"><strong>The tension to be able to state on demand.</strong> Local preference is how you express a routing preference — and it is exactly what destroys SD-WAN eligibility. Set localpref 200 at Tuggers and BGP decides permanently with no SLA awareness. Leave them equal and the SD-WAN rule decides continuously. <strong>You cannot have both for the same prefix.</strong> Structurally identical to EP-14's E1-versus-E2 problem.</div>
+
+      <div class="callout"><strong>Same model, third protocol.</strong> SD-WAN members (EP-01), OSPF equal-cost externals (EP-14), iBGP multipath (EP-15). Routing decides who is <em>in the room</em>. The rule decides who gets <em>picked</em>. ECMP is the prerequisite for eligibility, never an alternative to SD-WAN.</div>
+
+      <div class="callout callout-green"><strong>Retrieved cold this episode:</strong> <code>set rfc1583-compatible enable</code> under <code>config router ospf</code>. FortiGate does <em>not</em> load balance external OSPF routes by default; this setting makes external selection cost-only and is what permits external ECMP. E2 externals carrying the unchanged seed metric is what makes the two hub paths equal in the first place — necessary, but not sufficient without this toggle.</div>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">If one path wins in the routing protocol, the SD-WAN rule has nothing to choose between — and that failure looks like success until the chosen path degrades.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-eligibility" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-eligibility','Eligibility')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-eligibility" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-eligibility')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SECTION 7 — TRAPS ═══════════ -->
+    <div class="section-block" id="section-traps">
+      <div class="section-label">SECTION 07 · REVISION</div>
+      <h2>Traps, Workflow and <em>the Estate After EP-15</em></h2>
+
+      <p><strong>Troubleshooting workflow — a prefix is missing.</strong></p>
+      <ol>
+        <li>Confirm the peer is Established. If not, this is a session problem, not a route problem.</li>
+        <li>Is it in the BGP table at all? <code>get router info bgp network &lt;prefix&gt;</code>.</li>
+        <li>Absent → go upstream. Ask the sender: <code>advertised-routes</code>. Then check inbound policy on this neighbour specifically.</li>
+        <li>Present but <code>no best path</code> → read the next hop. <code>(inaccessible)</code> means recursive resolution failed.</li>
+        <li>Present and marked <code>&gt;</code> but not in the RIB → another protocol holds a lower AD. Confirm that is intended.</li>
+        <li>In the RIB but traffic unchanged → existing sessions. Check the session table.</li>
+      </ol>
+
+      <table class="data-table">
+        <thead><tr><th>Exam trap</th><th>The distinction</th></tr></thead>
+        <tbody>
+          <tr><td><code>received-routes</code> returns nothing</td><td>Missing <code>soft-reconfiguration</code>, not a missing advertisement</td></tr>
+          <tr><td><code>valid</code> in BGP output</td><td>Policy acceptability. Says nothing about reachability. Appears alongside <code>(inaccessible)</code></td></tr>
+          <tr><td>Path with unreachable next hop</td><td>Disqualified <em>before</em> best-path runs — attributes never compared</td></tr>
+          <tr><td>Redistributed route's next hop</td><td>Carries the IGP next hop; iBGP preserves NEXT_HOP in transit. Fix with <code>next-hop-self</code></td></tr>
+          <tr><td>Origin incomplete</td><td>Redistribution. Low-priority tiebreaker, high-value forensics</td></tr>
+          <tr><td>Best in BGP, installed from OSPF</td><td>Correct behaviour. AD only; loser's metric never consulted</td></tr>
+          <tr><td>Route disappears upstream</td><td>Withdraw in seconds — <strong>not</strong> the 180 s hold timer</td></tr>
+          <tr><td>eBGP 20 vs OSPF 110</td><td>eBGP wins on AD despite OSPF looking "more internal"</td></tr>
+          <tr><td>Two equal iBGP paths not both installed</td><td><code>ibgp-multipath</code> not enabled</td></tr>
+          <tr><td>Two equal external OSPF routes not both installed</td><td><code>rfc1583-compatible</code> not enabled — off by default</td></tr>
+          <tr><td>Config Status vs Policy Package Status</td><td>Config Status = device DB vs running config. No install while Out-of-Sync</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Common mistakes corrected this episode:</strong> assuming a filter applies estate-wide when inbound policy is per-neighbour; assuming <code>valid</code> means usable; reaching for the most familiar timer instead of tracing what actually failed.</p>
+
+      <p><strong>Topology changes approved.</strong></p>
+      <ul>
+        <li>Brisbane <strong>unblocked</strong> — <code>mpls_gateway</code> mapping supplied, Out-of-Sync reconciled by Retrieve, orphaned MPLS member removed, four overlays live, iBGP to both hubs.</li>
+        <li><code>next-hop-self</code> enabled on both hubs' iBGP neighbours, estate-wide.</li>
+        <li>Brisbane carries two equal-cost paths to the Fisheries range — SD-WAN, not BGP, judges them.</li>
+        <li>Unchanged: dual hub, four overlays, loopback-sourced iBGP in one private AS, Fisheries OSPF area 0 at both hubs with per-hub tags 10/20, ADVPN still deliberately disabled.</li>
+        <li>Still outstanding: the Fisheries prefix-list remains unwritten and unsigned.</li>
+      </ul>
+
+      <div class="callout"><strong>Raised and parked.</strong> Return traffic follows the <em>session table</em> — reply packets do not perform a fresh route lookup and do not consult SD-WAN rules, so symmetry is automatic for an existing flow. The exposure is a <em>new</em> session initiated from the far end, which is an independent decision. Season 4 (EP-21, EP-22) is built on this.</div>
+
+      <p><strong>Key takeaways.</strong></p>
+      <ul>
+        <li>Received → accepted → selected → installed. Four gates, four commands, no guessing.</li>
+        <li>BGP resolves a next hop; it does not forward to one.</li>
+        <li>Redistribution imports the IGP next hop. iBGP does not clean it up for you.</li>
+        <li>AD filters before metrics matter.</li>
+        <li>Withdraws are fast; hold timers are slow; they answer different questions.</li>
+        <li>Equal paths are the price of letting SD-WAN decide — and local preference is the thing that takes them away.</li>
+        <li>Fix a fault at the layer that authored it.</li>
+      </ul>
+
+      <div class="mental-note-block">
+        <div class="mental-note-block-icon">🧠</div>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">MENTAL NOTE</div>
+          <div class="mental-note-block-text">Next up: Tuggers preferred for compliance, Gunners for backup replication — and every tool that expresses that preference destroys the equal-cost tie just built. EP-16 is a build session. Type the policy.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-tools">
+      <div class="lesson-tools-grid">
+        <div>
+          <div class="tool-label">ASK A QUESTION</div>
+          <textarea class="tool-textarea" id="q-section-traps" placeholder="What are you unsure about in this section?" rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addQuestion('section-traps','Traps &amp; Topology')">Add Question</button></div>
+        </div>
+        <div>
+          <div class="tool-label">ADD A NOTE</div>
+          <textarea class="tool-textarea" id="note-section-traps" placeholder="Write a note about this section..." rows="3"></textarea>
+          <div class="tool-row"><button class="btn-add-q" onclick="addNote('section-traps')">+ Add Note</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</main>
+
+<div class="page-nav">
+  <a class="page-nav-btn page-nav-prev" href="cheatsheet-episode-14-ospf-over-ipsec.html">
+    <span class="page-nav-label">← PREVIOUS EPISODE</span>
+    <span class="page-nav-title">EP-14 · OSPF Over IPsec</span>
+  </a>
+  <a class="page-nav-btn page-nav-next" href="cheatsheet-episode-16-bgp-policy-tools.html">
+    <span class="page-nav-label">NEXT →</span>
+    <span class="page-nav-title">EP-16 · BGP Policy Tools</span>
+  </a>
+</div>
+
+<footer>
+  Department of Fish<span>.</span> <span>NSE 7 Secure Networking Architect</span><span>.</span> Season 3 · Episode 15 · BGP Belief
+</footer>
+
+
+<script>
+// Unique across all pages. Format: nse7-sessionNN-<slug>  or  nse7-extrasNN-<slug>
+const PAGE_KEY = 'nse7-sna-ep15-bgp-belief';
+
+// One entry per section-block (id without the '#').
+const SECTIONS = {
+  'section-story': 'Story',
+  'section-stages': 'Four Stages',
+  'section-nexthop': 'Next Hop',
+  'section-install': 'AD & Install',
+  'section-timing': 'Failure Timing',
+  'section-eligibility': 'Eligibility',
+  'section-traps': 'Traps & Topology',
+};
+
+/* ── Everything below is fixed — do not modify ── */
+document.querySelectorAll('.socratic-header').forEach(function(h) {
+  h.addEventListener('click', function() { h.closest('.socratic-block').classList.toggle('soc-open'); });
+});
+function getQArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-qs') || '[]'); }
+function saveQArr(qs) { localStorage.setItem(PAGE_KEY+'-qs', JSON.stringify(qs)); }
+function addQuestion(key, name) {
+  const ta = document.getElementById('q-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const qs = getQArr(); qs.push({id: Date.now(), section: key, sectionName: name, text});
+  saveQArr(qs); ta.value = ''; renderQPanel();
+  if (!document.getElementById('qpanel-body').classList.contains('open')) toggleQPanel();
+}
+function deleteQ(id) { saveQArr(getQArr().filter(q => q.id !== id)); renderQPanel(); }
+function toggleQPanel() {
+  const body = document.getElementById('qpanel-body');
+  const header = document.getElementById('qpanel-header');
+  const chevron = document.getElementById('qpanel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-qpanel-open', open);
+}
+function renderQPanel() {
+  const qs = getQArr();
+  const count = document.getElementById('qpanel-count');
+  if (count) { count.textContent = qs.length; count.style.display = qs.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.qpanel-hint');
+  if (hint) hint.textContent = qs.length ? `— ${qs.length} question${qs.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('qpanel-body'); if (!body) return;
+  if (!qs.length) { body.innerHTML = '<p class="no-questions">No questions yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  qs.forEach(q => { if (groups[q.section]) groups[q.section].push(q); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(q => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${q.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteQ(${q.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function getNotesArr() { return JSON.parse(localStorage.getItem(PAGE_KEY+'-notes') || '[]'); }
+function saveNotesArr(ns) { localStorage.setItem(PAGE_KEY+'-notes', JSON.stringify(ns)); }
+function addNote(key) {
+  const ta = document.getElementById('note-'+key);
+  const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+  const ns = getNotesArr(); ns.push({id: Date.now(), section: key, sectionName: SECTIONS[key]||key, text});
+  saveNotesArr(ns); ta.value = ''; renderNotesPanel();
+  if (!document.getElementById('notes-panel-body').classList.contains('open')) toggleNotesPanel();
+}
+function deleteNote(id) { saveNotesArr(getNotesArr().filter(n => n.id !== id)); renderNotesPanel(); }
+function toggleNotesPanel() {
+  const body = document.getElementById('notes-panel-body');
+  const header = document.getElementById('notes-panel-header');
+  const chevron = document.getElementById('notes-panel-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open); chevron.textContent = open ? '▴' : '▾';
+  localStorage.setItem(PAGE_KEY+'-notes-panel-open', open);
+}
+function renderNotesPanel() {
+  const ns = getNotesArr();
+  const count = document.getElementById('notes-panel-count');
+  if (count) { count.textContent = ns.length; count.style.display = ns.length ? 'inline' : 'none'; }
+  const hint = document.querySelector('.notes-panel-hint');
+  if (hint) hint.textContent = ns.length ? `— ${ns.length} note${ns.length>1?'s':''}, click to expand` : '— click to expand';
+  const body = document.getElementById('notes-panel-body'); if (!body) return;
+  if (!ns.length) { body.innerHTML = '<p class="no-questions">No notes yet. Add one below each section.</p>'; return; }
+  const groups = Object.fromEntries(Object.keys(SECTIONS).map(k => [k, []]));
+  ns.forEach(n => { if (groups[n.section]) groups[n.section].push(n); });
+  let html = ''; let num = 0;
+  Object.entries(groups).forEach(([key, items]) => {
+    if (!items.length) return;
+    html += `<div class="q-group"><div class="q-group-label">${SECTIONS[key]||key}</div>`;
+    items.forEach(n => { num++; html += `<div class="q-item"><div class="q-num">${num}</div><div class="q-text">${n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div><button class="q-del" onclick="deleteNote(${n.id})" title="Remove">✕</button></div>`; });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function saveSocAnswer(btn) {
+  const area = btn.closest('.answer-area');
+  const ta = area.querySelector('.answer-textarea');
+  if (!ta.value.trim()) { ta.focus(); return; }
+  const key = PAGE_KEY+'-socans-'+area.dataset.section;
+  try { localStorage.setItem(key, ta.value); } catch(e) {}
+  ta.disabled = true; btn.textContent = '✓ Answer saved'; btn.disabled = true;
+  const seeBtn = area.querySelector('.btn-see-answer');
+  seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+}
+function revealSocAnswer(btn) {
+  if (btn.disabled) return;
+  const answers = btn.closest('.answer-area').querySelector('.model-answers');
+  const isHidden = answers.style.display === 'none' || !answers.style.display;
+  answers.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '▲ Hide Model Answer' : '💡 See Model Answer';
+}
+function togglePrompt(btn) {
+  const c = btn.nextElementSibling;
+  const isHidden = c.hasAttribute('hidden');
+  if (isHidden) { c.removeAttribute('hidden'); btn.textContent = '▴ Hide prompt'; }
+  else { c.setAttribute('hidden', ''); btn.textContent = '▾ Show image prompt'; }
+}
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  renderQPanel(); renderNotesPanel();
+  if (localStorage.getItem(PAGE_KEY+'-qpanel-open') === 'true') toggleQPanel();
+  if (localStorage.getItem(PAGE_KEY+'-notes-panel-open') === 'true') toggleNotesPanel();
+  document.querySelectorAll('.answer-area').forEach(function(area) {
+    const key = PAGE_KEY+'-socans-'+area.dataset.section;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const ta = area.querySelector('.answer-textarea'); ta.value = saved; ta.disabled = true;
+        const addBtn = area.querySelector('.btn-add-answer'); addBtn.textContent = '✓ Answer saved'; addBtn.disabled = true;
+        const seeBtn = area.querySelector('.btn-see-answer'); seeBtn.disabled = false; seeBtn.textContent = '💡 See Model Answer';
+      }
+    } catch(e) {}
+  });
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+  document.querySelectorAll('.analogy-img img').forEach(function(img) {
+    if (img.dataset.zoomInit) return;
+    img.dataset.zoomInit = '1';
+    img.addEventListener('click', () => img.classList.toggle('zoomed'));
+  });
+  document.querySelectorAll('.section-img').forEach(function(img) {
+    img.addEventListener('click', () => img.classList.toggle('si-expanded'));
+  });
+});
+</script>
+</body>
+</html>
