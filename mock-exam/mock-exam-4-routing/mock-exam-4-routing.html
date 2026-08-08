@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE 7 — Secure Networking 7.6 | Mock Exam 4: Routing</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#b0322c; --red-light:#fbe4e2; --red-border:#eab0ab;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+code,pre{font-family:'JetBrains Mono',monospace;}
+
+header{padding:34px 48px 26px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+header h1{font-family:'Cormorant Garamond',serif;font-size:34px;color:#f5f0e0;font-weight:600;line-height:1.15;}
+header .sub{color:var(--ink-accent);font-size:13px;margin-top:6px;letter-spacing:0.04em;}
+
+.exam-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:2px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+.exam-bar .timer{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;}
+.exam-bar .timer.low{color:var(--red);background:var(--red-light);border-color:var(--red-border);animation:blink 1.2s infinite;}
+.exam-bar .progress-wrap{flex:1;min-width:180px;}
+.progress-track{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:var(--blue-vivid);border-radius:6px;transition:width .3s;}
+.exam-bar .meta{font-size:12px;color:var(--text-muted);letter-spacing:0.05em;}
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;padding:9px 20px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-light);color:var(--blue-deep);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--blue-vivid);color:#fff;}
+.btn.primary{background:var(--blue-vivid);color:#fff;border-color:var(--blue-deep);}
+.btn.primary:hover{background:var(--blue-deep);}
+.btn.ghost{background:transparent;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.layout{display:grid;grid-template-columns:1fr 220px;gap:28px;max-width:1180px;margin:0 auto;padding:32px 48px 90px;}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:24px 18px 90px;}.nav-panel{position:static !important;}}
+
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:22px;box-shadow:0 1px 3px rgba(13,26,58,0.05);}
+.q-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
+.q-num{font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;}
+.q-domain{font-size:10px;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;background:var(--border-dim);padding:3px 10px;border-radius:12px;}
+.flag-btn{font-size:11px;border:1px solid var(--border);background:none;border-radius:12px;padding:3px 12px;cursor:pointer;color:var(--text-muted);}
+.flag-btn.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);font-weight:600;}
+.q-text{font-size:16px;line-height:1.55;color:var(--text);margin-bottom:6px;font-weight:500;}
+.q-instr{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-bottom:14px;}
+.exhibit{background:var(--ink-dark);color:#dbe6f7;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.6;overflow-x:auto;margin:12px 0 16px;white-space:pre;}
+.exhibit .lbl{display:block;color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border-dim);border-radius:10px;padding:12px 16px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt:hover{border-color:var(--blue-border);background:var(--blue-light);}
+.opt input{margin-top:3px;accent-color:var(--blue-vivid);width:16px;height:16px;flex-shrink:0;}
+.opt .letter{font-weight:700;color:var(--blue-deep);font-size:13px;min-width:18px;margin-top:1px;}
+.opt .txt{font-size:14.5px;line-height:1.5;color:var(--text-soft);}
+.opt.selected{border-color:var(--blue-vivid);background:var(--blue-light);}
+.opt.correct-opt{border-color:var(--green-border);background:var(--green-light);}
+.opt.wrong-opt{border-color:var(--red-border);background:var(--red-light);}
+.opt.missed-opt{border-color:var(--green-border);background:#fff;outline:2px dashed var(--green-border);}
+
+.nav-panel{position:sticky;top:78px;align-self:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.nav-panel h3{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.nav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.nav-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--border-dim);border-radius:7px;cursor:pointer;background:#fff;color:var(--text-muted);}
+.nav-cell.answered{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue-deep);}
+.nav-cell.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+.nav-cell.rev-correct{background:var(--green-light);border-color:var(--green-border);color:var(--green);}
+.nav-cell.rev-wrong{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.legend{margin-top:14px;font-size:10.5px;color:var(--text-muted);line-height:1.9;}
+.legend span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border-dim);}
+
+/* results */
+#results{display:none;max-width:1180px;margin:0 auto;padding:36px 48px 40px;}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.score-head{padding:28px 34px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;border-bottom:1px solid var(--border-dim);}
+.verdict{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+.verdict.pass{color:var(--green);} .verdict.fail{color:var(--red);}
+.score-detail{font-size:13px;color:var(--text-muted);line-height:1.7;}
+.score-detail b{color:var(--text);}
+.big-pct{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;color:var(--blue-deep);margin-left:auto;}
+.section-perf{padding:24px 34px 30px;}
+.section-perf h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;}
+.section-perf .note{font-size:12px;color:var(--text-muted);margin-bottom:18px;}
+.perf-row{display:grid;grid-template-columns:250px 1fr 110px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border-dim);}
+.perf-row .name{font-size:13.5px;font-weight:500;color:var(--text-soft);}
+.perf-bar{height:14px;background:var(--border-dim);border-radius:8px;overflow:hidden;position:relative;}
+.perf-fill{height:100%;border-radius:8px;transition:width .8s ease;}
+.perf-score{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted);text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:16px;line-height:1.6;}
+.explain{margin-top:14px;border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;line-height:1.65;color:var(--text-soft);}
+.explain .verdict-line{font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+.explain.ok .verdict-line{color:var(--green);} .explain.bad .verdict-line{color:var(--red);}
+.explain code{background:rgba(13,26,58,0.08);padding:1px 6px;border-radius:4px;font-size:12px;}
+footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted);letter-spacing:0.05em;}
+
+/* intro modal */
+#intro{max-width:760px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 42px;box-shadow:0 3px 12px rgba(13,26,58,0.08);}
+#intro h2{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;}
+#intro p,#intro li{font-size:14.5px;line-height:1.7;color:var(--text-soft);}
+#intro ul{margin:12px 0 20px 20px;}
+.rule-table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;}
+.rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
+.rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
+#examArea,#barWrap{display:none;}
+
+/* socratic session */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> Department of Fish Certification Lab</div>
+  <h1>NSE 7 — Secure Networking Architect 7.6</h1>
+  <div class="sub">Mock Exam 4 &nbsp;·&nbsp; Routing &nbsp;·&nbsp; 36 questions &nbsp;·&nbsp; 70 minutes</div>
+</header>
+
+<div id="intro">
+  <h2>Before you begin</h2>
+  <p>This mock exam is a single-domain drill concentrating entirely on <b>Routing</b>: route selection and the FIB, ECMP behaviour, OSPF adjacencies, areas and LSAs, BGP peering, attributes and filtering, policy routing, reverse path forwarding, and redistribution with convergence tuning. Scenario-based questions, CLI exhibits, and multiple-select items. Answers are withheld until you submit the entire exam, exactly like the real thing.</p>
+  <table class="rule-table">
+    <tr><td>Questions</td><td>36 multiple-choice (some require two selections — read the instruction line)</td></tr>
+    <tr><td>Time allowed</td><td>70 minutes with a live countdown; the exam auto-submits at 0:00</td></tr>
+    <tr><td>Scoring</td><td>Pass / fail with per-section performance, in the style of the official Fortinet score report</td></tr>
+    <tr><td>Marking</td><td>Multi-select questions are scored all-or-nothing — both correct options must be chosen</td></tr>
+    <tr><td>Navigation</td><td>Flag questions for review and jump around using the question grid</td></tr>
+  </table>
+  <p><b>Focus:</b> all 36 questions target the Routing domain of the FCSS Enterprise Firewall 7.6 curriculum. The 36-question / 70-minute format mirrors the pacing of the real FCSS exam, answer-key positions are fully randomised, and option lengths are deliberately balanced so the longest answer is no clue.</p>
+  <button class="btn primary" style="font-size:15px;padding:12px 30px;" onclick="startExam()">Begin Exam →</button>
+</div>
+
+<div class="exam-bar" id="barWrap">
+  <div class="timer" id="timer">70:00</div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+  </div>
+  <div class="meta" id="progMeta">0 / 36 answered</div>
+  <button class="btn primary" onclick="confirmSubmit()">Submit Exam</button>
+</div>
+
+<div class="layout" id="examArea">
+  <div id="questions"></div>
+  <div class="nav-panel">
+    <h3>Questions</h3>
+    <div class="nav-grid" id="navGrid"></div>
+    <div class="legend" id="legendBox">
+      <div><span style="background:var(--blue-light);border-color:var(--blue-border)"></span>Answered</div>
+      <div><span style="background:var(--amber-light);border-color:var(--amber-border)"></span>Flagged</div>
+      <div><span style="background:#fff"></span>Unanswered</div>
+    </div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<footer>Department of Fish Study Programme · Mock Exam 4 · Based on the NSE 7 Secure Networking 7.6 curriculum (FortiOS 7.6, FortiManager 7.6) · Not an official Fortinet product</footer>
+
+<script>
+
+const DOMAINS = {
+  RT:"Route Selection, FIB & ECMP", OS:"OSPF", BG:"BGP", PR:"Policy Routing & RPF", RD:"Redistribution & Convergence"
+};
+
+const Q = [
+{d:"RT",type:"single",
+q:"A FortiGate holds a static default route, an OSPF route to 10.20.0.0/16, and a BGP route to 10.20.5.0/24. A packet arrives for 10.20.5.10. Which route forwards it, and why?",
+o:["The static route — default routes are consulted first and the lookup stops on the first hit", "The BGP route — longest prefix match is evaluated before any comparison of route sources", "The OSPF route — its administrative distance of 110 is compared only against the static route", "The OSPF route — dynamic routes are always preferred over BGP for internal address space"],
+a:[1],
+ex:"Prefix length is the first and decisive test in the forwarding lookup: /24 beats /16 beats /0 regardless of protocol or distance. Distance and metric only break ties between candidate routes for the same prefix."},
+
+{d:"RT",type:"single",
+q:"Two static routes to the same destination prefix are configured with distance 10, but one has priority 5 and the other priority 10. How does the FortiGate treat them?",
+o:["Both remain in the routing table, and the lower-priority-value route is preferred for forwarding", "Only the priority-5 route is installed, and the other appears solely in the routing database", "The higher-priority-value route is preferred, since larger priority indicates preference", "Traffic is balanced across both routes because equal distance always activates ECMP"],
+a:[0],
+ex:"Equal-distance static routes all stay active in the routing table; priority then acts as the forwarding tiebreaker, with the lower value winning. ECMP occurs only when distance and priority are both equal — priority is exactly the knob that prevents it."},
+
+{d:"RT",type:"single",
+q:"Which set of default administrative distances is correct on FortiOS?",
+o:["Static 10, eBGP 20, OSPF 110, iBGP 200", "Static 10, eBGP 200, OSPF 110, iBGP 20", "Static 1, eBGP 20, OSPF 110, iBGP 200", "Static 10, eBGP 20, OSPF 90, iBGP 170"],
+a:[0],
+ex:"FortiOS defaults: connected 0, static 10, eBGP 20, OSPF 110, RIP 120, iBGP 200. The eBGP/iBGP asymmetry is deliberate — externally learned BGP routes are trusted more than the same routes reflected internally."},
+
+{d:"RT",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit \u2014 get router info routing-table database (extract)</span>S   *> 0.0.0.0/0 [10/0] via 203.0.113.1, port1\nS      0.0.0.0/0 [20/0] via 198.51.100.1, port2</div>What does this output show about the two default routes?",
+o:["Both are active, with traffic shared between them using the configured ECMP algorithm", "Both are known to the router, but only the distance-10 route is active for forwarding", "The asterisk marks the route currently carrying more sessions in the session table", "The distance-20 route is a floating backup that has been withdrawn from the database"],
+a:[1],
+ex:"The routing database lists every known route; *> marks the selected, active entry, and the higher-distance twin waits as a floating static. It stays out of the routing table until the primary is removed — the standard passive-backup pattern."},
+
+{d:"RT",type:"multi",
+q:"Which two conditions must be true for two routes to load-balance traffic with ECMP? (Choose two.)",
+o:["They must be learned from the same interface", "They must point to the same destination prefix", "They must belong to the same routing protocol", "They must have equal distance (and, for static routes, equal priority)"],
+a:[1, 3],
+ex:"ECMP forms among equal-cost candidates for the same prefix: same prefix, same distance, and for statics the same priority. Different egress interfaces are the whole point, and mixing protocols is prevented naturally by distance rather than by a protocol rule."},
+
+{d:"RT",type:"single",
+q:"Which ECMP load-balancing algorithm does FortiOS use by default for IPv4?",
+o:["Usage-based spillover thresholds", "Source and destination IP hashing", "Weighted distribution by interface", "Source IP hashing"],
+a:[3],
+ex:"The default is source-ip-based selection, keeping each internal host pinned to one path. The other algorithms — source-dest, weighted, and usage/spillover — are configuration choices under router settings when different distribution behaviour is required."},
+
+{d:"RT",type:"single",
+q:"Why is a blackhole static route often configured for private address space on an internet edge FortiGate?",
+o:["It reserves the space in the FIB so dynamic protocols cannot claim it accidentally", "Traffic for unused private destinations is dropped instead of following the default route out", "It forces reverse-path-forwarding failures for spoofed private sources arriving on the WAN interface", "It advertises the private space upstream so the ISP can filter it at their own edge"],
+a:[1],
+ex:"Without the blackhole, packets to unreachable private prefixes match the default route and leak toward the internet. A blackhole route gives them a more specific, terminating match — quiet hygiene that also stabilises routing for overlay designs."},
+
+{d:"RT",type:"single",
+q:"An administrator deletes a static route while long-lived sessions are using it. What happens to those sessions' traffic?",
+o:["Traffic pauses until the sessions are manually cleared from the session table by CLI", "Existing sessions continue forwarding on the old path from cached route data until they naturally expire", "All sessions on the device are flushed, forcing every flow to re-establish immediately", "The routing change is detected, and affected sessions are re-evaluated against the new routing table"],
+a:[3],
+ex:"FortiOS flags routing changes so established sessions have their route information refreshed rather than blindly trusting stale cached next-hops. Only the affected flows re-route; the wholesale flush and the stale-forever behaviours are both wrong models."},
+
+{d:"OS",type:"multi",
+q:"Which two mismatches prevent an OSPF adjacency from forming between two neighbors on a broadcast segment? (Choose two.)",
+o:["Different area types, such as one side configured as stub", "Different hello and dead timer values", "Different interface priority values", "Different router ID numbering schemes"],
+a:[0, 1],
+ex:"Hello parameters — timers, area ID, area flags (stub/NSSA), authentication, and subnet — must agree or the hello is rejected. Priorities are allowed to differ (they drive the DR election), and router IDs must differ by definition."},
+
+{d:"OS",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit \u2014 get router info ospf neighbor</span>Neighbor ID     Pri   State           Address         Interface\n10.0.0.2        1     ExStart/DR      172.16.1.2      port3</div>The adjacency has been stuck in this state for several minutes. What is the most likely cause?",
+o:["An MTU mismatch between the two interfaces is blocking database description exchange", "An authentication key mismatch is causing database description packets to be ignored", "The neighbor's hello timer differs, so the relationship cannot progress past ExStart", "The local interface priority is zero, which prevents completion of the DR election"],
+a:[0],
+ex:"ExStart/Exchange is where DBD packets flow, and a stuck ExStart is the classic MTU-mismatch signature — large DBDs from one side never fit the other's interface. Timer and authentication mismatches fail earlier, before any neighbor state is built this far."},
+
+{d:"OS",type:"single",
+q:"On a broadcast network, the current DR fails and the BDR takes over. When the original router later returns to service with the highest priority on the segment, what happens?",
+o:["It joins as a DROther, because the DR role is not preempted by a returning router", "It triggers a full re-election in which every neighbor adjacency is rebuilt", "It becomes the BDR, and is promoted to DR at the next scheduled re-election", "It immediately reclaims the DR role, because election strictly follows priority"],
+a:[0],
+ex:"DR election is deliberately non-preemptive: the segment keeps its serving DR/BDR to avoid churn, and the returning router simply waits its turn as DROther. Priority only decides elections that are actually held — a recurring exam trap."},
+
+{d:"OS",type:"single",
+q:"What does setting an OSPF interface priority of 0 accomplish?",
+o:["The router is excluded from DR and BDR election on that segment", "The router wins the DR election, since lower values are preferred", "The interface stops sending hellos while continuing to listen", "The interface advertises its subnet at the minimum possible cost"],
+a:[0],
+ex:"Priority 0 declares the router ineligible for DR/BDR — used for devices that should never own the segment's LSA generation. Higher priority wins OSPF elections (unlike some other protocols), and hellos continue regardless."},
+
+{d:"OS",type:"single",
+q:"On a multi-access segment with a DR and BDR, which neighbor state is normal between two DROther routers?",
+o:["Full — every OSPF neighbor pair must reach full database synchronisation", "Init — they defer all communication until one of them becomes the BDR", "Exchange — they trade summaries continuously but never complete loading", "2-Way — they see each other but do not exchange databases directly"],
+a:[3],
+ex:"DROthers synchronise only with the DR and BDR; between themselves they settle at 2-Way, which is healthy and expected. Reading 2-Way as a fault on a broadcast segment is a common troubleshooting mistake."},
+
+{d:"OS",type:"single",
+q:"Which LSA type does an ABR generate to describe one area's prefixes to another area?",
+o:["Type 7 NSSA external LSA", "Type 1 router LSA", "Type 5 external LSA", "Type 3 summary LSA"],
+a:[3],
+ex:"Type 3 LSAs are the ABR's inter-area advertisements. Type 1 stays within an area, Type 5 carries redistributed external prefixes from an ASBR, and Type 7 is the NSSA-local form of an external before the ABR translates it to Type 5."},
+
+{d:"OS",type:"single",
+q:"What distinguishes an NSSA from a regular stub area?",
+o:["An NSSA floods Type 5 external LSAs internally but stops them at the area boundary so other areas never receive them", "An NSSA blocks inter-area Type 3 summaries in addition to blocking all external LSAs", "An NSSA requires every router in the area to also maintain a link into the backbone", "An NSSA can host an ASBR whose external routes enter as Type 7 and are translated to Type 5 at the ABR"],
+a:[3],
+ex:"Both area types keep foreign Type 5 LSAs out; the NSSA's exception is local redistribution — its own ASBR injects externals as Type 7, which the ABR converts to Type 5 for the rest of the domain. Blocking summaries as well describes a totally-stubby variant, not NSSA."},
+
+{d:"OS",type:"single",
+q:"What is the effect of configuring an OSPF interface as passive?",
+o:["It withdraws the subnet from OSPF while keeping existing neighbors established", "It accepts adjacencies that are initiated by its neighbors but never initiates them itself", "Its subnet is advertised into OSPF, but no hellos are sent and no adjacency forms on it", "It advertises the subnet at double cost to discourage transit traffic through it"],
+a:[2],
+ex:"Passive interfaces solve the LAN-advertisement problem: the prefix appears in the topology without exposing OSPF on a segment where no legitimate neighbor exists. No hellos means no adjacencies in either direction."},
+
+{d:"OS",type:"single",
+q:"Two OSPF routers in the same area hold identical link-state databases but compute different next hops for the same destination. Why is this expected?",
+o:["LSA sequence numbers advance independently on each router, so their calculations use different data", "Their router IDs seed the SPF tiebreaker differently, producing divergent route tables", "One router must be an ABR, which prefers inter-area paths over intra-area paths", "Each router runs SPF from its own position in the topology, so best paths differ per router"],
+a:[3],
+ex:"A synchronised database is the shared map; SPF is each router's own shortest-path computation rooted at itself. Different vantage points legitimately yield different next hops — identical databases never imply identical routing tables."},
+
+{d:"OS",type:"single",
+q:"How is the default route typically provided to routers inside a stub area?",
+o:["The ASBR redistributes its default route into the area as a Type 5 external LSA", "A virtual link carries the backbone's default route across the stub area boundary", "The ABR injects a default route into the area automatically as part of stub operation", "Each internal router must be configured with a static default toward the nearest ABR"],
+a:[2],
+ex:"Stub areas trade external detail for a default: the ABR withholds Type 5 LSAs and advertises a default (as a Type 3) in their place. External Type 5s are precisely what a stub area refuses, and no static configuration is required internally."},
+
+{d:"BG",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit \u2014 get router info bgp summary (extract)</span>Neighbor        V   AS      MsgRcvd  MsgSent  Up/Down   State/PfxRcd\n203.0.113.9     4   65020   0        14       never     Active</div>What does the Active state indicate for this peer?",
+o:["The peer accepted the session but is holding prefix exchange until its timer expires", "The session is established and the peer is actively advertising prefixes to the FortiGate", "The session is administratively enabled and waiting for its first keepalive message", "The FortiGate is attempting the TCP connection, but no BGP session has been established"],
+a:[3],
+ex:"Despite the reassuring name, Active means the finite-state machine is still trying to open the TCP session — reachability, port 179 filtering, or a wrong peer address are the usual suspects. An established session shows a prefix count in that column, not a state name."},
+
+{d:"BG",type:"single",
+q:"Why do iBGP deployments require either a full mesh of peerings or a route reflector?",
+o:["iBGP uses a shorter hold timer, so sparse designs lose sessions under load", "iBGP sessions can only be formed between routers that share a physical segment", "Routes learned from one iBGP peer are not re-advertised to other iBGP peers", "iBGP routes carry no AS-path, so loops cannot be detected across the mesh"],
+a:[2],
+ex:"The iBGP split-horizon rule prevents internal re-advertisement (because AS-path offers no loop protection inside one AS), so every router must hear routes first-hand — or a route reflector must be authorised to relay them. Peerings are TCP-based and need no shared segment."},
+
+{d:"BG",type:"single",
+q:"In the BGP best-path selection process, which attribute is compared first among those listed?",
+o:["AS-path length", "Local preference", "Origin code", "Multi-exit discriminator"],
+a:[1],
+ex:"After weight, local preference is the first tiebreaker: highest wins, and it is the standard tool for steering outbound traffic policy inside an AS. AS-path, origin, and MED follow in that order only when local preference ties."},
+
+{d:"BG",type:"single",
+q:"An administrator wants inbound routes from one eBGP peer to be less preferred than the same routes from another peer, influencing outbound traffic. Which attribute should a route-map set on the less-preferred peer's routes?",
+o:["A higher MED value on the routes", "A lower local preference value", "A lower weight value applied at the far peer", "A longer AS-path using outbound prepending"],
+a:[1],
+ex:"Outbound path choice is governed inside the AS by local preference, applied inbound on the received routes. MED and prepending are levers for influencing the neighbor AS's decisions, and weight is local to a single router and never transmitted."},
+
+{d:"BG",type:"single",
+q:"When is ebgp-multihop required on a FortiGate BGP neighbor?",
+o:["When the eBGP session must transparently survive the reboot of an intermediate router on the path", "When the eBGP peer is not directly connected, so session packets need a TTL above one", "When the eBGP peer uses a different BGP version and needs capability negotiation", "When more than one parallel physical link exists between the two eBGP routers"],
+a:[1],
+ex:"eBGP defaults to TTL 1 on the assumption of direct connection; peering with a loopback or across intermediate hops needs ebgp-multihop to raise the TTL (plus a route to the peer). It has nothing to do with parallel links or version negotiation."},
+
+{d:"BG",type:"single",
+q:"Why is next-hop-self commonly configured on a border router's iBGP sessions?",
+o:["It forces internal traffic to prefer iBGP routes over any equal OSPF alternative", "External routes keep their eBGP next hop, which internal routers may have no route to resolve", "It reduces the size of iBGP update messages by omitting the next-hop attribute from them entirely", "It hides the AS's internal addressing from the routes advertised to eBGP peers"],
+a:[1],
+ex:"By default the eBGP next hop passes unchanged into iBGP, so internal routers must be able to reach a foreign address; next-hop-self substitutes the border router's own address, which the IGP already knows. It changes reachability of the next hop, not preference or privacy."},
+
+{d:"BG",type:"multi",
+q:"Which two statements correctly contrast prefix lists and route maps in BGP filtering? (Choose two.)",
+o:["A route map can both match routes and modify their attributes", "A route map is limited to permit and deny without any match logic", "A prefix list matches routes purely on prefix and mask length criteria", "A prefix list is applied per route map, never directly to a neighbor"],
+a:[0, 2],
+ex:"Prefix lists are pure match tools (prefix plus length ranges); route maps are match-and-set frameworks that can call prefix lists as match conditions and then rewrite attributes. Both can be applied directly to a neighbor in or out."},
+
+{d:"BG",type:"single",
+q:"An administrator changes an inbound route-map on an established BGP session. What is the least disruptive supported way to make the new policy take effect?",
+o:["Clear the session with a hard reset, forcing the peer to tear down and resend its entire table from scratch", "Wait for the holdtime to expire, after which policies are re-applied automatically", "Trigger a soft reset inbound, so routes are re-requested and re-evaluated without dropping the session", "Restart the BGP process so all sessions rebuild with the updated policy applied"],
+a:[2],
+ex:"Route refresh (soft reset in) asks the peer to resend routes and applies the new policy with the session intact. Hard clears and process restarts work but tear down forwarding state unnecessarily, and no timer re-applies policy on its own."},
+
+{d:"BG",type:"single",
+q:"What does attaching the well-known community no-export to a route accomplish?",
+o:["The route is suppressed from the local routing table while remaining in the BGP table", "The route is withdrawn from iBGP peers but still offered to all eBGP neighbors", "Receiving peers keep the route inside their AS and do not advertise it to eBGP neighbors", "The route's next hop is rewritten to null, blackholing matching traffic at each peer"],
+a:[2],
+ex:"no-export is a propagation boundary: use the route, share it internally, but do not pass it to external peers — typical for prefixes meant to stay within a provider relationship. It does not affect local installation or forwarding."},
+
+{d:"BG",type:"single",
+q:"A network statement is configured under BGP for 172.16.50.0/24, but the prefix is not being advertised to any peer. What is the most common reason?",
+o:["The prefix must first be redistributed from connected into BGP manually", "The neighbor sessions were established before the statement was added", "No exactly matching route for 172.16.50.0/24 exists in the routing table", "The prefix falls inside a private range, which BGP refuses to originate"],
+a:[2],
+ex:"The network command originates a prefix only if an exact match (prefix and mask) is present in the routing table — often satisfied with a matching static or blackhole route. Private space is fine to originate, and session age is irrelevant."},
+
+{d:"PR",type:"single",
+q:"How do policy routes interact with the regular routing table on FortiOS?",
+o:["Policy routes rewrite the routing table entries for as long as traffic matches", "Policy routes are consulted only in cases where the routing table contains no usable match", "Policy routes and routing table entries are compared by distance like any routes", "Matching traffic is steered by the policy route before the routing table is consulted"],
+a:[3],
+ex:"Policy routing is a pre-empting lookup: traffic matching a policy route's criteria follows its action (forward via device/gateway, or stop policy routing) before normal destination routing applies. Non-matching traffic falls through to the routing table untouched."},
+
+{d:"PR",type:"single",
+q:"What is the difference between strict and feasible reverse path forwarding on FortiOS?",
+o:["Strict checks every packet in a session, while feasible validates only the initial packet", "Strict requires the best route to the source via the ingress interface; feasible accepts any active route via that interface", "Strict drops packets from asymmetric flows silently and immediately, while feasible logs each of them but still forwards the traffic anyway", "Strict consults the FIB, while feasible consults the BGP table for a source match"],
+a:[1],
+ex:"Both modes ask whether the source is reachable back through the arrival interface: strict demands that interface hold the preferred route, feasible is satisfied by any valid route through it — tolerating deliberate asymmetry. RPF runs on the first packet of a session in either mode."},
+
+{d:"PR",type:"single",
+q:"A branch firewall drops inbound replies on its secondary WAN interface with RPF failures, although a valid backup route to the source exists through that interface. Which change resolves this without disabling source checking?",
+o:["Switch the RPF mode from strict to feasible on the FortiGate", "Enable asymmetric routing globally so session checks are relaxed", "Add a policy route forcing the replies back out the primary interface", "Raise the backup route's priority so both WAN routes join an ECMP group"],
+a:[0],
+ex:"Feasible-path RPF accepts the non-best backup route as proof the source is legitimate via that interface — exactly this scenario. Global asymmetric-routing mode does fix it but by disabling far more stateful protection than necessary."},
+
+{d:"PR",type:"single",
+q:"At which point is the RPF check performed for a new session?",
+o:["On the first packet of the session, during initial ingress processing", "Only when the packet's source address falls outside directly connected subnets", "On every packet, immediately after the destination route lookup completes", "On the first reply packet, once the session becomes fully established"],
+a:[0],
+ex:"RPF is a session-creation gate: the originating packet's source is validated on ingress, and packets of an established session are not re-tested. This is why routing changes mid-session do not retroactively trigger RPF drops."},
+
+{d:"RD",type:"single",
+q:"OSPF external routes can be redistributed as metric type E1 or E2. What is the difference?",
+o:["E1 externals age out with the LSA timer; E2 externals persist until withdrawn", "E1 external routes are flooded into all areas; E2 external routes remain inside the originating area only", "E1 adds the internal path cost to the external metric; E2 keeps the external metric constant", "E1 is used for BGP sources and E2 is reserved for static and connected sources"],
+a:[2],
+ex:"E2 (the default) presents the same metric everywhere, so the nearest ASBR is not automatically preferred; E1 accumulates internal cost, letting topology distance influence the choice between multiple exit points. Source protocol and flooding scope are unrelated."},
+
+{d:"RD",type:"single",
+q:"When routes are redistributed from BGP into OSPF on a FortiGate, which router role does the FortiGate assume and which LSA type does it originate?",
+o:["It becomes a backbone router and originates Type 2 LSAs", "It becomes an ASBR and originates Type 4 summary LSAs", "It becomes an ABR and originates Type 3 summary LSAs", "It becomes an ASBR and originates Type 5 external LSAs"],
+a:[3],
+ex:"Redistribution defines the ASBR, and external prefixes travel as Type 5 LSAs (Type 7 in an NSSA). Type 4 LSAs are generated by ABRs to describe the ASBR's location to other areas — not by the ASBR itself."},
+
+{d:"RD",type:"single",
+q:"Why is BFD paired with OSPF or BGP on links where sub-second failover is required?",
+o:["BFD synchronises route databases in advance so reconvergence needs no recomputation", "BFD compresses protocol keepalives so more frequent hellos fit in the same bandwidth", "BFD detects forwarding-path failure in milliseconds and notifies the protocol, bypassing slow hello and hold timers", "BFD maintains a fully formed standby adjacency in the background that is promoted the moment the primary neighbor relationship fails"],
+a:[2],
+ex:"BFD is a lightweight, rapid liveness test on the forwarding path; when it fails, registered protocols tear down the neighbor immediately instead of waiting out dead or hold timers. It detects — the routing protocol still performs its own reconvergence."},
+
+{d:"RD",type:"single",
+q:"Two-way redistribution is configured between OSPF and BGP at two separate border routers. What design risk must be controlled?",
+o:["The border routers form a broadcast segment that elects an unnecessary DR and BDR", "The redistributed routes lose their next hops and blackhole traffic at each border", "Routes can loop between the protocols, re-entering their source domain with reset metrics", "The two protocols' administrative distances are swapped, inverting route preference across the domain"],
+a:[2],
+ex:"With two mutual redistribution points, a prefix can circulate OSPF→BGP→OSPF, returning as an external with fresh metrics and masking its origin — classic redistribution feedback. Tagging routes and filtering on the tags at each border is the standard control."}
+];
+
+/* ---------------- ENGINE ---------------- */
+const state = { answers: Q.map(()=>new Set()), flags: Q.map(()=>false), submitted:false, timeLeft:70*60, timerId:null };
+const LETTERS = ["A","B","C","D","E"];
+
+function startExam(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('barWrap').style.display='flex';
+  document.getElementById('examArea').style.display='grid';
+  renderQuestions(); renderNav();
+  state.timerId = setInterval(tick,1000);
+  window.scrollTo(0,0);
+}
+function tick(){
+  state.timeLeft--;
+  const t=document.getElementById('timer');
+  const m=Math.floor(state.timeLeft/60), s=state.timeLeft%60;
+  t.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  if(state.timeLeft<=300) t.classList.add('low');
+  if(state.timeLeft<=0){ clearInterval(state.timerId); alert('Time is up — the exam will now be submitted.'); submitExam(); }
+}
+function renderQuestions(){
+  const wrap=document.getElementById('questions'); wrap.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const card=document.createElement('div'); card.className='q-card'; card.id='q'+i;
+    const inputType = qu.type==='multi'?'checkbox':'radio';
+    const instr = qu.type==='multi'?'(Choose two.)':'(Choose one.)';
+    let opts='';
+    qu.o.forEach((opt,j)=>{
+      opts+=`<label class="opt" id="opt-${i}-${j}">
+        <input type="${inputType}" name="q${i}" onchange="pick(${i},${j},this)">
+        <span class="letter">${LETTERS[j]}.</span><span class="txt">${opt}</span></label>`;
+    });
+    card.innerHTML=`
+      <div class="q-top">
+        <div><div class="q-num">Question ${i+1} of ${Q.length}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="q-domain">${DOMAINS[qu.d]}</span>
+          <button class="flag-btn" id="flag-${i}" onclick="toggleFlag(${i})">⚑ Flag</button>
+        </div>
+      </div>
+      <div class="q-text">${qu.q}</div>
+      <div class="q-instr">${instr}</div>
+      <div>${opts}</div>
+      <div id="fb-${i}"></div>`;
+    wrap.appendChild(card);
+  });
+}
+function pick(i,j,input){
+  const qu=Q[i];
+  if(qu.type==='single'){ state.answers[i]=new Set([j]); }
+  else{
+    if(input.checked){
+      if(state.answers[i].size>=2){ input.checked=false; return; }
+      state.answers[i].add(j);
+    } else state.answers[i].delete(j);
+  }
+  qu.o.forEach((_,k)=>{
+    document.getElementById(`opt-${i}-${k}`).classList.toggle('selected', state.answers[i].has(k));
+  });
+  updateProgress(); renderNav();
+}
+function toggleFlag(i){
+  state.flags[i]=!state.flags[i];
+  const b=document.getElementById('flag-'+i);
+  b.classList.toggle('flagged',state.flags[i]);
+  b.textContent = state.flags[i]?'⚑ Flagged':'⚑ Flag';
+  renderNav();
+}
+function updateProgress(){
+  const done=state.answers.filter(s=>s.size>0).length;
+  document.getElementById('progFill').style.width=(done/Q.length*100)+'%';
+  document.getElementById('progMeta').textContent=`${done} / ${Q.length} answered`;
+}
+function renderNav(){
+  const g=document.getElementById('navGrid'); g.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const c=document.createElement('div'); c.className='nav-cell'; c.textContent=i+1;
+    if(state.submitted){
+      c.classList.add(isCorrect(i)?'rev-correct':'rev-wrong');
+    } else {
+      if(state.flags[i]) c.classList.add('flagged');
+      else if(state.answers[i].size>0) c.classList.add('answered');
+    }
+    c.onclick=()=>document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});
+    g.appendChild(c);
+  });
+  if(state.submitted){
+    document.getElementById('legendBox').innerHTML=
+      `<div><span style="background:var(--green-light);border-color:var(--green-border)"></span>Correct</div>
+       <div><span style="background:var(--red-light);border-color:var(--red-border)"></span>Incorrect</div>`;
+  }
+}
+function isCorrect(i){
+  const a=state.answers[i], key=Q[i].a;
+  return a.size===key.length && key.every(k=>a.has(k));
+}
+function confirmSubmit(){
+  const un=state.answers.filter(s=>s.size===0).length;
+  const msg = un>0 ? `You have ${un} unanswered question${un>1?'s':''}. Unanswered questions are marked incorrect.\n\nSubmit the exam?`
+                   : 'Submit the exam? You will not be able to change your answers.';
+  if(confirm(msg)) submitExam();
+}
+function submitExam(){
+  if(state.submitted) return;
+  state.submitted=true; clearInterval(state.timerId);
+  // score
+  let correct=0; const dom={};
+  Object.keys(DOMAINS).forEach(k=>dom[k]={ok:0,tot:0});
+  Q.forEach((qu,i)=>{ dom[qu.d].tot++; if(isCorrect(i)){correct++; dom[qu.d].ok++;} });
+  const pct=Math.round(correct/Q.length*100);
+  const pass=pct>=70;
+  const used=70*60-state.timeLeft, um=Math.floor(used/60), us=used%60;
+
+  // results panel
+  let rows='';
+  Object.keys(DOMAINS).filter(k=>dom[k].tot>0).forEach(k=>{
+    const p=Math.round(dom[k].ok/dom[k].tot*100);
+    const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+    rows+=`<div class="perf-row">
+      <div class="name">${DOMAINS[k]}</div>
+      <div class="perf-bar"><div class="perf-fill" style="width:${p}%;background:${col}"></div></div>
+      <div class="perf-score">${dom[k].ok}/${dom[k].tot} &nbsp;(${p}%)</div></div>`;
+  });
+  const dk=Object.keys(DOMAINS).filter(k=>dom[k].tot>0);
+  const weakest = dk.reduce((w,k)=> (dom[k].ok/dom[k].tot < dom[w].ok/dom[w].tot ? k : w), dk[0]);
+  document.getElementById('results').innerHTML=`
+    <div class="score-card">
+      <div class="score-head">
+        <div>
+          <div class="verdict ${pass?'pass':'fail'}">${pass?'PASS':'FAIL'}</div>
+          <div class="score-detail" style="margin-top:6px;">
+            <b>NSE 7 — Secure Networking Architect 7.6 (Mock Exam 4 · Routing)</b><br>
+            Candidate: Samwise · Department of Fish &nbsp;·&nbsp; Delivery: Department of Fish Certification Lab<br>
+            Questions answered correctly: <b>${correct} of ${Q.length}</b> &nbsp;·&nbsp; Time used: <b>${um}m ${us}s of 70m</b>
+          </div>
+        </div>
+        <div class="big-pct">${pct}%</div>
+      </div>
+      <div class="section-perf">
+        <h3>Examination Score Report — Section Performance</h3>
+        <div class="note">Performance by exam section, relative to the number of items delivered in each section.</div>
+        ${rows}
+        <div class="disclaimer">The real Fortinet exam reports pass/fail only and does not publish its cut score; this mock uses a 70% provisional pass line as a study benchmark. Section bars mirror the style of the official Pearson VUE score report. ${pass?'':'Focus your next revision block on <b>'+DOMAINS[weakest]+'</b> — it was your lowest section.'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn primary" onclick="document.getElementById('q0').scrollIntoView({behavior:'smooth'})">Review Questions ↓</button>
+      <button class="btn ghost" onclick="location.reload()">Retake Exam</button>
+    </div>`;
+  document.getElementById('results').style.display='block';
+
+  // review mode on questions
+  Q.forEach((qu,i)=>{
+    qu.o.forEach((_,k)=>{
+      const el=document.getElementById(`opt-${i}-${k}`);
+      el.querySelector('input').disabled=true;
+      el.classList.remove('selected');
+      const chosen=state.answers[i].has(k), key=qu.a.includes(k);
+      if(chosen&&key) el.classList.add('correct-opt');
+      else if(chosen&&!key) el.classList.add('wrong-opt');
+      else if(!chosen&&key) el.classList.add('missed-opt');
+    });
+    const ok=isCorrect(i);
+    const yourAns = state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]).join(', ') : '— (unanswered)';
+    const keyAns = qu.a.map(x=>LETTERS[x]).join(', ');
+    document.getElementById('fb-'+i).innerHTML=
+      `<div class="explain ${ok?'ok':'bad'}">
+        <div class="verdict-line">${ok?'✓ Correct':'✗ Incorrect'} &nbsp;·&nbsp; Your answer: ${yourAns} &nbsp;·&nbsp; Correct answer: ${keyAns}</div>
+        ${qu.ex}</div>`;
+    const fb=document.getElementById('flag-'+i); fb.style.display='none';
+  });
+  document.getElementById('barWrap').style.display='none';
+  renderSocratic(correct,pct,dom);
+  renderNav();
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildSocraticPrompt(correct,pct,dom){
+  const examName=document.title.replace(/.*\|\s*/,'').trim();
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  let secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let p=`I've just completed the NSE 7 Secure Networking 7.6 ${examName} in my Department of Fish study project.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
+  p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
+  p+=`- Take ONE question at a time, in the order below, and wait for my response before continuing.\n`;
+  p+=`- Do NOT reveal the correct answer straight away. Ask me a guiding question so I can reason my way to it.\n`;
+  p+=`- If I head in the wrong direction, use partial insights ("You're looking in the right area...", "What would happen if...") rather than saying no.\n`;
+  p+=`- When I reason correctly, acknowledge WHY the reasoning was good, not just the answer.\n`;
+  p+=`- Rebuild the mental model behind each concept before moving on, and connect it to the Department of Fish topology and previous sessions where it helps.\n`;
+  p+=`- Watch for a pattern across my mistakes. At the end, summarise the weak areas you observed and suggest knowledge-register updates.\n\n`;
+  p+=`Each item below includes the correct answer and a reference explanation for YOUR use as the coach — do not show them to me until I've reasoned it through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]}]  (exam Q${i+1}${qu.type==='multi'?', choose two':''})\n\n`;
+    p+=stripHtml(qu.q)+`\n\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex)}\n`;
+  });
+  p+=`\nStart with Question 1. Set the scene briefly if you like, then ask me your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom){
+  const prompt=buildSocraticPrompt(correct,pct,dom);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — there is nothing here to coach. Se&ntilde;or would quietly adjust his sombrero and say: <i>"Do it again in a week. Memory is only proven twice."</i></div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste it into a <b>new chat in this project</b> — Claude will take you through your mistakes one at a time, Socratically, without giving the answers away.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copySocratic()">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste it into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copySocratic(){
+  const ta=document.getElementById('socraticPrompt');
+  const done=()=>{const ok=document.getElementById('copyOk');ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+</script>
+</body>
+</html>

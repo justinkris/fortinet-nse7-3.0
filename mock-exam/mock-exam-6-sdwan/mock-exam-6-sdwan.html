@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE 7 — Secure Networking 7.6 | Mock Exam 6: SD-WAN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#b0322c; --red-light:#fbe4e2; --red-border:#eab0ab;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+code,pre{font-family:'JetBrains Mono',monospace;}
+
+header{padding:34px 48px 26px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+header h1{font-family:'Cormorant Garamond',serif;font-size:34px;color:#f5f0e0;font-weight:600;line-height:1.15;}
+header .sub{color:var(--ink-accent);font-size:13px;margin-top:6px;letter-spacing:0.04em;}
+
+.exam-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:2px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+.exam-bar .timer{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;}
+.exam-bar .timer.low{color:var(--red);background:var(--red-light);border-color:var(--red-border);animation:blink 1.2s infinite;}
+.exam-bar .progress-wrap{flex:1;min-width:180px;}
+.progress-track{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:var(--blue-vivid);border-radius:6px;transition:width .3s;}
+.exam-bar .meta{font-size:12px;color:var(--text-muted);letter-spacing:0.05em;}
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;padding:9px 20px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-light);color:var(--blue-deep);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--blue-vivid);color:#fff;}
+.btn.primary{background:var(--blue-vivid);color:#fff;border-color:var(--blue-deep);}
+.btn.primary:hover{background:var(--blue-deep);}
+.btn.ghost{background:transparent;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.layout{display:grid;grid-template-columns:1fr 220px;gap:28px;max-width:1180px;margin:0 auto;padding:32px 48px 90px;}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:24px 18px 90px;}.nav-panel{position:static !important;}}
+
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:22px;box-shadow:0 1px 3px rgba(13,26,58,0.05);}
+.q-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
+.q-num{font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;}
+.q-domain{font-size:10px;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;background:var(--border-dim);padding:3px 10px;border-radius:12px;}
+.flag-btn{font-size:11px;border:1px solid var(--border);background:none;border-radius:12px;padding:3px 12px;cursor:pointer;color:var(--text-muted);}
+.flag-btn.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);font-weight:600;}
+.q-text{font-size:16px;line-height:1.55;color:var(--text);margin-bottom:6px;font-weight:500;}
+.q-instr{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-bottom:14px;}
+.exhibit{background:var(--ink-dark);color:#dbe6f7;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.6;overflow-x:auto;margin:12px 0 16px;white-space:pre;}
+.exhibit .lbl{display:block;color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border-dim);border-radius:10px;padding:12px 16px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt:hover{border-color:var(--blue-border);background:var(--blue-light);}
+.opt input{margin-top:3px;accent-color:var(--blue-vivid);width:16px;height:16px;flex-shrink:0;}
+.opt .letter{font-weight:700;color:var(--blue-deep);font-size:13px;min-width:18px;margin-top:1px;}
+.opt .txt{font-size:14.5px;line-height:1.5;color:var(--text-soft);}
+.opt.selected{border-color:var(--blue-vivid);background:var(--blue-light);}
+.opt.correct-opt{border-color:var(--green-border);background:var(--green-light);}
+.opt.wrong-opt{border-color:var(--red-border);background:var(--red-light);}
+.opt.missed-opt{border-color:var(--green-border);background:#fff;outline:2px dashed var(--green-border);}
+
+.nav-panel{position:sticky;top:78px;align-self:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.nav-panel h3{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.nav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.nav-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--border-dim);border-radius:7px;cursor:pointer;background:#fff;color:var(--text-muted);}
+.nav-cell.answered{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue-deep);}
+.nav-cell.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+.nav-cell.rev-correct{background:var(--green-light);border-color:var(--green-border);color:var(--green);}
+.nav-cell.rev-wrong{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.legend{margin-top:14px;font-size:10.5px;color:var(--text-muted);line-height:1.9;}
+.legend span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border-dim);}
+
+/* results */
+#results{display:none;max-width:1180px;margin:0 auto;padding:36px 48px 40px;}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.score-head{padding:28px 34px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;border-bottom:1px solid var(--border-dim);}
+.verdict{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+.verdict.pass{color:var(--green);} .verdict.fail{color:var(--red);}
+.score-detail{font-size:13px;color:var(--text-muted);line-height:1.7;}
+.score-detail b{color:var(--text);}
+.big-pct{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;color:var(--blue-deep);margin-left:auto;}
+.section-perf{padding:24px 34px 30px;}
+.section-perf h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;}
+.section-perf .note{font-size:12px;color:var(--text-muted);margin-bottom:18px;}
+.perf-row{display:grid;grid-template-columns:250px 1fr 110px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border-dim);}
+.perf-row .name{font-size:13.5px;font-weight:500;color:var(--text-soft);}
+.perf-bar{height:14px;background:var(--border-dim);border-radius:8px;overflow:hidden;position:relative;}
+.perf-fill{height:100%;border-radius:8px;transition:width .8s ease;}
+.perf-score{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted);text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:16px;line-height:1.6;}
+.explain{margin-top:14px;border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;line-height:1.65;color:var(--text-soft);}
+.explain .verdict-line{font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+.explain.ok .verdict-line{color:var(--green);} .explain.bad .verdict-line{color:var(--red);}
+.explain code{background:rgba(13,26,58,0.08);padding:1px 6px;border-radius:4px;font-size:12px;}
+footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted);letter-spacing:0.05em;}
+
+/* intro modal */
+#intro{max-width:760px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 42px;box-shadow:0 3px 12px rgba(13,26,58,0.08);}
+#intro h2{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;}
+#intro p,#intro li{font-size:14.5px;line-height:1.7;color:var(--text-soft);}
+#intro ul{margin:12px 0 20px 20px;}
+.rule-table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;}
+.rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
+.rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
+#examArea,#barWrap{display:none;}
+
+/* socratic session */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> Department of Fish Certification Lab</div>
+  <h1>NSE 7 — Secure Networking Architect 7.6</h1>
+  <div class="sub">Mock Exam 6 &nbsp;·&nbsp; SD-WAN &nbsp;·&nbsp; 36 questions &nbsp;·&nbsp; 70 minutes</div>
+</header>
+
+<div id="intro">
+  <h2>Before you begin</h2>
+  <p>This mock exam is a single-domain drill concentrating entirely on <b>SD-WAN</b>: members and zones, performance SLAs and health-check behaviour, rule strategies and steering logic, session behaviour on failover and recovery, and FortiManager central management. Every question in this set is new — nothing is recycled from the earlier SD-WAN drill, so it works as a genuine second attempt at the domain. Answers are withheld until you submit the entire exam, exactly like the real thing.</p>
+  <table class="rule-table">
+    <tr><td>Questions</td><td>36 multiple-choice (some require two selections — read the instruction line)</td></tr>
+    <tr><td>Time allowed</td><td>70 minutes with a live countdown; the exam auto-submits at 0:00</td></tr>
+    <tr><td>Scoring</td><td>Pass / fail with per-section performance, in the style of the official Fortinet score report</td></tr>
+    <tr><td>Marking</td><td>Multi-select questions are scored all-or-nothing — both correct options must be chosen</td></tr>
+    <tr><td>Navigation</td><td>Flag questions for review and jump around using the question grid</td></tr>
+  </table>
+  <p><b>Focus:</b> all 36 questions target SD-WAN at FCSS depth with an entirely fresh question set. The 36-question / 70-minute format mirrors the pacing of the real FCSS exam, answer-key positions are fully randomised, and option lengths are deliberately balanced so the longest answer is no clue.</p>
+  <button class="btn primary" style="font-size:15px;padding:12px 30px;" onclick="startExam()">Begin Exam →</button>
+</div>
+
+<div class="exam-bar" id="barWrap">
+  <div class="timer" id="timer">70:00</div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+  </div>
+  <div class="meta" id="progMeta">0 / 36 answered</div>
+  <button class="btn primary" onclick="confirmSubmit()">Submit Exam</button>
+</div>
+
+<div class="layout" id="examArea">
+  <div id="questions"></div>
+  <div class="nav-panel">
+    <h3>Questions</h3>
+    <div class="nav-grid" id="navGrid"></div>
+    <div class="legend" id="legendBox">
+      <div><span style="background:var(--blue-light);border-color:var(--blue-border)"></span>Answered</div>
+      <div><span style="background:var(--amber-light);border-color:var(--amber-border)"></span>Flagged</div>
+      <div><span style="background:#fff"></span>Unanswered</div>
+    </div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<footer>Department of Fish Study Programme · Mock Exam 6 · Based on the NSE 7 Secure Networking 7.6 curriculum (FortiOS 7.6, FortiManager 7.6) · Not an official Fortinet product</footer>
+
+<script>
+
+const DOMAINS = {
+  MZ:"Members & Zones", SLA:"Performance SLA & Health Checks", RU:"Rules & Traffic Steering", SS:"Sessions & Failover", CM:"Central Management (FortiManager)"
+};
+
+const Q = [
+{d:"MZ",type:"single",
+q:"An administrator tries to add port2 as an SD-WAN member, but the FortiGate refuses. Which existing configuration most commonly blocks an interface from joining SD-WAN?",
+o:["The interface already carries a measured health check as its probe source", "The interface has a DHCP-assigned address instead of a static address", "The interface is still referenced by firewall policies or static routes", "The interface belongs to a hardware switch that spans several ports"],
+a:[2],
+ex:"An interface cannot become a member while direct references to it exist — policies, routes, and similar must be repointed (usually to the zone) first. DHCP addressing is fine for members; the gateway can even be learned dynamically."},
+
+{d:"MZ",type:"single",
+q:"After port1 and port2 join the SD-WAN zone 'underlay', an administrator attempts to select port1 directly as the outgoing interface of a new firewall policy. What happens?",
+o:["Member interfaces are no longer selectable in policies — the zone must be referenced instead", "The policy accepts port1 only if the member is first excluded from every SD-WAN rule", "The policy works normally, since zones only apply to SD-WAN rules and not to policies", "The policy accepts port1 but is flagged with a warning that steering may be inconsistent"],
+a:[0],
+ex:"Membership hides the interface from direct policy (and static route) selection; the zone becomes the security reference point. This enforced abstraction is what keeps membership changes from ever touching the policy table."},
+
+{d:"MZ",type:"single",
+q:"Why would a design use two SD-WAN zones \u2014 for example 'underlay' for internet links and 'overlay' for IPsec tunnels \u2014 instead of one zone for all members?",
+o:["So the implicit SD-WAN rule can be disabled separately for each class of member", "Because each SD-WAN zone is limited to holding two members, forcing additional zones as further links are added", "So firewall policies can apply different security postures to internet-bound and tunnel-bound traffic", "Because health checks can only be bound to the members of a single zone at a time"],
+a:[2],
+ex:"Zones are the security boundary: separating underlay from overlay lets policies treat direct internet egress and private overlay paths with different inspection and logging. Health checks bind to members regardless of zone, and zones have no two-member limit."},
+
+{d:"MZ",type:"single",
+q:"Traffic matches no configured SD-WAN rule. How is it forwarded?",
+o:["By the first configured SD-WAN rule, which acts as the default when nothing matches", "By the implicit rule, which uses the routing table and load-balances across eligible members", "It is dropped by the FortiGate, because SD-WAN requires an explicit steering rule for every class of traffic", "By the lowest-cost member in the zone, regardless of the routing table's contents"],
+a:[1],
+ex:"The implicit rule at the bottom of the list is standard destination routing with ECMP-style load balancing across members whose routes qualify. It is the safety net that keeps unmatched traffic flowing — SD-WAN never requires a rule per traffic class."},
+
+{d:"MZ",type:"multi",
+q:"Which two member attributes influence how SD-WAN strategies choose between members? (Choose two.)",
+o:["The VLAN identifier carried on the member interface", "The cost value assigned to the member", "The alphabetical order of the member interface names", "The member's configuration order within the rule"],
+a:[1, 3],
+ex:"Lowest-cost-SLA compares member cost (then configuration order as the tiebreak), and manual strategy follows configured order outright. Interface names and VLAN tags carry no weight in any strategy's decision."},
+
+{d:"MZ",type:"single",
+q:"What distinguishes a Direct Internet Access (DIA) design from a remote internet access (backhaul) design at a branch?",
+o:["DIA applies to cloud application traffic only; backhaul applies to all remaining web browsing", "DIA requires at least two local internet links at the branch site; backhaul designs function with a single link", "DIA breaks internet traffic out locally at the branch; backhaul carries it through the overlay to a hub for egress", "DIA relies on the implicit rule for steering; backhaul requires explicit rules for every flow"],
+a:[2],
+ex:"The distinction is purely where internet-bound traffic exits: locally at the branch (DIA) or centrally at a hub after crossing the overlay (backhaul). Either model can serve any traffic class with any number of links, and both are steered by ordinary SD-WAN rules."},
+
+{d:"MZ",type:"single",
+q:"A static route is needed for traffic that will be steered by SD-WAN. How is the route configured on FortiOS?",
+o:["The route is omitted entirely, because SD-WAN rules do not consult the routing table", "The route points at the health check object, which resolves to the healthiest member", "One static route is created per member, each with a distinct administrative distance", "The route references the SD-WAN zone, making all members' paths available to the lookup"],
+a:[3],
+ex:"Static routes for SD-WAN reference the zone (sdwan-zone enabled routes), which expands to per-member routes behind the scenes. Rules still require valid routes — steering never overrides an absent route — so this step matters."},
+
+{d:"SLA",type:"single",
+q:"What is the difference between active and passive measurement in a performance SLA?",
+o:["Active measurement runs on physical members only, and passive is reserved for measuring the IPsec overlay members", "Active sends synthetic probes to a server; passive derives metrics from real user sessions traversing the member", "Active is a licensed feature, while passive measurement is included in the base firmware", "Active measures latency and jitter, while passive is limited to measuring packet loss only"],
+a:[1],
+ex:"Active mode generates probe traffic (ping, HTTP, TCP echo, DNS) toward a configured server; passive mode reads TCP metrics from live sessions, eliminating probe bandwidth but requiring traffic to exist. Prefer-passive blends the two."},
+
+{d:"SLA",type:"single",
+q:"A health check is configured with two SLA targets: SLA1 (latency 100 ms) and SLA2 (latency 250 ms). Why would a design define multiple SLA targets on one health check?",
+o:["Each member of the zone must be assigned its own dedicated SLA target to qualify", "Multiple targets let the probes alternate between measurement servers to average results", "Different SD-WAN rules can demand different quality levels using the same measurements", "The second target acts as the fallback threshold once the first has been breached"],
+a:[2],
+ex:"Targets are named quality bars over one measurement stream: a voice rule can require the strict SLA1 while bulk traffic accepts SLA2, without duplicate probing. Targets are evaluated independently — there is no fallback chaining between them."},
+
+{d:"SLA",type:"single",
+q:"<div class='exhibit'><span class='lbl'>Exhibit \u2014 diagnose sys sdwan health-check status</span>Health Check(HC-DC):\nSeq(1 port1): state(alive), packet-loss(0.000%) latency(18.412), jitter(2.310)\n  sla_map=0x1\nSeq(2 port2): state(alive), packet-loss(3.120%) latency(9.104), jitter(1.005)\n  sla_map=0x0</div>SLA target 1 requires latency under 150 ms and loss under 1%. How should the two members be read?",
+o:["port1 meets the SLA target; port2 is alive but failing the target because of its packet loss", "port2 is the preferred member of the two because its measured latency is lower than port1's latency", "Both members qualify, because state(alive) means every SLA target is being met", "port1 is failing the SLA target, since a set bit in sla_map indicates a violation"],
+a:[0],
+ex:"Alive and Good are different bars: state reflects probe reachability, while sla_map shows target compliance — a set bit means the SLA is met, 0x0 means none are. port2's 3.12% loss breaches the 1% ceiling despite its excellent latency."},
+
+{d:"SLA",type:"single",
+q:"What does the update-static-route option on a health check do when a member's probes declare it dead?",
+o:["The member's routes have their distance raised so they act as floating backups", "A replacement static route is generated toward the health-check server address", "The routing table is frozen until the member's probes succeed again", "The member's static routes are withdrawn so no traffic can follow the failed path"],
+a:[3],
+ex:"With update-static-route enabled, a dead verdict removes the member's routes from the routing table, taking the path out of both SD-WAN and implicit-rule forwarding. Recovery reinstates them — the health check effectively drives the FIB."},
+
+{d:"SLA",type:"multi",
+q:"Which two statements about health-check probe behaviour are true? (Choose two.)",
+o:["A member needs a valid route and gateway for its probes to be sent at all", "Probes are sent out every member the health check is bound to, independently", "Probes stop while a member carries live user traffic to save bandwidth", "Probes always use ICMP regardless of the configured protocol setting"],
+a:[0, 1],
+ex:"Each bound member is measured on its own path, and a member without a route or gateway can never emit a probe — the classic all-zeroes symptom. Protocols include ping, HTTP, TCP echo, UDP echo, DNS and TWAMP, and probing continues regardless of user traffic."},
+
+{d:"SLA",type:"single",
+q:"What is the purpose of the recovery hold-down (link restoration) settings on a performance SLA?",
+o:["A failed member is retried at a slower probe interval to reduce measurement noise", "A recovering member must stay healthy for a set period before traffic is steered back to it", "The SLA thresholds are relaxed temporarily while a member is recovering from failure", "Sessions that departed a failed member are queued in memory until the member becomes usable once again"],
+a:[1],
+ex:"Hold-down absorbs flapping: a link that briefly looks healthy does not immediately reclaim traffic, only one that sustains health across the configured window. Without it, a marginal link can bounce traffic back and forth repeatedly."},
+
+{d:"SLA",type:"single",
+q:"In a hub-and-spoke SD-WAN, how does the hub learn the health of each spoke's overlay paths without probing every spoke itself?",
+o:["Spokes embed their measured SLA status inside the health-check packets they send to the hub", "The hub polls each spoke's REST API for its health-check table every probe interval", "The hub infers each spoke's health from the retransmission counts it observes in transit traffic", "FortiManager collects every spoke's SLA data and redistributes it to the hub hourly"],
+a:[0],
+ex:"Embedded SLA information rides inside the spokes' existing probes, giving the hub per-spoke, per-overlay quality data at no extra probing cost — the mechanism behind hub-side steering of return traffic. No API polling or FortiManager relay is involved."},
+
+{d:"SLA",type:"single",
+q:"A health check shows a member as state(alive) yet an SD-WAN rule using SLA strategy refuses to use it. What explains this?",
+o:["Alive members are only eligible for the implicit rule, not for configured rules", "The health check and the rule are bound to different FortiGuard rating servers", "The member is reachable but currently failing the SLA target the rule requires", "The rule's hold-down timer expired, permanently removing the member from its list"],
+a:[2],
+ex:"Rules with SLA-based strategies demand target compliance, not mere reachability: an alive member outside its thresholds is skipped in favour of qualifying members. Alive-versus-Good is the single most useful distinction when reading steering decisions."},
+
+{d:"RU",type:"single",
+q:"In what order are configured SD-WAN rules evaluated against a new session?",
+o:["Bottom-up, so administrator-created rules override the implicit rule", "Best-match, with the most specific matching rule always winning", "Top-down, with the first rule whose criteria match taking effect", "By strategy weight, with quality-based rules ranked above manual rules"],
+a:[2],
+ex:"SD-WAN rules behave like policy routes: strict top-down, first match wins, and everything unmatched falls to the implicit rule at the bottom. Specificity and strategy type carry no ordering weight — position is everything."},
+
+{d:"RU",type:"single",
+q:"Which behaviour is unique to the manual strategy in an SD-WAN rule?",
+o:["Traffic is pinned to one member per source address using a deterministic hash value", "The rule bypasses the routing table check that other strategies must still perform", "Members are removed from the rule permanently after their first health-check failure", "Members are used strictly in their configured order, with no SLA or quality input at all"],
+a:[3],
+ex:"Manual is pure administrator ordering: the first alive member in the list carries the traffic, and measurements play no role in preference (a dead member is still skipped). Every strategy, manual included, still requires a valid route via the chosen member."},
+
+{d:"RU",type:"single",
+q:"An SD-WAN rule uses the lowest-cost (SLA) strategy with port1 (cost 10), port2 (cost 5), and port3 (cost 5), all bound to one SLA target. port2 and port3 both meet the SLA; port1 does not. Which member carries the traffic?",
+o:["port1 — cost is only compared among members that are failing their SLA target", "port2 or port3 — among SLA-passing members the lowest cost wins, and configuration order breaks the tie", "port3 — when costs tie, the member listed last is preferred as the most recent", "All three members share the traffic simultaneously, with the load weighted inversely to their configured cost values"],
+a:[1],
+ex:"The strategy first gates on SLA compliance, then picks the cheapest survivor, then falls back to configured order between equal costs. Failing members are considered only when no member meets the target at all."},
+
+{d:"RU",type:"single",
+q:"How does the best-quality strategy differ from lowest-cost (SLA)?",
+o:["It admits only members whose cost is zero, then compares their measured latency", "It requires two SLA targets per health check so quality can be scored on a scale", "It rotates between the members at fixed intervals in order to sample the quality of every path fairly", "It ranks members by a measured metric and follows the leader, rather than gating on a threshold"],
+a:[3],
+ex:"Best-quality is a continuous ranking (latency, jitter, loss, or a composite) with no pass/fail bar — traffic follows whichever member currently measures best, subject to hold-down. Lowest-cost-SLA is a gate first, an economic choice second."},
+
+{d:"RU",type:"single",
+q:"What does the maximize-bandwidth (load-balance) strategy do with members bound to its SLA target?",
+o:["It distributes sessions across all members currently meeting the SLA target", "It reserves the best member for large flows and the rest for small flows", "It aggregates the members into one bonded link with a combined MTU value", "It sends duplicate copies of each session over every member simultaneously"],
+a:[0],
+ex:"Maximize-bandwidth spreads new sessions over every SLA-compliant member, using the extra capacity instead of idling backups. It is per-session distribution, not link bonding or packet duplication — a single flow still rides one member."},
+
+{d:"RU",type:"single",
+q:"An SD-WAN rule steers a SaaS application using an Internet Service Database (ISDB) entry as its destination. What advantage does this give over an address-object destination?",
+o:["ISDB matching happens after inspection, allowing the rule to see decrypted content", "ISDB destinations exempt the traffic from firewall policy lookup on the zone", "The provider's published IP ranges are maintained by FortiGuard updates, so the rule tracks changes automatically", "ISDB entries include per-application SLA thresholds pre-tuned by the service's vendor for optimal steering"],
+a:[2],
+ex:"ISDB entries are curated service definitions — ports and prefixes for named providers — refreshed via FortiGuard, so the rule survives the provider's infrastructure churn without edits. Policy lookup and inspection still apply as normal."},
+
+{d:"RU",type:"single",
+q:"A new SD-WAN rule matches traffic by application signature rather than ISDB. Why might the very first sessions of that application not follow the rule?",
+o:["The application is identified only after some packets flow, so initial sessions may be forwarded before the match applies", "Application matching is only evaluated on IPv6 sessions in the initial release", "Application-based rules require a verdict from FortiAnalyzer first, which introduces a short reporting delay before any steering decision can be made", "The rule stays inactive until every member in it has passed one full SLA cycle"],
+a:[0],
+ex:"Signature-based identification needs traffic to inspect; until the application is recognised (and cached for the destination), early sessions follow whatever rule or route otherwise applies. Subsequent sessions hit the learned entry and steer correctly — expected behaviour, not a fault."},
+
+{d:"RU",type:"single",
+q:"All members referenced by an SD-WAN rule are currently dead. What happens to traffic that matches the rule's criteria?",
+o:["The traffic is buffered by the FortiGate until any one of the rule's members recovers", "The traffic is dropped, since a matched rule must always enforce its member list", "The rule is skipped, and the traffic is evaluated against the remaining rules and the implicit rule", "The rule falls back to the first member regardless of its dead state"],
+a:[2],
+ex:"A rule with no usable members steps aside rather than blackholing traffic — matching continues down the list toward the implicit rule. Understanding this fall-through explains why traffic 'escapes' onto unexpected links during multi-member outages."},
+
+{d:"SS",type:"single",
+q:"An SD-WAN member fails its SLA and the rule shifts new sessions to another member. What happens to sessions already established on the failing member, assuming default settings and the member is still alive?",
+o:["Existing sessions continue on their current member; only new sessions take the better path", "Existing sessions are migrated across to the new member transparently at their next packet", "Existing sessions are torn down immediately so the endpoints must reconnect", "Existing sessions are duplicated to both members until the old one recovers"],
+a:[0],
+ex:"Session stickiness is the default: an SLA breach redirects new sessions while established flows stay put on the still-alive member, avoiding mid-session disruption. Only route removal (a dead member) or explicit configuration forces existing sessions to move."},
+
+{d:"SS",type:"single",
+q:"What does the FortiGate do to sessions when the routing table changes in a way that affects them \u2014 for example, a member's routes are withdrawn?",
+o:["All sessions on the device are cleared so every flow rebuilds against the new table", "Affected sessions are marked dirty and re-evaluated, taking a new path on their next packet", "Affected sessions pause while the FortiGate probes both paths to compare quality", "Affected sessions keep their cached path until the endpoints retransmit enough to reset"],
+a:[1],
+ex:"A routing change dirties the impacted sessions; each is re-run through steering and routing on its next packet and continues on the new path. It is a targeted refresh — not a global flush, and not stale-cache forwarding."},
+
+{d:"SS",type:"single",
+q:"For a DIA branch with two internet links, why does the snat-route-change setting matter during failover?",
+o:["It rewrites the branch's source NAT pool configuration so that both of the internet links share one common public address block during the failover window", "Sessions moving to the other link change public source address, so preserving them is pointless and they can be flushed", "It prevents route changes from being applied while any NAT session is active", "It disables source NAT during failover so sessions keep their original address"],
+a:[1],
+ex:"Each internet link NATs to a different public IP; a 'moved' session would arrive at the server from a new address and be rejected anyway. snat-route-change acknowledges this by flushing affected NAT sessions on route change so applications reconnect cleanly on the new link."},
+
+{d:"SS",type:"single",
+q:"A failed member recovers and passes its hold-down period. What happens to the sessions that failed over to the backup member while it was down?",
+o:["They are mirrored onto the recovered member until each session closes", "They are flushed at the moment of recovery to force a clean re-steering", "They remain on the backup member; the recovered member picks up new sessions per the rule's strategy", "They are moved back to the recovered member in scheduled batches so that the backup link can drain its load gradually"],
+a:[2],
+ex:"Recovery does not disturb established flows: stickiness keeps them where they are, and the recovered member re-enters the strategy for new sessions only. Combined with hold-down, this makes failback deliberately calm rather than disruptive."},
+
+{d:"SS",type:"multi",
+q:"Which two events cause an established session to change SD-WAN members? (Choose two.)",
+o:["The member carrying the session goes down and its routes are removed", "The member carrying the session drifts above one of its SLA latency targets", "Another member in the rule improves to a better measured quality ranking", "An administrator changes configuration in a way that flushes or dirties the session"],
+a:[0, 3],
+ex:"Established sessions move when their path genuinely disappears (dead member, withdrawn routes) or when they are explicitly invalidated — not when relative quality shifts. SLA breaches and quality re-rankings steer new sessions only, by design."},
+
+{d:"SS",type:"single",
+q:"During a failover test, an engineer inspects a session with diagnose sys session list and sees the dirty flag set. What does this indicate?",
+o:["The session is queued for re-evaluation and will be re-routed when its next packet arrives", "The session failed its most recent policy lookup and is scheduled for removal", "The session's packets are repeatedly failing checksum validation on the egress member", "The session has been idle beyond half of its TTL and is nearing expiration"],
+a:[0],
+ex:"Dirty marks a session touched by a routing or policy change: nothing happens until traffic flows, at which point the session is re-run through routing/steering and the flag clears. It is the visible mechanism behind seamless path moves."},
+
+{d:"CM",type:"single",
+q:"In FortiManager, at which level is an SD-WAN template created and to what is it assigned?",
+o:["It is defined inside the policy package and installs with the firewall policies", "It is defined globally and inherited automatically by every ADOM's devices", "It is defined per device and cloned manually whenever another site needs it", "It is defined per ADOM and assigned to devices or device groups for installation"],
+a:[3],
+ex:"SD-WAN templates are ADOM-level provisioning objects assigned to devices or (better) device groups, so joining the group is enough to inherit the design. They render into the device database and deploy through the normal install workflow."},
+
+{d:"CM",type:"single",
+q:"A single SD-WAN template must give Sydney branches gateway 203.0.113.1 and Melbourne branches gateway 198.51.100.1 on the same member. How is this achieved without splitting the template?",
+o:["Enable gateway auto-discovery so each branch learns its next hop from probes", "Define two zones in the template, one per city, and map members accordingly", "Add both of the gateway addresses to the same member and let the health check decide which to use", "Use a metadata variable for the gateway, with per-device values resolved at install time"],
+a:[3],
+ex:"Metadata variables keep the template generic: one definition, per-device values, resolved when the template renders for each branch. Two gateways on one member or per-city zones would change the design rather than parameterise it."},
+
+{d:"CM",type:"single",
+q:"After editing the SD-WAN template assigned to the 'branches' device group, what must happen before any branch FortiGate behaves differently?",
+o:["Nothing — template edits propagate to assigned devices immediately on save", "Each branch must re-import its policy package to absorb the template change", "The template must be re-assigned to the group to regenerate its contents", "The change must be installed to the devices through the install workflow"],
+a:[3],
+ex:"Template edits update FortiManager's databases only; devices continue running the previous configuration until an install pushes the rendered changes. The template-to-group assignment persists across edits — no re-assignment is needed."},
+
+{d:"CM",type:"single",
+q:"Where in FortiManager can an administrator monitor per-device SD-WAN health \u2014 member status, SLA compliance, and application steering results \u2014 across the managed estate?",
+o:["The FortiGuard override page listing each device's rating server assignment", "The SD-WAN monitoring views under SD-WAN Manager (Device &gt; SD-WAN monitor)", "The install preview of each device's most recent policy package installation", "The revision history diff between the current and previous device databases"],
+a:[1],
+ex:"SD-WAN Manager includes monitoring dashboards fed by the managed devices — per-member health, SLA state, and steering outcomes across sites. Install previews and revision diffs show configuration intent, never live path quality."},
+
+{d:"CM",type:"multi",
+q:"Which two are required before FortiManager's SD-WAN overlay template can build a hub-and-spoke deployment? (Choose two.)",
+o:["The hub devices must already be managed with their interfaces configured", "A device group containing the branch (spoke) devices must exist", "Every spoke must already hold a manually built IPsec tunnel to the hub", "The branches must be licensed for FortiManager's orchestration add-on"],
+a:[0, 1],
+ex:"The orchestrator automates construction, not architecture: hubs must exist as managed, interface-ready devices, and spokes must be grouped so the template knows its audience. Building the tunnels is precisely the work the template does, and no separate orchestration licence exists."},
+
+{d:"CM",type:"single",
+q:"An SD-WAN template references normalized interface names for its members. What does this provide across a mixed-hardware branch estate?",
+o:["The template bypasses per-device validation because names are checked centrally", "Interface speeds are normalised across platforms so that SLA thresholds compare fairly between hardware models", "The member interfaces are renamed on each FortiGate to match the template's naming", "One template serves all platforms, with each device's mapping resolving the member to its real port"],
+a:[3],
+ex:"Normalized interfaces do for templates what they do for policies: the template speaks in logical names, and per-platform or per-device mappings translate to port1, wan1, or x1 as appropriate. Devices keep their native interface names throughout."},
+
+{d:"CM",type:"single",
+q:"A branch FortiGate managed by FortiManager has its SD-WAN rules changed locally by an on-site engineer. What is the consequence for central management?",
+o:["FortiManager locks the device out of further installs until the local change is reverted", "The local rules are merged upward into the assigned SD-WAN template automatically", "The device's configuration status diverges, and the change risks being overwritten at the next install", "The assigned SD-WAN template is invalidated entirely and must be recreated from the device's configuration"],
+a:[2],
+ex:"Local edits create the usual out-of-band divergence: FortiManager detects the difference (auto-update or conflict), and unless the change is retrieved and reconciled, the next install reasserts central intent over it. Nothing merges into templates automatically."}
+];
+
+/* ---------------- ENGINE ---------------- */
+const state = { answers: Q.map(()=>new Set()), flags: Q.map(()=>false), submitted:false, timeLeft:70*60, timerId:null };
+const LETTERS = ["A","B","C","D","E"];
+
+function startExam(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('barWrap').style.display='flex';
+  document.getElementById('examArea').style.display='grid';
+  renderQuestions(); renderNav();
+  state.timerId = setInterval(tick,1000);
+  window.scrollTo(0,0);
+}
+function tick(){
+  state.timeLeft--;
+  const t=document.getElementById('timer');
+  const m=Math.floor(state.timeLeft/60), s=state.timeLeft%60;
+  t.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  if(state.timeLeft<=300) t.classList.add('low');
+  if(state.timeLeft<=0){ clearInterval(state.timerId); alert('Time is up — the exam will now be submitted.'); submitExam(); }
+}
+function renderQuestions(){
+  const wrap=document.getElementById('questions'); wrap.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const card=document.createElement('div'); card.className='q-card'; card.id='q'+i;
+    const inputType = qu.type==='multi'?'checkbox':'radio';
+    const instr = qu.type==='multi'?'(Choose two.)':'(Choose one.)';
+    let opts='';
+    qu.o.forEach((opt,j)=>{
+      opts+=`<label class="opt" id="opt-${i}-${j}">
+        <input type="${inputType}" name="q${i}" onchange="pick(${i},${j},this)">
+        <span class="letter">${LETTERS[j]}.</span><span class="txt">${opt}</span></label>`;
+    });
+    card.innerHTML=`
+      <div class="q-top">
+        <div><div class="q-num">Question ${i+1} of ${Q.length}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="q-domain">${DOMAINS[qu.d]}</span>
+          <button class="flag-btn" id="flag-${i}" onclick="toggleFlag(${i})">⚑ Flag</button>
+        </div>
+      </div>
+      <div class="q-text">${qu.q}</div>
+      <div class="q-instr">${instr}</div>
+      <div>${opts}</div>
+      <div id="fb-${i}"></div>`;
+    wrap.appendChild(card);
+  });
+}
+function pick(i,j,input){
+  const qu=Q[i];
+  if(qu.type==='single'){ state.answers[i]=new Set([j]); }
+  else{
+    if(input.checked){
+      if(state.answers[i].size>=2){ input.checked=false; return; }
+      state.answers[i].add(j);
+    } else state.answers[i].delete(j);
+  }
+  qu.o.forEach((_,k)=>{
+    document.getElementById(`opt-${i}-${k}`).classList.toggle('selected', state.answers[i].has(k));
+  });
+  updateProgress(); renderNav();
+}
+function toggleFlag(i){
+  state.flags[i]=!state.flags[i];
+  const b=document.getElementById('flag-'+i);
+  b.classList.toggle('flagged',state.flags[i]);
+  b.textContent = state.flags[i]?'⚑ Flagged':'⚑ Flag';
+  renderNav();
+}
+function updateProgress(){
+  const done=state.answers.filter(s=>s.size>0).length;
+  document.getElementById('progFill').style.width=(done/Q.length*100)+'%';
+  document.getElementById('progMeta').textContent=`${done} / ${Q.length} answered`;
+}
+function renderNav(){
+  const g=document.getElementById('navGrid'); g.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const c=document.createElement('div'); c.className='nav-cell'; c.textContent=i+1;
+    if(state.submitted){
+      c.classList.add(isCorrect(i)?'rev-correct':'rev-wrong');
+    } else {
+      if(state.flags[i]) c.classList.add('flagged');
+      else if(state.answers[i].size>0) c.classList.add('answered');
+    }
+    c.onclick=()=>document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});
+    g.appendChild(c);
+  });
+  if(state.submitted){
+    document.getElementById('legendBox').innerHTML=
+      `<div><span style="background:var(--green-light);border-color:var(--green-border)"></span>Correct</div>
+       <div><span style="background:var(--red-light);border-color:var(--red-border)"></span>Incorrect</div>`;
+  }
+}
+function isCorrect(i){
+  const a=state.answers[i], key=Q[i].a;
+  return a.size===key.length && key.every(k=>a.has(k));
+}
+function confirmSubmit(){
+  const un=state.answers.filter(s=>s.size===0).length;
+  const msg = un>0 ? `You have ${un} unanswered question${un>1?'s':''}. Unanswered questions are marked incorrect.\n\nSubmit the exam?`
+                   : 'Submit the exam? You will not be able to change your answers.';
+  if(confirm(msg)) submitExam();
+}
+function submitExam(){
+  if(state.submitted) return;
+  state.submitted=true; clearInterval(state.timerId);
+  // score
+  let correct=0; const dom={};
+  Object.keys(DOMAINS).forEach(k=>dom[k]={ok:0,tot:0});
+  Q.forEach((qu,i)=>{ dom[qu.d].tot++; if(isCorrect(i)){correct++; dom[qu.d].ok++;} });
+  const pct=Math.round(correct/Q.length*100);
+  const pass=pct>=70;
+  const used=70*60-state.timeLeft, um=Math.floor(used/60), us=used%60;
+
+  // results panel
+  let rows='';
+  Object.keys(DOMAINS).filter(k=>dom[k].tot>0).forEach(k=>{
+    const p=Math.round(dom[k].ok/dom[k].tot*100);
+    const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+    rows+=`<div class="perf-row">
+      <div class="name">${DOMAINS[k]}</div>
+      <div class="perf-bar"><div class="perf-fill" style="width:${p}%;background:${col}"></div></div>
+      <div class="perf-score">${dom[k].ok}/${dom[k].tot} &nbsp;(${p}%)</div></div>`;
+  });
+  const dk=Object.keys(DOMAINS).filter(k=>dom[k].tot>0);
+  const weakest = dk.reduce((w,k)=> (dom[k].ok/dom[k].tot < dom[w].ok/dom[w].tot ? k : w), dk[0]);
+  document.getElementById('results').innerHTML=`
+    <div class="score-card">
+      <div class="score-head">
+        <div>
+          <div class="verdict ${pass?'pass':'fail'}">${pass?'PASS':'FAIL'}</div>
+          <div class="score-detail" style="margin-top:6px;">
+            <b>NSE 7 — Secure Networking Architect 7.6 (Mock Exam 6 · SD-WAN)</b><br>
+            Candidate: Samwise · Department of Fish &nbsp;·&nbsp; Delivery: Department of Fish Certification Lab<br>
+            Questions answered correctly: <b>${correct} of ${Q.length}</b> &nbsp;·&nbsp; Time used: <b>${um}m ${us}s of 70m</b>
+          </div>
+        </div>
+        <div class="big-pct">${pct}%</div>
+      </div>
+      <div class="section-perf">
+        <h3>Examination Score Report — Section Performance</h3>
+        <div class="note">Performance by exam section, relative to the number of items delivered in each section.</div>
+        ${rows}
+        <div class="disclaimer">The real Fortinet exam reports pass/fail only and does not publish its cut score; this mock uses a 70% provisional pass line as a study benchmark. Section bars mirror the style of the official Pearson VUE score report. ${pass?'':'Focus your next revision block on <b>'+DOMAINS[weakest]+'</b> — it was your lowest section.'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn primary" onclick="document.getElementById('q0').scrollIntoView({behavior:'smooth'})">Review Questions ↓</button>
+      <button class="btn ghost" onclick="location.reload()">Retake Exam</button>
+    </div>`;
+  document.getElementById('results').style.display='block';
+
+  // review mode on questions
+  Q.forEach((qu,i)=>{
+    qu.o.forEach((_,k)=>{
+      const el=document.getElementById(`opt-${i}-${k}`);
+      el.querySelector('input').disabled=true;
+      el.classList.remove('selected');
+      const chosen=state.answers[i].has(k), key=qu.a.includes(k);
+      if(chosen&&key) el.classList.add('correct-opt');
+      else if(chosen&&!key) el.classList.add('wrong-opt');
+      else if(!chosen&&key) el.classList.add('missed-opt');
+    });
+    const ok=isCorrect(i);
+    const yourAns = state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]).join(', ') : '— (unanswered)';
+    const keyAns = qu.a.map(x=>LETTERS[x]).join(', ');
+    document.getElementById('fb-'+i).innerHTML=
+      `<div class="explain ${ok?'ok':'bad'}">
+        <div class="verdict-line">${ok?'✓ Correct':'✗ Incorrect'} &nbsp;·&nbsp; Your answer: ${yourAns} &nbsp;·&nbsp; Correct answer: ${keyAns}</div>
+        ${qu.ex}</div>`;
+    const fb=document.getElementById('flag-'+i); fb.style.display='none';
+  });
+  document.getElementById('barWrap').style.display='none';
+  renderSocratic(correct,pct,dom);
+  renderNav();
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildSocraticPrompt(correct,pct,dom){
+  const examName=document.title.replace(/.*\|\s*/,'').trim();
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  let secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  let p=`I've just completed the NSE 7 Secure Networking 7.6 ${examName} in my Department of Fish study project.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Section results — ${secLines}.\n\n`;
+  p+=`I got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session to work through them with me, following my project's teaching style:\n`;
+  p+=`- Take ONE question at a time, in the order below, and wait for my response before continuing.\n`;
+  p+=`- Do NOT reveal the correct answer straight away. Ask me a guiding question so I can reason my way to it.\n`;
+  p+=`- If I head in the wrong direction, use partial insights ("You're looking in the right area...", "What would happen if...") rather than saying no.\n`;
+  p+=`- When I reason correctly, acknowledge WHY the reasoning was good, not just the answer.\n`;
+  p+=`- Rebuild the mental model behind each concept before moving on, and connect it to the Department of Fish topology and previous sessions where it helps.\n`;
+  p+=`- Watch for a pattern across my mistakes. At the end, summarise the weak areas you observed and suggest knowledge-register updates.\n\n`;
+  p+=`Each item below includes the correct answer and a reference explanation for YOUR use as the coach — do not show them to me until I've reasoned it through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]}]  (exam Q${i+1}${qu.type==='multi'?', choose two':''})\n\n`;
+    p+=stripHtml(qu.q)+`\n\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex)}\n`;
+  });
+  p+=`\nStart with Question 1. Set the scene briefly if you like, then ask me your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom){
+  const prompt=buildSocraticPrompt(correct,pct,dom);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — there is nothing here to coach. Se&ntilde;or would quietly adjust his sombrero and say: <i>"Do it again in a week. Memory is only proven twice."</i></div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste it into a <b>new chat in this project</b> — Claude will take you through your mistakes one at a time, Socratically, without giving the answers away.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copySocratic()">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste it into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copySocratic(){
+  const ta=document.getElementById('socraticPrompt');
+  const done=()=>{const ok=document.getElementById('copyOk');ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+</script>
+</body>
+</html>
