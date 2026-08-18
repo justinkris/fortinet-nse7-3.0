@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<!--
+  NSE 7 — Secure Networking Architect 7.6 · Practice Mock 02 (Advanced)
+  Self-contained, works offline (file://). Sources: Enterprise Firewall 7.6 and
+  SD-WAN 7.6 study guides supplied in the project. Not an official Fortinet product.
+  Exam length, timing, and the 70% line are PRACTICE constructs — Fortinet does not
+  publish official counts, durations, or cut scores for this exam.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE 7 SNA — Mock 02</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf5e9; --surface:#fffdf5; --border:#d4c89a; --border-dim:#ebe1c2;
+  --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+  --blue:#1e40af; --blue-vivid:#2563eb;
+  --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+  --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+  --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+  --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+  --red:#b0322c; --red-light:#fbe4e2; --red-border:#eab0ab;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+code,pre{font-family:'JetBrains Mono',monospace;}
+
+header{padding:34px 48px 26px;background:var(--ink-dark);}
+.header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase;}
+.dot-live{width:6px;height:6px;background:var(--ink-accent);border-radius:50%;display:inline-block;animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+header h1{font-family:'Cormorant Garamond',serif;font-size:34px;color:#f5f0e0;font-weight:600;line-height:1.15;}
+header .sub{color:var(--ink-accent);font-size:13px;margin-top:6px;letter-spacing:0.04em;}
+
+.exam-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:2px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+.exam-bar .timer{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);border-radius:8px;padding:6px 14px;}
+.exam-bar .timer.low{color:var(--red);background:var(--red-light);border-color:var(--red-border);animation:blink 1.2s infinite;}
+.exam-bar .progress-wrap{flex:1;min-width:180px;}
+.progress-track{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:var(--blue-vivid);border-radius:6px;transition:width .3s;}
+.exam-bar .meta{font-size:12px;color:var(--text-muted);letter-spacing:0.05em;}
+.mode-chip{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:5px 12px;border-radius:14px;background:var(--blue-light);border:1px solid var(--blue-border);color:var(--blue-deep);}
+.score-chip{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);border-radius:8px;padding:6px 12px;}
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;padding:9px 20px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-light);color:var(--blue-deep);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--blue-vivid);color:#fff;}
+.btn.primary{background:var(--blue-vivid);color:#fff;border-color:var(--blue-deep);}
+.btn.primary:hover{background:var(--blue-deep);}
+.btn.ghost{background:transparent;}
+.btn.danger{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.btn.danger:hover{background:var(--red);color:#fff;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.layout{display:grid;grid-template-columns:1fr 240px;gap:28px;max-width:1220px;margin:0 auto;padding:32px 48px 90px;}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:24px 18px 90px;}.nav-panel{position:static !important;}}
+
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:22px;box-shadow:0 1px 3px rgba(13,26,58,0.05);}
+.q-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;flex-wrap:wrap;}
+.q-num{font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--blue);text-transform:uppercase;}
+.q-domain{font-size:10px;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;background:var(--border-dim);padding:3px 10px;border-radius:12px;}
+.q-sub{font-size:10px;letter-spacing:0.05em;color:var(--blue-deep);background:var(--blue-light);border:1px solid var(--blue-border);padding:3px 10px;border-radius:12px;}
+.flag-btn{font-size:11px;border:1px solid var(--border);background:none;border-radius:12px;padding:3px 12px;cursor:pointer;color:var(--text-muted);}
+.flag-btn.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);font-weight:600;}
+.q-text{font-size:16px;line-height:1.55;color:var(--text);margin-bottom:6px;font-weight:500;}
+.q-instr{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-bottom:14px;}
+.exhibit{background:var(--ink-dark);color:#dbe6f7;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.6;overflow-x:auto;margin:12px 0 16px;white-space:pre;}
+.exhibit .lbl{display:block;color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border-dim);border-radius:10px;padding:12px 16px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt:hover{border-color:var(--blue-border);background:var(--blue-light);}
+.opt input{margin-top:3px;accent-color:var(--blue-vivid);width:16px;height:16px;flex-shrink:0;}
+.opt .letter{font-weight:700;color:var(--blue-deep);font-size:13px;min-width:18px;margin-top:1px;}
+.opt .txt{font-size:14.5px;line-height:1.5;color:var(--text-soft);}
+.opt.selected{border-color:var(--blue-vivid);background:var(--blue-light);}
+.opt.correct-opt{border-color:var(--green-border);background:var(--green-light);}
+.opt.wrong-opt{border-color:var(--red-border);background:var(--red-light);}
+.opt.missed-opt{border-color:var(--green-border);background:#fff;outline:2px dashed var(--green-border);}
+.check-row{margin-top:6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+
+.nav-panel{position:sticky;top:78px;align-self:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;max-height:calc(100vh - 100px);overflow-y:auto;}
+.nav-panel h3{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.nav-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
+.nav-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;border:1px solid var(--border-dim);border-radius:6px;cursor:pointer;background:#fff;color:var(--text-muted);}
+.nav-cell.answered{background:var(--blue-light);border-color:var(--blue-border);color:var(--blue-deep);}
+.nav-cell.flagged{background:var(--amber-light);border-color:var(--amber-border);color:var(--amber);}
+.nav-cell.rev-correct{background:var(--green-light);border-color:var(--green-border);color:var(--green);}
+.nav-cell.rev-wrong{background:var(--red-light);border-color:var(--red-border);color:var(--red);}
+.legend{margin-top:14px;font-size:10.5px;color:var(--text-muted);line-height:1.9;}
+.legend span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border-dim);}
+
+/* results */
+#results{display:none;max-width:1220px;margin:0 auto;padding:36px 48px 40px;}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.score-head{padding:28px 34px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;border-bottom:1px solid var(--border-dim);}
+.verdict{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+.verdict.pass{color:var(--green);} .verdict.fail{color:var(--red);} .verdict.neutral{color:var(--blue-deep);}
+.score-detail{font-size:13px;color:var(--text-muted);line-height:1.7;}
+.score-detail b{color:var(--text);}
+.big-pct{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;color:var(--blue-deep);margin-left:auto;}
+.section-perf{padding:24px 34px 30px;}
+.section-perf h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;}
+.section-perf .note{font-size:12px;color:var(--text-muted);margin-bottom:18px;}
+.perf-row{display:grid;grid-template-columns:280px 1fr 110px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border-dim);}
+.perf-row .name{font-size:13.5px;font-weight:500;color:var(--text-soft);}
+.perf-bar{height:14px;background:var(--border-dim);border-radius:8px;overflow:hidden;position:relative;}
+.perf-fill{height:100%;border-radius:8px;transition:width .8s ease;}
+.perf-score{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted);text-align:right;}
+.disclaimer{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:16px;line-height:1.6;}
+.explain{margin-top:14px;border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;line-height:1.65;color:var(--text-soft);}
+.explain .verdict-line{font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+.explain.ok .verdict-line{color:var(--green);} .explain.bad .verdict-line{color:var(--red);}
+.explain code{background:rgba(13,26,58,0.08);padding:1px 6px;border-radius:4px;font-size:12px;}
+.src-basis{margin-top:10px;padding-top:8px;border-top:1px dashed var(--blue-border);font-size:11.5px;color:var(--text-muted);}
+.src-basis b{color:var(--blue-deep);font-weight:600;letter-spacing:0.03em;}
+footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted);letter-spacing:0.05em;}
+
+/* intro */
+#intro{max-width:860px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 42px;box-shadow:0 3px 12px rgba(13,26,58,0.08);}
+#intro h2{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;}
+#intro p,#intro li{font-size:14.5px;line-height:1.7;color:var(--text-soft);}
+#intro ul{margin:12px 0 20px 20px;}
+.tier-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 14px;border-radius:14px;background:var(--blue-light);border:1px solid var(--blue-border);color:var(--blue-deep);margin-bottom:12px;}
+.rule-table{width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;}
+.rule-table td{padding:8px 12px;border:1px solid var(--border-dim);}
+.rule-table td:first-child{font-weight:600;color:var(--blue-deep);background:var(--blue-light);width:200px;}
+#examArea,#barWrap{display:none;}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:8px;}
+@media(max-width:760px){.mode-grid{grid-template-columns:1fr;}}
+.mode-btn{text-align:left;border:1px solid var(--border);border-radius:12px;background:#fff;padding:16px 18px;cursor:pointer;transition:all .15s;font-family:'Outfit',sans-serif;}
+.mode-btn:hover{border-color:var(--blue-vivid);background:var(--blue-light);}
+.mode-btn h4{font-size:14.5px;color:var(--blue-deep);margin-bottom:6px;}
+.mode-btn p{font-size:12px !important;line-height:1.55 !important;color:var(--text-muted) !important;}
+.resume-card{border:1px solid var(--amber-border);background:var(--amber-light);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none;}
+.resume-card h4{font-size:14px;color:var(--amber);margin-bottom:6px;}
+.resume-card p{font-size:12.5px !important;color:var(--text-soft) !important;margin-bottom:10px;}
+.resume-card .btns{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* strengths / weaknesses report */
+.report-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:26px;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.report-head{padding:22px 34px;border-bottom:1px solid var(--border-dim);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
+.report-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;}
+.report-head .sub{font-size:12.5px;color:var(--text-muted);margin-top:4px;}
+.report-body{padding:18px 34px 28px;}
+.sub-perf-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px 34px;margin-top:8px;}
+@media(max-width:900px){.sub-perf-grid{grid-template-columns:1fr;}}
+.sub-group{border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;background:#fff;}
+.sub-group h4{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue-deep);margin-bottom:10px;border-bottom:1px solid var(--border-dim);padding-bottom:6px;}
+.sub-row{display:grid;grid-template-columns:1fr 68px 42px;gap:8px;align-items:center;padding:4px 0;font-size:12.5px;}
+.sub-row .n{color:var(--text-soft);}
+.sub-row .b{height:8px;background:var(--border-dim);border-radius:6px;overflow:hidden;}
+.sub-row .b i{display:block;height:100%;border-radius:6px;}
+.sub-row .p{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-muted);text-align:right;}
+.strength-tag{display:inline-block;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;border-radius:10px;margin-left:6px;font-weight:600;vertical-align:1px;}
+.strength-tag.strong{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+.strength-tag.weak{background:var(--red-light);color:var(--red);border:1px solid var(--red-border);}
+.strength-tag.mid{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-border);}
+
+.strength-summary{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
+@media(max-width:900px){.strength-summary{grid-template-columns:1fr;}}
+.strength-box{border-radius:12px;padding:16px 20px;font-size:13px;line-height:1.7;}
+.strength-box.win{background:var(--green-light);border:1px solid var(--green-border);}
+.strength-box.gap{background:var(--red-light);border:1px solid var(--red-border);}
+.strength-box h5{font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:6px;}
+.strength-box.win h5{color:var(--green);} .strength-box.gap h5{color:var(--red);}
+.strength-box ul{margin:6px 0 0 18px;}
+
+.report-actions{padding:20px 34px;border-top:1px solid var(--border-dim);background:#fbf7ea;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.report-actions .hint{font-size:12px;color:var(--text-muted);}
+
+/* diagnostic findings */
+.finding{border:1px solid var(--border-dim);border-left:4px solid var(--red-border);border-radius:8px;background:#fff;padding:12px 16px;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text-soft);}
+.finding b{color:var(--red);}
+.finding .fscore{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-muted);margin-left:6px;}
+
+/* review table */
+.review-toggle{display:inline-flex;gap:6px;background:var(--border-dim);border-radius:8px;padding:3px;margin-bottom:14px;}
+.review-toggle button{border:none;background:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);}
+.review-toggle button.active{background:#fff;color:var(--blue-deep);box-shadow:0 1px 2px rgba(0,0,0,0.05);}
+
+/* flagged / low-confidence card */
+.flag-list{margin:4px 0 0 18px;font-size:13px;line-height:2;column-count:2;column-gap:34px;}
+@media(max-width:900px){.flag-list{column-count:1;}}
+.flag-list li{break-inside:avoid;}
+.fc-tag{display:inline-block;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:1px 8px;border-radius:10px;margin-left:6px;font-weight:600;}
+.fc-tag.fc-ok{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+.fc-tag.fc-bad{background:var(--red-light);color:var(--red);border:1px solid var(--red-border);}
+.flag-card .report-head h3{color:var(--amber);}
+
+/* copy-prompt session card */
+.socratic-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:26px;overflow:hidden;box-shadow:0 2px 8px rgba(13,26,58,0.06);}
+.socratic-head{padding:22px 34px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.socratic-head .icon{width:38px;height:38px;border-radius:10px;background:var(--blue-light);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;font-size:19px;}
+.socratic-head h3{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);}
+.socratic-head .sub{font-size:12.5px;color:var(--text-muted);flex-basis:100%;line-height:1.6;}
+.socratic-body{padding:20px 34px 28px;}
+.socratic-body textarea{width:100%;height:280px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:10px;padding:14px 16px;resize:vertical;box-sizing:border-box;}
+.socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
+.socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+
+/* print */
+@media print{
+  body{background:#fff;color:#000;font-size:11pt;}
+  header,footer,.exam-bar,#examArea,#intro,.socratic-card,.review-toggle,.report-actions,#nav-panel,.nav-panel{display:none !important;}
+  #results{display:block !important;padding:0;max-width:100%;}
+  .score-card,.report-card{border:1px solid #999;box-shadow:none;page-break-inside:avoid;margin-bottom:14px;}
+  .score-head,.section-perf,.report-head,.report-body{padding:14px 18px;}
+  .verdict{font-size:38px;}
+  .big-pct{font-size:30px;}
+  .perf-row{grid-template-columns:220px 1fr 90px;font-size:10pt;}
+  .sub-perf-grid{grid-template-columns:1fr 1fr;gap:12px;}
+  .sub-group{page-break-inside:avoid;}
+  .strength-summary{grid-template-columns:1fr 1fr;}
+  .strength-box{page-break-inside:avoid;}
+  #review-list{display:block !important;}
+  .q-card{page-break-inside:avoid;padding:12px 14px;margin-bottom:10px;border:1px solid #999;box-shadow:none;}
+  .exhibit{background:#f0f0f0;color:#000;font-size:9pt;}
+  .opt{padding:6px 10px;margin-bottom:4px;font-size:10pt;}
+  .opt input{display:none;}
+  .flag-btn,.check-row{display:none;}
+  .layout{display:block !important;}
+  .explain{background:#f7f7f7 !important;border-left:3px solid #666;color:#000;}
+  h1,h2,h3,h4,h5{page-break-after:avoid;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="dot-live"></span> Certification Lab · Advanced</div>
+  <h1>NSE 7 &mdash; Secure Networking Architect 7.6</h1>
+  <div class="sub">Practice Mock 02 &nbsp;·&nbsp; 40 questions &nbsp;·&nbsp; realistic-to-difficult difficulty &nbsp;·&nbsp; Study Mode or Exam Mode</div>
+</header>
+
+<div id="intro">
+  <div class="tier-chip">Mock 02 &mdash; Advanced</div>
+  <h2>Before you begin</h2>
+
+  <div class="resume-card" id="resumeCard">
+    <h4>&#9203; Saved attempt found</h4>
+    <p id="resumeInfo"></p>
+    <div class="btns">
+      <button class="btn primary" onclick="resumeAttempt()">Resume attempt</button>
+      <button class="btn danger" onclick="discardAttempt()">Discard &amp; start fresh</button>
+    </div>
+  </div>
+
+  <p>Harder scenarios, deeper troubleshooting, and closer distractors than Mock 01 — without trivia. Expect more configuration interpretation and behavior prediction.</p>
+  <p style="margin-top:10px;">All content is drawn from the two supplied 7.6 study guides (Enterprise Firewall Administrator and SD-WAN Enterprise Administrator). Fortinet does not publish official question counts, durations, or pass scores for this exam &mdash; the structure and timing here are <b>practice constructs</b>, not official exam characteristics.</p>
+
+  <table class="rule-table">
+    <tr><td>Questions</td><td>40 multiple-choice (most single-answer; multi-select items say &ldquo;Choose two&rdquo;)</td></tr>
+    <tr><td>Modes</td><td><b>Study Mode</b> checks each answer immediately with an explanation and source basis. <b>Exam Mode</b> gives no feedback until you submit.</td></tr>
+    <tr><td>Timer</td><td>Optional <b>80-minute practice pacing timer</b> (Exam Mode only). This is a pacing aid &mdash; <b>not</b> an official exam duration.</td></tr>
+    <tr><td>Scoring</td><td>All modes report an overall score plus per-section and per-<b>sub-topic</b> performance. The 70% line is a <b>readiness estimate for study purposes only</b> &mdash; not an official cut score.</td></tr>
+    <tr><td>Marking</td><td>Multi-select questions are scored all-or-nothing &mdash; every correct option must be chosen and no wrong options selected</td></tr>
+    <tr><td>Randomization</td><td>Question order <b>and</b> answer-option order are shuffled on every new attempt &mdash; retakes test knowledge, not memory of positions</td></tr>
+    <tr><td>Auto-save</td><td>Progress saves automatically in this browser. Close the tab and resume later; use <b>Discard</b> or <b>Retake</b> for a fresh shuffle</td></tr>
+    <tr><td>Study report</td><td>After finishing you can <b>print a full strengths/weaknesses report</b> (browser Print &rarr; Save as PDF), plus copy-paste prompts for a study plan or Socratic review session</td></tr>
+    <tr><td>Navigation</td><td>Flag questions you&rsquo;re unsure about and jump around with the grid on the right &mdash; flags are treated as low-confidence signals in the diagnostics</td></tr>
+  </table>
+
+  <p><b>Section weighting</b> (practice weighting across the two supplied study guides):</p>
+  <ul><li>1.0 Centralized Management & Provisioning &mdash; 6 questions</li><li>2.0 SD-WAN Overlay Design & Routing Foundations &mdash; 7 questions</li><li>3.0 Dual-Hub, Multiregion & ADVPN &mdash; 7 questions</li><li>4.0 Advanced Routing (OSPF & BGP) &mdash; 6 questions</li><li>5.0 High Availability &mdash; 5 questions</li><li>6.0 IPsec Architecture & Performance &mdash; 5 questions</li><li>7.0 VDOMs, Security Fabric, Inspection & Acceleration &mdash; 4 questions</li></ul>
+
+  <p><b>Choose a mode to begin:</b></p>
+  <div class="mode-grid">
+    <button class="mode-btn" onclick="startAttempt('study',false)">
+      <h4>&#128218; Study Mode</h4>
+      <p>Check each answer as you go. Immediate verdict, explanation, and source basis. No timer.</p>
+    </button>
+    <button class="mode-btn" onclick="startAttempt('exam',false)">
+      <h4>&#128221; Exam Mode &middot; Untimed</h4>
+      <p>No feedback until you submit. Elapsed time is tracked for the report, but nothing counts down.</p>
+    </button>
+    <button class="mode-btn" onclick="startAttempt('exam',true)">
+      <h4>&#9201; Exam Mode &middot; Timed</h4>
+      <p>80-minute practice pacing countdown with auto-submit at 0:00. Pacing aid only &mdash; not an official duration.</p>
+    </button>
+  </div>
+</div>
+
+<div class="exam-bar" id="barWrap">
+  <span class="mode-chip" id="modeChip">Exam</span>
+  <div class="timer" id="timer">00:00</div>
+  <span class="score-chip" id="scoreChip" style="display:none;">0 / 0</span>
+  <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="progFill"></div></div></div>
+  <div class="meta" id="progMeta">0 / 0 answered</div>
+  <button class="btn primary" id="submitBtn" onclick="confirmSubmit()">Submit Exam</button>
+</div>
+
+<div class="layout" id="examArea">
+  <div id="questions"></div>
+  <div class="nav-panel" id="nav-panel">
+    <h3>Questions</h3>
+    <div class="nav-grid" id="navGrid"></div>
+    <div class="legend" id="legendBox">
+      <div><span style="background:var(--blue-light);border-color:var(--blue-border)"></span>Answered</div>
+      <div><span style="background:var(--amber-light);border-color:var(--amber-border)"></span>Flagged</div>
+      <div><span style="background:#fff"></span>Unanswered</div>
+    </div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<footer>NSE 7 Secure Networking Architect 7.6 &middot; Practice Mock 02 (Advanced) &middot; Built from the supplied 7.6 study guides &middot; Not an official Fortinet product &middot; Study use only</footer>
+
+<script>
+/* ═══════════════ DATA (injected by generator) ═══════════════ */
+const EXAM_META = {
+  TITLE:    "NSE 7 — Secure Networking Architect 7.6",
+  CODE:     "Mock 02 (Advanced)",
+  MINUTES:  80,           // practice pacing only — not an official duration
+  PASS_PCT: 70,           // readiness estimate only — not an official cut score
+  LAB_NAME: "Certification Lab"
+};
+const STORE_KEY = "nse7sna-mock-02-v1";
+const DOMAINS   = {"CMG": "1.0 Centralized Management & Provisioning", "OVD": "2.0 SD-WAN Overlay Design & Routing Foundations", "ADV": "3.0 Dual-Hub, Multiregion & ADVPN", "RTG": "4.0 Advanced Routing (OSPF & BGP)", "HAV": "5.0 High Availability", "VPN": "6.0 IPsec Architecture & Performance", "SEC": "7.0 VDOMs, Security Fabric, Inspection & Acceleration"};
+const SUBTOPICS = {"fmg-adom": "FortiManager layers, ADOMs & workflows", "meta-vars": "Metadata variables & templates", "ztp": "ZTP / LTP & device blueprints", "overlay-orch": "Overlay orchestration", "bgp-design": "BGP per overlay vs. on loopback", "ipsec-overlay": "IPsec overlay settings", "sla-health": "Performance SLA & health signalling", "sdwan-rules": "SD-WAN rules & steering strategies", "session-behavior": "Session behavior & failover", "dia": "Steering stability & DIA", "dual-hub": "Dual-hub design", "multiregion": "Multiregion & VRF-aware overlays", "advpn": "ADVPN fundamentals & shortcut lifecycle", "advpn2": "ADVPN 2.0", "dyn-bgp": "Dynamic BGP & route reflection", "ospf": "OSPF areas & behavior", "bgp-selection": "BGP route selection", "bgp-policy": "BGP policy tools & SD-WAN interaction", "convergence": "BFD, graceful restart & convergence", "fgcp": "FGCP clustering", "fgsp": "FGSP, VRRP & asymmetry", "ike": "IKE, DPD & gateway selection", "ipsec-perf": "MTU, MSS, FEC & offload evidence", "advpn-ipsec": "ADVPN IPsec settings", "ssl-insp": "SSL inspection modes", "fabric": "Security Fabric connectors & feeds", "hw-accel": "Hardware acceleration", "vdom": "VLANs & VDOMs"};
+const SUB2DOM   = {"fmg-adom": "CMG", "meta-vars": "CMG", "ztp": "CMG", "overlay-orch": "CMG", "bgp-design": "OVD", "ipsec-overlay": "OVD", "sla-health": "OVD", "sdwan-rules": "OVD", "session-behavior": "OVD", "dia": "OVD", "dual-hub": "ADV", "multiregion": "ADV", "advpn": "ADV", "advpn2": "ADV", "dyn-bgp": "ADV", "ospf": "RTG", "bgp-selection": "RTG", "bgp-policy": "RTG", "convergence": "RTG", "fgcp": "HAV", "fgsp": "HAV", "ike": "VPN", "ipsec-perf": "VPN", "advpn-ipsec": "VPN", "ssl-insp": "SEC", "fabric": "SEC", "hw-accel": "SEC", "vdom": "SEC"};
+const DIAG      = {"fmg-adom": "Revisit which FortiManager features act on the device layer vs. the policy layer, and how global header/footer packages reach devices.", "meta-vars": "Practice how metadata variables resolve (mapping → default → install failure) and the CLI vs. Jinja reference syntax.", "ztp": "Re-check the ZTP vs. LTP dividing line and the role of DHCP options 240/241, blueprints, and CSV values.", "overlay-orch": "Review what the overlay orchestrator generates: prerequisites, ADVPN stitch settings, per-hub costs, and script vs. template precedence.", "bgp-design": "Contrast BGP per overlay and BGP on loopback: session counts, tunnel IP addressing (mode-cfg vs. exchange-interface-ip), and scalability.", "ipsec-overlay": "Memorize the hub vs. spoke phase 1 pattern: dial-up + net-device disable on hubs, static + net-device enable on spokes.", "sla-health": "Distinguish 'up' from 'in SLA', and study remote health probing / embedded SLA constraints (ping only, one criterion, no mode-cfg).", "sdwan-rules": "Drill the lowest-cost tiebreaker order (SLA filter → cost → configuration order) and the route-tag steering workflow.", "session-behavior": "Trace what dirty/may_dirty trigger, why SNAT changes kill sessions, what IP pools fix, and what snat-route-change adds at failback.", "dia": "Review hold-down-time: default 0, affects lowest-cost (SLA) and best-quality rules, ≥20 s recommended, includes shortcuts.", "dual-hub": "Re-check how Primary & Secondary differs from Primary & Primary (member cost only) and why lowest-cost rules prefer the primary.", "multiregion": "Review the multiregion BGP guidelines (AS per region, IBGP in, EBGP between, summarize between regions) and vpn-id-ipip VRF tagging.", "advpn": "Revisit shortcut lifecycle: hub-triggered first shortcut, lifetime inheritance, idle timeout vs. dependent shortcuts.", "advpn2": "Study edge discovery, path management, transport groups, placeholders, UDP 4684 flows, IPv4-only support, and the 1.0 fallback.", "dyn-bgp": "Contrast route reflection (hub learns/reflects everything) with dynamic BGP (summaries + peering over shortcuts).", "ospf": "Review area types (stub / totally stub / NSSA), virtual-link constraints, and OSPF ECMP RFC 1583 behavior.", "bgp-selection": "Memorize the selection order — weight, local-pref, local origin, AS path, origin, MED, IGP metric, EBGP>IBGP, ECMP, router ID.", "bgp-policy": "Practice route-map-out vs. route-map-out-preferable, minimum-sla-meet-members, and where BGP route tags are visible.", "convergence": "Review BFD (multihop support, sub-second) vs. graceful restart (state preservation across HA failover) and when they conflict.", "fgcp": "Drill both election orders (override on/off), reset-uptime, ethertypes 0x8890/0x8891/0x8893, and virtual MAC assignment logic.", "fgsp": "Re-check FGSP defaults (TCP + IPsec), pickup options, L2 vs. L3 sync, encryption (L3 only), and asymmetric session-owner forwarding.", "ike": "Map DPD modes to traffic patterns and study network-id/network-overlay for dial-up gateway selection under IKEv2.", "ipsec-perf": "Review MTU defaults (1500/1420), MSS clamping trade-offs, FEC bandwidth cost, and the npu_flag lifecycle (00/01/02/03/20).", "advpn-ipsec": "Memorize sender/receiver/forwarder roles, spoke net-device enable, and why add-route stays disabled with dynamic routing.", "ssl-insp": "Re-check what certificate inspection can do (SNI, cert URL extraction, web filter, app control) vs. what forces full inspection.", "fabric": "Contrast fabric vs. external connectors and the external-feed update paths (fetch over HTTP/HTTPS/STIX vs. push API).", "hw-accel": "Review NP7 session limits and distribution, NTurbo's flow-based IPS scope, and npu_flag evidence reading.", "vdom": "Review transparent-VDOM requirements (manageip, forward-domain) and inter-VDOM link routing + policy needs."};
+const QUESTIONS = [{"d": "CMG", "s": "meta-vars", "type": "single", "q": "A CLI template and a Jinja script both need to reference the metadata variable branch_id on FortiManager. Which statement about referencing the variable is correct?", "o": ["Both use identical syntax, because the underlying variable store is shared between all FortiManager template types", "The CLI template uses the $ prefix; the Jinja script uses Jinja's own syntax, even though both read the", "Only the Jinja script can reference it, because plain CLI templates are limited to fixed literal values", "The CLI template must first convert the variable into a device-database field before the reference resolves"], "a": [1], "ex": "Both template types can consume metadata variables, but the reference syntax differs: CLI scripts use FortiGate CLI commands with the <code>$</code> prefix, whereas Jinja scripts must reference variables using Jinja syntax. The store is shared; the notation is not. Device-database fields are a separate source of values that must be typed manually, not a conversion target.", "src": "SD-WAN Study Guide, Lesson 1 — CLI vs. Jinja scripts and metadata variable syntax"}, {"d": "CMG", "s": "ztp", "type": "single", "q": "A rollout plan states: 'Site engineers will set the management interface address, default route, and the FortiManager address on each unit from the console; FortiManager then installs the full configuration.' How is this deployment model classified?", "o": ["Zero-touch provisioning, because FortiManager still installs the detailed configuration", "Low-touch provisioning, because limited preconfiguration is performed on the FortiGate", "Model-device provisioning, because the device database is prepared in advance", "One-touch provisioning, because only a single wizard is used"], "a": [1], "ex": "The dividing line between ZTP and LTP is whether anything is configured on the device: ZTP requires none (DHCP options 240/241 supply the FortiManager details), while LTP involves basic manual settings — management IP, default route, FortiManager address — before FortiManager takes over. Model devices can be part of either flow, and 'one-touch' is not a defined category in the material.", "src": "SD-WAN Study Guide, Lesson 2 — ZTP vs. LTP definitions"}, {"d": "CMG", "s": "overlay-orch", "type": "single", "q": "An administrator uses the overlay orchestrator's ADVPN stitch on FortiManager. Which pair of BGP settings does FortiManager add for ADVPN 1.0, and where?", "o": ["additional-path on the hub and recursive-next-hop on the spokes", "recursive-next-hop on the hub and additional-path on the spokes", "route-reflector-client on the spokes and confederation on the hub", "graceful-restart on the hub and ebgp-multipath on the spokes"], "a": [0], "ex": "Selecting Auto-Discovery VPN in the overlay template makes FortiManager prepare the BGP templates with <code>additional-path enable</code> on the hub — so multiple paths per prefix can be advertised — and <code>recursive-next-hop enable</code> on the spokes so shortcut next hops resolve. The reversed placement is the trap. It also adjusts the IPsec templates (auto-discovery sender/receiver) and expects <code>add-route</code> to stay disabled with dynamic routing.", "src": "SD-WAN Study Guide, Lesson 5 — Overlay template ADVPN settings for BGP and IPsec"}, {"d": "CMG", "s": "fmg-adom", "type": "single", "q": "In a FortiManager multi-ADOM deployment, where do the header and footer policy packages that envelop each ADOM's policies live, and what is their typical use case?", "o": ["In each device's database, where they are used to stage per-device exceptions before the policy install runs", "In the global ADOM; typically used by carriers to protect their own infrastructure while still transporting", "In the policy layer of every ADOM, where they are used to enforce the implicit deny at the bottom of the package", "In Device Manager, where they are used to snapshot configuration revisions ahead of every scheduled install"], "a": [1], "ex": "The global ADOM layer holds the global object database and the header/footer policy packages, which wrap around each ADOM's own policies. The classic use case is a carrier that must transport customer traffic through its network while preventing customers from touching carrier infrastructure. Implicit deny is a FortiOS policy behavior, and revision snapshots belong to Device Manager's device database, not header/footer packages.", "src": "SD-WAN Study Guide, Lesson 1 — FortiManager management layers (global ADOM, ADOM, Device Manager)"}, {"d": "CMG", "s": "fmg-adom", "type": "multi", "q": "A new branch's router ID must be derived from its branch ID metadata variable. The estate is expected to exceed 300 branches. The administrator also uses the overlay orchestrator, which generates its own CLI script computing router IDs. Which two facts must the design account for?", "o": ["A simple network-part-plus-branch-ID formula only works up to 255 branches, so a Jinja ipmath calculation is needed", "The orchestrator's CLI script overwrites the BGP template's router ID, due to template application order", "Router IDs above 255 must be entered manually on each branch device, because Jinja cannot perform arithmetic on values", "The BGP template takes precedence over CLI scripts, so the generated script must be deleted before installing"], "a": [0, 1], "ex": "Because a BGP router ID must be an IP-address-formatted value, concatenating a fixed network part with the branch ID breaks past 255; the guide's answer is a Jinja script using <code>ipmath</code> to roll the network part upward. And when both the orchestrator's CLI script and the BGP template define the router ID, the CLI script's value overwrites the template's because of the order in which FortiManager applies them — the opposite of the last distractor. Jinja arithmetic is precisely what makes the large-estate formula possible.", "src": "SD-WAN Study Guide, Lesson 4 — Router ID formulas with Jinja ipmath; CLI script vs. BGP template precedence"}, {"d": "CMG", "s": "ztp", "type": "single", "q": "An SD-WAN template defines three members: port1 and port2 with an empty Installation Target, and port4 (MPLS) targeted at the device group 'main-branches'. What happens when the template is installed to a small branch outside that group?", "o": ["The install fails, because a member's installation target must match every device the template is assigned to", "The branch receives port1 and port2; port4 is simply not created on it because installation targets scope", "The branch receives all three members, with the port4 member created but left administratively down until grouped", "The branch receives port4 only if the physical interface exists on the platform, regardless of group membership"], "a": [1], "ex": "Installation targets scope individual members within a shared template: members with an empty target apply to every device, while targeted members are created only on devices in the selected groups or list. The install neither fails nor creates a disabled member on out-of-scope devices — the member is just omitted. Physical presence of the interface is not the selection mechanism; group membership is.", "src": "SD-WAN Study Guide, Lesson 1 — SD-WAN member installation targets"}, {"d": "OVD", "s": "bgp-design", "type": "single", "q": "A planner sizes a BGP-per-overlay dual-hub region with three overlays per hub and defines a class C (/24) overlay network in the orchestrator. The rollout later needs 45 spokes. What happens, and why?", "o": ["The design fits, because each spoke consumes only one overlay address per hub and thirty spokes never exhaust a /24", "The design fails at 31 spokes: two hubs and three overlays subdivide the /24 into /27 ranges of 30 hosts", "The design fails at 62 spokes, because the /24 is subdivided into /26 ranges providing 62 usable host addresses", "The design fits, because the orchestrator automatically renumbers the space to the default 10.10.0.0/16 when it fills"], "a": [1], "ex": "With BGP per overlay, the orchestrator subdivides the overlay network per neighbor group and again per hub: one hub and three overlays yields /26 ranges, but two hubs and three overlays yields /27 ranges — 30 usable addresses each — capping the region at 30 spokes. The orchestrator does not silently renumber an administrator-defined space; the default 10.10.0.0/16 applies only when you keep the default. This sizing arithmetic is exactly why a class B or larger is recommended for growth.", "src": "SD-WAN Study Guide, Lesson 4 — Overlay network subdivision for BGP per overlay (mask math and spoke capacity)"}, {"d": "OVD", "s": "ipsec-overlay", "type": "single", "q": "Comparing the IPsec templates the orchestrator generates: for BGP per overlay the spoke tunnels obtain their tunnel IP via IKE mode-cfg, but for BGP on loopback mode-cfg is disabled. What replaces it in the loopback design?", "o": ["Static tunnel IP addresses entered per spoke in the device database and installed with the IPsec template", "The proprietary exchange-interface-ip mechanism, exchanging the loopback address each node uses to identify", "DHCP relay over the tunnel towards the hub's address pool, which allocates a tunnel address at each renewal", "Unnumbered tunnels that borrow the WAN interface address, removing the need for tunnel addressing altogether"], "a": [1], "ex": "The key template difference between the two routing designs is how tunnel addressing is handled: per-overlay uses standard IKE mode config so the hub allocates tunnel IPs, while on-loopback disables mode-cfg and instead enables <code>exchange-interface-ip</code> with <code>exchange-ip-addr4</code> set to the loopback — the proprietary mechanism through which each node communicates its loopback identity. No DHCP relay or per-spoke static entry is involved.", "src": "SD-WAN Study Guide, Lesson 3 — IPsec template settings: mode-cfg (per overlay) vs. exchange-interface-ip (on loopback)"}, {"d": "OVD", "s": "sla-health", "type": "single", "q": "A hub must steer DC-originated traffic to each branch over the overlay that the branch itself measures as healthy, without the hub running its own probes to thousands of spokes. The design uses static tunnel IP addressing. Which mechanism fits?", "o": ["Remote health probing: spokes embed SLA data in ICMP probes, and the hub applies IKE route priorities for", "A classic performance SLA configured on the hub with every spoke loopback defined as a probe server entry", "Embedded SLA together with IKE mode-cfg, so the tunnel addresses can stay dynamic while measurements flow", "A lower BGP holdtime on the hub so that routes over unhealthy overlays age out of the table more quickly"], "a": [0], "ex": "Remote health probing is designed for hub-to-edge steering at scale: the spoke enables <code>embed-measured-health</code>, the hub sets <code>detect-mode remote</code> and assigns different priorities to IKE routes depending on in/out-of-SLA status. It requires ping as the health-check protocol, carries a single SLA criterion per hub, needs static tunnel addressing, and is explicitly not compatible with mode-cfg — which is why the third option is wrong, not merely suboptimal. Hub-side probing of every spoke is the exact scaling problem the feature avoids.", "src": "SD-WAN Study Guide, Lesson 4 — Remote health probing (embed-measured-health, detect-mode remote, priorities)"}, {"d": "OVD", "s": "sdwan-rules", "type": "single", "q": "A spoke has two tunnels to its primary hub, both behind one BGP neighbor configured with route-map-out-preferable and route-map-out, and minimum-sla-meet-members set to 2. Tunnel T1 drops out of SLA while T2 remains healthy. Which advertisement does the spoke now send to that neighbor?", "o": ["Routes with the preferable route-map, because at least one member still meets the SLA", "Routes with the route-map-out settings, because fewer than two members meet the SLA", "No routes at all, because a member is out of SLA", "Routes with both community sets, letting the hub choose"], "a": [1], "ex": "By default the preferable map applies while at least one member behind the neighbor meets SLA — but <code>minimum-sla-meet-members 2</code> raises the bar: two members must be compliant, so with only T2 healthy, the spoke falls back to <code>route-map-out</code>. This is the feature's purpose: trigger failover to the secondary neighbor when remaining capacity is insufficient, not only when everything is down. BGP never stops advertising merely because a link degrades, and only one map applies at a time.", "src": "SD-WAN Study Guide, Lesson 4 — minimum-sla-meet-members and SLA-driven route maps"}, {"d": "OVD", "s": "session-behavior", "type": "single", "q": "After a failover, existing SNAT sessions moved cleanly to the backup member (a shared IP pool is configured). When the primary member recovers, those sessions keep using the backup member indefinitely, although new sessions use the primary. The session table shows the dirty flag was set but the gateway was never updated. Why, and what fixes it?", "o": ["Route caching holds the old gateway in the kernel; clearing the FIB with a routing restart forces re-resolution", "By default SNAT sessions keep their routing unless the gateway becomes invalid; snat-route-change makes them refresh", "The dirty flag applies only to non-NAT sessions, so NAT sessions need session-pickup-nat enabled to re-evaluate", "The health check has not yet marked the backup member out of SLA, so shortening the probe interval fixes failback"], "a": [1], "ex": "This is the failback case: the backup path is still valid, so even though the route change dirties the session, FortiOS deliberately does not refresh the routing information of SNAT sessions unless their current gateway is no longer usable. Enabling <code>snat-route-change</code> changes that policy — gateway information is flushed on impacting route changes, so sessions return to the recovered member. Restarting routing is disruptive and unnecessary, <code>session-pickup-nat</code> is an FGSP/FGCP synchronization option, and probe tuning cannot alter session-refresh semantics.", "src": "SD-WAN Study Guide, Solution Slides — SNAT sessions during failback; snat-route-change"}, {"d": "OVD", "s": "sla-health", "type": "single", "q": "Which CLI command shows, for each SD-WAN rule, the member list order currently being used to steer matching sessions, including SLA status effects?", "o": ["diagnose sys sdwan member", "diagnose sys sdwan service4", "diagnose sys sdwan intf-sla-log", "get router info routing-table all"], "a": [1], "ex": "<code>diagnose sys sdwan service4</code> is the go-to command for rule status — it shows each IPv4 rule with its evaluated member preference order, reflecting SLA compliance and strategy. <code>member</code> lists member state and gateways, <code>intf-sla-log</code> shows historical per-interface SLA metrics, and the routing table shows FIB contents rather than rule evaluation.", "src": "SD-WAN Study Guide, Appendix — SD-WAN monitoring and troubleshooting commands"}, {"d": "OVD", "s": "dia", "type": "single", "q": "A brownout-prone internet link keeps oscillating in and out of SLA every few seconds, causing voice sessions to bounce between members under a lowest cost (SLA) rule and driving CPU up with session re-evaluations. Which rule-level setting is recommended, and with what guidance?", "o": ["hold-down-time of at least 20 seconds, delaying failback until the member holds its SLA target continuously", "A larger sla-fail-log-period, so that SLA state changes are recorded less frequently and stop churning sessions", "Switching the rule to the manual strategy so the member list never changes once the rule has been evaluated", "Setting the member cost to zero so that cost stops influencing selection and the sessions stay where they are"], "a": [0], "ex": "<code>hold-down-time</code> (default 0) makes FortiGate wait a configured number of seconds before returning a recovered member — including recovered ADVPN shortcuts — to its place in the outgoing list, so flapping links must prove themselves before regaining traffic. A value of at least 20 seconds is recommended on lowest cost (SLA) and best-quality deployments, the only strategies the setting affects. Logging cadence doesn't stop the bouncing, manual mode abandons SLA awareness entirely, and zero cost changes preference, not stability.", "src": "SD-WAN Study Guide, Lesson 5 — hold-down-time for brownout-prone members"}, {"d": "ADV", "s": "advpn2", "type": "single", "q": "In an ADVPN 2.0 deployment, a spoke detects through shortcut health checks that the member carrying an active shortcut no longer meets the rule's SLA. With FortiOS 7.4, what sequence follows?", "o": ["The spoke tears the shortcut down and reroutes through the hub permanently until an administrator intervenes", "The spoke sends UDP trigger packets to the hub, which answers with shortcut-offer packets starting a new negotiation", "The spoke renegotiates phase 2 of the existing shortcut over the healthier member with no hub involvement at all", "The hub detects the SLA breach through its own probes towards both spokes and rebuilds the shortcut on their behalf"], "a": [1], "ex": "ADVPN 2.0 moved intelligence to the spokes, but with FortiOS 7.4 establishing a <i>new</i> shortcut still requires the hub's assistance: the detecting spoke sends ADVPN control (UDP trigger) packets on port 4684, sourced from its loopback to the hub loopback, and the hub emits shortcut-offer packets that trigger negotiation of the replacement between the two spokes. The spoke can detect the breach itself — including for the remote spoke's members — but it does not silently rehome an existing shortcut, and the hub runs no probes of its own for this.", "src": "SD-WAN Study Guide, Lesson 5 — New shortcut triggering with hub assistance (UDP trigger and shortcut-offer)"}, {"d": "ADV", "s": "advpn2", "type": "single", "q": "Spoke1 and Spoke2 share a private MPLS network that has no connectivity to the hub, alongside internet overlays that do reach the hub. The design goal is for ADVPN 2.0 shortcuts to form over the MPLS path when it offers the best quality. How is this achieved?", "o": ["Add the MPLS interface as an SD-WAN member on the hub so that it participates in the overlay orchestration", "Configure placeholder parent tunnels with auto-discovery-dialup-placeholder and no static remote gateway", "Enable overlay stickiness policy routes so that the initial hub-transited flow selects the MPLS overlay first", "Configure a GRE tunnel across the MPLS network and add it to the same SD-WAN zone as the internet overlays"], "a": [1], "ex": "Overlay placeholders exist for exactly this: each spoke keeps a regular parent tunnel to the hub plus a placeholder parent tunnel (<code>auto-discovery-dialup-placeholder</code> enabled, remote gateway unspecified) representing the hub-less transport. No connection is established on the placeholder until needed; ADVPN 2.0 exchanges its details like a standard overlay and establishes spoke-to-spoke shortcuts across it, with health checks running on both regular and placeholder shortcuts. The hub cannot join a network it has no connectivity to, and overlay stickiness is an ADVPN 1.0 concept made irrelevant by 2.0's path selection.", "src": "SD-WAN Study Guide, Lesson 5 — Overlay placeholders for hub-less transports"}, {"d": "ADV", "s": "advpn2", "type": "single", "q": "An ADVPN 2.0 spoke has three underlays: two internet links that may interconnect, and one CGNAT-based LTE link that cannot reach the internet links' address space. How does the administrator prevent 2.0 path management from attempting shortcuts between incompatible interfaces?", "o": ["Assign the internet members one transport group ID and the LTE member a different one, since shortcuts only form", "Leave all members in transport group zero, which isolates incompatible interfaces from each other automatically", "Configure overlay stickiness policy routes for the LTE overlay so shortcuts never leave their original transport", "Blacklist the LTE overlay in the hub's shortcut-offer configuration so offers exclude the incompatible interface"], "a": [0], "ex": "With ADVPN 2.0, shortcut endpoints are chosen by the spokes from exchanged WAN link information, so compatibility is expressed through transport group IDs: members sharing a group are considered mutually reachable, and by default every member sits in group zero — which is why the second option achieves the opposite of isolation. Overlay stickiness belongs to ADVPN 1.0, and the hub does not curate per-overlay shortcut blacklists.", "src": "SD-WAN Study Guide, Lesson 5 — Transport groups for compatible/incompatible interfaces"}, {"d": "ADV", "s": "dual-hub", "type": "single", "q": "In a dual-hub ADVPN design, spokes should be able to hold two shortcuts to the same peer simultaneously — one negotiated through each hub — even though both shortcuts terminate on the same pair of local and remote gateway IP addresses. What makes this possible?", "o": ["Setting a distinct network ID per overlay, with network-overlay enabled, under IKEv2, so both gateway pairs", "Enabling auto-discovery-forwarder on both hubs so each relays the second shortcut's negotiation messages", "Configuring different IKE versions for each hub's overlays so the two negotiations can be told apart on arrival", "Assigning each shortcut to a separate VRF so the kernel treats the duplicate gateway pairs as distinct tunnels"], "a": [0], "ex": "The network ID (requiring <code>network-overlay enable</code>, supported only with IKEv2) disambiguates tunnels between identical IP pairs, allowing the hub1-negotiated and hub2-negotiated shortcuts to coexist. It also serves gateway lookup when multiple dial-up VPNs share a local IP. The orchestrator's overlay template sets a distinct network ID per overlay automatically. Forwarder mode relays shortcut offers between hubs; it doesn't solve gateway ambiguity, and neither IKE-version mixing nor VRFs is the mechanism the guide describes.", "src": "SD-WAN Study Guide, Lesson 5 — network-id and network-overlay for concurrent shortcuts"}, {"d": "ADV", "s": "multiregion", "type": "single", "q": "A global design allows ADVPN shortcuts within each region but must also permit shortcuts between spokes in different regions. EBGP interconnects the regional hubs. Besides ADVPN 2.0, which configuration supports interregion shortcuts in this topology?", "o": ["Forwarder mode enabled on each hub", "Route summarization between the regions", "A shared loopback subnet across all regions", "OSPF virtual links between the regional backbones"], "a": [0], "ex": "Intraregion ADVPN needs nothing special beyond the regional design, but shortcut negotiation across region boundaries requires each hub to run forwarder mode so shortcut messaging is relayed hub-to-hub (the alternatives being an IBGP-only design, or ADVPN 2.0). Summarization actually removes the path detail SD-WAN wants, and loopback-subnet sharing or OSPF virtual links are not part of the interregion ADVPN mechanism.", "src": "SD-WAN Study Guide, Lesson 4 — Interregion ADVPN requirements (forwarder mode)"}, {"d": "ADV", "s": "dyn-bgp", "type": "single", "q": "A hub's CPU spikes during route churn because it reflects every spoke prefix to every other spoke. The architect proposes dynamic BGP with ADVPN instead of route reflection. Which behavior change is expected?", "o": ["The hub keeps only spoke summaries; spokes peer over shortcuts after they form and exchange specifics directly", "The hub keeps all specific routes but compresses its updates using BGP add-path so reflection load drops sharply", "Spokes stop advertising to the hub entirely and flood their routes over shortcuts pre-emptively at boot time", "Route reflection continues to run, but only for the prefixes that match a community filter defined on the hub"], "a": [0], "ex": "Dynamic BGP inverts the load model: the hub carries just the summary route per spoke, and only after two spokes establish a shortcut do they actively open a BGP session over it and exchange their routes — so devices learn specifics only from peers they actually talk to, cutting hub CPU and route-table bloat. It removes the route-reflection requirement altogether (rather than filtering it), works atop BGP per overlay or on loopback, and supports IPv4 and IPv6.", "src": "SD-WAN Study Guide, Lesson 5 — Dynamic BGP with ADVPN"}, {"d": "ADV", "s": "dual-hub", "type": "single", "q": "With the orchestrator's Dual HUB (Primary & Secondary) deployment and default-generated rules, what actually causes spokes to prefer the primary hub during normal operation?", "o": ["BGP local preference set higher for the primary hub's routes on every spoke, so routing itself prefers the primary", "Lowest cost (SLA) choosing the cheaper primary-hub members, since cost is the first tiebreaker among members", "The secondary hub's tunnels remaining down until a failure occurs, so only the primary carries traffic normally", "A floating static route towards the secondary hub carrying a higher administrative distance than the primary's"], "a": [1], "ex": "Both hubs' tunnels and BGP sessions are always up; preference is purely an SD-WAN steering outcome. Because the orchestrator assigns higher cost to secondary-hub members, and lowest cost (SLA) uses member cost as its first discriminator among SLA-compliant members (configuration order second), traffic naturally lands on the primary while it remains within SLA. Routing attributes and floating statics are not the generated mechanism.", "src": "SD-WAN Study Guide, Lesson 4 — Dual-hub cost assignment and lowest-cost tiebreakers"}, {"d": "RTG", "s": "ospf", "type": "single", "q": "An engineer converts a branch area to totally stub. Which routes do the branch routers now see from the ABR for destinations outside their area?", "o": ["All inter-area prefixes plus externals, exactly as before the conversion, because totally stub filters nothing new", "Inter-area prefixes but no external routes, which the ABR now blocks", "Only a default route injected by the ABR, replacing both inter-area and external prefixes", "Nothing at all, because totally stub areas are fully isolated from every destination outside their own area"], "a": [2], "ex": "A stub area blocks external LSAs but still carries inter-area (summary) prefixes; a totally stub area goes further — the ABR replaces the inter-area prefixes as well, leaving branch routers with just a default route towards the ABR. The area remains fully reachable through that default; isolation is not the effect.", "src": "Enterprise Firewall Study Guide, Lesson 5 — Stub vs. totally stub area behavior"}, {"d": "RTG", "s": "bgp-selection", "type": "single", "q": "A spoke prefers a backup path even though the primary advertisement carries a longer AS path prepend from the far end. Investigation shows the backup route has weight 0 and local preference 100, while the primary route has weight 100. Which statement explains the selection?", "o": ["Weight is evaluated before local preference and AS path, so the higher-weight route wins on that device", "Local preference is evaluated first, so both routes tie at their configured values and the AS path length decides", "AS path outranks locally significant attributes in the comparison, so the prepended primary route can never win the election", "The route with weight 0 is invalid and should not have appeared in the BGP table for the selection process at all"], "a": [0], "ex": "FortiGate's selection order begins with highest weight, then highest local preference, then locally originated, then shortest AS path, origin, MED, IGP metric, EBGP-over-IBGP, ECMP, and finally lowest router ID. Weight is locally significant but sits at the very top, so a weight of 100 defeats any prepending downstream. Weight 0 is simply the default, not an invalid state.", "src": "Enterprise Firewall Study Guide, Dynamic Routing Supplement — BGP route selection tiebreaker order"}, {"d": "RTG", "s": "convergence", "type": "single", "q": "Two BGP peers are separated by an intermediate layer 3 hop, and the design calls for sub-second failure detection between them. Which statement about BFD on FortiGate applies?", "o": ["BFD works only for directly connected neighbors, so this topology must rely on protocol timers for detection instead", "FortiGate supports BFD for multihop neighbors; configure it for the neighbor and the multihop path", "BFD requires OSPF as the routing protocol, so the BGP peering must first be migrated before it can be enabled", "BFD replaces BGP keepalives entirely once enabled, so the session timers must be removed to avoid conflicts"], "a": [1], "ex": "BFD began as a single-hop mechanism, but FortiGate also supports BFD to neighbors across multiple hops — you enable BFD for the neighbor and configure the multihop path (under <code>config router bfd</code>). It runs alongside BGP (and OSPF) as an independent liveness check rather than replacing protocol keepalives.", "src": "Enterprise Firewall Study Guide, Lesson 5 — BFD parameters and multihop support"}, {"d": "RTG", "s": "ospf", "type": "single", "q": "A legacy area cannot connect physically to area 0 and must transit an intermediate area. The intermediate area is currently a stub area. What must be true for a virtual link to solve this?", "o": ["Nothing special; virtual links can transit any area type, including stub areas, without any conversion", "The transit area cannot be a stub area, so its type must change; an NSSA can be integrated with a virtual link", "Both endpoint routers must be ASBRs, so redistribution has to be enabled on each end before the link forms", "The virtual link must terminate on the backbone's designated router, which the stub area currently prevents"], "a": [1], "ex": "Virtual links stitch a remote area to the backbone across a transit area — but a stub area cannot serve as transit. The material notes NSSA integration with a virtual link is possible, so the stub restriction is the operative constraint here. The endpoints are ABRs of the transit area, not ASBRs, and DRs are a multi-access segment concept unrelated to virtual-link termination.", "src": "Enterprise Firewall Study Guide, Lesson 5 — Virtual links and area type constraints"}, {"d": "RTG", "s": "bgp-policy", "type": "single", "q": "On the hub of a self-healing SD-WAN design, routes from a spoke arrive with community 65000:21 when tunnel T2 is within SLA and 65000:50 when no SLA is met. The hub is a FortiGate without SD-WAN configured. How does the hub end up preferring the healthy overlay?", "o": ["It cannot; the hub must have SD-WAN configured before it is able to act on any received health information", "Community lists match the received values and route maps assign priorities, so routes signalled healthy win", "The hub's own health checks validate the received communities before the corresponding routes are installed", "The spoke withdraws its routes over unhealthy tunnels entirely, leaving the hub only one possible path to use"], "a": [1], "ex": "BGP self-healing deliberately keeps the hub simple: it needs neither SD-WAN nor even to be a FortiGate. The hub matches the received communities with community lists and applies route maps that set attributes — commonly priority, tag, or metric — so the route advertised as healthy (via <code>route-map-out-preferable</code> on the spoke) receives the lowest priority value and wins. Routes over unhealthy tunnels are still advertised, just with the 'bad' community, which is what makes graceful degradation possible.", "src": "SD-WAN Study Guide, Lesson 4 — BGP self-healing: hub-side community lists and priorities"}, {"d": "RTG", "s": "bgp-policy", "type": "single", "q": "An administrator needs to verify which route tag was assigned to a BGP-learned network after applying a route-map-in, but the tag does not appear in the routing table output. Which command reveals it?", "o": ["get router info routing-table details", "get router info bgp network", "diagnose ip route list", "diagnose sys sdwan route-tag-list"], "a": [1], "ex": "BGP route tags assigned through route maps do not show up in the routing table; the guide directs you to <code>get router info bgp network</code> to review the tag attached to each network. The other outputs display FIB or RIB contents without the BGP tag attribute, and the last command is not a FortiOS command.", "src": "SD-WAN Study Guide, Lesson 4 — Verifying BGP route tags"}, {"d": "HAV", "s": "fgcp", "type": "single", "q": "An FGCP pair has override enabled on both members, with FGT-A at priority 200 and FGT-B at priority 100. FGT-A fails and later returns to service. Describe the cluster's behavior across the whole event.", "o": ["FGT-B becomes primary and remains primary after FGT-A returns, because HA uptime now clearly favors FGT-B", "FGT-B is primary during the outage; FGT-A preempts and takes the role back on return because priority now", "FGT-A remains primary throughout the event, because a priority value is unaffected by a device failure", "The cluster splits into two simultaneous primaries until an administrator manually resolves the conflict"], "a": [1], "ex": "Override enabled moves priority ahead of uptime in the election, which guarantees the preferred unit is primary whenever available — at the cost of a second failover when it returns (preemption). With override disabled, B's now-higher uptime would have kept it primary. Remember also that override and priority are not synchronized between members and must be set on each.", "src": "Enterprise Firewall Study Guide, Lesson 4 — Override-enabled election and re-failover on recovery"}, {"d": "HAV", "s": "fgcp", "type": "single", "q": "Which traffic uses Ethernet type 0x8893 within an FGCP cluster?", "o": ["Heartbeat and primary election messages", "Configuration synchronization", "Session synchronization when a dedicated sync link exists", "Traffic redistribution in active-active mode"], "a": [1], "ex": "FGCP separates its control traffic by ethertype: 0x8890 and 0x8891 carry heartbeats — discovery, election, failure detection, and related data — while 0x8893 carries configuration synchronization. Knowing these values matters practically because you can sniff them (for example <code>diagnose sniffer packet any \"ether proto 0x8890\"</code>) when diagnosing HA formation problems.", "src": "Enterprise Firewall Study Guide, Lesson 4 — HA Ethernet types"}, {"d": "HAV", "s": "fgcp", "type": "single", "q": "A high-throughput cluster synchronizes a very large session count over its only heartbeat link. Occasionally, members declare each other dead and a false failover occurs under peak load. What is the recommended remedy?", "o": ["Configure dedicated session synchronization interfaces so sync no longer competes with heartbeats and the", "Disable session pickup during business hours so the heartbeat link stays clear when the load is at its peak", "Reduce the heartbeat interval so that lost heartbeats are detected and compensated for much more quickly", "Move the heartbeat onto a routed layer 3 path with more capacity than the current direct connection provides"], "a": [0], "ex": "Session synchronization is bandwidth-hungry; when it shares the heartbeat link, heavy sync load can starve heartbeats and trigger false failovers — the exact failure mode described. The recommendation is dedicated sync interfaces (multiple links are load balanced; if all fail, sync reverts to the heartbeat link). Disabling pickup sacrifices the HA guarantee, shortening the heartbeat interval worsens sensitivity to congestion, and heartbeats are a link-layer mechanism between cluster members, not a routed service.", "src": "Enterprise Firewall Study Guide, Lesson 4 — Dedicated session sync links and false failover"}, {"d": "HAV", "s": "fgsp", "type": "single", "q": "Two FGSP peers in different data centers synchronize sessions across a routed WAN. Security policy requires the synchronized session data to be encrypted in transit. Which statement is accurate?", "o": ["Enable encryption and a psksecret under standalone-cluster; FortiOS builds the IPsec VPN and policies (layer 3 only)", "Set session-sync-dev to the WAN interface, because FGSP then encrypts the synchronization stream over layer 2", "FGSP synchronization cannot be encrypted natively, so a third-party MACsec device is required between the sites", "Enable encryption in the FGCP settings, which the FGSP peers inherit automatically through the cluster peer entry"], "a": [0], "ex": "FGSP sync encryption is built in: enabling <code>encryption</code> with a <code>psksecret</code> under <code>config system standalone-cluster</code> makes FortiOS create the IPsec tunnel and required policies automatically — designed exactly for inter-data-center sync. The constraint to remember is that encryption is supported for layer 3 connections only, which is also why the layer 2 <code>session-sync-dev</code> option is the wrong direction here. FGSP does not inherit FGCP settings; they are separate mechanisms.", "src": "Enterprise Firewall Study Guide, Lesson 4 — FGSP session synchronization encryption (layer 3 only)"}, {"d": "HAV", "s": "fgsp", "type": "single", "q": "A design comparison table is being prepared. Which capability set correctly describes VRRP relative to FGCP and FGSP?", "o": ["VRRP provides configuration synchronization between the routers but offers no failover of any kind", "VRRP interoperates with any compliant device but has neither session nor configuration synchronization", "VRRP synchronizes sessions natively between members but requires identical hardware models at both ends", "VRRP supports 2 to 16 FortiGate devices with native active-active load balancing across the whole group"], "a": [1], "ex": "VRRP's strength is open-standard interoperability with any compliant router, but it carries no session synchronization and no configuration synchronization, and no load balancing. FGCP provides native config sync (and optional session sync, plus A-A load balancing); FGSP spans 2–16 standalone devices or FGCP clusters with session sync through external load balancers and optional config sync. VRRP can also monitor up to two remote destinations and stop advertising when they become unreachable.", "src": "Enterprise Firewall Study Guide, Lesson 4 — FGCP, FGSP, and VRRP comparison"}, {"d": "VPN", "s": "ike", "type": "single", "q": "A branch tunnel to the hub is stable, but a monitoring requirement says failed peers must be detected even during long periods with no user traffic. Which DPD mode satisfies this with the least change?", "o": ["On-demand, because it sends its probes on a fixed schedule regardless of traffic", "On-idle, which sends DPD probes during quiet periods, closing the blind spot that", "Disabled, relying on the periodic IKE rekey negotiations to reveal any failed peers", "On-demand configured with a shorter retry count so failures surface faster"], "a": [1], "ex": "On-demand DPD only probes when the device is sending traffic and getting no replies — during a fully idle period nothing is sent, so a dead peer can go unnoticed until traffic resumes. On-idle probes during idle intervals, which is precisely the requirement. Waiting for rekeys leaves multi-minute or multi-hour blind spots.", "src": "Enterprise Firewall Study Guide, Lesson 7 — DPD mode behavior differences"}, {"d": "VPN", "s": "ipsec-perf", "type": "single", "q": "After enabling several encapsulations on a WAN path (ESP plus a VLAN tag), users report that only large transfers fail. PMTUD appears not to work through one provider segment. The administrator can modify FortiGate but not the provider network. Which action most directly protects TCP flows crossing the tunnel?", "o": ["Clamp tcp-mss-sender and tcp-mss-receiver on the policy so segments fit the effective MTU imposed by", "Raise the physical interface MTU above 1500 bytes so the added encapsulation overhead is fully absorbed", "Enable FEC on phase 1 so the redundant packets reconstruct the large frames the provider segment drops", "Lower the IPsec phase 1 keylife so the SAs renegotiate before the transfers grow large enough to fail"], "a": [0], "ex": "With the provider path fixed and PMTUD unreliable (ICMP fragmentation-needed messages lost), MSS clamping on the policy guarantees TCP payloads small enough to avoid fragmentation regardless of end-host behavior. Raising MTU only helps in networks you control end to end — the guide is explicit that ensuring higher MTU across the internet is generally not feasible. FEC recovers randomly lost packets, not systematically oversized ones, and keylife is unrelated.", "src": "Enterprise Firewall Study Guide, Lesson 7 — MSS clamping when path MTU cannot be controlled"}, {"d": "VPN", "s": "advpn-ipsec", "type": "single", "q": "On the hub of an ADVPN 1.0 deployment built with the overlay template, dynamic routing distributes all prefixes. Why must add-route remain disabled on the IPsec configuration?", "o": ["add-route conflicts with NAT-T on dial-up tunnels, so enabling both would break spokes behind NAT devices", "So IKE does not inject routes, leaving only what the dynamic routing protocol provides", "Because add-route is unsupported whenever net-device is disabled on the same phase 1 configuration", "To prevent the hub from advertising its own loopback address into the overlay routing tables of the spokes"], "a": [1], "ex": "With <code>add-route</code> enabled, IKE would install routes for negotiated networks alongside BGP's — creating duplicate or conflicting paths. The template therefore keeps it disabled whenever a dynamic routing protocol runs, so FortiGate holds only the routes the protocol provides. The setting has no dependency on NAT-T or net-device, and loopback advertisement is a BGP matter.", "src": "SD-WAN Study Guide, Lesson 5 — add-route disabled with dynamic routing in ADVPN deployments"}, {"d": "VPN", "s": "ipsec-perf", "type": "single", "q": "Why does aggressively lowering the TCP MSS on a busy firewall policy carry a performance cost even though it prevents fragmentation?", "o": ["Each segment must be encrypted twice under ESP, doubling the cryptographic cost for every packet sent", "Smaller segments mean more packets and more header overhead per byte, cutting throughput and raising", "The MSS value is renegotiated on every packet, adding a round trip of latency to each exchange on the session", "FortiGate disables hardware offloading whenever MSS clamping is active, forcing the whole flow onto the CPU"], "a": [1], "ex": "MSS defines only the payload of each TCP segment; shrink it and the same data needs more segments, each carrying a full set of headers — consuming bandwidth on overhead and increasing per-packet processing, which lowers throughput. Setting MSS correctly requires knowing the true path overhead; that trade-off is why it should be tuned rather than minimized. Nothing about clamping doubles encryption or disables offload.", "src": "Enterprise Firewall Study Guide, Lesson 7 — TCP MSS trade-offs"}, {"d": "VPN", "s": "ike", "type": "single", "q": "A spoke establishes tunnels to two hub dial-up endpoints that terminate on the same hub IP address. Connections must reliably match the intended phase 1 gateway from the very first packet. Which mechanism provides this selection?", "o": ["Peer ID matching, applied after phase 1 completes and the identities are exchanged", "The network ID, carried in the initiator's first packet, selecting the phase 1 gateway", "A distinct DH group per gateway, letting the responder infer the target from the proposal", "Source-port-based load balancing on the hub, mapping each client port range to a gateway"], "a": [1], "ex": "Because the network ID rides in the very first initiator packet, the responder can use it for gateway lookup before any negotiation ambiguity arises — the guide names this exact use case for multiple dial-up VPNs terminating on one local IP. It requires <code>network-overlay enable</code> and IKEv2. Peer ID arrives later in the exchange, and neither DH group choice nor port-based balancing is a gateway-selection mechanism.", "src": "SD-WAN Study Guide, Lesson 5 — network-id for dial-up gateway lookup"}, {"d": "SEC", "s": "hw-accel", "type": "single", "q": "A FortiGate with multiple NP7 processors approaches 12 million offloaded sessions on one NP7 while others sit idle, and new sessions on the saturated processor start hitting the CPU. What is the recommended design response?", "o": ["Distribute ingress traffic across interfaces connected to different NP7 processors so the", "Increase the NP7 session limit in the CLI so the saturated processor accepts more entries", "Disable offloading on the saturated NP7 so that all of its sessions move to the CPU together", "Enable NTurbo, which doubles the session capacity of every NP7 processor on the platform"], "a": [0], "ex": "Each NP7 supports up to about 12 million sessions, bounded by processor memory, and sessions beyond the limit fall back to the CPU. The limit is not configurable — the answer is architectural: know which interfaces map to which NP7 and distribute ingress traffic so sessions spread across processors. NTurbo is a different mechanism (offloading flow-based, IPS-engine-handled traffic), not a capacity multiplier.", "src": "Enterprise Firewall Study Guide, Lesson 10 — NP7 session limits and traffic distribution"}, {"d": "SEC", "s": "fabric", "type": "single", "q": "Which pairing of connector category and example is correct as presented for the Security Fabric?", "o": ["Fabric connector — FortiClient EMS; External connector — FSSO", "Fabric connector — AWS SDN; External connector — FortiAnalyzer", "Fabric connector — malware hash threat feed; External connector — central management", "Fabric connector — RADIUS SSO; External connector — FortiSandbox"], "a": [0], "ex": "Fabric connectors are focused on Fortinet technologies — core network security connectors such as FortiGate, FortiAnalyzer, and FortiClient EMS, plus central management and sandbox. External connectors integrate the multivendor ecosystem: public and private SDN (AWS, GCP, Kubernetes, VMware), endpoint/identity (FSSO, RADIUS), and threat feeds. Each incorrect option swaps at least one item across the boundary.", "src": "Enterprise Firewall Study Guide, Lesson 9 — Fabric connectors vs. external connectors"}, {"d": "SEC", "s": "ssl-insp", "type": "single", "q": "A security architect claims certificate inspection is sufficient for the organization because 'we only need to block categories and detect applications.' Which single requirement, if added, would force full inspection instead?", "o": ["Extracting the URL when the SNI is absent from the client hello", "Scanning downloaded files for malware inside the HTTPS sessions", "Validating the full server certificate chain during the handshake", "Identifying the application from the TLS handshake characteristics"], "a": [1], "ex": "Certificate inspection handles handshake-level functions: SNI parsing, certificate validation, URL extraction from SNI or from the certificate when SNI is absent, web filtering, and application control. What it cannot do is see the payload — so any content-level requirement, such as antivirus scanning of transferred files, requires full inspection, accepting its higher CPU/RAM cost and the resigning-certificate implications.", "src": "Enterprise Firewall Study Guide, Lesson 6 — Capabilities of certificate vs. full inspection"}, {"d": "SEC", "s": "vdom", "type": "single", "q": "VDOM1 has no internet-facing interface, but its users must reach the internet through the root VDOM. Beyond creating the inter-VDOM link, what must the administrator configure for traffic to actually flow?", "o": ["Nothing further; inter-VDOM links forward automatically once both virtual interfaces are up", "Routing across the link plus firewall policies in both VDOMs for the traffic, one", "A software switch bridging the two VDOMs' interfaces into one layer 2 forwarding domain", "Transparent mode on VDOM1 so that it inherits the root VDOM's routing table directly"], "a": [1], "ex": "Creating a VDOM link produces the two virtual interfaces (name0/name1), but forwarding still obeys each VDOM's own routing table and policy set — so you must add static or dynamic routes across the link and firewall policies permitting the flows in both VDOMs. Nothing is automatic, bridging via software switch defeats VDOM separation, and transparent mode changes the VDOM's operating layer rather than granting routed internet access.", "src": "Enterprise Firewall Study Guide, Lesson 3 — Inter-VDOM links, routing, and policy requirements"}];
+
+const STUDY_PROMPT_GUIDE_LINE =
+  "Map each priority to the relevant lessons of the two supplied 7.6 study guides " +
+  "(Enterprise Firewall Administrator and SD-WAN Enterprise Administrator — search the project knowledge).";
+const SOCRATIC_INTRO_LINES = [
+  "- Do NOT reveal the correct answer immediately — ask a guiding question first.",
+  "- If I head in the wrong direction, use partial hints (\"You're looking in the right area...\") rather than saying no.",
+  "- When I reason correctly, acknowledge WHY the reasoning was good.",
+  "- Rebuild the mental model behind each concept before moving on.",
+  "- At the end, summarize patterns across my mistakes and suggest study-plan focus areas."
+];
+
+/* ═══════════════ ENGINE ═══════════════ */
+const TIME_LIMIT_SEC = EXAM_META.MINUTES * 60;
+const LETTERS = ["A","B","C","D","E","F"];
+document.title = EXAM_META.TITLE + " | " + EXAM_META.CODE;
+
+let Q = [];
+const state = {
+  mode: null,          // 'study' | 'exam'
+  timed: false,
+  qperm: null,         // order of original question indices
+  operms: null,        // per-original-question option permutation
+  answers: [],         // array of Set (indices into shuffled options)
+  flags: [],
+  checked: [],         // study mode: answer checked per question
+  submitted: false,
+  timeLeft: TIME_LIMIT_SEC,
+  elapsed: 0,
+  timerId: null,
+  saveTick: 0
+};
+
+function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function buildQ(){
+  Q = state.qperm.map(oi=>{
+    const src = QUESTIONS[oi], perm = state.operms[oi];
+    return {
+      orig: oi, d: src.d, s: src.s, type: src.type, q: src.q,
+      exhibit: src.exhibit, exhibitLabel: src.exhibitLabel,
+      o: perm.map(j=>src.o[j]),
+      a: src.a.map(x=>perm.indexOf(x)).sort((m,n)=>m-n),
+      ex: src.ex, src: src.src
+    };
+  });
+}
+
+/* ---------- persistence ---------- */
+function saveState(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      v:1, mode:state.mode, timed:state.timed,
+      qperm:state.qperm, operms:state.operms,
+      answers:state.answers.map(s=>[...s]),
+      flags:state.flags, checked:state.checked,
+      submitted:state.submitted,
+      timeLeft:state.timeLeft, elapsed:state.elapsed,
+      savedAt:Date.now()
+    }));
+  }catch(e){/* storage unavailable — continue without persistence */}
+}
+function loadState(){
+  try{ const raw=localStorage.getItem(STORE_KEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }
+}
+function clearState(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+
+let SAVED = loadState();
+(function showResume(){
+  if(!SAVED || !SAVED.qperm) return;
+  const card=document.getElementById('resumeCard');
+  const done=SAVED.answers.filter(a=>a.length>0).length;
+  const when=SAVED.savedAt?new Date(SAVED.savedAt).toLocaleString():'earlier';
+  const modeTxt = SAVED.mode==='study' ? 'Study Mode'
+                : (SAVED.timed ? 'Exam Mode · Timed' : 'Exam Mode · Untimed');
+  document.getElementById('resumeInfo').innerHTML =
+    SAVED.submitted
+      ? `A <b>finished</b> ${modeTxt} attempt from ${when} is saved. Resume to reopen its results and review, or discard it for a fresh shuffle.`
+      : `An in-progress <b>${modeTxt}</b> attempt from ${when} is saved — ${done} of ${SAVED.qperm.length} answered${SAVED.timed?`, ${fmtTime(SAVED.timeLeft)} remaining`:''}. Resuming keeps the same question and option order.`;
+  card.style.display='block';
+})();
+
+function discardAttempt(){
+  if(!confirm('Discard the saved attempt? Its answers and results will be lost.')) return;
+  clearState(); SAVED=null;
+  document.getElementById('resumeCard').style.display='none';
+}
+function resumeAttempt(){
+  if(!SAVED) return;
+  state.mode=SAVED.mode; state.timed=!!SAVED.timed;
+  state.qperm=SAVED.qperm; state.operms=SAVED.operms;
+  state.answers=SAVED.answers.map(a=>new Set(a));
+  state.flags=SAVED.flags.slice(); state.checked=(SAVED.checked||[]).slice();
+  state.submitted=!!SAVED.submitted;
+  state.timeLeft=(typeof SAVED.timeLeft==='number')?SAVED.timeLeft:TIME_LIMIT_SEC;
+  state.elapsed=SAVED.elapsed||0;
+  buildQ();
+  enterExamView();
+  if(state.mode==='study'){
+    Q.forEach((qu,i)=>{ if(state.checked[i]) paintStudyFeedback(i); });
+    updateStudyScore();
+  }
+  if(state.submitted){ finalize(true); }
+  else if(state.timed){ state.timerId=setInterval(tick,1000); }
+  else { state.timerId=setInterval(tickUp,1000); }
+  refreshTimerDisplay();
+}
+
+/* ---------- attempt start ---------- */
+function startAttempt(mode,timed){
+  if(SAVED && SAVED.qperm){
+    if(!confirm('Starting fresh will discard the saved attempt. Continue?')) return;
+    clearState(); SAVED=null;
+  }
+  state.mode=mode; state.timed=timed;
+  state.qperm=shuffleArr(QUESTIONS.map((_,i)=>i));
+  state.operms=QUESTIONS.map(q=>shuffleArr(q.o.map((_,j)=>j)));
+  state.answers=QUESTIONS.map(()=>new Set());
+  state.flags=QUESTIONS.map(()=>false);
+  state.checked=QUESTIONS.map(()=>false);
+  state.submitted=false; state.timeLeft=TIME_LIMIT_SEC; state.elapsed=0;
+  buildQ();
+  saveState();
+  enterExamView();
+  if(timed){ state.timerId=setInterval(tick,1000); } else { state.timerId=setInterval(tickUp,1000); }
+  refreshTimerDisplay();
+}
+
+function enterExamView(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('barWrap').style.display='flex';
+  document.getElementById('examArea').style.display='grid';
+  document.getElementById('modeChip').textContent =
+    state.mode==='study' ? 'Study Mode' : (state.timed ? 'Exam · Timed' : 'Exam · Untimed');
+  document.getElementById('submitBtn').textContent =
+    state.mode==='study' ? 'Finish Study Session' : 'Submit Exam';
+  if(state.mode==='study') document.getElementById('scoreChip').style.display='inline-block';
+  renderQuestions(); renderNav(); updateProgress();
+  window.scrollTo(0,0);
+}
+
+/* ---------- timing ---------- */
+function fmtTime(sec){ const m=Math.floor(sec/60), s=sec%60; return `${m}:${String(s).padStart(2,'0')}`; }
+function refreshTimerDisplay(){
+  const t=document.getElementById('timer');
+  if(state.timed){ t.textContent=fmtTime(Math.max(0,state.timeLeft)); }
+  else { t.textContent='⏲ '+fmtTime(state.elapsed); t.title='Elapsed time (no limit)'; }
+}
+function tick(){
+  const t=document.getElementById('timer');
+  refreshTimerDisplay();
+  if(state.timeLeft<=Math.min(600, TIME_LIMIT_SEC*0.1)) t.classList.add('low');
+  if(state.timeLeft<=0){
+    clearInterval(state.timerId);
+    alert('Practice pacing time is up — the exam will now be submitted.');
+    submitExam(); return;
+  }
+  state.timeLeft--; state.elapsed++;
+  if(++state.saveTick%15===0) saveState();
+}
+function tickUp(){
+  state.elapsed++;
+  refreshTimerDisplay();
+  if(++state.saveTick%15===0) saveState();
+}
+window.addEventListener('beforeunload',()=>{ if(state.qperm && !state.submitted) saveState(); });
+
+/* ---------- render ---------- */
+function renderQuestions(){
+  const wrap=document.getElementById('questions'); wrap.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const card=document.createElement('div'); card.className='q-card'; card.id='q'+i;
+    const inputType = qu.type==='multi' ? 'checkbox' : 'radio';
+    const instr = qu.type==='multi' ? `(Choose ${qu.a.length}.)` : '(Choose one.)';
+    let opts='';
+    qu.o.forEach((opt,j)=>{
+      opts+=`<label class="opt" id="opt-${i}-${j}">
+        <input type="${inputType}" name="q${i}" onchange="pick(${i},${j},this)">
+        <span class="letter">${LETTERS[j]}.</span><span class="txt">${opt}</span></label>`;
+    });
+    const exhibit = qu.exhibit
+      ? `<pre class="exhibit">${qu.exhibitLabel ? `<span class="lbl">${qu.exhibitLabel}</span>` : ''}${escapeHtml(qu.exhibit)}</pre>`
+      : '';
+    const checkRow = state.mode==='study'
+      ? `<div class="check-row"><button class="btn" id="check-${i}" onclick="checkAnswer(${i})">Check Answer</button></div>`
+      : '';
+    card.innerHTML=`
+      <div class="q-top">
+        <div><div class="q-num">Question ${i+1} of ${Q.length}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span class="q-domain">${DOMAINS[qu.d]||qu.d}</span>
+          <span class="q-sub">${SUBTOPICS[qu.s]||qu.s}</span>
+          <button class="flag-btn" id="flag-${i}" onclick="toggleFlag(${i})">⚑ Flag</button>
+        </div>
+      </div>
+      <div class="q-text">${qu.q}</div>
+      <div class="q-instr">${instr}</div>
+      ${exhibit}
+      <div>${opts}</div>
+      ${checkRow}
+      <div id="fb-${i}"></div>`;
+    wrap.appendChild(card);
+  });
+  // restore selections + flags after (re)render
+  Q.forEach((qu,i)=>{
+    state.answers[i].forEach(k=>{
+      const el=document.getElementById(`opt-${i}-${k}`);
+      el.classList.add('selected'); el.querySelector('input').checked=true;
+    });
+    if(state.flags[i]){
+      const b=document.getElementById('flag-'+i);
+      b.classList.add('flagged'); b.textContent='⚑ Flagged';
+    }
+  });
+}
+function pick(i,j,input){
+  if(state.submitted || (state.mode==='study' && state.checked[i])){ input.checked=state.answers[i].has(j); return; }
+  const qu=Q[i];
+  if(qu.type==='single'){ state.answers[i]=new Set([j]); }
+  else{
+    if(input.checked){
+      if(state.answers[i].size >= qu.a.length){ input.checked=false; return; }
+      state.answers[i].add(j);
+    } else state.answers[i].delete(j);
+  }
+  qu.o.forEach((_,k)=>{
+    document.getElementById(`opt-${i}-${k}`).classList.toggle('selected', state.answers[i].has(k));
+  });
+  updateProgress(); renderNav(); saveState();
+}
+function toggleFlag(i){
+  if(state.submitted) return;
+  state.flags[i]=!state.flags[i];
+  const b=document.getElementById('flag-'+i);
+  b.classList.toggle('flagged',state.flags[i]);
+  b.textContent = state.flags[i] ? '⚑ Flagged' : '⚑ Flag';
+  renderNav(); saveState();
+}
+function updateProgress(){
+  const done=state.answers.filter(s=>s.size>0).length;
+  document.getElementById('progFill').style.width=(done/Q.length*100)+'%';
+  document.getElementById('progMeta').textContent=`${done} / ${Q.length} answered`;
+}
+function isCorrect(i){
+  const a=state.answers[i], key=Q[i].a;
+  return a.size===key.length && key.every(k=>a.has(k));
+}
+function renderNav(){
+  const g=document.getElementById('navGrid'); g.innerHTML='';
+  Q.forEach((qu,i)=>{
+    const c=document.createElement('div'); c.className='nav-cell'; c.textContent=i+1;
+    if(state.submitted || (state.mode==='study' && state.checked[i])){
+      c.classList.add(isCorrect(i)?'rev-correct':'rev-wrong');
+    } else {
+      if(state.flags[i]) c.classList.add('flagged');
+      else if(state.answers[i].size>0) c.classList.add('answered');
+    }
+    c.onclick=()=>document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});
+    g.appendChild(c);
+  });
+  if(state.submitted){
+    document.getElementById('legendBox').innerHTML=
+      `<div><span style="background:var(--green-light);border-color:var(--green-border)"></span>Correct</div>
+       <div><span style="background:var(--red-light);border-color:var(--red-border)"></span>Incorrect</div>`;
+  }
+}
+
+/* ---------- study mode ---------- */
+function srcLine(qu){
+  return qu.src ? `<div class="src-basis"><b>Source basis:</b> ${qu.src}</div>` : '';
+}
+function paintFeedback(i){
+  const qu=Q[i];
+  qu.o.forEach((_,k)=>{
+    const el=document.getElementById(`opt-${i}-${k}`);
+    el.querySelector('input').disabled=true;
+    el.classList.remove('selected');
+    const chosen=state.answers[i].has(k), key=qu.a.includes(k);
+    if(chosen&&key) el.classList.add('correct-opt');
+    else if(chosen&&!key) el.classList.add('wrong-opt');
+    else if(!chosen&&key) el.classList.add('missed-opt');
+  });
+  const ok=isCorrect(i);
+  const yourAns = state.answers[i].size ? [...state.answers[i]].sort().map(x=>LETTERS[x]).join(', ') : '— (unanswered)';
+  const keyAns  = qu.a.map(x=>LETTERS[x]).join(', ');
+  document.getElementById('fb-'+i).innerHTML=
+    `<div class="explain ${ok?'ok':'bad'}">
+      <div class="verdict-line">${ok?'✓ Correct':'✗ Incorrect'} &nbsp;·&nbsp; Your answer: ${yourAns} &nbsp;·&nbsp; Correct answer: ${keyAns}</div>
+      ${qu.ex||''}${srcLine(qu)}</div>`;
+}
+function paintStudyFeedback(i){
+  paintFeedback(i);
+  const cb=document.getElementById('check-'+i);
+  if(cb) cb.style.display='none';
+}
+function checkAnswer(i){
+  if(state.checked[i]) return;
+  if(state.answers[i].size===0){ alert('Select an answer first.'); return; }
+  if(Q[i].type==='multi' && state.answers[i].size<Q[i].a.length){
+    if(!confirm(`This question needs ${Q[i].a.length} selections and you have ${state.answers[i].size}. Check anyway?`)) return;
+  }
+  state.checked[i]=true;
+  paintStudyFeedback(i);
+  updateStudyScore(); renderNav(); saveState();
+}
+function updateStudyScore(){
+  const done=state.checked.filter(Boolean).length;
+  const right=Q.map((_,i)=>i).filter(i=>state.checked[i]&&isCorrect(i)).length;
+  const chip=document.getElementById('scoreChip');
+  chip.textContent=`${right} / ${done} correct`;
+  chip.style.background = done && right/done>=0.7 ? 'var(--green-light)' : (done? 'var(--amber-light)':'var(--green-light)');
+}
+
+/* ---------- submit / finalize ---------- */
+function confirmSubmit(){
+  if(state.mode==='study'){
+    const un=state.checked.filter(c=>!c).length;
+    const msg = un>0 ? `You have ${un} unchecked question${un>1?'s':''} — they will count as incorrect in the summary.\n\nFinish the study session?`
+                     : 'Finish the study session and see the full summary?';
+    if(confirm(msg)) submitExam();
+    return;
+  }
+  const un=state.answers.filter(s=>s.size===0).length;
+  const msg = un>0 ? `You have ${un} unanswered question${un>1?'s':''}. Unanswered questions are marked incorrect.\n\nSubmit the exam?`
+                   : 'Submit the exam? You will not be able to change your answers.';
+  if(confirm(msg)) submitExam();
+}
+function submitExam(){
+  if(state.submitted) return;
+  state.submitted=true; clearInterval(state.timerId);
+  saveState();
+  finalize(false);
+}
+
+function finalize(restored){
+  clearInterval(state.timerId);
+  // score
+  let correct=0; const dom={}; const sub={};
+  Object.keys(DOMAINS).forEach(k=>dom[k]={ok:0,tot:0});
+  Object.keys(SUBTOPICS).forEach(k=>sub[k]={ok:0,tot:0,d:SUB2DOM[k]||null});
+  Q.forEach((qu,i)=>{
+    if(dom[qu.d]) dom[qu.d].tot++;
+    if(sub[qu.s]) sub[qu.s].tot++;
+    if(isCorrect(i)){
+      correct++;
+      if(dom[qu.d]) dom[qu.d].ok++;
+      if(sub[qu.s]) sub[qu.s].ok++;
+    }
+  });
+  const pct=Math.round(correct/Q.length*100);
+  const onTrack=pct>=EXAM_META.PASS_PCT;
+  const used=state.timed ? (TIME_LIMIT_SEC-Math.max(0,state.timeLeft)) : state.elapsed;
+  const um=Math.floor(used/60), us=used%60;
+  const timeLine = state.mode==='study'
+      ? `Time in session: <b>${um}m ${us}s</b> (untimed)`
+      : (state.timed ? `Time used: <b>${um}m ${us}s of ${EXAM_META.MINUTES}m</b> (practice pacing)`
+                     : `Time used: <b>${um}m ${us}s</b> (untimed)`);
+  const modeLine = state.mode==='study' ? 'Study Mode' : (state.timed?'Exam Mode · Timed':'Exam Mode · Untimed');
+
+  // domain rows
+  let rows='';
+  Object.keys(DOMAINS).forEach(k=>{
+    if(!dom[k].tot) return;
+    const p=Math.round(dom[k].ok/dom[k].tot*100);
+    const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+    rows+=`<div class="perf-row">
+      <div class="name">${DOMAINS[k]}</div>
+      <div class="perf-bar"><div class="perf-fill" style="width:${p}%;background:${col}"></div></div>
+      <div class="perf-score">${dom[k].ok}/${dom[k].tot} &nbsp;(${p}%)</div></div>`;
+  });
+
+  // subtopic rows grouped by domain
+  let subGroups='';
+  Object.keys(DOMAINS).forEach(dk=>{
+    let subRows='';
+    Object.keys(SUBTOPICS).forEach(sk=>{
+      if(sub[sk].d !== dk || sub[sk].tot===0) return;
+      const p=Math.round(sub[sk].ok/sub[sk].tot*100);
+      const col = p>=70?'var(--green)':(p>=50?'var(--amber)':'var(--red)');
+      const tag = p>=70?'<span class="strength-tag strong">Strong</span>':(p>=50?'<span class="strength-tag mid">OK</span>':'<span class="strength-tag weak">Weak</span>');
+      subRows+=`<div class="sub-row">
+        <div class="n">${SUBTOPICS[sk]}${tag}</div>
+        <div class="b"><i style="width:${p}%;background:${col};"></i></div>
+        <div class="p">${sub[sk].ok}/${sub[sk].tot}</div>
+      </div>`;
+    });
+    if(subRows) subGroups+=`<div class="sub-group"><h4>${DOMAINS[dk]}</h4>${subRows}</div>`;
+  });
+
+  // strengths / weaknesses lists
+  const subList = Object.keys(SUBTOPICS).filter(k=>sub[k].tot>0)
+    .map(k=>({k, p:sub[k].ok/sub[k].tot, tot:sub[k].tot, ok:sub[k].ok}));
+  subList.sort((a,b)=>b.p-a.p);
+  const strongs = subList.filter(s=>s.p>=0.7).slice(0,6);
+  const weaks   = subList.filter(s=>s.p<0.7).sort((a,b)=>a.p-b.p);
+  const strongList = strongs.length
+    ? strongs.map(s=>`<li><b>${SUBTOPICS[s.k]}</b> — ${s.ok}/${s.tot} (${Math.round(s.p*100)}%)</li>`).join('')
+    : '<li>No sub-topic hit 70% yet — a foundation-review pass is recommended.</li>';
+  const weakList = weaks.length
+    ? weaks.slice(0,8).map(s=>`<li><b>${SUBTOPICS[s.k]}</b> — ${s.ok}/${s.tot} (${Math.round(s.p*100)}%)</li>`).join('')
+    : '<li>Every sub-topic is at or above 70% — focus on multi-select nuance and speed next.</li>';
+
+  // specific diagnostic findings for weak sub-topics
+  let findings='';
+  weaks.forEach(s=>{
+    if(!DIAG[s.k]) return;
+    findings+=`<div class="finding"><b>${SUBTOPICS[s.k]}</b><span class="fscore">${s.ok}/${s.tot} (${Math.round(s.p*100)}%)</span><br>${DIAG[s.k]}</div>`;
+  });
+  const findingsCard = findings ? `
+    <div class="report-card">
+      <div class="report-head"><div>
+        <h3>Specific Findings</h3>
+        <div class="sub">What each weak result (&lt;70%) usually means in this content area, and what to revisit first.</div>
+      </div></div>
+      <div class="report-body">${findings}</div>
+    </div>` : '';
+
+  const dateStr = new Date().toLocaleString();
+
+  // flagged low-confidence card
+  const flagged=Q.map((q,i)=>i).filter(i=>state.flags[i]);
+  const flaggedRight=flagged.filter(i=>isCorrect(i));
+  const flaggedWrong=flagged.filter(i=>!isCorrect(i));
+  let flagCard='';
+  if(flagged.length){
+    const items=flagged.map(i=>{
+      const ok=isCorrect(i);
+      return `<li><b>Q${i+1}</b> — ${SUBTOPICS[Q[i].s]||Q[i].s} <span class="fc-tag ${ok?'fc-ok':'fc-bad'}">${ok?'correct':'incorrect'}</span></li>`;
+    }).join('');
+    flagCard=`<div class="report-card flag-card">
+      <div class="report-head"><div>
+        <h3>⚑ Low-Confidence Items (Flagged)</h3>
+        <div class="sub">You flagged <b>${flagged.length}</b> question${flagged.length>1?'s':''} — ${flaggedRight.length} answered correctly, ${flaggedWrong.length} incorrectly. A flag means &ldquo;I wasn&rsquo;t sure&rdquo;: even the ones you got right are not yet mastered.</div>
+      </div></div>
+      <div class="report-body"><ul class="flag-list">${items}</ul></div></div>`;
+  }
+
+  const verdictHtml = state.mode==='study'
+    ? `<div class="verdict neutral">DONE</div>`
+    : `<div class="verdict ${onTrack?'pass':'fail'}">${onTrack?'ON TRACK':'NOT YET'}</div>`;
+  const verdictNote = state.mode==='study'
+    ? `Study-session summary. Unchecked questions count as incorrect.`
+    : `Readiness estimate vs. a ${EXAM_META.PASS_PCT}% practice benchmark — <b>not</b> an official pass/fail result.`;
+
+  document.getElementById('results').innerHTML=`
+    <div class="score-card">
+      <div class="score-head">
+        <div>
+          ${verdictHtml}
+          <div class="score-detail" style="margin-top:6px;">
+            <b>${EXAM_META.TITLE} — ${EXAM_META.CODE}</b><br>
+            ${modeLine} &nbsp;·&nbsp; Attempt: ${dateStr}<br>
+            Answered correctly: <b>${correct} of ${Q.length}</b> &nbsp;·&nbsp; ${timeLine}<br>
+            <span style="font-size:11.5px;">${verdictNote}</span>
+          </div>
+        </div>
+        <div class="big-pct">${pct}%</div>
+      </div>
+      <div class="section-perf">
+        <h3>Score Report &mdash; Section Performance</h3>
+        <div class="note">Performance by exam section, relative to the number of items delivered in each section.</div>
+        ${rows}
+        <div class="disclaimer">This mock uses a ${EXAM_META.PASS_PCT}% line as a <b>study readiness estimate only</b>. Fortinet does not publish an official cut score, question count, or duration for this exam; the real exam reports pass/fail only. Section weighting here reflects the two supplied 7.6 study guides, not a published official weighting.</div>
+      </div>
+    </div>
+
+    <div class="report-card">
+      <div class="report-head">
+        <div>
+          <h3>Strengths &amp; Weaknesses &mdash; Sub-topic Report</h3>
+          <div class="sub">Per-sub-topic breakdown for feeding into your study plan. Weak areas (&lt;70%) are the natural focus for the next revision block.</div>
+        </div>
+        <div><button class="btn primary" onclick="window.print()">🖨️ Print / Save as PDF</button></div>
+      </div>
+      <div class="report-body">
+        <div class="sub-perf-grid">${subGroups}</div>
+        <div class="strength-summary">
+          <div class="strength-box win">
+            <h5>Top strengths</h5>
+            <ul>${strongList}</ul>
+          </div>
+          <div class="strength-box gap">
+            <h5>Focus areas for the study plan</h5>
+            <ul>${weakList}</ul>
+          </div>
+        </div>
+      </div>
+      <div class="report-actions">
+        <button class="btn primary" onclick="window.print()">🖨️ Print full report (Save as PDF)</button>
+        <span class="hint">Print view includes the score summary, sub-topic breakdown, findings, and the full question-by-question review with correct answers, explanations, and source basis.</span>
+      </div>
+    </div>
+
+    ${findingsCard}
+    ${flagCard}
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+      <button class="btn primary" onclick="document.getElementById('q0').scrollIntoView({behavior:'smooth'})">Review Questions ↓</button>
+      <button class="btn ghost" onclick="retake()">Retake (fresh shuffle)</button>
+      <div class="review-toggle" id="reviewToggle">
+        <button class="active" onclick="setReview('all',this)">All (${Q.length})</button>
+        <button onclick="setReview('wrong',this)">Wrong only</button>
+        <button onclick="setReview('flagged',this)">Flagged</button>
+      </div>
+    </div>`;
+  document.getElementById('results').style.display='block';
+
+  // review styling for every card
+  Q.forEach((qu,i)=>{
+    paintFeedback(i);
+    const cb=document.getElementById('check-'+i);
+    if(cb) cb.style.display='none';
+    const fb=document.getElementById('flag-'+i);
+    if(state.flags[i]){ fb.onclick=null; fb.style.cursor='default'; fb.textContent='⚑ Flagged — low confidence'; }
+    else fb.style.display='none';
+  });
+  document.getElementById('barWrap').style.display='none';
+  renderStudyReport(correct,pct,dom,sub);
+  renderSocratic(correct,pct,dom,sub);
+  renderNav();
+  if(!restored) document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+function retake(){
+  if(!confirm('Start a fresh attempt? The saved attempt and its results will be cleared, and questions will be reshuffled.')) return;
+  clearState(); location.reload();
+}
+
+function setReview(mode,btn){
+  document.querySelectorAll('#reviewToggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  Q.forEach((qu,i)=>{
+    const el=document.getElementById('q'+i);
+    let show=true;
+    if(mode==='wrong')   show=!isCorrect(i);
+    if(mode==='flagged') show=state.flags[i];
+    el.style.display=show?'block':'none';
+  });
+}
+
+/* ---------------- STUDY PLAN REPORT ---------------- */
+function stripHtml(h){
+  const el=document.createElement('div'); el.innerHTML=h;
+  el.querySelectorAll('.exhibit .lbl').forEach(l=>{l.textContent='[EXHIBIT — '+l.textContent+']\n';});
+  el.querySelectorAll('.exhibit').forEach(e=>{e.textContent='\n'+e.textContent.trim()+'\n';});
+  return el.textContent.replace(/\n{3,}/g,'\n\n').trim();
+}
+function buildStudyReport(correct,pct,dom,sub){
+  const used=state.timed ? (TIME_LIMIT_SEC-Math.max(0,state.timeLeft)) : state.elapsed;
+  const flagged=Q.map((q,i)=>i).filter(i=>state.flags[i]);
+  const wrong=Q.map((q,i)=>i).filter(i=>!isCorrect(i));
+  const flagBySub={}; flagged.forEach(i=>{const s=Q[i].s; flagBySub[s]=(flagBySub[s]||0)+1;});
+  const modeTxt = state.mode==='study' ? 'Study Mode' : (state.timed?'Exam Mode (timed, 80-min practice pacing)':'Exam Mode (untimed)');
+  let p=`STUDY PLAN REQUEST — ${EXAM_META.TITLE} · ${EXAM_META.CODE}\n`;
+  p+=`Attempt: ${new Date().toLocaleString()} · ${modeTxt} · Score: ${correct}/${Q.length} (${pct}%) · Time: ${Math.floor(used/60)}m ${used%60}s\n`;
+  p+=`Note: the 70% line is a practice readiness estimate, not an official cut score.\n`;
+  p+=`\nSECTION SCORES\n`;
+  Object.keys(DOMAINS).forEach(k=>{ if(dom[k].tot>0) p+=`- ${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot} (${Math.round(dom[k].ok/dom[k].tot*100)}%)\n`; });
+  p+=`\nSUB-TOPIC SCORES (flag counts = questions marked low-confidence during the attempt)\n`;
+  Object.keys(DOMAINS).forEach(dk=>{
+    Object.keys(SUBTOPICS).forEach(sk=>{
+      if(sub[sk].d!==dk||sub[sk].tot===0) return;
+      p+=`- [${DOMAINS[dk].split(' ')[0]}] ${SUBTOPICS[sk]}: ${sub[sk].ok}/${sub[sk].tot} (${Math.round(sub[sk].ok/sub[sk].tot*100)}%)${flagBySub[sk]?` · flagged ${flagBySub[sk]}x`:''}\n`;
+    });
+  });
+  const weakDiag=Object.keys(SUBTOPICS).filter(k=>sub[k].tot>0 && sub[k].ok/sub[k].tot<0.7 && DIAG[k]);
+  if(weakDiag.length){
+    p+=`\nSPECIFIC FINDINGS (auto-generated from weak sub-topics)\n`;
+    weakDiag.forEach(k=>{ p+=`- ${SUBTOPICS[k]}: ${DIAG[k]}\n`; });
+  }
+  p+=`\nWRONG ANSWERS (${wrong.length})\n`;
+  wrong.forEach(i=>{ p+=`- Q${i+1} [${SUBTOPICS[Q[i].s]||Q[i].s}${state.flags[i]?', flagged':''}] ${stripHtml(Q[i].q).replace(/\s+/g,' ').slice(0,120)}\n`; });
+  p+=`\nLOW-CONFIDENCE / FLAGGED (${flagged.length} — ${flagged.filter(i=>isCorrect(i)).length} of these were answered correctly, i.e. unsure or lucky)\n`;
+  flagged.forEach(i=>{ p+=`- Q${i+1} [${SUBTOPICS[Q[i].s]||Q[i].s}] ${isCorrect(i)?'CORRECT but unsure':'INCORRECT'} — ${stripHtml(Q[i].q).replace(/\s+/g,' ').slice(0,110)}\n`; });
+  p+=`\nPlease build me a structured study plan from this report:\n`;
+  p+=`1. Prioritize sub-topics by combining low scores AND low confidence — treat a flagged-but-correct area as NOT mastered.\n`;
+  p+=`2. ${STUDY_PROMPT_GUIDE_LINE}\n`;
+  p+=`3. Propose a day-by-day revision schedule, including hands-on lab exercises where practice beats reading.\n`;
+  p+=`4. Note any patterns you see across my wrong and flagged questions (e.g. recurring concept confusions).\n`;
+  p+=`5. Finish with a readiness checklist: what should be true before I retake this mock or book the real exam.\n`;
+  return p;
+}
+function renderStudyReport(correct,pct,dom,sub){
+  const prompt=buildStudyReport(correct,pct,dom,sub);
+  const inner=`<div class="socratic-head">
+      <div class="icon">&#128203;</div><h3>Study Plan Report for Claude</h3>
+      <div class="sub">A machine-readable report of this attempt — score, sub-topic breakdown, findings, wrong answers, and every low-confidence flag. Copy it and paste into a <b>new chat in this project</b>.</div>
+    </div>
+    <div class="socratic-body">
+      <textarea id="studyReport" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+      <div class="socratic-actions">
+        <button class="btn primary" onclick="copyBox('studyReport','studyOk')">Copy Report</button>
+        <span class="copy-ok" id="studyOk">Copied — paste into a new project chat</span>
+      </div>
+    </div>`;
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+function copyBox(taId,okId){
+  const ta=document.getElementById(taId);
+  const done=()=>{const ok=document.getElementById(okId);ok.style.display='inline';setTimeout(()=>ok.style.display='none',4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
+  } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+/* ---------------- SOCRATIC SESSION PROMPT ---------------- */
+function buildSocraticPrompt(correct,pct,dom,sub){
+  const wrong=[];
+  Q.forEach((qu,i)=>{ if(!isCorrect(i)) wrong.push(i); });
+  if(wrong.length===0) return null;
+  const secLines=Object.keys(DOMAINS).filter(k=>dom[k].tot>0).map(k=>`${DOMAINS[k]}: ${dom[k].ok}/${dom[k].tot}`).join(' · ');
+  const weakSubs=Object.keys(SUBTOPICS).filter(k=>sub[k].tot>0 && sub[k].ok/sub[k].tot<0.7)
+    .sort((a,b)=>sub[a].ok/sub[a].tot - sub[b].ok/sub[b].tot)
+    .map(k=>`${SUBTOPICS[k]} (${sub[k].ok}/${sub[k].tot})`).slice(0,8).join(', ');
+  let p=`I've just completed ${EXAM_META.TITLE} — ${EXAM_META.CODE}.\n`;
+  p+=`Score: ${correct}/${Q.length} (${pct}%). Sections — ${secLines}.\n`;
+  if(weakSubs) p+=`Weakest sub-topics: ${weakSubs}.\n`;
+  p+=`\nI got ${wrong.length} question${wrong.length>1?'s':''} wrong. Please run a Socratic coaching session, one question at a time:\n`;
+  SOCRATIC_INTRO_LINES.forEach(line => p += line + '\n');
+  p+=`\nEach item below includes the correct answer, reference explanation, and source basis for YOUR eyes only — do not show them until I've reasoned through.\n`;
+  wrong.forEach((i,n)=>{
+    const qu=Q[i];
+    const mine=state.answers[i].size ? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+    const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+    p+=`\n============================================================\n`;
+    p+=`QUESTION ${n+1} of ${wrong.length}  [${DOMAINS[qu.d]||qu.d} · ${SUBTOPICS[qu.s]||qu.s}]  (mock Q${i+1}${qu.type==='multi'?', choose '+qu.a.length:''})\n\n`;
+    p+=stripHtml(qu.q)+`\n`;
+    if(qu.exhibit){ p+=`\n[EXHIBIT${qu.exhibitLabel?' — '+qu.exhibitLabel:''}]\n${qu.exhibit}\n`; }
+    p+=`\nOptions:\n`;
+    qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+    p+=`\nMy answer: ${mine}\nCorrect answer: ${key}\n`;
+    p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex||'')}\n`;
+    if(qu.src) p+=`Source basis (coach's eyes only): ${stripHtml(qu.src)}\n`;
+  });
+  p+=`\nStart with Question 1. Ask your first guiding question.`;
+  return p;
+}
+function renderSocratic(correct,pct,dom,sub){
+  const prompt=buildSocraticPrompt(correct,pct,dom,sub);
+  let inner;
+  if(prompt===null){
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+      </div>
+      <div class="socratic-perfect">A perfect paper — ${Q.length}/${Q.length}. Retake in a week (fresh shuffle) to prove memory, not luck.</div>`;
+  } else {
+    inner=`<div class="socratic-head">
+        <div class="icon">&#127891;</div><h3>Socratic Session with Claude</h3>
+        <div class="sub">A ready-made coaching prompt covering every question you missed. Copy it and paste into a <b>new chat in this project</b>.</div>
+      </div>
+      <div class="socratic-body">
+        <textarea id="socraticPrompt" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <div class="socratic-actions">
+          <button class="btn primary" onclick="copyBox('socraticPrompt','copyOk')">Copy Prompt</button>
+          <span class="copy-ok" id="copyOk">Copied — paste into a new project chat</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('results').insertAdjacentHTML('beforeend',`<div class="socratic-card">${inner}</div>`);
+}
+</script>
+</body></html>

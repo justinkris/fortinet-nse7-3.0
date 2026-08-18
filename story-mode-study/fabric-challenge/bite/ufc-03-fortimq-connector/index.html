@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<!--
+  UFC ROUND 1 — SESSION 03 · BITE
+  FortiMQ Connector — concept, prerequisites, config reference, troubleshooting
+
+  Built on TEMPLATE-HYBRID.html (bite variant):
+    · no qpanel / notes-panel
+    · no lesson-tools
+    · no sticky section-nav
+    · section-block + mental-note-block per section
+    · minimal script (page-transition cleanup + analogy toggle only)
+
+  SOURCE SCOPE — FortiAnalyzer 8.0.0 Administration Guide (Incidents & Alerts:
+  Blocking indicators, Connector actions) and FortiAnalyzer 8.0.0 New Features
+  Guide (SOC: FortiMQ connector for automated blocking).
+  Anything outside that scope is explicitly marked UNVERIFIED in the page body.
+-->
+<html lang="en">
+<head>
+<script>if(sessionStorage.getItem('pt')){document.documentElement.classList.add('pt-init')}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UFC-03 Bite — FortiMQ Connector</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:#faf5e9; --surface:#fffdf5; --surface-2:#f5eed9;
+    --border:#d4c89a; --border-dim:#ebe1c2;
+    --text:#0a1838; --text-soft:#1e2f5a; --text-muted:#6b7794;
+    --blue:#1e40af; --blue-vivid:#2563eb; --blue-glow:rgba(30,64,175,0.07);
+    --blue-dim:#a8c0e8; --blue-deep:#0c1f5c; --blue-light:#eff4fc; --blue-border:#b8cce8;
+    --ink-dark:#0d1a3a; --ink-accent:#9bb8e6;
+    --green:#1a7c4a; --green-light:#dff0e1; --green-border:#a7d8b0;
+    --amber:#b45309; --amber-light:#fcf2c3; --amber-border:#f3d68a;
+    --red:#991b1b; --red-light:#fbe4e4; --red-border:#e8b0b0;
+  }
+  html{scroll-behavior:smooth;transition:opacity .3s ease;}
+  html.pt-init body{opacity:0;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Cormorant Garamond','Outfit',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* HEADER */
+  header{padding:48px 60px 36px;background:var(--ink-dark);display:flex;align-items:flex-end;gap:32px;}
+  .header-left{flex:1;}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:12px;flex-wrap:wrap;}
+  .breadcrumb a{color:var(--ink-accent);text-decoration:none;}
+  .breadcrumb a:hover{text-decoration:underline;}
+  .breadcrumb-sep{color:rgba(155,184,230,0.4);}
+  .header-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(155,184,230,0.1);border:1px solid rgba(155,184,230,0.28);padding:5px 14px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-accent);letter-spacing:0.1em;margin-bottom:14px;}
+  header h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.0;color:#fbf7ec;margin-bottom:10px;letter-spacing:-0.01em;}
+  header h1 em{font-style:italic;font-weight:500;color:var(--ink-accent);}
+  header p{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:rgba(251,247,236,0.55);margin-top:10px;line-height:1.6;}
+
+  /* MOTIVATION BANNER */
+  .motivation-banner{padding:22px 60px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface);}
+  .motivation-text{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.005em;}
+  .motivation-text em{font-style:italic;font-weight:500;color:var(--blue);}
+  .motivation-sub{font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;color:var(--text-muted);line-height:1.7;margin-top:6px;}
+
+  /* MAIN — bite variant, narrower */
+  main{max-width:1200px;margin:0 auto;padding:0;}
+  .main-content{max-width:960px;margin:0 auto;padding:36px 60px 60px;}
+
+  /* SECTION BLOCK */
+  .section-block{margin-bottom:48px;}
+  .section-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .section-block h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:16px;padding-left:16px;border-left:3px solid var(--blue);letter-spacing:-0.01em;}
+  .section-block h2 em{font-style:italic;font-weight:500;color:var(--blue);}
+  .section-block h3{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin:26px 0 10px;}
+  .section-block p{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:14px;}
+  .section-block p strong{color:var(--text);font-weight:600;}
+  .section-block p em{color:var(--blue);font-style:italic;}
+  .section-block ul,.section-block ol{padding-left:22px;margin-bottom:14px;}
+  .section-block li{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--text-soft);margin-bottom:4px;}
+  .section-block li strong{color:var(--text);font-weight:600;}
+
+  /* CALLOUTS */
+  .callout{border-left:3px solid var(--blue-border);background:var(--blue-light);border-radius:0 10px 10px 0;padding:14px 20px;margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.65;color:var(--text-soft);}
+  .callout strong{color:var(--text);font-weight:600;}
+  .callout-green{border-left-color:var(--green-border);background:var(--green-light);}
+  .callout-amber{border-left-color:var(--amber-border);background:var(--amber-light);}
+  .callout-red{border-left-color:var(--red-border);background:var(--red-light);}
+
+  /* UNVERIFIED FLAG */
+  .unverified{display:inline-block;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:var(--amber);color:#fffdf5;padding:2px 9px;border-radius:4px;vertical-align:middle;margin-right:6px;}
+
+  /* DATA TABLE */
+  .table-wrap{overflow-x:auto;margin:16px 0;}
+  .data-table{width:100%;border-collapse:collapse;font-size:14px;}
+  .data-table th{background:var(--ink-dark);color:var(--ink-accent);font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  .data-table td{font-family:'Cormorant Garamond',serif;font-size:15px;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);line-height:1.5;vertical-align:top;}
+  .data-table tr:hover td{background:var(--blue-glow);}
+  .data-table td:first-child{color:var(--text);font-weight:600;}
+
+  /* GUI PATH CHIP */
+  .gui-path{display:inline-block;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;color:var(--blue-deep);}
+
+  /* CHAIN DIAGRAM */
+  .chain-wrap{margin:22px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 20px 14px;}
+  .chain-wrap svg{width:100%;height:auto;display:block;}
+  .img-caption{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-align:center;margin-top:10px;line-height:1.4;font-style:italic;}
+
+  /* MENTAL NOTE */
+  .mental-note-block{border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;background:rgba(30,64,175,0.06);border:1px solid var(--blue-border);}
+  .mental-note-block-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .mental-note-block-inner{flex:1;}
+  .mental-note-block-label{font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--blue);margin-bottom:4px;text-transform:uppercase;}
+  .mental-note-block-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.55;color:var(--text);}
+
+  /* ANALOGY BOX */
+  .analogy-box{background:#fcf5dc;border:1px solid var(--amber-border);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;}
+  .analogy-label{display:flex;align-items:center;gap:6px;user-select:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--amber);margin-bottom:4px;text-transform:uppercase;}
+  .analogy-label::after{content:'▾  Reveal';margin-left:auto;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:none;opacity:0.75;}
+  .analogy-box.expanded>.analogy-label::after{content:'▴  Hide';}
+  .analogy-box:not(.expanded)>.analogy-text{display:none;}
+  .analogy-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:#5c3d09;line-height:1.7;font-style:italic;}
+
+  /* APPROACH TAG */
+  .approach-tag{display:inline-block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--ink-dark);color:var(--ink-accent);padding:5px 14px;border-radius:20px;margin-bottom:10px;}
+
+  /* FOOTER */
+  footer{font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:0.14em;color:var(--text-muted);text-transform:uppercase;padding:20px 60px;border-top:1px solid var(--border);background:var(--surface);}
+  footer span{color:var(--blue);}
+
+  /* RESPONSIVE */
+  @media(max-width:720px){header{padding:28px 24px 24px;}header h1{font-size:34px;}.motivation-banner{padding:16px 24px;}.main-content{padding:24px 24px 40px;}footer{padding:16px 24px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="breadcrumb">
+      <a href="#">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="#">UFC Round 1</a>
+      <span class="breadcrumb-sep">›</span>
+      <span>UFC-03 · FortiMQ Connector</span>
+    </div>
+    <div class="header-eyebrow">UFC-03 · BITE · FORTIMQ CONNECTOR</div>
+    <h1>FortiAnalyzer Sends, <em>FortiGate Retrieves</em></h1>
+    <p>A cloud service, not an appliance. Enabling it proves nothing on its own.</p>
+  </div>
+</header>
+
+<div class="motivation-banner">
+  <div class="motivation-text">A green connector tick proves <em>one hop</em> of a five-hop chain.</div>
+  <p class="motivation-sub">Everything on this page exists to keep you from mistaking a dispatch receipt for an enforcement result.</p>
+</div>
+
+<main>
+  <div class="main-content">
+
+    <!-- ══════════════════════════════════════════ SECTION 1 ══ -->
+    <div class="section-block" id="section-concept">
+      <div class="section-label">01 · Concept</div>
+      <h2>What FortiMQ <em>Actually Is</em></h2>
+
+      <p><strong>FortiMQ is a cloud service. There is no appliance.</strong> What you configure is the <strong>FortiMQ Connector</strong> on FortiAnalyzer, introduced in FortiAnalyzer 8.0.0. When you enable it, the connector automatically establishes a connection to the FortiMQ cloud service — no additional configuration is required inside FortiAnalyzer.</p>
+
+      <p>Its job is narrow and specific: <strong>direct transmission of blocked indicators from FortiAnalyzer to FortiGate devices.</strong> Before 8.0.0, block lists could only be distributed to FortiGates using the FortiManager connector. FortiMQ gives you that capability <em>without a FortiManager deployed in the environment.</em></p>
+
+      <div class="callout">
+        <strong>Three fixed properties.</strong> The FortiMQ connector is present and <strong>disabled by default</strong> in all Fabric and FortiGate-type ADOMs. You <strong>cannot create</strong> a new one. You <strong>cannot delete</strong> the existing one. It is a fixture of the ADOM — you only ever turn it on.
+      </div>
+
+      <h3>The information chain</h3>
+
+      <div class="chain-wrap">
+        <svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chain diagram: FortiAnalyzer sends blocked indicators to the FortiMQ cloud service; FortiGate retrieves them into an external feed; the feed must be referenced in a policy or profile before traffic is denied.">
+          <defs>
+            <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e40af"/>
+            </marker>
+          </defs>
+
+          <!-- boxes -->
+          <rect x="10" y="70" width="150" height="62" rx="10" fill="#0d1a3a"/>
+          <text x="85" y="95" text-anchor="middle" font-family="Outfit,sans-serif" font-size="13" font-weight="700" fill="#fbf7ec">FortiAnalyzer</text>
+          <text x="85" y="114" text-anchor="middle" font-family="Outfit,sans-serif" font-size="10" fill="#9bb8e6">Block indicator</text>
+
+          <rect x="235" y="70" width="150" height="62" rx="10" fill="#eff4fc" stroke="#b8cce8"/>
+          <text x="310" y="95" text-anchor="middle" font-family="Outfit,sans-serif" font-size="13" font-weight="700" fill="#0a1838">FortiMQ</text>
+          <text x="310" y="114" text-anchor="middle" font-family="Outfit,sans-serif" font-size="10" fill="#6b7794">Cloud service</text>
+
+          <rect x="460" y="70" width="150" height="62" rx="10" fill="#0d1a3a"/>
+          <text x="535" y="95" text-anchor="middle" font-family="Outfit,sans-serif" font-size="13" font-weight="700" fill="#fbf7ec">FortiGate</text>
+          <text x="535" y="114" text-anchor="middle" font-family="Outfit,sans-serif" font-size="10" fill="#9bb8e6">External feed</text>
+
+          <rect x="685" y="70" width="150" height="62" rx="10" fill="#dff0e1" stroke="#a7d8b0"/>
+          <text x="760" y="95" text-anchor="middle" font-family="Outfit,sans-serif" font-size="13" font-weight="700" fill="#0a1838">Policy / Profile</text>
+          <text x="760" y="114" text-anchor="middle" font-family="Outfit,sans-serif" font-size="10" fill="#1a7c4a">Deny access</text>
+
+          <!-- arrows -->
+          <line x1="165" y1="101" x2="228" y2="101" stroke="#1e40af" stroke-width="2" marker-end="url(#arw)"/>
+          <line x1="390" y1="101" x2="453" y2="101" stroke="#1e40af" stroke-width="2" marker-end="url(#arw)"/>
+          <line x1="615" y1="101" x2="678" y2="101" stroke="#1e40af" stroke-width="2" marker-end="url(#arw)"/>
+
+          <!-- arrow labels -->
+          <text x="196" y="90" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#1e40af">SENDS</text>
+          <text x="421" y="90" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#1e40af">RETRIEVES</text>
+          <text x="646" y="90" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#1e40af">REFERENCED</text>
+
+          <!-- proof band -->
+          <line x1="10" y1="165" x2="835" y2="165" stroke="#d4c89a" stroke-width="1"/>
+          <text x="10" y="186" font-family="Outfit,sans-serif" font-size="9" font-weight="700" letter-spacing="2" fill="#6b7794">WHAT EACH STAGE PROVES</text>
+
+          <text x="85" y="212" text-anchor="middle" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#0a1838">DISPATCHED</text>
+          <text x="85" y="229" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9.5" fill="#6b7794">Block Status column</text>
+
+          <text x="535" y="212" text-anchor="middle" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#0a1838">RETRIEVED</text>
+          <text x="535" y="229" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9.5" fill="#6b7794">Indicator present in feed</text>
+
+          <text x="760" y="212" text-anchor="middle" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#1a7c4a">ENFORCED</text>
+          <text x="760" y="229" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9.5" fill="#6b7794">Traffic actually denied</text>
+        </svg>
+        <p class="img-caption">FortiAnalyzer <strong>sends</strong>. FortiGate <strong>retrieves</strong>. The arrow direction is the thing people get backwards.</p>
+      </div>
+
+      <p>Once you block an indicator, the <strong>block_indicator</strong> playbook runs in the background on FortiAnalyzer and sends the indicators to FortiMQ. FortiGate retrieves those indicators from FortiMQ and updates them in its <strong>external feeds</strong>. Those feeds can then be used in policies or profiles to deny access.</p>
+
+      <div class="analogy-box">
+        <div class="analogy-label">Corner Note</div>
+        <div class="analogy-text">Wraps on, gloves on, mouthguard in. That's the connector enabled. Nobody has thrown a punch yet.</div>
+      </div>
+
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧠</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Mental Model</div>
+          <div class="mental-note-block-text">Connected ≠ proven working.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 2 ══ -->
+    <div class="section-block" id="section-prereqs">
+      <div class="section-label">02 · Prerequisites</div>
+      <h2>Four Things Must Be True — <em>Enabling Is Only One</em></h2>
+
+      <p>Enabling the connector is a single item on a four-item list. Three of the four live outside the connector card, and two of them live on a different device entirely. This is why a green tick on FortiAnalyzer can coexist with an empty feed on the FortiGate.</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Requirement</th><th>Where</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Logging enabled from FortiGate devices to FortiAnalyzer</td>
+              <td>FortiGate → FortiAnalyzer</td>
+              <td>Establishes the device relationship the whole workflow assumes.</td>
+            </tr>
+            <tr>
+              <td>Both devices registered under the <strong>same FortiCare account</strong></td>
+              <td>Both</td>
+              <td>Stated requirement for proper communication and integration. Entitlement / identity boundary.</td>
+            </tr>
+            <tr>
+              <td><strong>Cloud-based Fabric Feed synchronization</strong> enabled and configured</td>
+              <td>FortiGate</td>
+              <td>Without it the Gate never consumes or enforces the block indicators it is being sent.</td>
+            </tr>
+            <tr>
+              <td>FortiMQ Connector enabled</td>
+              <td>FortiAnalyzer</td>
+              <td>Turns on the ADOM's connection to the FortiMQ cloud service.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-amber">
+        <span class="unverified">Unverified</span> The <em>mechanism</em> behind the shared FortiCare account — whether it acts as a cloud tenancy boundary — is not stated in the supplied material. The requirement itself is sourced; the reason is inference. <strong>Requires official Fortinet source verification.</strong>
+      </div>
+
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧠</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Mental Model</div>
+          <div class="mental-note-block-text">Two of the four prerequisites sit on the FortiGate — so two of your likely failures are invisible from FortiAnalyzer.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 3 ══ -->
+    <div class="section-block" id="section-config">
+      <div class="section-label">03 · Configuration Reference</div>
+      <h2>Turning It On, <em>and Using It</em></h2>
+
+      <h3>Enable the connector</h3>
+      <ol>
+        <li>Go to <span class="gui-path">Incidents &amp; Alerts &gt; Automation &gt; Active Connectors</span> and enable the <strong>FortiMQ Connector</strong>.</li>
+        <li>Confirm the connector status. The status reflects its health — whether the API connection is successful.</li>
+      </ol>
+
+      <div class="callout">
+        <strong>Connector status colours.</strong> Green — the API connection is successful. Orange — the API connection is unknown. Red — the API connection is down. Read this as <em>FortiAnalyzer's connection to the cloud service</em>, nothing further downstream.
+      </div>
+
+      <h3>Block an indicator</h3>
+      <p>With the connector active, the <strong>Block</strong> action is available in:</p>
+      <ul>
+        <li><span class="gui-path">Incidents &amp; Alerts &gt; Indicators</span></li>
+        <li><span class="gui-path">Incidents &amp; Alerts &gt; Incidents &gt; Incidents</span></li>
+        <li><span class="gui-path">Incidents &amp; Alerts &gt; Incidents &gt; Incidents &gt; Incident Analysis</span></li>
+        <li><strong>Log View</strong> — right-click an <em>ip</em>, <em>url</em>, <em>domain</em>, or <em>mac-address</em> in table or detailed view and choose <strong>Create indicator and block</strong>. This adds a new indicator and blocks it automatically.</li>
+      </ul>
+
+      <p>Hovering over <strong>Block</strong> with the FortiMQ connector active displays the tooltip: <em>Block/Unblock will be carried out by FortiMQ connector.</em> If neither connector is set up or active, the Block option is <strong>greyed out</strong> in the Incidents and Indicators panes.</p>
+
+      <h3>Unblock and status tracking</h3>
+      <p>Selecting a blocked indicator in <span class="gui-path">Incidents &amp; Alerts &gt; Indicators</span> makes <strong>Unblock</strong> available in the toolbar and shortcut menu. The same pane carries a pie chart and a <strong>Block Status</strong> column with three values: <strong>TBD</strong>, <strong>Blocked</strong>, <strong>Unblocked</strong>.</p>
+
+      <div class="callout callout-red">
+        <strong>Read this column carefully.</strong> On the FortiMQ path, <strong>Blocked</strong> means the block_indicator playbook ran and handed the indicator to FortiMQ. That is a dispatch receipt. It is not proof of retrieval, and it is not proof of enforcement.
+      </div>
+
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧠</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Mental Model</div>
+          <div class="mental-note-block-text">Every screen in this section reports FortiAnalyzer's version of events. None of them can see the FortiGate.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 4 ══ -->
+    <div class="section-block" id="section-vs-fmg">
+      <div class="section-label">04 · Comparison</div>
+      <h2>FortiMQ <em>vs</em> FortiManager</h2>
+
+      <p>Both connectors can distribute blocked indicators. They differ in scope, in priority, and in what their status actually claims — and the differences are exactly where a challenge question lives.</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th></th><th>FortiMQ Connector</th><th>FortiManager Connector</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Scope</td>
+              <td><strong>ADOM-specific.</strong> Blocked indicators apply only to FortiGates in the same Fabric or FortiGate ADOM in FortiAnalyzer.</td>
+              <td><strong>Global.</strong> Operates at a global level.</td>
+            </tr>
+            <tr>
+              <td>Priority when both active</td>
+              <td>Wins. Blocking is carried out by FortiMQ.</td>
+              <td>Still supported, but indicators are sent this way <strong>only if the FortiMQ connector is disabled</strong>.</td>
+            </tr>
+            <tr>
+              <td>Setup burden</td>
+              <td>Enable only — connects to the cloud service automatically, no additional configuration in FortiAnalyzer.</td>
+              <td>Requires a FortiManager deployed in the environment.</td>
+            </tr>
+            <tr>
+              <td>Status progression</td>
+              <td>Block Status shows <strong>Blocked</strong>.</td>
+              <td>Shows <strong>Blocked (Pending)</strong> first; the block_indicator playbook runs <strong>every five minutes</strong>, then status changes to <strong>Blocked</strong>.</td>
+            </tr>
+            <tr>
+              <td>What "Blocked" confirms</td>
+              <td>Indicator handed to FortiMQ. FortiGate must still retrieve it.</td>
+              <td>The list is updated <strong>on FortiManager</strong> — explicitly <strong>not</strong> synced to the FortiGate.</td>
+            </tr>
+            <tr>
+              <td>Where it lands</td>
+              <td>FortiGate <strong>external feeds</strong>, pulled from FortiMQ.</td>
+              <td>FortiManager <strong>External Resource</strong> list, named <span class="gui-path">&lt;FAZ ADOM name&gt;-BLK&lt;indicator-type&gt;</span> — e.g. <span class="gui-path">root-BLKIP</span>.</td>
+            </tr>
+            <tr>
+              <td>Version constraint</td>
+              <td>None stated.</td>
+              <td>FortiManager firmware version must match FortiAnalyzer for the block list to be pushed to FortiGates.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-amber">
+        <strong>The habit that costs you.</strong> FortiManager was global. FortiMQ is not. Right indicator, right connector, wrong ADOM — and the FortiGate you are staring at was never in scope for that block. It is not a fault. It is expected behaviour.
+      </div>
+
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧠</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Mental Model</div>
+          <div class="mental-note-block-text">Priority is decided by whether FortiMQ is <em>disabled</em> — not by whether it is healthy.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ SECTION 5 ══ -->
+    <div class="section-block" id="section-verify">
+      <div class="section-label">05 · Verification &amp; Troubleshooting</div>
+      <h2>One Look That <em>Splits the Chain</em></h2>
+
+      <p>Three separate claims hide inside the sentence <em>"the indicator is enforced."</em> Each is proven in a different place, and collapsing them is the single most common failure of reasoning on this topic.</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Claim</th><th>Proven where</th><th>Evidence</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Dispatched</td><td>FortiAnalyzer</td><td>Block Status shows Blocked; block_indicator playbook ran.</td></tr>
+            <tr><td>Retrieved</td><td>FortiGate</td><td>Indicator present in the external feed.</td></tr>
+            <tr><td>Enforced</td><td>FortiGate</td><td>Feed referenced in a policy or profile, and traffic actually denied.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-green">
+        <strong>Highest-value single check: the external feed on the FortiGate.</strong> It bisects the chain. If the indicator <em>is</em> in the feed, the send and the retrieve are both cleared in one glance and you are down to enforcement. If it <em>is not</em>, enforcement is irrelevant and you are hunting upstream.
+      </div>
+
+      <h3>Scenario matrix</h3>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Symptom</th><th>What it rules out</th><th>Inspect first</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Block option greyed out in Incidents / Indicators</td>
+              <td>Nothing downstream — no path exists at all</td>
+              <td>Neither connector is set up or active. Enable FortiMQ in <span class="gui-path">Active Connectors</span>.</td>
+            </tr>
+            <tr>
+              <td>Connector status red or orange on FortiAnalyzer</td>
+              <td>Nothing downstream — the send is in doubt</td>
+              <td>FortiAnalyzer's API connection to the FortiMQ cloud service.</td>
+            </tr>
+            <tr>
+              <td>Status Blocked, feed on FortiGate empty</td>
+              <td>Enforcement — irrelevant until the indicator arrives</td>
+              <td>Cloud-based Fabric Feed synchronization on the FortiGate; then FortiCare account match across both devices.</td>
+            </tr>
+            <tr>
+              <td>Status Blocked, feed empty, connector green</td>
+              <td>The FortiAnalyzer-to-cloud hop only</td>
+              <td>The Gate's side. Green covered one hop and said nothing about entitlement or the Gate's willingness to pull.</td>
+            </tr>
+            <tr>
+              <td>Feed populated, traffic still allowed</td>
+              <td>Send and retrieve — both proven</td>
+              <td>Whether the feed is referenced in a policy or profile. A list nothing points at denies nothing.</td>
+            </tr>
+            <tr>
+              <td>One FortiGate enforces, another does not</td>
+              <td>Send, retrieve and enforcement on the working device</td>
+              <td>ADOM membership. FortiMQ is ADOM-specific — the second Gate may never have been in scope.</td>
+            </tr>
+            <tr>
+              <td>Indicators arriving via FortiManager, not FortiMQ</td>
+              <td>Health as a cause</td>
+              <td>Whether the FortiMQ connector is <em>disabled</em>. FortiManager only carries them in that case.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-amber">
+        <span class="unverified">Unverified</span> <strong>Separating two upstream causes.</strong> A sync-not-enabled Gate and an account-mismatch Gate produce the identical symptom: an empty feed. No diagnostic in the supplied material distinguishes them — you inspect the configuration state directly on each device. Any finer-grained separation <strong>requires official Fortinet source verification.</strong>
+      </div>
+
+      <div class="mental-note-block">
+        <span class="mental-note-block-icon">🧠</span>
+        <div class="mental-note-block-inner">
+          <div class="mental-note-block-label">Mental Model</div>
+          <div class="mental-note-block-text">When the evidence cannot tell two causes apart, stop hunting evidence and go read the config.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block" id="section-recall">
+      <div class="section-label">06 · Fast Recall</div>
+      <h2>The Nine Things <em>Worth Carrying In</em></h2>
+      <ul>
+        <li>FortiMQ is a <strong>cloud service</strong>. The connector lives on FortiAnalyzer. There is no FortiMQ connector on the FortiGate.</li>
+        <li>Introduced in <strong>FortiAnalyzer 8.0.0</strong>; disabled by default in all Fabric and FortiGate-type ADOMs.</li>
+        <li>You <strong>cannot create or delete</strong> it — only enable it.</li>
+        <li>Enabling requires <strong>no additional configuration</strong> in FortiAnalyzer.</li>
+        <li>Chain: FortiAnalyzer → FortiMQ → FortiGate <strong>retrieves</strong> → external feed → referenced in policy/profile → deny.</li>
+        <li>Four prerequisites; <strong>two live on the FortiGate</strong>.</li>
+        <li>FortiMQ is <strong>ADOM-specific</strong>; FortiManager is global.</li>
+        <li>FortiMQ takes <strong>priority</strong>; FortiManager carries indicators only if FortiMQ is <strong>disabled</strong>.</li>
+        <li>Connector status = FortiAnalyzer's API connection to the cloud service. Nothing more.</li>
+      </ul>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  UFC Round 1 · Session <span>03</span> · FortiMQ Connector · Bite Reference — Mental model: <span>connected ≠ proven working</span>
+</footer>
+
+<script>
+if (sessionStorage.getItem('pt')) { document.documentElement.classList.remove('pt-init'); sessionStorage.removeItem('pt'); }
+document.querySelectorAll('a[href]').forEach(function(a) {
+  a.addEventListener('click', function() { sessionStorage.setItem('pt', '1'); });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.analogy-box').forEach(function(box) {
+    if (box.dataset.collapsibleInit) return;
+    box.dataset.collapsibleInit = '1';
+    box.classList.add('expanded');
+    const label = box.querySelector(':scope > .analogy-label');
+    if (label) label.addEventListener('click', () => box.classList.toggle('expanded'));
+  });
+});
+</script>
+</body>
+</html>
