@@ -197,6 +197,19 @@ footer{padding:26px 48px;text-align:center;font-size:11px;color:var(--text-muted
 .socratic-actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap;}
 .copy-ok{font-size:12.5px;color:var(--green);font-weight:600;display:none;}
 .socratic-perfect{padding:26px 34px;font-size:14.5px;color:var(--text-soft);line-height:1.7;}
+/* per-question Socratic card (study mode) */
+.q-socratic{margin-top:12px;border:1px solid var(--blue-border);background:var(--blue-light);border-radius:10px;padding:12px 14px;}
+.q-socratic-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.q-socratic-label{font-family:'Outfit',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue-deep);display:flex;align-items:center;gap:6px;}
+.q-socratic-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.q-socratic-toggle{background:transparent;border:1px solid var(--blue-border);color:var(--blue-deep);border-radius:6px;padding:4px 10px;font-family:'Outfit',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:0.05em;cursor:pointer;text-transform:uppercase;}
+.q-socratic-toggle:hover{background:#fff;}
+.q-socratic-body{display:none;margin-top:10px;}
+.q-socratic.open .q-socratic-body{display:block;}
+.q-socratic textarea{width:100%;height:140px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.55;color:var(--text-soft);background:#fff;border:1px solid var(--border-dim);border-radius:8px;padding:10px 12px;resize:vertical;box-sizing:border-box;}
+.q-socratic-note{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:6px;line-height:1.5;}
+.q-socratic .copy-ok-inline{font-size:10.5px;color:var(--green);font-weight:600;display:none;letter-spacing:0.05em;}
+
 
 /* print */
 @media print{
@@ -617,6 +630,7 @@ function paintStudyFeedback(i){
   paintFeedback(i);
   const cb=document.getElementById('check-'+i);
   if(cb) cb.style.display='none';
+  renderQuestionSocratic(i);
 }
 function checkAnswer(i){
   if(state.checked[i]) return;
@@ -926,6 +940,57 @@ function copyBox(taId,okId){
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();document.execCommand('copy');done();});
   } else { ta.select(); document.execCommand('copy'); done(); }
+}
+
+
+/* ---------- per-question Socratic prompt (study mode) ---------- */
+function buildQuestionSocraticPrompt(i){
+  const qu=Q[i];
+  const mine=state.answers[i].size ? [...state.answers[i]].sort().map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ') : '(unanswered)';
+  const key=qu.a.map(x=>LETTERS[x]+'. '+stripHtml(qu.o[x])).join(' | ');
+  const domName = DOMAINS[qu.d]||qu.d;
+  const subName = SUBTOPICS[qu.s]||qu.s;
+  let p=`I'm working through ${EXAM_META.TITLE} — ${EXAM_META.CODE} in Study Mode and want to unpack one specific question with you Socratically.\n\n`;
+  p+=`Please run a short Socratic session on this single question:\n`;
+  SOCRATIC_INTRO_LINES.forEach(line=>p+=line+'\n');
+  p+=`- Keep it to this one question; when I have the mental model, we're done.\n`;
+  p+=`\nThe correct answer, reference explanation, and source basis are provided at the bottom for YOUR eyes only — do not reveal them until I've reasoned through.\n`;
+  p+=`\n============================================================\n`;
+  p+=`QUESTION  [${domName} · ${subName}]  (mock Q${i+1}${qu.type==='multi'?', choose '+qu.a.length:''})\n\n`;
+  p+=stripHtml(qu.q)+`\n`;
+  if(qu.exhibit){ p+=`\n[EXHIBIT${qu.exhibitLabel?' — '+qu.exhibitLabel:''}]\n${qu.exhibit}\n`; }
+  p+=`\nOptions:\n`;
+  qu.o.forEach((o,j)=>{ p+=`  ${LETTERS[j]}. ${stripHtml(o)}\n`; });
+  p+=`\nMy answer: ${mine}\nCorrect answer (coach's eyes only): ${key}\n`;
+  p+=`Reference explanation (coach's eyes only): ${stripHtml(qu.ex||'')}\n`;
+  if(qu.src) p+=`Source basis (coach's eyes only): ${stripHtml(qu.src)}\n`;
+  p+=`\nStart with your first guiding question.`;
+  return p;
+}
+function renderQuestionSocratic(i){
+  const prompt=buildQuestionSocraticPrompt(i);
+  const taId='qsoc-ta-'+i, okId='qsoc-ok-'+i, cardId='qsoc-'+i;
+  const html=`<div class="q-socratic" id="${cardId}">
+    <div class="q-socratic-head">
+      <span class="q-socratic-label">🎓 Socratic session with Claude · this question</span>
+      <div class="q-socratic-actions">
+        <button class="q-socratic-toggle" onclick="toggleQSoc('${cardId}')">Show prompt</button>
+        <button class="btn primary" style="padding:5px 12px;font-size:11px;" onclick="copyBox('${taId}','${okId}')">Copy Prompt</button>
+        <span class="copy-ok-inline" id="${okId}">Copied — paste into a new project chat</span>
+      </div>
+    </div>
+    <div class="q-socratic-body">
+      <div class="q-socratic-note">Paste this into a <b>new chat in this project</b>. Claude will coach you through the mental model without giving the answer away up front.</div>
+      <textarea id="${taId}" readonly>${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+    </div>
+  </div>`;
+  document.getElementById('fb-'+i).insertAdjacentHTML('beforeend',html);
+}
+function toggleQSoc(id){
+  const el=document.getElementById(id); if(!el) return;
+  el.classList.toggle('open');
+  const btn=el.querySelector('.q-socratic-toggle');
+  if(btn) btn.textContent = el.classList.contains('open') ? 'Hide prompt' : 'Show prompt';
 }
 
 /* ---------------- SOCRATIC SESSION PROMPT ---------------- */
